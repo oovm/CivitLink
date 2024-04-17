@@ -1,0 +1,21 @@
+[package]
+name = "galgame-cli-demo"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[[bin]]
+name = "galgame-cli-demo"
+path = "src/main.rs"
+
+[dependencies]
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-asset = { workspace = true }
+gg-runtime-core = { workspace = true, features = ["desktop"] }
+gg-galgame-schema = { workspace = true }
+gg-plugin-dialogue = { workspace = true }
+gg-plugin-portrait = { workspace = true }
+gg-plugin-scene-transition = { workspace = true }
+gg-plugin-save = { workspace = true }

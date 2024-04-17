@@ -5,10 +5,21 @@ time-travel.*
 
 # IDE
 .vscode/
-.vs/
 .idea/
+.trae/
+.vs/
 *.iml
 
 # Rust
 target/
 Cargo.lock
+
+# Node
+node_modules/
+cache/
+dist/
+*.txt
+*.log
+
+# Database schemas (contains connection info and passwords)
+schemas.yaml

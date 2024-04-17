@@ -1,0 +1,13 @@
+[package]
+name = "gg-plugin-save"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-galgame-schema = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

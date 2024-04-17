@@ -1,0 +1,11 @@
+[package]
+name = "gg-runtime-gui"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+
+[dev-dependencies]

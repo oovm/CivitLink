@@ -1,0 +1,15 @@
+[package]
+name = "gg-meta"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+oak-von = { path = "e:\\灵之镜有限公司\\oaks\\examples\\oak-von" } # Local Oak von format implementation
+oak-core = { path = "e:\\灵之镜有限公司\\oaks\\projects\\oak-core" } # Local Oak core library
+uuid = { version = "1.0", features = ["v7", "serde"] }
+chrono = "0.4"
+serde_json = "1.0"
+tempfile = "3.0" # For testing

@@ -1,0 +1,11 @@
+[package]
+name = "gg-compiler-core"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-ir = { workspace = true }
+serde_json = { workspace = true }

@@ -1,0 +1,10 @@
+[package]
+name = "gg-schedule"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-ecs = { workspace = true }
+gg-error = { workspace = true }

@@ -1,0 +1,12 @@
+[package]
+name = "gg-editor-lsp"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-editor-shell = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

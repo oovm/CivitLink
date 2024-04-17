@@ -1,0 +1,4 @@
+packages:
+  - 'documentation'
+  - 'frontends/*'
+  - 'projects/homepage'

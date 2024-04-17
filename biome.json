@@ -1,0 +1,44 @@
+{
+    "$schema": "https://biomejs.dev/schemas/2.4.6/schema.json",
+    "files": {
+        "includes": [
+            "**/*.js",
+            "**/*.ts",
+            "**/*.json",
+            "!**/node_modules",
+            "!**/target",
+            "!**/dist",
+            "!**/documentation/dist",
+            "!**/documentation/.vitepress",
+            "!**/*.d.ts",
+            "!**/*.js.map",
+            "!**/vite.config.js",
+            "!**/vite-plugin-docs.js"
+        ]
+    },
+    "formatter": {
+        "enabled": true,
+        "indentStyle": "space",
+        "indentWidth": 4,
+        "lineWidth": 120,
+        "lineEnding": "lf"
+    },
+    "linter": {
+        "enabled": true,
+        "rules": {
+            "recommended": true
+        }
+    },
+    "javascript": {
+        "formatter": {
+            "indentStyle": "space",
+            "indentWidth": 4
+        }
+    },
+    "json": {
+        "formatter": {
+            "indentStyle": "space",
+            "indentWidth": 4
+        }
+    }
+}
