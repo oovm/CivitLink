@@ -1,0 +1,28 @@
+[game]
+name = "Platformer Demo"
+version = "0.1.0"
+author = "GG Engine"
+
+[display]
+width = 1280
+height = 720
+fullscreen = false
+fps_limit = 60
+
+[input]
+move_speed = 200.0
+jump_force = 400.0
+
+[gameplay]
+player_health = 100
+gravity = 800.0
+max_fall_speed = 600.0
+ground_friction = 0.85
+air_friction = 0.95
+
+[physics]
+collision_precision = 32
+physics_update_rate = 60
+platform_layer = 1
+player_layer = 2
+collectible_layer = 4

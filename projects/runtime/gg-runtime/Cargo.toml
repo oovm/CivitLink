@@ -1,0 +1,31 @@
+[package]
+name = "gg-runtime"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-asset = { workspace = true }
+gg-render = { workspace = true }
+gg-script = { workspace = true }
+gg-ir = { workspace = true }
+gg-bytecode = { workspace = true }
+gg-vm = { workspace = true }
+gg-runtime-audio = { workspace = true }
+rayon = { workspace = true }
+
+[features]
+default = []
+desktop = ["gg-platform-desktop"]
+web = ["gg-platform-web"]
+
+[dependencies.gg-platform-desktop]
+workspace = true
+optional = true
+
+[dependencies.gg-platform-web]
+workspace = true
+optional = true

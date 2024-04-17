@@ -1,0 +1,123 @@
+# GameState 脚本
+# 处理游戏状态相关的逻辑
+
+using gg::ecs;
+using gg::engine;
+
+# 游戏状态组件
+component GameState {
+    score: i32,
+    lives: i32,
+    level: i32,
+    game_over: Bool,
+    events on_score_change: micro(score: i32) -> (),
+    events on_lives_change: micro(lives: i32) -> (),
+    events on_level_change: micro(level: i32) -> (),
+    events on_game_over: micro() -> ()
+}
+
+# 游戏状态系统
+system GameStateSystem {
+    micro execute(world: World): Result<()> {
+        # 获取游戏状态
+        let game_state_query: Query<GameState> = world.query("GameState");
+        loop entity, game_state in game_state_query.iter() {
+            # 检查游戏结束条件
+            game_state_manager.check_game_over(world, game_state);
+        }
+        
+        return Ok()
+    }
+}
+
+# 游戏状态管理器
+class GameStateManager {
+    # 初始化游戏状态
+    micro init_game_state(world: World): GameState {
+        let game_state_entity = world.spawn();
+        let game_state = game_state_entity.add_component("GameState", {
+            score: 0,
+            lives: 3,
+            level: 1,
+            game_over: false
+        });
+        
+        # 注册事件监听器
+        game_state.on_score_change.subscribe(micro(score: i32) {
+            on_score_change_handler(world, score);
+        });
+        
+        game_state.on_lives_change.subscribe(micro(lives: i32) {
+            on_lives_change_handler(world, lives);
+        });
+        
+        game_state.on_level_change.subscribe(micro(level: i32) {
+            on_level_change_handler(world, level);
+        });
+        
+        game_state.on_game_over.subscribe(micro() {
+            on_game_over_handler(world);
+        });
+        
+        return game_state;
+    }
+    
+    # 检查游戏结束条件
+    micro check_game_over(world: World, game_state: GameState) {
+        if game_state.lives <= 0 && not game_state.game_over {
+            game_state.game_over = true;
+            game_state.on_game_over();
+        }
+    }
+    
+    # 增加分数
+    micro add_score(game_state: GameState, amount: i32) {
+        game_state.score += amount;
+        game_state.on_score_change(game_state.score);
+    }
+    
+    # 减少生命
+    micro lose_life(game_state: GameState) {
+        game_state.lives -= 1;
+        game_state.on_lives_change(game_state.lives);
+    }
+    
+    # 增加生命
+    micro add_life(game_state: GameState) {
+        game_state.lives += 1;
+        game_state.on_lives_change(game_state.lives);
+    }
+    
+    # 进入下一关
+    micro next_level(game_state: GameState) {
+        game_state.level += 1;
+        game_state.on_level_change(game_state.level);
+    }
+    
+    # 分数变化处理
+    micro on_score_change_handler(world: World, score: i32) {
+        console::log("Score: " + score);
+        # 可以在这里添加分数变化的视觉效果
+    }
+    
+    # 生命变化处理
+    micro on_lives_change_handler(world: World, lives: i32) {
+        console::log("Lives: " + lives);
+        # 可以在这里添加生命变化的视觉效果
+    }
+    
+    # 关卡变化处理
+    micro on_level_change_handler(world: World, level: i32) {
+        console::log("Level: " + level);
+        # 可以在这里添加关卡变化的视觉效果、音效等
+    }
+    
+    # 游戏结束处理
+    micro on_game_over_handler(world: World) {
+        console::log("Game Over!");
+        # 可以在这里添加游戏结束的视觉效果、音效等
+    }
+}
+
+# 全局游戏状态管理器实例
+let game_state_manager = GameStateManager();

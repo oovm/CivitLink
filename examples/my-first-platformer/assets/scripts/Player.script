@@ -1,0 +1,185 @@
+# Player 脚本
+# 处理玩家相关的游戏逻辑
+
+using gg::ecs;
+using gg::input;
+using gg::engine;
+
+# 玩家组件
+component Player {
+    name: String,
+    health: i32,
+    max_health: i32,
+    position: [f32, f32],
+    velocity: [f32, f32],
+    on_ground: Bool,
+    jump_force: f32,
+    move_speed: f32,
+    events on_health_change: micro(current: i32, max: i32) -> (),
+    events on_death: micro() -> (),
+    events on_jump: micro() -> (),
+    events on_land: micro() -> ()
+}
+
+# 玩家系统
+system PlayerSystem {
+    micro execute(world: World): Result<()> {
+        # 获取玩家实体
+        let player_query: Query<Player> = world.query("Player");
+        loop entity, player in player_query.iter() {
+            # 处理输入
+            player_controller.handle_input(player);
+            
+            # 更新玩家位置
+            player_controller.update_position(player);
+            
+            # 检查生命值
+            player_controller.check_health(player);
+        }
+        
+        return Ok()
+    }
+}
+
+# 玩家控制器
+class PlayerController {
+    # 初始化玩家
+    micro init_player(world: World, name: String, position: [f32, f32]): Player {
+        let player_entity = world.spawn();
+        let player = player_entity.add_component("Player", {
+            name: name,
+            health: 100,
+            max_health: 100,
+            position: position,
+            velocity: [0.0, 0.0],
+            on_ground: false,
+            jump_force: 15.0,
+            move_speed: 5.0
+        });
+        
+        # 注册事件监听器
+        player.on_health_change.subscribe(micro(current: i32, max: i32) {
+            on_health_change_handler(player, current, max);
+        });
+        
+        player.on_death.subscribe(micro() {
+            on_death_handler(world, player);
+        });
+        
+        player.on_jump.subscribe(micro() {
+            on_jump_handler(player);
+        });
+        
+        player.on_land.subscribe(micro() {
+            on_land_handler(player);
+        });
+        
+        return player;
+    }
+    
+    # 处理输入
+    micro handle_input(player: Player) {
+        # 处理左右移动
+        let move_speed = player.move_speed;
+        let velocity = player.velocity;
+        
+        if input.is_key_down("Left") {
+            velocity[0] = -move_speed;
+        } else if input.is_key_down("Right") {
+            velocity[0] = move_speed;
+        } else {
+            velocity[0] = 0.0;
+        }
+        
+        # 处理跳跃
+        if input.is_key_pressed("Space") && player.on_ground {
+            velocity[1] = -player.jump_force;
+            player.on_ground = false;
+            player.on_jump();
+        }
+        
+        player.velocity = velocity;
+    }
+    
+    # 更新玩家位置
+    micro update_position(player: Player) {
+        # 应用重力
+        let gravity = 0.8;
+        let velocity = player.velocity;
+        velocity[1] += gravity;
+        
+        # 更新位置
+        player.position[0] += velocity[0];
+        player.position[1] += velocity[1];
+        
+        # 简单的地面检测（这里应该与物理系统集成）
+        if player.position[1] >= 300.0 {
+            player.position[1] = 300.0;
+            player.velocity[1] = 0.0;
+            if not player.on_ground {
+                player.on_ground = true;
+                player.on_land();
+            }
+        }
+        
+        # 边界检测
+        if player.position[0] < 0.0 {
+            player.position[0] = 0.0;
+        } else if player.position[0] > 800.0 {
+            player.position[0] = 800.0;
+        }
+    }
+    
+    # 检查生命值
+    micro check_health(player: Player) {
+        if player.health <= 0 {
+            player.health = 0;
+            player.on_death();
+        } else if player.health > player.max_health {
+            player.health = player.max_health;
+        }
+    }
+    
+    # 生命值变化处理
+    micro on_health_change_handler(player: Player, current: i32, max: i32) {
+        console::log(player.name + " health: " + current + "/" + max);
+    }
+    
+    # 死亡处理
+    micro on_death_handler(world: World, player: Player) {
+        console::log(player.name + " has died!");
+        # 可以在这里添加死亡的视觉效果、音效等
+    }
+    
+    # 跳跃处理
+    micro on_jump_handler(player: Player) {
+        console::log(player.name + " jumped!");
+        # 可以在这里添加跳跃的音效等
+    }
+    
+    # 落地处理
+    micro on_land_handler(player: Player) {
+        console::log(player.name + " landed!");
+        # 可以在这里添加落地的音效等
+    }
+    
+    # 受伤
+    micro take_damage(player: Player, amount: i32) {
+        let old_health = player.health;
+        player.health -= amount;
+        player.on_health_change(player.health, player.max_health);
+    }
+    
+    # 治疗
+    micro heal(player: Player, amount: i32) {
+        let old_health = player.health;
+        player.health += amount;
+        if player.health > player.max_health {
+            player.health = player.max_health;
+        }
+        player.on_health_change(player.health, player.max_health);
+    }
+}
+
+# 全局玩家控制器实例
+let player_controller = PlayerController();

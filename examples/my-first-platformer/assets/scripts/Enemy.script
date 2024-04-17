@@ -1,0 +1,134 @@
+# Enemy 脚本
+# 处理敌人相关的游戏逻辑
+
+using gg::ecs;
+using gg::engine;
+
+# 敌人组件
+component Enemy {
+    name: String,
+    health: i32,
+    max_health: i32,
+    position: [f32, f32],
+    velocity: [f32, f32],
+    move_speed: f32,
+    patrol_range: [f32, f32],  # [min_x, max_x]
+    direction: f32,  # 1 for right, -1 for left
+    events on_death: micro() -> (),
+    events on_attack: micro() -> ()
+}
+
+# 敌人系统
+system EnemySystem {
+    micro execute(world: World): Result<()> {
+        # 获取敌人实体
+        let enemy_query: Query<Enemy> = world.query("Enemy");
+        loop entity, enemy in enemy_query.iter() {
+            # 更新敌人位置
+            enemy_controller.update_position(enemy);
+            
+            # 检查生命值
+            enemy_controller.check_health(enemy);
+        }
+        
+        return Ok()
+    }
+}
+
+# 敌人控制器
+class EnemyController {
+    # 初始化敌人
+    micro init_enemy(world: World, name: String, position: [f32, f32], patrol_range: [f32, f32]): Enemy {
+        let enemy_entity = world.spawn();
+        let enemy = enemy_entity.add_component("Enemy", {
+            name: name,
+            health: 50,
+            max_health: 50,
+            position: position,
+            velocity: [0.0, 0.0],
+            move_speed: 2.0,
+            patrol_range: patrol_range,
+            direction: 1.0
+        });
+        
+        # 注册事件监听器
+        enemy.on_death.subscribe(micro() {
+            on_death_handler(world, enemy);
+        });
+        
+        enemy.on_attack.subscribe(micro() {
+            on_attack_handler(enemy);
+        });
+        
+        return enemy;
+    }
+    
+    # 更新敌人位置
+    micro update_position(enemy: Enemy) {
+        # 应用重力
+        let gravity = 0.8;
+        let velocity = enemy.velocity;
+        velocity[1] += gravity;
+        
+        # 左右巡逻
+        velocity[0] = enemy.move_speed * enemy.direction;
+        
+        # 更新位置
+        enemy.position[0] += velocity[0];
+        enemy.position[1] += velocity[1];
+        
+        # 简单的地面检测
+        if enemy.position[1] >= 300.0 {
+            enemy.position[1] = 300.0;
+            enemy.velocity[1] = 0.0;
+        }
+        
+        # 巡逻范围检测
+        if enemy.position[0] <= enemy.patrol_range[0] {
+            enemy.position[0] = enemy.patrol_range[0];
+            enemy.direction = 1.0;
+        } else if enemy.position[0] >= enemy.patrol_range[1] {
+            enemy.position[0] = enemy.patrol_range[1];
+            enemy.direction = -1.0;
+        }
+    }
+    
+    # 检查生命值
+    micro check_health(enemy: Enemy) {
+        if enemy.health <= 0 {
+            enemy.health = 0;
+            enemy.on_death();
+        } else if enemy.health > enemy.max_health {
+            enemy.health = enemy.max_health;
+        }
+    }
+    
+    # 受伤
+    micro take_damage(enemy: Enemy, amount: i32) {
+        enemy.health -= amount;
+        if enemy.health <= 0 {
+            enemy.on_death();
+        }
+    }
+    
+    # 攻击
+    micro attack(enemy: Enemy) {
+        enemy.on_attack();
+        # 可以在这里添加攻击逻辑
+    }
+    
+    # 死亡处理
+    micro on_death_handler(world: World, enemy: Enemy) {
+        console::log(enemy.name + " has died!");
+        # 可以在这里添加死亡的视觉效果、音效等
+    }
+    
+    # 攻击处理
+    micro on_attack_handler(enemy: Enemy) {
+        console::log(enemy.name + " attacked!");
+        # 可以在这里添加攻击的视觉效果、音效等
+    }
+}
+
+# 全局敌人控制器实例
+let enemy_controller = EnemyController();

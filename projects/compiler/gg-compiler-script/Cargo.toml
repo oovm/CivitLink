@@ -1,0 +1,14 @@
+[package]
+name = "gg-compiler-script"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-bytecode = { workspace = true }
+gg-compiler = { workspace = true }
+gg-core = { workspace = true }
+gg-ir = { workspace = true }
+gg-script = { workspace = true }
+gg-compiler-shader = { workspace = true }

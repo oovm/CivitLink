@@ -1,0 +1,13 @@
+[package]
+name = "gg-platform"
+version.workspace = true
+description = "GG 引擎平台基础库"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+gg-core.workspace = true
+
+[dev-dependencies]
+tokio = { version = "1.51.1", features = ["full"] }

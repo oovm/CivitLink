@@ -1,0 +1,5 @@
+packages:
+  - 'documentation'
+  - 'frontends/*'
+  - 'projects/homepage'
+  - 'projects/toolchain/gg-vscode'

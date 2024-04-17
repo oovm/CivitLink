@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GG Meta",
+  "scopeName": "source.gg-meta",
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.gg-meta",
+      "match": "//.*$",
+      "captures": {
+        "0": {
+          "name": "comment.line.double-slash.gg-meta"
+        }
+      }
+    },
+    {
+      "name": "keyword.control.gg-meta",
+      "match": "\b(MetaFile|Asset|ImportSettings|Dependency|Reference)\b",
+      "captures": {
+        "0": {
+          "name": "keyword.control.gg-meta"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.double.gg-meta",
+      "match": '"([^"\\]|\\.)*"',
+      "captures": {
+        "0": {
+          "name": "string.quoted.double.gg-meta"
+        }
+      }
+    },
+    {
+      "name": "constant.numeric.gg-meta",
+      "match": "\b\d+(\.\d+)?\b",
+      "captures": {
+        "0": {
+          "name": "constant.numeric.gg-meta"
+        }
+      }
+    },
+    {
+      "name": "constant.language.gg-meta",
+      "match": "\b(true|false|None|Some|Texture|Audio|Script|Scene)\b",
+      "captures": {
+        "0": {
+          "name": "constant.language.gg-meta"
+        }
+      }
+    },
+    {
+      "name": "entity.name.type.gg-meta",
+      "match": "\b(version|asset|guid|type|import_settings|compression|max_size|format|generate_mipmaps|wrap_mode|filter_mode|quality|loop|streaming|compile|optimize|target|load_async|preload_resources|dependencies|path|references|entity_id|component|field|timestamp|hash)\b",
+      "captures": {
+        "0": {
+          "name": "entity.name.type.gg-meta"
+        }
+      }
+    },
+    {
+      "name": "punctuation.bracket.gg-meta",
+      "match": "[\{\}\[\]()]",
+      "captures": {
+        "0": {
+          "name": "punctuation.bracket.gg-meta"
+        }
+      }
+    },
+    {
+      "name": "punctuation.separator.gg-meta",
+      "match": ",",
+      "captures": {
+        "0": {
+          "name": "punctuation.separator.gg-meta"
+        }
+      }
+    }
+  ]
+}

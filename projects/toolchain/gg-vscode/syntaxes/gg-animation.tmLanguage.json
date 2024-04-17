@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GG Animation",
+  "scopeName": "source.gg-animation",
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.gg-animation",
+      "match": "//.*$",
+      "captures": {
+        "0": {
+          "name": "comment.line.double-slash.gg-animation"
+        }
+      }
+    },
+    {
+      "name": "keyword.control.gg-animation",
+      "match": "\b(AnimationFile|Animation|Track|Keyframe|Properties|Event|Params|Dependency|Reference)\b",
+      "captures": {
+        "0": {
+          "name": "keyword.control.gg-animation"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.double.gg-animation",
+      "match": '"([^"\\]|\\.)*"',
+      "captures": {
+        "0": {
+          "name": "string.quoted.double.gg-animation"
+        }
+      }
+    },
+    {
+      "name": "constant.numeric.gg-animation",
+      "match": "\b\d+(\.\d+)?\b",
+      "captures": {
+        "0": {
+          "name": "constant.numeric.gg-animation"
+        }
+      }
+    },
+    {
+      "name": "constant.language.gg-animation",
+      "match": "\b(true|false|None|Some)\b",
+      "captures": {
+        "0": {
+          "name": "constant.language.gg-animation"
+        }
+      }
+    },
+    {
+      "name": "entity.name.type.gg-animation",
+      "match": "\b(name|description|duration|loop|speed|blend_time|version|animation|tracks|keyframes|time|properties|easing|events|params|dependencies|path|guid|references|field|timestamp|hash)\b",
+      "captures": {
+        "0": {
+          "name": "entity.name.type.gg-animation"
+        }
+      }
+    },
+    {
+      "name": "punctuation.bracket.gg-animation",
+      "match": "[\{\}\[\]()]",
+      "captures": {
+        "0": {
+          "name": "punctuation.bracket.gg-animation"
+        }
+      }
+    },
+    {
+      "name": "punctuation.separator.gg-animation",
+      "match": ",",
+      "captures": {
+        "0": {
+          "name": "punctuation.separator.gg-animation"
+        }
+      }
+    }
+  ]
+}

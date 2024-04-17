@@ -1,0 +1,80 @@
+using gg::ecs;
+using gg::engine;
+using gg::ui;
+
+component HudState {
+    score_text: String,
+    wave_text: String,
+    bomb_text: String,
+    health_fill: f32,
+    events on_score_update: micro(score: u32) -> (),
+    events on_wave_update: micro(wave: u32) -> (),
+    events on_health_update: micro(current: i32, max: i32) -> (),
+    events on_bomb_update: micro(count: u32) -> ()
+}
+
+system HudControllerSystem {
+    micro execute(world: World): Result<()> {
+        let query: Query<HudState> = world.query("HudState");
+        loop entity, hud in query.iter() {
+            let game_state = world.get_resource("GameState");
+            if game_state != null {
+                let new_score = "SCORE: " + game_state.score;
+                if hud.score_text != new_score {
+                    hud.score_text = new_score;
+                    let score_ui = world.find_entity("score_text");
+                    if score_ui != null {
+                        score_ui.set_property("text", new_score);
+                    }
+                }
+
+                let new_wave = "WAVE " + game_state.wave;
+                if hud.wave_text != new_wave {
+                    hud.wave_text = new_wave;
+                    let wave_ui = world.find_entity("wave_text");
+                    if wave_ui != null {
+                        wave_ui.set_property("text", new_wave);
+                    }
+                }
+
+                let new_bomb = "BOMB: " + game_state.bomb_count;
+                if hud.bomb_text != new_bomb {
+                    hud.bomb_text = new_bomb;
+                    let bomb_ui = world.find_entity("bomb_text");
+                    if bomb_ui != null {
+                        bomb_ui.set_property("text", new_bomb);
+                    }
+                }
+            }
+        }
+
+        return Ok()
+    }
+}
+
+class HudController {
+    micro init_hud(world: World) {
+        let hud_entity = world.spawn();
+        hud_entity.add_component("HudState", {
+            score_text: "SCORE: 0",
+            wave_text: "WAVE 1",
+            bomb_text: "BOMB: 3",
+            health_fill: 1.0
+        });
+
+        let health_bar = world.find_entity("health_bar");
+        if health_bar != null {
+            health_bar.set_property("fill_amount", 1.0);
+        }
+    }
+
+    micro update_health_bar(world: World, current: i32, max: i32) {
+        let fill = current as f32 / max as f32;
+        let health_bar = world.find_entity("health_bar");
+        if health_bar != null {
+            health_bar.set_property("fill_amount", fill);
+        }
+    }
+}
+
+let hud_controller = HudController();

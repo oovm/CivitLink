@@ -1,0 +1,179 @@
+<template>
+    <Panel class="preview-panel" style="flex-1">
+        <Stack orientation="vertical" style="gap-0">
+            <Stack orientation="horizontal" class="preview-toolbar" style="gap-4 padding-4 align-items-center">
+                <if (previewState() == "Idle")>
+                    <Button text="▶ Run" onClick={handleStart} class="btn-play" />
+                </if>
+                <if (previewState() == "Running")>
+                    <Button text="⏸ Pause" onClick={handlePause} class="btn-pause" />
+                </if>
+                <if (previewState() == "Paused")>
+                    <Button text="▶ Resume" onClick={handleResume} class="btn-resume" />
+                </if>
+                <if (previewState() == "Running" || previewState() == "Paused")>
+                    <Button text="⏹ Stop" onClick={handleStop} class="btn-stop" />
+                </if>
+                <Text class="hmr-toggle" onClick={handleHmrToggle}>{hmrEnabled() ? "HMR: ON" : "HMR: OFF"}</Text>
+                <Text class="fps-display">FPS: {fps()}</Text>
+            </Stack>
+            <SceneView scene={currentScene()} style="flex-1" />
+            <Stack orientation="horizontal" class="preview-statusbar" style="gap-8 padding-4">
+                <Text class="status-text">场景: {sceneName()}</Text>
+                <Text class="status-text">对象数: {objectCount()}</Text>
+                <Text class="status-text">FPS: {fps()}</Text>
+                <Text class="status-text">HMR: {hmrStatusText()}</Text>
+            </Stack>
+        </Stack>
+    </Panel>
+</template>
+
+<script>
+    using gg_editor::ui::widgets::{Panel, Stack, Button, Text, SceneView};
+    using gg_editor::ui::signal;
+    using gg_editor::ui::{on_mount, on_update, on_cleanup};
+
+    let previewState = signal("Idle");
+    let currentScene = signal("Main");
+    let sceneName = signal("Main");
+    let objectCount = signal(0);
+    let fps = signal(0);
+    let hmrEnabled = signal(true);
+    let hmrStatusText = signal("Idle");
+
+    let handleStart = micro() {
+        previewState("Running");
+        console::log("Preview started");
+    };
+
+    let handlePause = micro() {
+        previewState("Paused");
+        console::log("Preview paused");
+    };
+
+    let handleResume = micro() {
+        previewState("Running");
+        console::log("Preview resumed");
+    };
+
+    let handleStop = micro() {
+        previewState("Idle");
+        fps(0);
+        console::log("Preview stopped");
+    };
+
+    let handleHmrToggle = micro() {
+        hmrEnabled(!hmrEnabled());
+        console::log("HMR toggled: " + (hmrEnabled() ? "ON" : "OFF"));
+    };
+
+    on_mount(micro() {
+        console::log("Preview panel mounted");
+    });
+
+    on_update(micro() {
+        if (hmrEnabled()) {
+            hmrStatusText("Active");
+        } else {
+            hmrStatusText("Disabled");
+        }
+    });
+
+    on_cleanup(micro() {
+        console::log("Preview panel unmounted");
+    });
+</script>
+
+<style>
+    .preview-panel {
+        background-color: $bg-color;
+    }
+
+    .preview-toolbar {
+        background-color: $bg-secondary-color;
+        border-bottom: 1px solid $border-color;
+        height: 36px;
+        align-items: center;
+    }
+
+    .btn-play {
+        padding: $spacing-xs $spacing-sm;
+        background-color: $success-color;
+        color: white;
+        border-radius: $radius-sm;
+        font-size: $font-size-sm;
+        cursor: pointer;
+
+        &:hover {
+            opacity: 0.85;
+        }
+    }
+
+    .btn-pause {
+        padding: $spacing-xs $spacing-sm;
+        background-color: $warning-color;
+        color: white;
+        border-radius: $radius-sm;
+        font-size: $font-size-sm;
+        cursor: pointer;
+
+        &:hover {
+            opacity: 0.85;
+        }
+    }
+
+    .btn-resume {
+        padding: $spacing-xs $spacing-sm;
+        background-color: $success-color;
+        color: white;
+        border-radius: $radius-sm;
+        font-size: $font-size-sm;
+        cursor: pointer;
+
+        &:hover {
+            opacity: 0.85;
+        }
+    }
+
+    .btn-stop {
+        padding: $spacing-xs $spacing-sm;
+        background-color: $error-color;
+        color: white;
+        border-radius: $radius-sm;
+        font-size: $font-size-sm;
+        cursor: pointer;
+
+        &:hover {
+            opacity: 0.85;
+        }
+    }
+
+    .hmr-toggle {
+        font-size: $font-size-sm;
+        color: $text-secondary-color;
+        padding: $spacing-xs $spacing-sm;
+        border-radius: $radius-sm;
+        cursor: pointer;
+
+        &:hover {
+            background-color: $secondary-color;
+        }
+    }
+
+    .fps-display {
+        font-size: $font-size-sm;
+        color: $text-secondary-color;
+        margin-left: auto;
+    }
+
+    .preview-statusbar {
+        background-color: $primary-color;
+        height: 22px;
+        align-items: center;
+    }
+
+    .status-text {
+        font-size: $font-size-xs;
+        color: white;
+    }
+</style>

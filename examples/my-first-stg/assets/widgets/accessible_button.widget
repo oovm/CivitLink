@@ -1,0 +1,60 @@
+<template>
+    <Button class="accessible-button" style="padding-8-16" onClick={handleClick}>
+        <Stack orientation="horizontal" style="gap-8 align-items-center">
+            <Icon name={icon()} />
+            <Text class="button-label">{label()}</Text>
+        </Stack>
+    </Button>
+</template>
+
+<script>
+    using gg_editor::ui::widgets::{Button, Stack, Icon, Text};
+    using gg_editor::ui::signal;
+
+    let label = signal("Submit");
+    let icon = signal("check");
+    let aria_label = signal("Submit form");
+    let aria_role = signal("button");
+
+    let handleClick = micro() {
+        console::log("Accessible button clicked: " + aria_label());
+    };
+</script>
+
+<style>
+    .accessible-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: $spacing-sm $spacing-md;
+        background-color: $primary-color;
+        color: white;
+        border-radius: $radius-md;
+        cursor: pointer;
+        min-height: 36px;
+
+        &:hover {
+            background-color: #0066BF;
+        }
+
+        &:focus {
+            outline: 2px solid $accent-color;
+            outline-offset: 2px;
+        }
+
+        &:active {
+            background-color: #005A9E;
+        }
+
+        &:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+    }
+
+    .button-label {
+        font-size: $font-size-md;
+        font-weight: bold;
+        color: white;
+    }
+</style>

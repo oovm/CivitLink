@@ -1,0 +1,124 @@
+# GameState 脚本
+# 处理游戏状态相关的逻辑
+
+using gg::ecs;
+using gg::signal;
+using gg::engine;
+
+# 游戏状态组件
+component GameState {
+    variables: Map<String, Any>,
+    flags: Set<String>,
+    day: i32,
+    time: String,
+    game_over: Bool,
+    events on_game_over: micro() -> (),
+    events on_day_change: micro(day: i32) -> ()
+}
+
+# 游戏状态系统
+system GameStateSystem {
+    micro execute(world: World): Result<()> {
+        # 获取游戏状态
+        let game_state_query: Query<GameState> = world.query("GameState");
+        loop entity, game_state in game_state_query.iter() {
+            # 检查游戏结束条件
+            game_state_manager.check_game_over(world, game_state);
+        }
+        
+        return Ok()
+    }
+}
+
+# 游戏状态管理器
+class GameStateManager {
+    # 初始化游戏状态
+    micro init_game_state(world: World): GameState {
+        let game_state_entity = world.spawn();
+        let game_state = game_state_entity.add_component("GameState", {
+            variables: {},
+            flags: {},
+            day: 1,
+            time: "morning",
+            game_over: false
+        });
+        
+        # 注册事件监听器
+        game_state.on_game_over.subscribe(micro() {
+            on_game_over_handler(world);
+        });
+        
+        game_state.on_day_change.subscribe(micro(day: i32) {
+            on_day_change_handler(world, day);
+        });
+        
+        return game_state;
+    }
+    
+    # 游戏结束处理
+    micro on_game_over_handler(world: World) {
+        # 处理游戏结束逻辑
+        console::log("Game Over!");
+        # 可以在这里添加游戏结束的视觉效果、音效等
+    }
+    
+    # 天数变化处理
+    micro on_day_change_handler(world: World, day: i32) {
+        # 处理天数变化逻辑
+        console::log("Day changed to " + day);
+        # 可以在这里添加天数变化的视觉效果、音效等
+    }
+    
+    # 推进游戏时间
+    micro advance_time(game_state: GameState) {
+        # 根据当前时间更新到下一个时间点
+        match game_state.time {
+            case "morning" => game_state.time = "noon",
+            case "noon" => game_state.time = "evening",
+            case "evening" => {
+                game_state.time = "morning";
+                game_state.day += 1;
+                # 触发天数变化事件
+                game_state.on_day_change(game_state.day);
+            },
+            case _ => game_state.time = "morning"
+        }
+    }
+    
+    # 检查游戏结束条件
+    micro check_game_over(world: World, game_state: GameState) {
+        # 这里可以添加游戏结束条件检查
+        # 例如：检查玩家生命值、任务完成状态等
+    }
+    
+    # 设置游戏变量
+    micro set_variable(game_state: GameState, key: String, value: Any) {
+        game_state.variables[key] = value;
+    }
+    
+    # 获取游戏变量
+    micro get_variable(game_state: GameState, key: String): Any {
+        return game_state.variables.get(key);
+    }
+    
+    # 设置游戏标志
+    micro set_flag(game_state: GameState, flag: String) {
+        game_state.flags.add(flag);
+    }
+    
+    # 检查游戏标志
+    micro has_flag(game_state: GameState, flag: String): Bool {
+        return game_state.flags.has(flag);
+    }
+    
+    # 触发游戏结束
+    micro trigger_game_over(game_state: GameState) {
+        if not game_state.game_over {
+            game_state.game_over = true;
+            game_state.on_game_over();
+        }
+    }
+}
+
+# 全局游戏状态管理器实例
+let game_state_manager = GameStateManager();

@@ -1,0 +1,283 @@
+# YAML 格式 - 第一章 学生会线
+
+metadata:
+  title: 第一章 - 学生会线
+  chapter: 1
+  route: school
+
+nodes:
+  chapter1_school_start:
+    type: scene
+    background: images/bg/student_council_room.png
+    music:
+      file: audio/bgm/peaceful_theme.mp3
+      volume: 0.5
+    transition:
+      type: fade
+      duration: 1.0
+    next: dialogue_1
+
+  dialogue_1:
+    type: character
+    action: show
+    character: sakura
+    sprite: smile
+    position: center
+    next: dialogue_2
+
+  dialogue_2:
+    type: dialogue
+    character: sakura
+    content: 你好！欢迎来到学生会！
+    next: dialogue_3
+
+  dialogue_3:
+    type: character
+    action: show
+    character: yuki
+    sprite: gentle
+    position: left
+    animation: slide_left
+    next: dialogue_4
+
+  dialogue_4:
+    type: dialogue
+    character: yuki
+    content: 啊，新同学也来了。欢迎欢迎。
+    next: dialogue_5
+
+  dialogue_5:
+    type: dialogue
+    character: player
+    content: 白雪同学也在啊。
+    next: dialogue_6
+
+  dialogue_6:
+    type: dialogue
+    character: yuki
+    content: 我是学生会的书记。樱井是副会长。
+    next: dialogue_7
+
+  dialogue_7:
+    type: dialogue
+    character: sakura
+    expression: proud
+    content: 没错！我们学生会可是学校的重要组织！
+    next: dialogue_8
+
+  dialogue_8:
+    type: dialogue
+    character: player
+    content: （学生会...应该能了解到一些学校的事情。）
+    next: dialogue_9
+
+  dialogue_9:
+    type: dialogue
+    character: yuki
+    content: 对了，新同学，有件事想请你帮忙。
+    next: choice_help
+
+  choice_help:
+    type: choice
+    options:
+      - text: 什么事？
+        next: ask_for_help
+        effects:
+          - variable: yuki_affection
+            operation: add
+            value: 1
+          - variable: trust_points
+            operation: add
+            value: 2
+      - text: 我很忙...
+        next: refuse_help
+        effects:
+          - variable: yuki_affection
+            operation: add
+            value: -1
+          - variable: sakura_affection
+            operation: add
+            value: -1
+
+  ask_for_help:
+    type: dialogue
+    character: yuki
+    content: 最近学校里发生了一些奇怪的事情。
+    next: ask_for_help_2
+
+  ask_for_help_2:
+    type: dialogue
+    character: sakura
+    expression: worried
+    content: 有学生说在旧校舍附近看到了奇怪的光。
+    next: ask_for_help_3
+
+  ask_for_help_3:
+    type: dialogue
+    character: player
+    content: 奇怪的光？
+    next: ask_for_help_4
+
+  ask_for_help_4:
+    type: dialogue
+    character: yuki
+    content: 我们想调查一下，但是旧校舍一直锁着...
+    next: ask_for_help_5
+
+  ask_for_help_5:
+    type: dialogue
+    character: sakura
+    expression: determined
+    content: 如果你愿意帮忙的话，我们会很感激的！
+    next: choice_investigate
+
+  choice_investigate:
+    type: choice
+    options:
+      - text: 我愿意帮忙
+        next: agree_to_help
+        effects:
+          - variable: trust_points
+            operation: add
+            value: 2
+      - text: 这听起来很危险...
+        next: worry_about_danger
+        effects:
+          - variable: sakura_affection
+            operation: add
+            value: 1
+
+  refuse_help:
+    type: dialogue
+    character: sakura
+    expression: disappointed
+    content: 这样啊...
+    next: refuse_help_2
+
+  refuse_help_2:
+    type: dialogue
+    character: yuki
+    expression: disappointed
+    content: 没关系，我们理解。
+    next: refuse_help_3
+
+  refuse_help_3:
+    type: dialogue
+    character: player
+    content: （他们的表情...好像很需要帮助。）
+    next: choice_change_mind
+
+  choice_change_mind:
+    type: choice
+    options:
+      - text: 等等，我改变主意了
+        next: ask_for_help
+      - text: 告辞了
+        next: leave_student_council
+
+  agree_to_help:
+    type: dialogue
+    character: sakura
+    expression: happy
+    content: 太好了！谢谢你！
+    next: agree_to_help_2
+
+  agree_to_help_2:
+    type: dialogue
+    character: yuki
+    expression: relieved
+    content: 有你帮忙就放心多了。
+    next: agree_to_help_3
+
+  agree_to_help_3:
+    type: dialogue
+    character: sakura
+    content: 黑崎同学好像知道怎么进入旧校舍...
+    next: agree_to_help_4
+
+  agree_to_help_4:
+    type: dialogue
+    character: player
+    content: （黑崎？他确实说过知道怎么进去...）
+    next: investigation_start
+
+  worry_about_danger:
+    type: dialogue
+    character: sakura
+    expression: reassuring
+    content: 别担心！我们只是想看看是什么情况。
+    next: worry_about_danger_2
+
+  worry_about_danger_2:
+    type: dialogue
+    character: yuki
+    expression: gentle
+    content: 如果你害怕的话，可以和我们一起行动。
+    next: investigation_start
+
+  investigation_start:
+    type: scene
+    background: images/bg/school_hallway.png
+    transition:
+      type: fade
+      duration: 0.8
+    next: investigation_start_2
+
+  investigation_start_2:
+    type: dialogue
+    character: player
+    content: 好，我来帮忙调查。
+    next: investigation_start_3
+
+  investigation_start_3:
+    type: character
+    action: show
+    character: sakura
+    sprite: happy
+    position: center
+    next: investigation_start_4
+
+  investigation_start_4:
+    type: dialogue
+    character: sakura
+    content: 太好了！那我们明天放学后在学校门口集合！
+    next: fade_out
+
+  fade_out:
+    type: effect
+    effect: fade_out
+    duration: 1.0
+    next: chapter2_investigation
+
+  chapter2_investigation:
+    type: call
+    file: chapter2_investigation.yaml
+    next: end
+
+  leave_student_council:
+    type: scene
+    background: images/bg/school_corridor.png
+    transition:
+      type: fade
+      duration: 0.8
+    next: leave_student_council_2
+
+  leave_student_council_2:
+    type: dialogue
+    character: player
+    content: （也许我不该卷入这件事...）
+    next: fade_out_2
+
+  fade_out_2:
+    type: effect
+    effect: fade_out
+    duration: 1.0
+    next: chapter1_home
+
+  chapter1_home:
+    type: call
+    file: chapter1_home.yaml
+    next: end
+
+  end:
+    type: return

@@ -1,0 +1,89 @@
+using gg::ecs;
+using gg::engine;
+using gg::sheet;
+
+component SheetEditorState {
+    current_table: Option<UTF8Text>,
+    is_dirty: Bool,
+    editing_row: i32,
+    editing_col: i32
+}
+
+system SheetEditorSystem {
+    micro execute(world: World): Result<()> {
+        let query: Query<SheetEditorState> = world.query("SheetEditorState")
+        loop entity, state in query.iter() {
+            if state.is_dirty {
+                sheet::auto_save(entity, state.current_table)
+            }
+        }
+        return Ok()
+    }
+}
+
+class SheetEditorService {
+    let table_cache: Map<UTF8Text, TableData>
+
+    constructor() {
+        this.table_cache = Map<UTF8Text, TableData>()
+    }
+
+    micro list_tables(): Array<TableInfo> {
+        return sheet::discover_tables()
+    }
+
+    micro load_table(name: UTF8Text): TableData {
+        if this.table_cache.contains_key(name) {
+            return this.table_cache[name]
+        }
+        let data = sheet::read_table(name)
+        this.table_cache[name] = data
+        return data
+    }
+
+    micro save_table(name: UTF8Text, rows: Array<RowData>) {
+        sheet::write_table(name, rows)
+        this.table_cache[name].rows = rows
+    }
+
+    micro trigger_compile() {
+        sheet::incremental_compile()
+    }
+
+    micro validate_cell(type_name: UTF8Text, value: UTF8Text): Result<UTF8Text> {
+        return sheet::validate_value(type_name, value)
+    }
+
+    micro format_cell_value(type_name: UTF8Text, value: UTF8Text): UTF8Text {
+        return sheet::format_value(type_name, value)
+    }
+}
+
+class TableInfo {
+    name: UTF8Text,
+    row_count: i32,
+    column_count: i32
+}
+
+class TableData {
+    name: UTF8Text,
+    headers: Array<HeaderInfo>,
+    rows: Array<RowData>
+}
+
+class HeaderInfo {
+    name: UTF8Text,
+    type_name: UTF8Text,
+    comment: UTF8Text
+}
+
+class RowData {
+    cells: Array<CellInfo>
+}
+
+class CellInfo {
+    value: UTF8Text,
+    type_name: UTF8Text
+}
+
+let sheet_editor = SheetEditorService()

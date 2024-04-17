@@ -1,0 +1,32 @@
+[package]
+name = "gg-engine-galgame"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+winit = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+image = { workspace = true }
+
+
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-asset = { workspace = true }
+gg-compiler = { workspace = true }
+gg-ir = { workspace = true }
+gg-bytecode = { workspace = true }
+gg-engine = { workspace = true }
+gg-plugin-dialogue = { workspace = true }
+gg-plugin-portrait = { workspace = true }
+gg-plugin-scene-transition = { workspace = true }
+gg-runtime-ui = { workspace = true }
+gg-render = { workspace = true }
+gg-render-wgpu = { workspace = true }
+gg-ui = { workspace = true }
+gg-manifest = { workspace = true }
+oak-markdown = { workspace = true }
+oak-core = { workspace = true }

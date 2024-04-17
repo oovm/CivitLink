@@ -1,0 +1,28 @@
+{
+  "name": "Projectile",
+  "components": [
+    {
+      "type": "Projectile",
+      "data": {
+        "position": [0, 0],
+        "velocity": [0, -5.0],
+        "damage": 10,
+        "owner": "Player",
+        "lifetime": 2.0
+      }
+    },
+    {
+      "type": "Collider",
+      "data": {
+        "radius": 5.0
+      }
+    },
+    {
+      "type": "Sprite",
+      "data": {
+        "path": "sprites/projectile.png",
+        "size": [10, 10]
+      }
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+[package]
+name = "gg-editor-scene"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-world = { workspace = true }
+gg-render = { workspace = true }
+gg-editor-shell = { workspace = true }
+gg-ui = { workspace = true }
+
+[dev-dependencies]
+gg-ecs = { workspace = true }
+gg-world = { workspace = true }

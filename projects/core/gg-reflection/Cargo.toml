@@ -1,0 +1,11 @@
+[package]
+name = "gg-reflection"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-macros = { workspace = true }

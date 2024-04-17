@@ -1,0 +1,15 @@
+[package]
+name = "gg-plugin-portrait"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-asset = { workspace = true }
+gg-render = { workspace = true }
+gg-plugin-dialogue = { workspace = true }
+gg-editor-shell = { workspace = true }
+gg-ui = { workspace = true }

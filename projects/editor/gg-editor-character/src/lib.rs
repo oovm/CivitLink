@@ -1,0 +1,8 @@
+#![warn(missing_docs)]
+
+//! GG 编辑器角色管理器面板模块
+//! 提供角色创建、删除、表情管理、批量导入和骨骼绑定功能
+
+pub mod animation;
+pub mod panel;
+pub mod skeleton;

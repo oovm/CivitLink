@@ -1,0 +1,12 @@
+[package]
+name = "gg-basic-example"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-runtime = { workspace = true, features = ["desktop"] }
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-vm = { workspace = true }

@@ -1,0 +1,105 @@
+<template>
+    <Panel class="data-list" style="flex-1">
+        <Stack orientation="vertical" style="gap-4">
+            <Stack orientation="horizontal" style="gap-8 align-items-center">
+                <Text class="section-title">{title()}</Text>
+                <Input class="search-input" value={searchQuery()} onChange={(e) => searchQuery(e.target.value)} placeholder="Search..." style="flex-1" />
+            </Stack>
+            <ScrollView scroll_direction="vertical" style="flex-1">
+                <Stack orientation="vertical" style="gap-0">
+                    <loop (item, index) in filteredItems()>
+                        <Panel class={index == selectedIndex() ? "list-item selected" : "list-item"} onClick={micro() { handleSelect(index) }}>
+                            <Text class="item-label">{item.label}</Text>
+                            <Text class="item-detail">{item.detail}</Text>
+                        </Panel>
+                    </loop>
+                </Stack>
+            </ScrollView>
+        </Stack>
+    </Panel>
+</template>
+
+<script>
+    using gg_editor::ui::widgets::{Panel, Stack, Text, Input, ScrollView};
+    using gg_editor::ui::signal;
+
+    let title = signal("Data List");
+    let items = signal([]);
+    let selectedIndex = signal(-1);
+    let searchQuery = signal("");
+
+    let filteredItems = computed(micro() {
+        let query = searchQuery().to_lowercase();
+        if query == "" {
+            return items();
+        }
+        return items().filter(micro(item) {
+            return item.label.to_lowercase().contains(query) || item.detail.to_lowercase().contains(query);
+        });
+    });
+
+    let handleSelect = micro(index) {
+        selectedIndex(index);
+        console::log("Selected item: " + filteredItems()[index].label);
+    };
+</script>
+
+<style>
+    .data-list {
+        padding: $spacing-md;
+        background-color: $bg-secondary-color;
+    }
+
+    .section-title {
+        font-size: $font-size-sm;
+        font-weight: bold;
+        color: $text-secondary-color;
+        text-transform: uppercase;
+    }
+
+    .search-input {
+        padding: $spacing-xs $spacing-sm;
+        background-color: $bg-color;
+        border: 1px solid $border-color;
+        border-radius: $radius-sm;
+        color: $text-color;
+
+        &:focus {
+            border-color: $accent-color;
+        }
+    }
+
+    .list-item {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: $spacing-sm $spacing-md;
+        cursor: pointer;
+        border-radius: $radius-sm;
+
+        &:hover {
+            background-color: $secondary-color;
+        }
+
+        &.selected {
+            background-color: $primary-color;
+            color: white;
+        }
+
+        &:focus {
+            outline: 2px solid $accent-color;
+            outline-offset: -2px;
+        }
+    }
+
+    .item-label {
+        font-size: $font-size-md;
+        color: $text-color;
+    }
+
+    .item-detail {
+        font-size: $font-size-sm;
+        color: $text-secondary-color;
+    }
+</style>

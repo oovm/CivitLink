@@ -1,0 +1,153 @@
+# Init 脚本
+# 初始化游戏世界和资源
+
+using gg::ecs;
+using gg::engine;
+using gg::dialogue;
+
+# 游戏初始化
+system GameInitSystem {
+    micro execute(world: World): Result<()> {
+        # 初始化游戏状态
+        let game_state = game_state_manager.init_game_state(world);
+        
+        # 初始化玩家
+        let player = player_controller.init_player(world, "Hero", [100.0, 100.0]);
+        
+        # 初始化对话系统
+        let dialogue = dialogue_manager.init_dialogue(world);
+        
+        # 初始化对话数据
+        init_dialogue_data(world);
+        
+        # 开始对话
+        dialogue_manager.start_dialogue(world, dialogue, "start");
+        
+        # 注册一次性系统，只执行一次
+        world.remove_system("GameInitSystem");
+        
+        return Ok()
+    }
+}
+
+# 初始化对话数据
+micro init_dialogue_data(world: World) {
+    # 创建对话数据
+    let dialogue_data = {
+        nodes: {
+            "start": {
+                id: "start",
+                text: "这是一个晴朗的早晨...",
+                speaker: "",
+                portrait: null,
+                expression: null,
+                position: null,
+                choices: [],
+                next: "start_d1"
+            },
+            "start_d1": {
+                id: "start_d1",
+                text: "早上好！",
+                speaker: "heroine",
+                portrait: "heroine",
+                expression: "smile",
+                position: "center",
+                choices: [],
+                next: "start_d2"
+            },
+            "start_d2": {
+                id: "start_d2",
+                text: "你要怎么回应？",
+                speaker: "",
+                portrait: null,
+                expression: null,
+                position: null,
+                choices: [
+                    {
+                        id: "choice1",
+                        text: "早上好！",
+                        next: "start_good"
+                    },
+                    {
+                        id: "choice2",
+                        text: "你是谁？",
+                        next: "start_who"
+                    }
+                ],
+                next: null
+            },
+            "start_good": {
+                id: "start_good",
+                text: "嗯，早上好！",
+                speaker: "heroine",
+                portrait: "heroine",
+                expression: "smile",
+                position: "center",
+                choices: [],
+                next: "start_end"
+            },
+            "start_who": {
+                id: "start_who",
+                text: "我是...你不记得我了吗？",
+                speaker: "heroine",
+                portrait: "heroine",
+                expression: "confused",
+                position: "center",
+                choices: [],
+                next: "start_end"
+            },
+            "start_end": {
+                id: "start_end",
+                text: "故事才刚刚开始...",
+                speaker: "",
+                portrait: null,
+                expression: null,
+                position: null,
+                choices: [],
+                next: null
+            }
+        }
+    };
+    
+    # 添加对话数据到世界
+    world.insert_resource("DialogueData", dialogue_data);
+    
+    # 初始化对话历史
+    let dialogue_history = {
+        current_node_id: null,
+        history: []
+    };
+    world.insert_resource("DialogueHistory", dialogue_history);
+    
+    # 初始化选择状态
+    let choice_state = {
+        is_active: false,
+        selected_index: null,
+        choices: []
+    };
+    world.insert_resource("ChoiceState", choice_state);
+}
+
+# 输入处理系统
+system InputSystem {
+    micro execute(world: World): Result<()> {
+        # 处理对话选择
+        let dialogue_query: Query<Dialogue> = world.query("Dialogue");
+        loop entity, dialogue in dialogue_query.iter() {
+            if dialogue.is_active {
+                # 处理数字键选择
+                if input.is_key_pressed("1") {
+                    dialogue_manager.handle_choice(world, dialogue, 0);
+                } else if input.is_key_pressed("2") {
+                    dialogue_manager.handle_choice(world, dialogue, 1);
+                } else if input.is_key_pressed("3") {
+                    dialogue_manager.handle_choice(world, dialogue, 2);
+                } else if input.is_key_pressed("4") {
+                    dialogue_manager.handle_choice(world, dialogue, 3);
+                }
+            }
+        }
+        
+        return Ok()
+    }
+}

@@ -1,0 +1,157 @@
+# Enemy 脚本
+# 处理敌人相关的游戏逻辑
+
+using gg::ecs;
+using gg::engine;
+
+# 敌人组件
+component Enemy {
+    name: String,
+    health: i32,
+    max_health: i32,
+    position: [f32, f32],
+    velocity: [f32, f32],
+    move_pattern: String,  # 移动模式
+    fire_rate: f32,  # 射击间隔（秒）
+    last_fire_time: f32,  # 上次射击时间
+    experience: i32,
+    score: i32,
+    events on_death: micro() -> (),
+    events on_attack: micro() -> ()
+}
+
+# 敌人系统
+system EnemySystem {
+    micro execute(world: World, delta_time: f32): Result<()> {
+        # 获取敌人实体
+        let enemy_query: Query<Enemy> = world.query("Enemy");
+        loop entity, enemy in enemy_query.iter() {
+            # 更新敌人位置
+            enemy_controller.update_position(enemy, delta_time);
+            
+            # 敌人射击
+            enemy_controller.fire(enemy, delta_time);
+            
+            # 检查生命值
+            enemy_controller.check_health(enemy);
+        }
+        
+        return Ok()
+    }
+}
+
+# 敌人控制器
+class EnemyController {
+    # 初始化敌人
+    micro init_enemy(world: World, name: String, position: [f32, f32], move_pattern: String): Enemy {
+        let enemy_entity = world.spawn();
+        let enemy = enemy_entity.add_component("Enemy", {
+            name: name,
+            health: 50,
+            max_health: 50,
+            position: position,
+            velocity: [0.0, 2.0],
+            move_pattern: move_pattern,
+            fire_rate: 1.0,
+            last_fire_time: 0.0,
+            experience: 50,
+            score: 100
+        });
+        
+        # 注册事件监听器
+        enemy.on_death.subscribe(micro() {
+            on_death_handler(world, enemy);
+        });
+        
+        enemy.on_attack.subscribe(micro() {
+            on_attack_handler(enemy);
+        });
+        
+        return enemy;
+    }
+    
+    # 更新敌人位置
+    micro update_position(enemy: Enemy, delta_time: f32) {
+        # 根据移动模式更新位置
+        match enemy.move_pattern {
+            case "straight" => {
+                # 直线向下移动
+                enemy.position[1] += enemy.velocity[1] * delta_time * 60.0;
+            },
+            case "zigzag" => {
+                #  zigzag 移动
+                enemy.position[1] += enemy.velocity[1] * delta_time * 60.0;
+                enemy.position[0] += sin(engine.get_time() * 2.0) * 2.0 * delta_time * 60.0;
+            },
+            case "circle" => {
+                # 圆形移动
+                let radius = 50.0;
+                let speed = 2.0;
+                let angle = engine.get_time() * speed;
+                enemy.position[0] += cos(angle) * radius * delta_time * 60.0;
+                enemy.position[1] += sin(angle) * radius * delta_time * 60.0;
+            },
+            case _ => {
+                # 默认直线移动
+                enemy.position[1] += enemy.velocity[1] * delta_time * 60.0;
+            }
+        }
+        
+        # 检查是否超出边界
+        if enemy.position[1] > 600.0 {
+            # 敌人超出边界，移除或重置
+            enemy.health = 0;
+            enemy.on_death();
+        }
+    }
+    
+    # 敌人射击
+    micro fire(enemy: Enemy, delta_time: f32) {
+        enemy.last_fire_time += delta_time;
+        if enemy.last_fire_time >= enemy.fire_rate {
+            enemy.last_fire_time = 0.0;
+            enemy.on_attack();
+            # 这里可以添加子弹生成逻辑
+        }
+    }
+    
+    # 检查生命值
+    micro check_health(enemy: Enemy) {
+        if enemy.health <= 0 {
+            enemy.health = 0;
+            enemy.on_death();
+        } else if enemy.health > enemy.max_health {
+            enemy.health = enemy.max_health;
+        }
+    }
+    
+    # 受伤
+    micro take_damage(enemy: Enemy, damage: i32) {
+        enemy.health -= damage;
+        if enemy.health <= 0 {
+            enemy.on_death();
+        }
+    }
+    
+    # 死亡处理
+    micro on_death_handler(world: World, enemy: Enemy) {
+        console::log(enemy.name + " has died!");
+        
+        # 增加分数
+        let game_state_query: Query<GameState> = world.query("GameState");
+        loop entity, game_state in game_state_query.iter() {
+            game_state_manager.add_score(game_state, enemy.score);
+        }
+        
+        # 可以在这里添加死亡的视觉效果、音效等
+    }
+    
+    # 攻击处理
+    micro on_attack_handler(enemy: Enemy) {
+        console::log(enemy.name + " attacked!");
+        # 可以在这里添加攻击的视觉效果、音效等
+    }
+}
+
+# 全局敌人控制器实例
+let enemy_controller = EnemyController();

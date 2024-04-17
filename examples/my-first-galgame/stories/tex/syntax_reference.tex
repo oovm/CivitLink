@@ -1,0 +1,258 @@
+% TeX 风格 DSL - 语法参考
+% LaTeX 格式的 Galgame 脚本
+
+% ============================================
+% 语法规则说明
+% ============================================
+
+/*
+1. 角色定义：\character[ID, 显示名][简写]
+2. 变量定义：\variable(变量名 = 初始值)
+3. 场景定义：\scene[背景图, 音乐]
+4. 角色显示：\char[角色ID][表情, 位置]
+5. 对话显示：\简写[表情] 对话内容
+6. 选择分支：\choice ... \case[目标][效果] 文本 ... \end-choice
+7. 条件选项：\case[目标](条件) 文本
+8. 变量操作：\set(变量名 = 值)
+9. 跳转：\goto(目标)
+10. 调用：\load(文件名)
+11. 注释：% 单行注释 或 /* 多行注释 */
+*/
+
+% ============================================
+% 角色定义
+% ============================================
+
+\character[player, 主角][p]
+\character[sakura, 樱井美咲][s]
+\character[ren, 黑崎莲][r]
+\character[yuki, 白雪悠希][y]
+
+% ============================================
+% 变量定义
+% ============================================
+
+\variable(sakura_affection = 0)
+\variable(ren_affection = 0)
+\variable(yuki_affection = 0)
+\variable(trust_points = 0)
+\variable(clues_found = 0)
+\variable(knows_secret = false)
+\variable(knows_ren_secret = false)
+\variable(has_lab_key = false)
+\variable(has_lab_access = false)
+\variable(school_route = false)
+\variable(home_route = false)
+\variable(ending_type = "")
+
+% ============================================
+% 完整示例场景
+% ============================================
+
+\label(example_scene)
+
+\scene[classroom.png, peaceful.mp3]
+
+\char[sakura][smile, center]
+
+\s 你好！欢迎来到星光学院！
+
+\choice
+\case[next_part][+s] 你好！
+\case[introduce] 请问你是？
+\case[secret_talk](knows_secret) 关于那个秘密...
+\end-choice
+
+% ============================================
+% 分支：你好
+% ============================================
+
+\label(next_part)
+
+\p 你好！
+
+\s[smile] 要不要参观一下学校？
+
+\choice
+\case[tour] 好啊
+\case[end] 下次吧
+\end-choice
+
+% ============================================
+% 分支：介绍
+% ============================================
+
+\label(introduce)
+
+\s 我是樱井美咲，学生会副会长！
+
+\goto(next_part)
+
+% ============================================
+% 分支：秘密
+% ============================================
+
+\label(secret_talk)
+
+\p 关于那个秘密...
+
+\goto(next_part)
+
+% ============================================
+% 分支：参观
+% ============================================
+
+\label(tour)
+
+\scene[school_hallway.png]
+
+\s 这里是教学楼，那边是图书馆...
+
+\goto(end)
+
+% ============================================
+% 结束
+% ============================================
+
+\label(end)
+
+\s 再见！
+
+\fadeout(1.0)
+
+\return
+
+% ============================================
+% 复杂分支示例
+% ============================================
+
+\label(complex_choice)
+
+\r 你想知道真相吗？
+
+\choice
+\case[reveal_all][+t, +r] 我想知道一切
+\case[avoid_danger][-t] 太危险了，算了吧
+\case[share_intel](clues_found >= 3)[+r] 我已经知道一些了
+\case[ren_confession](knows_ren_secret)[+r] 你也是实验对象？
+\end-choice
+
+% ============================================
+% 多条件判断示例
+% ============================================
+
+\label(determine_ending)
+
+\if(sakura_affection >= 8 && trust_points >= 10)
+\goto(sakura_true_ending)
+\elif(ren_affection >= 8 && knows_ren_secret)
+\goto(ren_true_ending)
+\elif(yuki_affection >= 6 && clues_found >= 5)
+\goto(yuki_true_ending)
+\elif(sakura_affection >= 5)
+\goto(sakura_good_ending)
+\elif(ren_affection >= 5)
+\goto(ren_good_ending)
+\elif(yuki_affection >= 5)
+\goto(yuki_good_ending)
+\elif(trust_points >= 8)
+\goto(good_ending)
+\else
+\goto(normal_ending)
+\endif
+
+% ============================================
+% 结局定义
+% ============================================
+
+\label(sakura_good_ending)
+
+\scene[cherry_blossom.png, romantic.mp3]
+
+\char[sakura][blush, center]
+
+\s 那个...我有话想对你说。
+
+\p 什么事？
+
+\s[shy] 这段时间...谢谢你一直陪在我身边。
+
+\s 我...我好像...
+
+\p ？
+
+\s[determined] 我喜欢你！
+
+\effect(heart_float, 1.0)
+
+\p 樱井同学...
+
+\s[happy] 以后...请多多指教了！
+
+\fadeout(2.0)
+
+\ending(樱井美咲结局：樱花之约)
+
+你与樱井美咲成为了恋人。
+在樱花树下，你们许下了永远的约定。
+
+\goto(show_stats)
+
+% ============================================
+% 游戏统计
+% ============================================
+
+\label(show_stats)
+
+---
+
+游戏统计
+
+* 樱井美咲好感度: \print(sakura_affection)
+* 黑崎莲好感度: \print(ren_affection)
+* 白雪悠希好感度: \print(yuki_affection)
+* 信任点数: \print(trust_points)
+* 发现线索: \print(clues_found)
+
+---
+
+感谢游玩《星光学院的秘密》！
+
+\return
+
+% ============================================
+% 常用命令参考
+% ============================================
+
+% 音频命令
+% \scene[背景, 音乐] - 设置场景和音乐
+% \audio.play(文件路径, 音量) - 播放音频
+% \audio.stop() - 停止音频
+% \audio.fadeout(时长) - 淡出
+
+% 场景命令
+% \scene[背景图] - 切换背景
+% \transition(效果, 时长) - 过渡效果
+
+% 角色命令
+% \char[角色][表情, 位置] - 显示角色
+% \char[角色][hide] - 隐藏角色
+% 位置：left, center, right
+
+% 特效命令
+% \effect(效果名, 时长) - 播放特效
+% \flash(时长) - 闪光
+% \shake(时长, 强度) - 震动
+% \fadeout(时长) - 淡出
+
+% 变量操作
+% \set(变量 = 值) - 设置变量
+% \set(变量 += 值) - 增加变量
+% \print(变量) - 输出变量值
+
+% 流程控制
+% \label(名称) - 定义标签
+% \goto(目标) - 跳转
+% \load(文件) - 加载文件
+% \return - 返回
+% \if(条件) ... \elif(条件) ... \else ... \endif - 条件判断

@@ -1,0 +1,29 @@
+{
+  "name": "Player",
+  "components": [
+    {
+      "type": "Player",
+      "data": {
+        "position": [400, 300],
+        "velocity": [0, 0],
+        "health": 100,
+        "speed": 3.0,
+        "fire_rate": 0.2,
+        "last_fire_time": 0.0
+      }
+    },
+    {
+      "type": "Collider",
+      "data": {
+        "radius": 15.0
+      }
+    },
+    {
+      "type": "Sprite",
+      "data": {
+        "path": "sprites/player.png",
+        "size": [30, 30]
+      }
+    }
+  ]
+}

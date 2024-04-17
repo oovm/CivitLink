@@ -1,0 +1,621 @@
+# YAML 格式 - 第二章 调查
+
+metadata:
+  title: 第二章 - 调查
+  chapter: 2
+
+nodes:
+  chapter2_investigation_start:
+    type: scene
+    background: images/bg/school_classroom.png
+    music:
+      file: audio/bgm/school_morning.mp3
+      volume: 0.5
+    transition:
+      type: fade
+      duration: 1.0
+    next: narration_1
+
+  narration_1:
+    type: narration
+    content: 第二天早上。
+    next: dialogue_1
+
+  dialogue_1:
+    type: dialogue
+    character: player
+    content: （今天要继续调查...）
+    next: show_sakura_yuki
+
+  show_sakura_yuki:
+    type: multi_character
+    characters:
+      - action: show
+        character: sakura
+        sprite: smile
+        position: left
+        animation: slide_left
+      - action: show
+        character: yuki
+        sprite: gentle
+        position: right
+        animation: slide_right
+    next: dialogue_2
+
+  dialogue_2:
+    type: dialogue
+    character: sakura
+    content: 早上好！准备好了吗？
+    next: dialogue_3
+
+  dialogue_3:
+    type: dialogue
+    character: yuki
+    content: 我们今天放学后去旧校舍。
+    next: branch_knows_secret
+
+  branch_knows_secret:
+    type: branch
+    branches:
+      - condition:
+          variable: knows_secret
+          operator: "=="
+          value: true
+        next: dialogue_4a
+    default: dialogue_4b
+
+  dialogue_4a:
+    type: dialogue
+    character: player
+    content: （昨晚那个人说樱井同学是知情者...）
+    next: choice_ready
+
+  dialogue_4b:
+    type: dialogue
+    character: player
+    content: （希望能找到一些线索。）
+    next: choice_ready
+
+  choice_ready:
+    type: choice
+    options:
+      - text: 我准备好了
+        next: ready_to_investigate
+      - text: 还有其他人要来吗？
+        next: ask_about_others
+
+  ask_about_others:
+    type: dialogue
+    character: sakura
+    content: 嗯...黑崎同学说他也要来。
+    next: show_ren
+
+  show_ren:
+    type: character
+    action: show
+    character: ren
+    sprite: cool
+    position: center
+    animation: fade_in
+    next: dialogue_5
+
+  dialogue_5:
+    type: dialogue
+    character: ren
+    content: 当然要来。旧校舍可是我的地盘。
+    next: dialogue_6
+
+  dialogue_6:
+    type: dialogue
+    character: yuki
+    content: 黑崎同学...请不要太冲动。
+    next: dialogue_7
+
+  dialogue_7:
+    type: dialogue
+    character: ren
+    content: 放心，我知道分寸。
+    next: ready_to_investigate
+
+  ready_to_investigate:
+    type: effect
+    effect: clock_transition
+    duration: 1.5
+    next: scene_entrance
+
+  scene_entrance:
+    type: scene
+    background: images/bg/old_building_entrance.png
+    music:
+      file: audio/bgm/mystery_theme.mp3
+      volume: 0.6
+    transition:
+      type: fade
+      duration: 1.0
+    next: narration_2
+
+  narration_2:
+    type: narration
+    content: 放学后，我们来到了旧校舍前。
+    next: dialogue_8
+
+  dialogue_8:
+    type: dialogue
+    character: sakura
+    content: 这里...真的好旧了。
+    next: show_ren_2
+
+  show_ren_2:
+    type: character
+    action: show
+    character: ren
+    sprite: cool
+    position: right
+    next: dialogue_9
+
+  dialogue_9:
+    type: dialogue
+    character: ren
+    content: 入口在这边。
+    next: scene_interior
+
+  scene_interior:
+    type: scene
+    background: images/bg/old_building_interior.png
+    sound: audio/se/door_creak.wav
+    transition:
+      type: fade
+      duration: 1.0
+    next: effect_shake
+
+  effect_shake:
+    type: effect
+    effect: shake
+    duration: 0.3
+    intensity: 10
+    next: narration_3
+
+  narration_3:
+    type: narration
+    content: 门发出刺耳的声音，缓缓打开。
+    next: dialogue_10
+
+  dialogue_10:
+    type: dialogue
+    character: yuki
+    content: 好黑...
+    next: effect_strange_light
+
+  effect_strange_light:
+    type: effect
+    effect: flash
+    duration: 0.2
+    sound: audio/se/strange_light.wav
+    next: narration_4
+
+  narration_4:
+    type: narration
+    content: 突然，一道奇异的光从走廊深处闪过！
+    next: dialogue_11
+
+  dialogue_11:
+    type: dialogue
+    character: player
+    content: 那是...！
+    next: dialogue_12
+
+  dialogue_12:
+    type: dialogue
+    character: ren
+    content: 在那边！追！
+    next: choice_chase
+
+  choice_chase:
+    type: choice
+    options:
+      - text: 追上去
+        next: chase_light
+        effects:
+          - variable: clues_found
+            operation: add
+            value: 1
+          - variable: ren_affection
+            operation: add
+            value: 1
+      - text: 小心前进
+        next: careful_advance
+        effects:
+          - variable: trust_points
+            operation: add
+            value: 1
+          - variable: yuki_affection
+            operation: add
+            value: 1
+      - text: 先观察一下
+        next: observe_first
+        effects:
+          - variable: clues_found
+            operation: add
+            value: 2
+          - variable: sakura_affection
+            operation: add
+            value: 1
+
+  chase_light:
+    type: dialogue
+    character: player
+    content: （不能让它跑了！）
+    next: scene_hallway_fast
+
+  scene_hallway_fast:
+    type: scene
+    background: images/bg/old_building_hallway.png
+    sound: audio/se/running_footsteps.wav
+    transition:
+      type: fade
+      duration: 0.5
+    next: narration_5
+
+  narration_5:
+    type: narration
+    content: 我们追着光跑过走廊，最后来到了一扇门前。
+    next: dialogue_13
+
+  dialogue_13:
+    type: dialogue
+    character: ren
+    content: 这是...实验室？
+    next: discover_lab
+
+  careful_advance:
+    type: dialogue
+    character: player
+    content: （太危险了，还是小心点。）
+    next: dialogue_14
+
+  dialogue_14:
+    type: dialogue
+    character: yuki
+    content: 对，我们还是小心一点比较好。
+    next: scene_hallway_slow
+
+  scene_hallway_slow:
+    type: scene
+    background: images/bg/old_building_hallway.png
+    transition:
+      type: fade
+      duration: 1.0
+    next: narration_6
+
+  narration_6:
+    type: narration
+    content: 我们小心翼翼地前进，发现地上有一些奇怪的痕迹。
+    effects:
+      - variable: has_lab_key
+        operation: set
+        value: true
+    next: dialogue_15
+
+  dialogue_15:
+    type: dialogue
+    character: player
+    content: 这是...一把钥匙？
+    next: discover_lab
+
+  observe_first:
+    type: dialogue
+    character: player
+    content: （先观察一下情况。）
+    next: dialogue_16
+
+  dialogue_16:
+    type: dialogue
+    character: sakura
+    content: 看，光是从那边那个房间传来的。
+    next: dialogue_17
+
+  dialogue_17:
+    type: dialogue
+    character: player
+    content: （樱井同学好像对这里很熟悉...）
+    next: dialogue_18
+
+  dialogue_18:
+    type: dialogue
+    character: sakura
+    content: 怎么了？
+    next: dialogue_19
+
+  dialogue_19:
+    type: dialogue
+    character: player
+    content: 没什么，我们过去看看吧。
+    next: discover_lab
+
+  discover_lab:
+    type: scene
+    background: images/bg/old_lab.png
+    music:
+      file: audio/bgm/revelation.mp3
+      volume: 0.7
+    transition:
+      type: fade
+      duration: 1.5
+    next: effect_flash
+
+  effect_flash:
+    type: effect
+    effect: flash
+    duration: 0.2
+    next: narration_7
+
+  narration_7:
+    type: narration
+    content: 我们来到了一个废弃的实验室。
+    next: dialogue_20
+
+  dialogue_20:
+    type: dialogue
+    character: sakura
+    content: 这...这是...
+    next: dialogue_21
+
+  dialogue_21:
+    type: dialogue
+    character: yuki
+    content: 不可能...为什么会有这种东西...
+    next: dialogue_22
+
+  dialogue_22:
+    type: dialogue
+    character: ren
+    content: 看来传说是真的。
+    next: dialogue_23
+
+  dialogue_23:
+    type: dialogue
+    character: player
+    content: （这些设备...看起来像是用来做某种实验的...）
+    next: text_files
+
+  text_files:
+    type: text_block
+    content: |
+      桌上散落着文件：
+      "记忆操纵实验 - 第七次测试报告
+      实验对象：学生志愿者
+      结果：部分记忆成功被改写
+      副作用：轻微头痛，偶尔出现幻觉
+      ..."
+    next: dialogue_24
+
+  dialogue_24:
+    type: dialogue
+    character: player
+    content: 记忆操纵...？
+    next: show_sakura_serious
+
+  show_sakura_serious:
+    type: character
+    action: show
+    character: sakura
+    sprite: serious
+    position: left
+    next: dialogue_25
+
+  dialogue_25:
+    type: dialogue
+    character: sakura
+    content: ...你们想知道真相吗？
+    next: choice_truth
+
+  choice_truth:
+    type: choice
+    options:
+      - text: 告诉我真相
+        next: reveal_truth
+      - text: 你早就知道了？
+        next: confront_sakura
+        effects:
+          - variable: sakura_affection
+            operation: add
+            value: -2
+          - variable: trust_points
+            operation: add
+            value: -1
+
+  reveal_truth:
+    type: dialogue
+    character: sakura
+    content: 是的...我知道。
+    next: reveal_truth_2
+
+  reveal_truth_2:
+    type: dialogue
+    character: sakura
+    content: 这所学校...曾经进行过记忆操纵的实验。
+    next: reveal_truth_3
+
+  reveal_truth_3:
+    type: dialogue
+    character: sakura
+    content: 而我...是实验的参与者之一。
+    next: dialogue_26
+
+  dialogue_26:
+    type: dialogue
+    character: player
+    content: 什么？！
+    next: dialogue_27
+
+  dialogue_27:
+    type: dialogue
+    character: yuki
+    content: 樱井同学...
+    next: reveal_truth_4
+
+  reveal_truth_4:
+    type: dialogue
+    character: sakura
+    content: 我...我不记得那段时间发生了什么。
+    next: reveal_truth_5
+
+  reveal_truth_5:
+    type: dialogue
+    character: sakura
+    content: 但是我知道，我的记忆...被改写过。
+    effects:
+      - variable: knows_secret
+        operation: set
+        value: true
+    next: final_choice
+
+  confront_sakura:
+    type: dialogue
+    character: player
+    content: 你早就知道了？为什么要瞒着我们？
+    next: confront_sakura_2
+
+  confront_sakura_2:
+    type: dialogue
+    character: sakura
+    content: 对不起...我害怕...
+    next: confront_sakura_3
+
+  confront_sakura_3:
+    type: dialogue
+    character: sakura
+    content: 害怕你们知道真相后会讨厌我...
+    next: choice_forgive
+
+  choice_forgive:
+    type: choice
+    options:
+      - text: 我理解你的顾虑
+        next: forgive_sakura
+        effects:
+          - variable: sakura_affection
+            operation: add
+            value: 3
+          - variable: trust_points
+            operation: add
+            value: 2
+      - text: 我需要时间消化
+        next: need_time
+
+  forgive_sakura:
+    type: dialogue
+    character: player
+    content: 没关系，我理解。
+    next: dialogue_28
+
+  dialogue_28:
+    type: dialogue
+    character: sakura
+    content: 谢谢你...
+    next: reveal_truth
+
+  need_time:
+    type: dialogue
+    character: player
+    content: 我需要时间消化这些信息。
+    next: dialogue_29
+
+  dialogue_29:
+    type: dialogue
+    character: sakura
+    content: 我明白...
+    next: reveal_truth
+
+  final_choice:
+    type: dialogue
+    character: sakura
+    content: 现在，我们有一个选择。
+    next: final_choice_2
+
+  final_choice_2:
+    type: dialogue
+    character: sakura
+    content: 我们可以把这一切公之于众，或者...
+    next: dialogue_30
+
+  dialogue_30:
+    type: dialogue
+    character: ren
+    content: 或者什么？
+    next: final_choice_3
+
+  final_choice_3:
+    type: dialogue
+    character: sakura
+    content: 或者...找到当初的实验数据，恢复所有人的记忆。
+    next: choice_ending
+
+  choice_ending:
+    type: choice
+    options:
+      - text: 公布真相
+        next: ending_public
+        effects:
+          - variable: ending_type
+            operation: set
+            value: public
+      - text: 恢复记忆
+        next: ending_restore
+        effects:
+          - variable: ending_type
+            operation: set
+            value: restore
+      - text: 先找到更多证据
+        next: ending_investigate
+        effects:
+          - variable: ending_type
+            operation: set
+            value: investigate
+          - variable: clues_found
+            operation: add
+            value: 3
+
+  ending_public:
+    type: dialogue
+    character: player
+    content: 真相应该被公开。
+    next: dialogue_31
+
+  dialogue_31:
+    type: dialogue
+    character: sakura
+    content: 我同意。大家有权知道发生了什么。
+    next: call_endings
+
+  ending_restore:
+    type: dialogue
+    character: player
+    content: 如果能恢复记忆...那才是最好的结果。
+    next: dialogue_32
+
+  dialogue_32:
+    type: dialogue
+    character: yuki
+    content: 是的，这样大家都能找回自己失去的记忆。
+    next: call_endings
+
+  ending_investigate:
+    type: dialogue
+    character: player
+    content: 我们需要更多证据才能做决定。
+    next: dialogue_33
+
+  dialogue_33:
+    type: dialogue
+    character: ren
+    content: 说得对，不能草率行事。
+    next: call_endings
+
+  call_endings:
+    type: call
+    file: endings.yaml
+    next: end
+
+  end:
+    type: return

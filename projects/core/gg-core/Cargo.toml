@@ -1,0 +1,10 @@
+[package]
+name = "gg-core"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-error = { workspace = true }
+gg-ecs = { workspace = true }

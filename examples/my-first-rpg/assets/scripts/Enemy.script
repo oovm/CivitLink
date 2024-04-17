@@ -1,0 +1,155 @@
+# Enemy 脚本
+# 处理敌人相关的游戏逻辑
+
+using gg::ecs;
+using gg::engine;
+
+# 敌人组件
+component Enemy {
+    name: String,
+    level: i32,
+    health: i32,
+    max_health: i32,
+    strength: i32,
+    dexterity: i32,
+    intelligence: i32,
+    position: [f32, f32],
+    experience: i32,
+    gold: i32,
+    aggro_range: f32,
+    attack_range: f32,
+    move_speed: f32,
+    events on_death: micro() -> (),
+    events on_attack: micro() -> ()
+}
+
+# 敌人系统
+system EnemySystem {
+    micro execute(world: World): Result<()> {
+        # 获取敌人实体
+        let enemy_query: Query<Enemy> = world.query("Enemy");
+        loop entity, enemy in enemy_query.iter() {
+            # 更新敌人位置
+            enemy_controller.update_position(world, enemy);
+            
+            # 检查生命值
+            enemy_controller.check_health(enemy);
+        }
+        
+        return Ok()
+    }
+}
+
+# 敌人控制器
+class EnemyController {
+    # 初始化敌人
+    micro init_enemy(world: World, name: String, level: i32, position: [f32, f32]): Enemy {
+        let enemy_entity = world.spawn();
+        let enemy = enemy_entity.add_component("Enemy", {
+            name: name,
+            level: level,
+            health: level * 20,
+            max_health: level * 20,
+            strength: level * 2,
+            dexterity: level * 1,
+            intelligence: level * 1,
+            position: position,
+            experience: level * 50,
+            gold: level * 10,
+            aggro_range: 100.0,
+            attack_range: 30.0,
+            move_speed: 2.0
+        });
+        
+        # 注册事件监听器
+        enemy.on_death.subscribe(micro() {
+            on_death_handler(world, enemy);
+        });
+        
+        enemy.on_attack.subscribe(micro() {
+            on_attack_handler(enemy);
+        });
+        
+        return enemy;
+    }
+    
+    # 更新敌人位置
+    micro update_position(world: World, enemy: Enemy) {
+        # 寻找玩家
+        let player_query: Query<Player> = world.query("Player");
+        loop entity, player in player_query.iter() {
+            # 计算距离
+            let dx = player.position[0] - enemy.position[0];
+            let dy = player.position[1] - enemy.position[1];
+            let distance = sqrt(dx * dx + dy * dy);
+            
+            # 检查是否在攻击范围内
+            if distance <= enemy.attack_range {
+                # 攻击玩家
+                attack(enemy, player);
+            } else if distance <= enemy.aggro_range {
+                # 追逐玩家
+                let move_speed = enemy.move_speed;
+                let normalized_dx = dx / distance;
+                let normalized_dy = dy / distance;
+                
+                enemy.position[0] += normalized_dx * move_speed;
+                enemy.position[1] += normalized_dy * move_speed;
+            }
+            break;
+        }
+    }
+    
+    # 检查生命值
+    micro check_health(enemy: Enemy) {
+        if enemy.health <= 0 {
+            enemy.health = 0;
+            enemy.on_death();
+        } else if enemy.health > enemy.max_health {
+            enemy.health = enemy.max_health;
+        }
+    }
+    
+    # 攻击
+    micro attack(enemy: Enemy, player: Player) {
+        enemy.on_attack();
+        # 计算伤害
+        let damage = enemy.strength * 2;
+        player_controller.take_damage(player, damage);
+    }
+    
+    # 受伤
+    micro take_damage(enemy: Enemy, amount: i32) {
+        enemy.health -= amount;
+        if enemy.health <= 0 {
+            enemy.on_death();
+        }
+    }
+    
+    # 死亡处理
+    micro on_death_handler(world: World, enemy: Enemy) {
+        console::log(enemy.name + " has died!");
+        
+        # 给玩家经验和金币
+        let player_query: Query<Player> = world.query("Player");
+        loop entity, player in player_query.iter() {
+            player_controller.add_experience(player, enemy.experience);
+        }
+        
+        let game_state_query: Query<GameState> = world.query("GameState");
+        loop entity, game_state in game_state_query.iter() {
+            game_state_manager.add_gold(game_state, enemy.gold);
+        }
+        
+        # 可以在这里添加死亡的视觉效果、音效等
+    }
+    
+    # 攻击处理
+    micro on_attack_handler(enemy: Enemy) {
+        console::log(enemy.name + " attacked!");
+        # 可以在这里添加攻击的视觉效果、音效等
+    }
+}
+
+# 全局敌人控制器实例
+let enemy_controller = EnemyController();

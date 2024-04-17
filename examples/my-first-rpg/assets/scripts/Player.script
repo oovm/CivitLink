@@ -1,0 +1,269 @@
+# Player 脚本
+# 处理玩家相关的游戏逻辑
+
+using gg::ecs;
+using gg::input;
+using gg::engine;
+
+# 玩家组件
+component Player {
+    name: String,
+    level: i32,
+    experience: i32,
+    health: i32,
+    max_health: i32,
+    mana: i32,
+    max_mana: i32,
+    strength: i32,
+    dexterity: i32,
+    intelligence: i32,
+    position: [f32, f32],
+    inventory: Array<String>,
+    events on_health_change: micro(current: i32, max: i32) -> (),
+    events on_mana_change: micro(current: i32, max: i32) -> (),
+    events on_level_up: micro(level: i32) -> (),
+    events on_death: micro() -> (),
+    events on_inventory_change: micro(inventory: Array<String>) -> ()
+}
+
+# 玩家系统
+system PlayerSystem {
+    micro execute(world: World): Result<()> {
+        # 获取玩家实体
+        let player_query: Query<Player> = world.query("Player");
+        loop entity, player in player_query.iter() {
+            # 处理输入
+            player_controller.handle_input(player);
+            
+            # 更新玩家位置
+            player_controller.update_position(player);
+            
+            # 检查生命值
+            player_controller.check_health(player);
+        }
+        
+        return Ok()
+    }
+}
+
+# 玩家控制器
+class PlayerController {
+    # 初始化玩家
+    micro init_player(world: World, name: String, position: [f32, f32]): Player {
+        let player_entity = world.spawn();
+        let player = player_entity.add_component("Player", {
+            name: name,
+            level: 1,
+            experience: 0,
+            health: 100,
+            max_health: 100,
+            mana: 50,
+            max_mana: 50,
+            strength: 10,
+            dexterity: 10,
+            intelligence: 10,
+            position: position,
+            inventory: []
+        });
+        
+        # 注册事件监听器
+        player.on_health_change.subscribe(micro(current: i32, max: i32) {
+            on_health_change_handler(player, current, max);
+        });
+        
+        player.on_mana_change.subscribe(micro(current: i32, max: i32) {
+            on_mana_change_handler(player, current, max);
+        });
+        
+        player.on_level_up.subscribe(micro(level: i32) {
+            on_level_up_handler(player, level);
+        });
+        
+        player.on_death.subscribe(micro() {
+            on_death_handler(world, player);
+        });
+        
+        player.on_inventory_change.subscribe(micro(inventory: Array<String>) {
+            on_inventory_change_handler(player, inventory);
+        });
+        
+        return player;
+    }
+    
+    # 处理输入
+    micro handle_input(player: Player) {
+        # 处理移动
+        let move_speed = 3.0;
+        let velocity = [0.0, 0.0];
+        
+        if input.is_key_down("Left") {
+            velocity[0] -= move_speed;
+        }
+        if input.is_key_down("Right") {
+            velocity[0] += move_speed;
+        }
+        if input.is_key_down("Up") {
+            velocity[1] -= move_speed;
+        }
+        if input.is_key_down("Down") {
+            velocity[1] += move_speed;
+        }
+        
+        # 应用移动
+        player.position[0] += velocity[0];
+        player.position[1] += velocity[1];
+        
+        # 处理攻击
+        if input.is_key_pressed("Space") {
+            attack(player);
+        }
+        
+        # 处理技能
+        if input.is_key_pressed("1") {
+            use_skill(player, "fireball");
+        }
+    }
+    
+    # 更新玩家位置
+    micro update_position(player: Player) {
+        # 边界检测
+        if player.position[0] < 0.0 {
+            player.position[0] = 0.0;
+        } else if player.position[0] > 800.0 {
+            player.position[0] = 800.0;
+        }
+        
+        if player.position[1] < 0.0 {
+            player.position[1] = 0.0;
+        } else if player.position[1] > 600.0 {
+            player.position[1] = 600.0;
+        }
+    }
+    
+    # 检查生命值
+    micro check_health(player: Player) {
+        if player.health <= 0 {
+            player.health = 0;
+            player.on_death();
+        } else if player.health > player.max_health {
+            player.health = player.max_health;
+        }
+        
+        if player.mana < 0 {
+            player.mana = 0;
+        } else if player.mana > player.max_mana {
+            player.mana = player.max_mana;
+        }
+    }
+    
+    # 攻击
+    micro attack(player: Player) {
+        console::log(player.name + " attacked!");
+        # 可以在这里添加攻击逻辑
+    }
+    
+    # 使用技能
+    micro use_skill(player: Player, skill_name: String) {
+        console::log(player.name + " used " + skill_name + "!");
+        # 可以在这里添加技能使用逻辑
+    }
+    
+    # 增加经验
+    micro add_experience(player: Player, amount: i32) {
+        player.experience += amount;
+        # 检查是否升级
+        check_level_up(player);
+    }
+    
+    # 检查升级
+    micro check_level_up(player: Player) {
+        let required_exp = player.level * 100;
+        if player.experience >= required_exp {
+            player.experience -= required_exp;
+            player.level += 1;
+            
+            # 提升属性
+            player.max_health += 20;
+            player.health = player.max_health;
+            player.max_mana += 10;
+            player.mana = player.max_mana;
+            player.strength += 2;
+            player.dexterity += 1;
+            player.intelligence += 1;
+            
+            # 触发升级事件
+            player.on_level_up(player.level);
+        }
+    }
+    
+    # 受伤
+    micro take_damage(player: Player, amount: i32) {
+        player.health -= amount;
+        player.on_health_change(player.health, player.max_health);
+    }
+    
+    # 治疗
+    micro heal(player: Player, amount: i32) {
+        player.health += amount;
+        if player.health > player.max_health {
+            player.health = player.max_health;
+        }
+        player.on_health_change(player.health, player.max_health);
+    }
+    
+    # 恢复 mana
+    micro restore_mana(player: Player, amount: i32) {
+        player.mana += amount;
+        if player.mana > player.max_mana {
+            player.mana = player.max_mana;
+        }
+        player.on_mana_change(player.mana, player.max_mana);
+    }
+    
+    # 添加物品到背包
+    micro add_item(player: Player, item: String) {
+        player.inventory.push(item);
+        player.on_inventory_change(player.inventory);
+    }
+    
+    # 从背包移除物品
+    micro remove_item(player: Player, item: String) {
+        let index = player.inventory.index_of(item);
+        if index != -1 {
+            player.inventory.splice(index, 1);
+            player.on_inventory_change(player.inventory);
+        }
+    }
+    
+    # 生命值变化处理
+    micro on_health_change_handler(player: Player, current: i32, max: i32) {
+        console::log(player.name + " health: " + current + "/" + max);
+    }
+    
+    # mana 变化处理
+    micro on_mana_change_handler(player: Player, current: i32, max: i32) {
+        console::log(player.name + " mana: " + current + "/" + max);
+    }
+    
+    # 升级处理
+    micro on_level_up_handler(player: Player, level: i32) {
+        console::log(player.name + " leveled up to " + level + "!");
+        console::log("Strength: " + player.strength);
+        console::log("Dexterity: " + player.dexterity);
+        console::log("Intelligence: " + player.intelligence);
+    }
+    
+    # 死亡处理
+    micro on_death_handler(world: World, player: Player) {
+        console::log(player.name + " has died!");
+        # 可以在这里添加死亡的视觉效果、音效等
+    }
+    
+    # 背包变化处理
+    micro on_inventory_change_handler(player: Player, inventory: Array<String>) {
+        console::log(player.name + " inventory: " + inventory.join(", "));
+    }
+}
+
+# 全局玩家控制器实例
+let player_controller = PlayerController();

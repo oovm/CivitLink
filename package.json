@@ -1,11 +1,22 @@
 {
+    "name": "gg-game-engine",
     "private": true,
+    "description": "以元游戏为核心的现代游戏引擎，Rust 编写，多平台支持，可组合的 ECS 架构",
+    "repository": "",
+    "homepage": "",
+    "license": "MIT",
     "scripts": {
+        "check:ci": "node scripts/check.mjs",
         "doc": "cargo doc --no-deps --all-features",
         "test": "cargo test --release",
+        "coverage": "node scripts/coverage.mjs html",
+        "coverage:json": "node scripts/coverage.mjs json",
+        "coverage:lcov": "node scripts/coverage.mjs lcov",
         "fmt": "cargo fmt --all",
-        "p": "git push && git push --tags --prune",
-        "reset": "git reset Head~ --soft",
-        "u": "cargo upgrade --workspace"
+        "dev": "pnpm --filter gg-engine-homepage run dev"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "^2.4.6",
+        "typescript": "^5.7.3"
     }
 }

@@ -1,0 +1,17 @@
+[package]
+name = "gg-editor-ui"
+version = { workspace = true }
+edition = { workspace = true }
+description = "GG Editor UI system based on Valkyrie Widget"
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+oak-voc = { workspace = true }
+gg-core = { workspace = true }
+gg-error = { workspace = true }
+gg-render = { workspace = true }
+gg-ui = { workspace = true }
+
+[features]
+default = []

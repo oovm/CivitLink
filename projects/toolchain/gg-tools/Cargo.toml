@@ -1,0 +1,36 @@
+[package]
+name = "gg-tools"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[[bin]]
+name = "gg"
+path = "bin/gg.rs"
+
+[dependencies]
+gg-core = { workspace = true }
+gg-error = { workspace = true }
+gg-manifest = { workspace = true }
+gg-factory = { workspace = true }
+gg-script = { workspace = true }
+gg-vm = { workspace = true }
+gg-runtime = { workspace = true, features = ["desktop"] }
+gg-sheet = { workspace = true }
+gg-meta = { workspace = true }
+gg-lsp = { workspace = true, optional = true }
+gg-mcp = { workspace = true, optional = true }
+toml = { workspace = true }
+clap = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+zip = { workspace = true }
+tokio = { workspace = true }
+oak-vfs = { workspace = true }
+oak-lsp = { workspace = true, optional = true }
+once_cell = { workspace = true }
+
+[features]
+default = []
+lsp = ["dep:gg-lsp", "gg-lsp/lsp", "dep:gg-mcp", "gg-mcp/lsp", "dep:oak-lsp"]

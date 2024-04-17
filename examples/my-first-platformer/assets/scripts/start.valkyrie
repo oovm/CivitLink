@@ -1,0 +1,362 @@
+# Platformer 游戏脚本
+# 使用 Valkyrie 脚本实现平台游戏逻辑
+
+using gg::engine;
+using gg::input;
+using gg::graphics;
+using gg::ecs;
+
+# 初始化游戏
+micro init_game() {
+    # 创建 ECS 世界
+    let world = ecs.create_world();
+    
+    # 添加游戏状态资源
+    world.insert_resource("GameState", {
+        score: 0,
+        lives: 3,
+        game_running: true,
+        level: 1
+    });
+    
+    # 添加输入状态资源
+    world.insert_resource("InputState", {
+        left_pressed: false,
+        right_pressed: false,
+        space_pressed: false
+    });
+    
+    # 添加 delta time 资源
+    world.insert_resource("DeltaTime", 1.0 / 60.0);
+    
+    # 添加关卡数据资源
+    world.insert_resource("LevelData", {
+        platforms: [
+            {
+                x: 0,
+                y: 300,
+                width: 800,
+                height: 50,
+                is_moving: false,
+                move_speed: 0,
+                start_x: 0,
+                end_x: 0
+            },
+            {
+                x: 200,
+                y: 200,
+                width: 200,
+                height: 20,
+                is_moving: true,
+                move_speed: 2,
+                start_x: 200,
+                end_x: 600
+            }
+        ],
+        collectibles: [
+            {
+                x: 200,
+                y: 250,
+                value: 10
+            },
+            {
+                x: 400,
+                y: 150,
+                value: 10
+            },
+            {
+                x: 600,
+                y: 250,
+                value: 10
+            }
+        ],
+        goal: {
+            x: 700,
+            y: 100,
+            width: 50,
+            height: 50
+        }
+    });
+    
+    # 创建玩家实体
+    let player = world.spawn();
+    player.add_component("Player", {
+        speed: 5,
+        jump_force: 15,
+        is_grounded: false
+    });
+    player.add_component("Transform", {
+        x: 100,
+        y: 100,
+        width: 50,
+        height: 50
+    });
+    player.add_component("Rigidbody", {
+        velocity: { x: 0, y: 0 },
+        gravity: 9.8,
+        mass: 1,
+        is_grounded: false
+    });
+    player.add_component("Collider", {
+        width: 50,
+        height: 50,
+        is_static: false
+    });
+    player.add_component("Sprite", {
+        texture: "assets/graphics/sprites/player.png",
+        flip_x: false,
+        flip_y: false
+    });
+    
+    # 创建平台实体
+    let level_data = world.get_resource("LevelData");
+    for (platform_data in level_data.platforms) {
+        let platform = world.spawn();
+        platform.add_component("Transform", {
+            x: platform_data.x,
+            y: platform_data.y,
+            width: platform_data.width,
+            height: platform_data.height
+        });
+        platform.add_component("Collider", {
+            width: platform_data.width,
+            height: platform_data.height,
+            is_static: true
+        });
+        platform.add_component("Sprite", {
+            texture: "assets/graphics/sprites/platform.png",
+            flip_x: false,
+            flip_y: false
+        });
+        platform.add_component("Platform", {
+            is_moving: platform_data.is_moving,
+            move_speed: platform_data.move_speed,
+            start_x: platform_data.start_x,
+            end_x: platform_data.end_x,
+            direction: 1
+        });
+    }
+    
+    # 创建收集品实体
+    for (collectible_data in level_data.collectibles) {
+        let collectible = world.spawn();
+        collectible.add_component("Transform", {
+            x: collectible_data.x,
+            y: collectible_data.y,
+            width: 30,
+            height: 30
+        });
+        collectible.add_component("Collider", {
+            width: 30,
+            height: 30,
+            is_static: false
+        });
+        collectible.add_component("Sprite", {
+            texture: "assets/graphics/sprites/collectible.png",
+            flip_x: false,
+            flip_y: false
+        });
+        collectible.add_component("Collectible", {
+            value: collectible_data.value,
+            collected: false
+        });
+    }
+    
+    # 创建目标实体
+    let goal = world.spawn();
+    goal.add_component("Transform", {
+        x: level_data.goal.x,
+        y: level_data.goal.y,
+        width: level_data.goal.width,
+        height: level_data.goal.height
+    });
+    goal.add_component("Collider", {
+        width: level_data.goal.width,
+        height: level_data.goal.height,
+        is_static: true
+    });
+    goal.add_component("Sprite", {
+        texture: "assets/graphics/sprites/goal.png",
+        flip_x: false,
+        flip_y: false
+    });
+    goal.add_component("Goal", {
+        reached: false
+    });
+    
+    # 注册系统
+    world.add_system("player_system", player_system);
+    world.add_system("physics_system", physics_system);
+    world.add_system("collision_system", collision_system);
+    world.add_system("platform_system", platform_system);
+    world.add_system("render_system", render_system);
+    
+    return world;
+}
+
+# 玩家系统
+micro player_system(world) {
+    let input_state = world.get_resource("InputState");
+    let player_query = world.query("Player, Rigidbody, Transform, Sprite");
+    
+    for (entity, (player, rigidbody, transform, sprite)) in player_query.iter() {
+        # 处理水平移动
+        let move_x = 0;
+        if (input_state.left_pressed) {
+            move_x = -player.speed;
+            sprite.flip_x = true;
+        } else if (input_state.right_pressed) {
+            move_x = player.speed;
+            sprite.flip_x = false;
+        }
+        
+        rigidbody.velocity.x = move_x;
+        
+        # 处理跳跃
+        if (input_state.space_pressed && player.is_grounded) {
+            rigidbody.velocity.y = -player.jump_force;
+            player.is_grounded = false;
+        }
+        
+        # 更新玩家状态
+        player.is_grounded = rigidbody.is_grounded;
+    }
+}
+
+# 物理系统
+micro physics_system(world) {
+    let delta_time = world.get_resource("DeltaTime");
+    let rigidbody_query = world.query("Rigidbody, Transform, Collider");
+    
+    for (entity, (rigidbody, transform, collider)) in rigidbody_query.iter() {
+        if (collider.is_static) {
+            continue;
+        }
+        
+        # 应用重力
+        rigidbody.velocity.y += rigidbody.gravity * delta_time;
+        
+        # 更新位置
+        transform.x += rigidbody.velocity.x * delta_time;
+        transform.y += rigidbody.velocity.y * delta_time;
+    }
+}
+
+# 碰撞系统
+micro collision_system(world) {
+    let player_query = world.query("Player, Rigidbody, Transform, Collider");
+    let collider_query = world.query("Transform, Collider, Platform?, Collectible?, Goal?");
+    
+    for (player_entity, (player, rigidbody, player_transform, player_collider)) in player_query.iter() {
+        rigidbody.is_grounded = false;
+        
+        for (other_entity, (other_transform, other_collider, platform, collectible, goal)) in collider_query.iter() {
+            # 检测碰撞
+            if (check_collision(
+                player_transform.x, player_transform.y, player_collider.width, player_collider.height,
+                other_transform.x, other_transform.y, other_collider.width, other_collider.height
+            )) {
+                # 处理与平台的碰撞
+                if (platform != null && other_collider.is_static) {
+                    # 从上方碰撞平台
+                    if (rigidbody.velocity.y > 0 && player_transform.y + player_collider.height <= other_transform.y + 10) {
+                        player_transform.y = other_transform.y - player_collider.height;
+                        rigidbody.velocity.y = 0;
+                        rigidbody.is_grounded = true;
+                        player.is_grounded = true;
+                    }
+                }
+                
+                # 处理与收集品的碰撞
+                if (collectible != null && !collectible.collected) {
+                    collectible.collected = true;
+                    let game_state = world.get_resource("GameState");
+                    game_state.score += collectible.value;
+                    # 隐藏收集品
+                    # 这里应该添加逻辑来隐藏收集品
+                }
+                
+                # 处理与目标的碰撞
+                if (goal != null && !goal.reached) {
+                    goal.reached = true;
+                    let game_state = world.get_resource("GameState");
+                    game_state.game_running = false;
+                    # 显示通关信息
+                    graphics.draw_text("Level Complete!", 350, 250, 30, Color::GREEN);
+                }
+            }
+        }
+    }
+}
+
+# 平台系统
+micro platform_system(world) {
+    let delta_time = world.get_resource("DeltaTime");
+    let platform_query = world.query("Platform, Transform");
+    
+    for (entity, (platform, transform)) in platform_query.iter() {
+        if (platform.is_moving) {
+            transform.x += platform.move_speed * platform.direction * delta_time;
+            
+            # 到达边界时改变方向
+            if (transform.x <= platform.start_x) {
+                transform.x = platform.start_x;
+                platform.direction = 1;
+            } else if (transform.x >= platform.end_x) {
+                transform.x = platform.end_x;
+                platform.direction = -1;
+            }
+        }
+    }
+}
+
+# 渲染系统
+micro render_system(world) {
+    let game_state = world.get_resource("GameState");
+    
+    # 清除屏幕
+    graphics.clear();
+    
+    # 显示分数和生命值
+    graphics.draw_text("Score: " + game_state.score, 10, 10, 20, Color::WHITE);
+    graphics.draw_text("Lives: " + game_state.lives, 10, 30, 20, Color::WHITE);
+    
+    # 引擎会自动渲染所有实体
+}
+
+# 碰撞检测函数
+micro check_collision(x1, y1, w1, h1, x2, y2, w2, h2) {
+    return x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2;
+}
+
+# 处理输入
+micro handle_input() {
+    let world = engine.get_world();
+    let input_state = world.get_resource("InputState");
+    
+    input_state.left_pressed = input.is_key_down("Left");
+    input_state.right_pressed = input.is_key_down("Right");
+    input_state.space_pressed = input.is_key_pressed("Space");
+}
+
+# 游戏更新函数
+micro update(delta_time: Float) {
+    let world = engine.get_world();
+    let game_state = world.get_resource("GameState");
+    
+    if (game_state.game_running) {
+        # 更新 delta time
+        world.insert_resource("DeltaTime", delta_time);
+        
+        # 处理输入
+        handle_input();
+        
+        # 运行系统
+        world.run_systems();
+    }
+}
+
+# 初始化游戏
+let world = init_game();
+engine.set_world(world);
+engine.set_update_fn(update);

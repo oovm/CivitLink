@@ -1,0 +1,70 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GG Galgame",
+  "scopeName": "source.gg-galgame",
+  "patterns": [
+    {
+      "name": "comment.line.xml.gg-galgame",
+      "match": "<!--.*?-->",
+      "captures": {
+        "0": {
+          "name": "comment.line.xml.gg-galgame"
+        }
+      }
+    },
+    {
+      "name": "keyword.control.gg-galgame",
+      "match": "<(galgame|metadata|title|author|version|content|dialogue|character|scene|choice|option|tag|audio|effect|if|then|else|loop|call)\\b",
+      "captures": {
+        "0": {
+          "name": "keyword.control.gg-galgame"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.double.gg-galgame",
+      "match": '"([^"\\]|\\.)*"',
+      "captures": {
+        "0": {
+          "name": "string.quoted.double.gg-galgame"
+        }
+      }
+    },
+    {
+      "name": "entity.name.type.gg-galgame",
+      "match": "\b(character|expression|name|bg|sprite|position|next|times|type|duration|condition|function|param1|param2|message)\b",
+      "captures": {
+        "0": {
+          "name": "entity.name.type.gg-galgame"
+        }
+      }
+    },
+    {
+      "name": "variable.other.gg-galgame",
+      "match": "\$\\{[^}]+\\}",
+      "captures": {
+        "0": {
+          "name": "variable.other.gg-galgame"
+        }
+      }
+    },
+    {
+      "name": "punctuation.bracket.gg-galgame",
+      "match": "[<>]",
+      "captures": {
+        "0": {
+          "name": "punctuation.bracket.gg-galgame"
+        }
+      }
+    },
+    {
+      "name": "punctuation.separator.gg-galgame",
+      "match": "=",
+      "captures": {
+        "0": {
+          "name": "punctuation.separator.gg-galgame"
+        }
+      }
+    }
+  ]
+}

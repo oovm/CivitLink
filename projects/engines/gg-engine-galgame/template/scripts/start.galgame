@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<galgame>
+  <metadata>
+    <title>Galgame 模板项目</title>
+    <author>GG Engine</author>
+    <version>0.1.0</version>
+  </metadata>
+
+  <content>
+    <tag name="start" />
+    <dialogue>这是一个晴朗的早晨...</dialogue>
+
+    <tag name="start_d1" />
+    <dialogue character="heroine">早上好！</dialogue>
+    <character name="heroine" sprite="smile" position="center" />
+
+    <tag name="start_d2" />
+    <dialogue>你要怎么回应？</dialogue>
+    <choice>
+      <option next="start_good">早上好！</option>
+      <option next="start_who">你是谁？</option>
+    </choice>
+
+    <tag name="start_good" />
+    <dialogue character="heroine">嗯，早上好！</dialogue>
+
+    <tag name="start_who" />
+    <dialogue character="heroine">我是...你不记得我了吗？</dialogue>
+
+    <tag name="start_end" />
+    <dialogue>故事才刚刚开始...</dialogue>
+  </content>
+</galgame>

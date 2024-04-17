@@ -1,0 +1,21 @@
+[package]
+name = "gg-sheet"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-compiler = { workspace = true }
+calamine = { workspace = true }
+csv = { workspace = true }
+regex = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+notify = { workspace = true }
+bincode = { workspace = true, features = ["serde"] }
+
+[dev-dependencies]
+gg-compiler = { workspace = true }
+tempfile = { workspace = true }

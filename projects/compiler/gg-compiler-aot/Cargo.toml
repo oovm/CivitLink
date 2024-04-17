@@ -1,0 +1,15 @@
+[package]
+name = "gg-compiler-aot"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-bytecode = { workspace = true }
+cranelift = { workspace = true }
+cranelift-module = { workspace = true }
+cranelift-object = { workspace = true }
+cranelift-codegen = { workspace = true }
+target-lexicon = { workspace = true }

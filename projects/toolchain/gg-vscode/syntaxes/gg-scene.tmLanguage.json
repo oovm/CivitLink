@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GG Scene",
+  "scopeName": "source.gg-scene",
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.gg-scene",
+      "match": "//.*$",
+      "captures": {
+        "0": {
+          "name": "comment.line.double-slash.gg-scene"
+        }
+      }
+    },
+    {
+      "name": "keyword.control.gg-scene",
+      "match": "\b(SceneFile|Scene|Entity|Component|Transform|TransformProperties|SpriteRenderer|SpriteRendererProperties|Camera|CameraProperties|Collider|ColliderProperties|Rigidbody|RigidbodyProperties|PlayerController|PlayerControllerProperties|EnemyAI|EnemyAIProperties|Weapon|WeaponProperties|UiCanvas|UiCanvasProperties|UiRectTransform|UiRectTransformProperties|UiImage|UiImageProperties|UiText|UiTextProperties|UiButton|UiButtonProperties|ColorBlock|UiMask|UiMaskProperties|UiLayout|UiLayoutProperties|UiScrollRect|UiScrollRectProperties|UiToggle|UiToggleProperties|UiSlider|UiSliderProperties|UiProgressBar|UiProgressBarProperties|UiRawImage|UiRawImageProperties|Light|LightProperties|PrefabInstance|PrefabInstanceData|Dependency|Reference)\b",
+      "captures": {
+        "0": {
+          "name": "keyword.control.gg-scene"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.double.gg-scene",
+      "match": '"([^"\\]|\\.)*"',
+      "captures": {
+        "0": {
+          "name": "string.quoted.double.gg-scene"
+        }
+      }
+    },
+    {
+      "name": "constant.numeric.gg-scene",
+      "match": "\b\d+(\.\d+)?\b",
+      "captures": {
+        "0": {
+          "name": "constant.numeric.gg-scene"
+        }
+      }
+    },
+    {
+      "name": "constant.language.gg-scene",
+      "match": "\b(true|false|None|Some|box|sphere|capsule|ScreenSpace|WorldSpace|CameraSpace|Simple|Sliced|Tiled|Filled|Horizontal|Vertical|Radial90|Radial180|Radial360|Normal|Bold|Italic|BoldItalic|TopLeft|TopCenter|TopRight|MiddleLeft|MiddleCenter|MiddleRight|BottomLeft|BottomCenter|BottomRight|Wrap|Truncate|Overflow|None|ColorTint|SpriteSwap|Animation|Flexible|FixedColumnCount|FixedRowCount|Unrestricted|Elastic|Clamped|LeftToRight|RightToLeft|BottomToTop|TopToBottom|Direct|Smooth|Directional|Point|Spot)\b",
+      "captures": {
+        "0": {
+          "name": "constant.language.gg-scene"
+        }
+      }
+    },
+    {
+      "name": "entity.name.type.gg-scene",
+      "match": "\b(version|scene|name|description|entities|id|parent_id|components|type|properties|position|rotation|scale|sprite|sort_order|flip_x|flip_y|color|field_of_view|near_plane|far_plane|clear_color|orthographic|size|shape|size|offset|is_trigger|layer|mass|is_kinematic|use_gravity|linear_velocity|angular_velocity|speed|jump_force|health|damage|range|canvas_mode|sort_order|reference_resolution|match_mode|pixel_perfect|width|height|distance|event_camera|sorting_layer|sorting_order|anchor_min|anchor_max|offset_min|offset_max|pivot|size_delta|material|image_type|fill_method|fill_amount|preserve_aspect|text|font|font_size|font_style|alignment|overflow|line_spacing|interactable|transition|target_graphic|colors|normal_color|highlighted_color|pressed_color|disabled_color|fade_duration|on_click|show_mask_graphic|layout_type|padding|spacing|child_alignment|constraint|constraint_count|horizontal|vertical|movement_type|elasticity|scroll_sensitivity|content|viewport|is_on|group|on_value_changed|value|min_value|max_value|whole_numbers|direction|fill_rect|texture|uv_rect|type|intensity|color|range|spot_angle|shadows|enabled|scripts|prefabs|materials|textures|audios|dependencies|references|field|timestamp|hash)\b",
+      "captures": {
+        "0": {
+          "name": "entity.name.type.gg-scene"
+        }
+      }
+    },
+    {
+      "name": "punctuation.bracket.gg-scene",
+      "match": "[\{\}\[\]()]",
+      "captures": {
+        "0": {
+          "name": "punctuation.bracket.gg-scene"
+        }
+      }
+    },
+    {
+      "name": "punctuation.separator.gg-scene",
+      "match": ",",
+      "captures": {
+        "0": {
+          "name": "punctuation.separator.gg-scene"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+PrefabFile({
+    version: "1.0",
+    prefab: Prefab({
+        name: "PlayerPrefab",
+        description: "Player character prefab",
+        is_variant: false,
+        base_prefab: None,
+    }),
+    entities: [
+        Entity({
+            id: 1,
+            name: "Player",
+            parent_id: None,
+            components: [
+                Component({
+                    type: "Transform",
+                    properties: TransformProperties({
+                        position: [0, 0, 0],
+                        rotation: [0, 0, 0],
+                        scale: [1, 1, 1],
+                    }),
+                }),
+                Component({
+                    type: "SpriteRenderer",
+                    properties: SpriteRendererProperties({
+                        sprite: "assets/graphics/sprites/player.png",
+                        sort_order: 0,
+                        flip_x: false,
+                        flip_y: false,
+                    }),
+                }),
+                Component({
+                    type: "Player",
+                    properties: PlayerProperties({
+                        speed: 5.0,
+                        jump_force: 10.0,
+                        health: 100,
+                    }),
+                }),
+                Component({
+                    type: "Script",
+                    properties: ScriptProperties({
+                        path: "assets/scripts/start.valkyrie",
+                        class_name: "PlayerController",
+                        enabled: true,
+                    }),
+                }),
+            ],
+        }),
+    ],
+    variants: [],
+    dependencies: [
+        Dependency({
+            path: "assets/graphics/sprites/player.png",
+            guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0001",
+        }),
+        Dependency({
+            path: "assets/scripts/start.valkyrie",
+            guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0002",
+        }),
+    ],
+    references: [],
+    timestamp: "2026-04-11T10:00:00Z",
+    hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+})

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GG MDX",
+  "scopeName": "source.gg-mdx",
+  "patterns": [
+    {
+      "name": "comment.line.double-percent.gg-mdx",
+      "match": "%%.*%%",
+      "captures": {
+        "0": {
+          "name": "comment.line.double-percent.gg-mdx"
+        }
+      }
+    },
+    {
+      "name": "keyword.control.gg-mdx",
+      "match": "::(scene|character|choice|audio|effect|if|else|endif|loop|endloop|call)\b",
+      "captures": {
+        "0": {
+          "name": "keyword.control.gg-mdx"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.double.gg-mdx",
+      "match": '"([^"\\]|\\.)*"',
+      "captures": {
+        "0": {
+          "name": "string.quoted.double.gg-mdx"
+        }
+      }
+    },
+    {
+      "name": "constant.numeric.gg-mdx",
+      "match": "\b\d+(\.\d+)?\b",
+      "captures": {
+        "0": {
+          "name": "constant.numeric.gg-mdx"
+        }
+      }
+    },
+    {
+      "name": "entity.name.type.gg-mdx",
+      "match": "\b(name|bg|sprite|position|option|next|type|duration|bgm|se|condition|times|function|param1|param2|message)\b",
+      "captures": {
+        "0": {
+          "name": "entity.name.type.gg-mdx"
+        }
+      }
+    },
+    {
+      "name": "variable.other.gg-mdx",
+      "match": "\$\{[^}]+\}",
+      "captures": {
+        "0": {
+          "name": "variable.other.gg-mdx"
+        }
+      }
+    },
+    {
+      "name": "punctuation.bracket.gg-mdx",
+      "match": "[\{\}\[\]()]",
+      "captures": {
+        "0": {
+          "name": "punctuation.bracket.gg-mdx"
+        }
+      }
+    },
+    {
+      "name": "punctuation.separator.gg-mdx",
+      "match": ",",
+      "captures": {
+        "0": {
+          "name": "punctuation.separator.gg-mdx"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,434 @@
+% TeX 格式 - 结局
+
+\begin{document}
+
+\label(endings)
+
+\if(ending_type == "public")
+\goto(public_truth_ending)
+\elif(ending_type == "restore")
+\goto(restore_memory_ending)
+\elif(ending_type == "investigate")
+\goto(true_ending)
+\else
+\goto(normal_ending)
+\endif
+
+% ============================================
+% 结局：公布真相
+% ============================================
+
+\label(public_truth_ending)
+
+\scene[school_assembly.png, dramatic_theme.mp3]
+
+\flash(0.3)
+
+我们决定公开真相。
+
+\p （这是正确的选择。）
+
+\char[sakura][determined, center]
+\char[yuki][serious, left]
+\char[ren][serious, right]
+
+\s 各位同学，我们有重要的事情要宣布...
+
+\flash(0.5)
+
+---
+
+几天后...
+
+学校的秘密实验被媒体曝光，
+校长被撤职，
+所有参与实验的学生都接受了心理辅导。
+
+---
+
+\scene[school_rooftop.png, bittersweet.mp3]
+
+\s 虽然真相大白了...
+
+\s 但是学校现在一片混乱。
+
+\p 这是必要的代价。
+
+\y 至少，大家现在都知道真相了。
+
+\r 哼，总算结束了。
+
+\if(sakura_affection >= 5)
+\goto(sakura_good_ending)
+\elif(ren_affection >= 5)
+\goto(ren_good_ending)
+\elif(yuki_affection >= 5)
+\goto(yuki_good_ending)
+\else
+\goto(normal_public_ending)
+\endif
+
+% ============================================
+% 结局：恢复记忆
+% ============================================
+
+\label(restore_memory_ending)
+
+\scene[old_lab.png, hopeful_theme.mp3]
+
+我们决定寻找恢复记忆的方法。
+
+\p （一定要找到实验数据。）
+
+\char[sakura][hopeful, center]
+
+\s 我找到了！这里有备份数据！
+
+\flash(0.5)
+
+---
+
+经过几天的努力，
+我们成功恢复了所有被改写的记忆。
+
+那些曾经失去记忆的学生，
+终于找回了属于自己的过去。
+
+---
+
+\scene[cherry_blossom.png, happy_ending.mp3]
+
+\s 谢谢你...帮我找回了记忆。
+
+\s 我现在...终于完整了。
+
+\p 不用谢，这是我应该做的。
+
+\if(sakura_affection >= 6)
+\s 那个...以后...我们可以...
+\p 可以什么？
+\s 一起...一起走下去吗？
+\goto(true_love_ending)
+\else
+\goto(good_ending)
+\endif
+
+% ============================================
+% 真结局：星之子
+% ============================================
+
+\label(true_ending)
+
+\scene[old_lab.png, mystery_deep.mp3]
+
+我们决定继续调查。
+
+\p （还有太多谜团没有解开。）
+
+\char[ren][serious, right]
+
+\r 等等，看这个。
+
+\flash(0.5)
+
+\r 这里有一个隐藏的文件...
+
+---
+
+文件内容：
+"实验并未结束。
+负责人已转移至新校区。
+实验代号：星之子计划"
+
+---
+
+\p 实验还在继续？！
+
+\s 新校区...那是刚建成的...
+
+\y 我们必须阻止他们。
+
+\pause(1.0)
+
+\scene[sunset.png, epic_theme.mp3]
+
+---
+
+我们发现了更深层的阴谋。
+实验并未结束，
+只是转移到了新的地点。
+
+我们的战斗，才刚刚开始...
+
+---
+
+\fadeout(2.0)
+
+---
+
+**真结局：星之子**
+
+你发现了隐藏在幕后的真相。
+故事将在续作中继续...
+
+---
+
+\goto(ending_summary)
+
+% ============================================
+% 普通结局
+% ============================================
+
+\label(normal_ending)
+
+\scene[school_gate.png, peaceful_ending.mp3]
+
+一切结束后，学校恢复了平静。
+
+\p （虽然还有很多谜团...）
+
+\p （但至少现在，大家都安全了。）
+
+\char[sakura][smile, left]
+
+\s 谢谢你，新同学。
+
+\s 如果没有你，我们可能永远不会知道真相。
+
+\p 这是我应该做的。
+
+\fadeout(1.5)
+
+---
+
+**普通结局：平静的日常**
+
+你帮助学校揭开了秘密，
+但真相似乎不止于此...
+
+---
+
+\goto(ending_summary)
+
+% ============================================
+% 樱井美咲好结局
+% ============================================
+
+\label(sakura_good_ending)
+
+\scene[cherry_blossom.png, romantic_theme.mp3]
+
+\char[sakura][blush, center]
+
+\s 那个...我有话想对你说。
+
+\p 什么事？
+
+\s 这段时间...谢谢你一直陪在我身边。
+
+\s 我...我好像...
+
+\p ？
+
+\s 我喜欢你！
+
+\effect(heart_float, 1.0)
+
+\p 樱井同学...
+
+\s 以后...请多多指教了！
+
+\fadeout(2.0)
+
+---
+
+**樱井美咲结局：樱花之约**
+
+你与樱井美咲成为了恋人。
+在樱花树下，你们许下了永远的约定。
+
+---
+
+\goto(ending_summary)
+
+% ============================================
+% 黑崎莲好结局
+% ============================================
+
+\label(ren_good_ending)
+
+\scene[night_city.png, cool_theme.mp3]
+
+\char[ren][smile, center]
+
+\r 喂。
+
+\p 黑崎同学？
+
+\r 没想到你还挺有本事的。
+
+\r 我对你刮目相看了。
+
+\p 谢谢...？
+
+\r 以后...有什么事可以找我。
+
+\r 我会帮你的。
+
+\p 真的？
+
+\r 别让我说第二遍。
+
+\fadeout(2.0)
+
+---
+
+**黑崎莲结局：暗夜的盟约**
+
+你获得了黑崎莲的认可。
+虽然他表面冷淡，但你知道，
+他会是你最可靠的伙伴。
+
+---
+
+\goto(ending_summary)
+
+% ============================================
+% 白雪悠希好结局
+% ============================================
+
+\label(yuki_good_ending)
+
+\scene[library.png, gentle_theme.mp3]
+
+\char[yuki][smile, center]
+
+\y 那个...谢谢你。
+
+\p 怎么了，白雪同学？
+
+\y 谢谢你让我变得勇敢。
+
+\y 以前的我...总是害怕面对真相。
+
+\y 但是现在...我想和你一起面对未来。
+
+\p 我也是。
+
+\y 那...我们约定好了？
+
+\effect(sparkle, 1.0)
+
+\fadeout(2.0)
+
+---
+
+**白雪悠希结局：温柔的约定**
+
+你与白雪悠希建立了深厚的羁绊。
+在图书馆的角落，你们约定一起面对未来。
+
+---
+
+\goto(ending_summary)
+
+% ============================================
+% 真爱结局
+% ============================================
+
+\label(true_love_ending)
+
+\scene[cherry_blossom_sunset.png, love_theme.mp3]
+
+\flash(1.0)
+
+\char[sakura][happy, center]
+
+\s 从今以后...我们一起走吧。
+
+\p 嗯，一起走。
+
+\effect(heart_float, 1.0)
+
+---
+
+**真结局：永恒的星光**
+
+你不仅揭开了学校的秘密，
+还找到了真正的爱情。
+
+樱井美咲的笑容，
+将是你心中永远的光芒。
+
+---
+
+\goto(ending_summary)
+
+% ============================================
+% 好结局
+% ============================================
+
+\label(good_ending)
+
+---
+
+**好结局：新的开始**
+
+你帮助恢复了所有人的记忆。
+虽然还有未解的谜团，
+但你知道，未来会更好。
+
+---
+
+\goto(ending_summary)
+
+% ============================================
+% 普通公布结局
+% ============================================
+
+\label(normal_public_ending)
+
+---
+
+**结局：真相大白**
+
+学校的秘密被公之于众。
+虽然付出了代价，
+但正义得到了伸张。
+
+---
+
+\goto(ending_summary)
+
+% ============================================
+% 结局统计
+% ============================================
+
+\label(ending_summary)
+
+\fadeout(2.0)
+
+\scene[black.png]
+
+---
+
+# 游戏统计
+
+* 樱井美咲好感度: \print(sakura_affection)
+* 黑崎莲好感度: \print(ren_affection)
+* 白雪悠希好感度: \print(yuki_affection)
+* 信任点数: \print(trust_points)
+* 发现线索: \print(clues_found)
+
+---
+
+感谢游玩《星光学院的秘密》！
+
+如果想要体验其他结局，
+请尝试不同的选择路径。
+
+---
+
+\return
+
+\end{document}

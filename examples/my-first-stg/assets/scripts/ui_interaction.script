@@ -1,0 +1,52 @@
+using gg::ecs;
+using gg::engine;
+using gg::signal;
+using gg::ui;
+
+class UiInteractionDemo {
+    let count = signal(0);
+    let message = signal("Hello, Valkyrie!");
+    let is_visible = signal(true);
+
+    micro increment() {
+        let current = this.count();
+        this.count(current + 1);
+    }
+
+    micro decrement() {
+        let current = this.count();
+        if current > 0 {
+            this.count(current - 1);
+        }
+    }
+
+    micro toggle_visibility() {
+        this.is_visible(!this.is_visible());
+    }
+
+    micro update_message(new_text: String) {
+        this.message(new_text);
+    }
+}
+
+let demo = UiInteractionDemo();
+
+effect(micro() {
+    console::log("Count changed to: " + demo.count());
+});
+
+effect(micro() {
+    console::log("Visibility: " + (demo.is_visible() ? "visible" : "hidden"));
+});
+
+micro on_button_click() {
+    demo.increment();
+}
+
+micro on_toggle_click() {
+    demo.toggle_visibility();
+}
+
+micro on_text_submit(text: String) {
+    demo.update_message(text);
+}

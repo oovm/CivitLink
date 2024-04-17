@@ -1,0 +1,11 @@
+[package]
+name = "gg-asset"
+version = { workspace = true }
+edition = { workspace = true }
+description = "GG Engine Asset Management System"
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-ecs = { workspace = true }
+gg-error = { workspace = true }

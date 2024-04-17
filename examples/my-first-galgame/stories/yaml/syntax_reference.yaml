@@ -1,0 +1,395 @@
+# YAML 风格 DSL - 语法参考
+# 数据驱动的 Galgame 脚本格式
+
+metadata:
+  title: 星光学院的秘密 - 语法参考
+  author: 灵之镜工作室
+  version: 1.0.0
+
+characters:
+  player:
+    name: 主角
+    color: "#88c8ff"
+  sakura:
+    name: 樱井美咲
+    color: "#ffb7c5"
+  ren:
+    name: 黑崎莲
+    color: "#7b68ee"
+  yuki:
+    name: 白雪悠希
+    color: "#e6e6fa"
+
+variables:
+  sakura_affection: 0
+  ren_affection: 0
+  yuki_affection: 0
+  trust_points: 0
+  clues_found: 0
+  knows_secret: false
+  knows_ren_secret: false
+  has_lab_key: false
+  has_lab_access: false
+  school_route: false
+  home_route: false
+  ending_type: ""
+
+# ============================================
+# 语法规则说明
+# ============================================
+
+# 1. 元数据：metadata: ...
+# 2. 角色：characters: ...
+# 3. 变量：variables: ...
+# 4. 节点：nodes: ...
+# 5. 场景：type: scene
+# 6. 对话：type: dialogue
+# 7. 选择：type: choice
+# 8. 角色：type: character
+# 9. 跳转：type: goto 或 next: 目标
+# 10. 条件：condition: ...
+# 11. 效果：effects: ...
+
+# ============================================
+# 完整示例场景
+# ============================================
+
+nodes:
+  example_scene:
+    type: scene
+    background: images/bg/classroom.png
+    transition:
+      type: fade
+      duration: 1.0
+    music:
+      file: audio/bgm/peaceful.mp3
+      volume: 0.5
+    next: example_dialogue_1
+
+  example_dialogue_1:
+    type: character
+    action: show
+    character: sakura
+    sprite: smile
+    position: center
+    next: example_dialogue_2
+
+  example_dialogue_2:
+    type: dialogue
+    character: sakura
+    content: 你好！欢迎来到星光学院！
+    next: example_choice
+
+  example_choice:
+    type: choice
+    options:
+      - text: 你好！
+        next: next_part
+        effects:
+          - variable: sakura_affection
+            operation: add
+            value: 1
+      - text: 请问你是？
+        next: introduce
+      - text: 关于那个秘密...
+        next: secret_talk
+        condition:
+          variable: knows_secret
+          operator: "=="
+          value: true
+
+  next_part:
+    type: dialogue
+    character: sakura
+    expression: smile
+    content: 要不要参观一下学校？
+    next: tour_choice
+
+  tour_choice:
+    type: choice
+    options:
+      - text: 好啊
+        next: tour
+      - text: 下次吧
+        next: end
+
+  tour:
+    type: scene
+    background: images/bg/school_hallway.png
+    transition:
+      type: slide_right
+      duration: 0.8
+    next: tour_dialogue
+
+  tour_dialogue:
+    type: dialogue
+    character: sakura
+    content: 这里是教学楼，那边是图书馆...
+    next: end
+
+  end:
+    type: dialogue
+    character: sakura
+    content: 再见！
+    next: fade_out
+
+  fade_out:
+    type: effect
+    effect: fade_out
+    duration: 1.0
+    next: return
+
+  return:
+    type: return
+
+# ============================================
+# 复杂分支示例
+# ============================================
+
+  complex_choice:
+    type: dialogue
+    character: ren
+    content: 你想知道真相吗？
+    next: complex_choice_options
+
+  complex_choice_options:
+    type: choice
+    options:
+      - text: 我想知道一切
+        next: reveal_all
+        effects:
+          - variable: trust_points
+            operation: add
+            value: 2
+          - variable: ren_affection
+            operation: add
+            value: 1
+      - text: 太危险了，算了吧
+        next: avoid_danger
+        effects:
+          - variable: trust_points
+            operation: add
+            value: -1
+      - text: 我已经知道一些了
+        next: share_intel
+        condition:
+          variable: clues_found
+          operator: ">="
+          value: 3
+        effects:
+          - variable: ren_affection
+            operation: add
+            value: 2
+      - text: 你也是实验对象？
+        next: ren_confession
+        condition:
+          variable: knows_ren_secret
+          operator: "=="
+          value: true
+        effects:
+          - variable: ren_affection
+            operation: add
+            value: 3
+
+# ============================================
+# 多条件判断示例
+# ============================================
+
+  determine_ending:
+    type: branch
+    branches:
+      - condition:
+          - variable: sakura_affection
+            operator: ">="
+            value: 8
+          - variable: trust_points
+            operator: ">="
+            value: 10
+        next: sakura_true_ending
+      - condition:
+          - variable: ren_affection
+            operator: ">="
+            value: 8
+          - variable: knows_ren_secret
+            operator: "=="
+            value: true
+        next: ren_true_ending
+      - condition:
+          - variable: yuki_affection
+            operator: ">="
+            value: 6
+          - variable: clues_found
+            operator: ">="
+            value: 5
+        next: yuki_true_ending
+      - condition:
+          variable: sakura_affection
+          operator: ">="
+          value: 5
+        next: sakura_good_ending
+      - condition:
+          variable: ren_affection
+          operator: ">="
+          value: 5
+        next: ren_good_ending
+      - condition:
+          variable: yuki_affection
+          operator: ">="
+          value: 5
+        next: yuki_good_ending
+      - condition:
+          variable: trust_points
+          operator: ">="
+          value: 8
+        next: good_ending
+    default: normal_ending
+
+# ============================================
+# 结局定义
+# ============================================
+
+  sakura_good_ending:
+    type: scene
+    background: images/bg/cherry_blossom.png
+    transition:
+      type: fade
+      duration: 1.5
+    music:
+      file: audio/bgm/romantic_theme.mp3
+      volume: 0.6
+    next: sakura_confession_1
+
+  sakura_confession_1:
+    type: character
+    action: show
+    character: sakura
+    sprite: blush
+    position: center
+    next: sakura_confession_2
+
+  sakura_confession_2:
+    type: dialogue
+    character: sakura
+    content: 那个...我有话想对你说。
+    next: sakura_confession_3
+
+  sakura_confession_3:
+    type: dialogue
+    character: player
+    content: 什么事？
+    next: sakura_confession_4
+
+  sakura_confession_4:
+    type: dialogue
+    character: sakura
+    expression: shy
+    content: |
+      这段时间...谢谢你一直陪在我身边。
+      我...我好像...
+    next: sakura_confession_5
+
+  sakura_confession_5:
+    type: dialogue
+    character: player
+    content: ？
+    next: sakura_confession_6
+
+  sakura_confession_6:
+    type: dialogue
+    character: sakura
+    expression: determined
+    content: 我喜欢你！
+    effect:
+      type: heart_float
+      duration: 1.0
+    next: sakura_confession_7
+
+  sakura_confession_7:
+    type: dialogue
+    character: player
+    expression: blush
+    content: 樱井同学...
+    next: sakura_confession_8
+
+  sakura_confession_8:
+    type: dialogue
+    character: sakura
+    expression: happy
+    content: 以后...请多多指教了！
+    next: sakura_ending_text
+
+  sakura_ending_text:
+    type: ending
+    title: 樱井美咲结局：樱花之约
+    content: |
+      你与樱井美咲成为了恋人。
+      在樱花树下，你们许下了永远的约定。
+    next: show_stats
+
+# ============================================
+# 游戏统计
+# ============================================
+
+  show_stats:
+    type: stats
+    title: 游戏统计
+    variables:
+      - name: 樱井美咲好感度
+        variable: sakura_affection
+      - name: 黑崎莲好感度
+        variable: ren_affection
+      - name: 白雪悠希好感度
+        variable: yuki_affection
+      - name: 信任点数
+        variable: trust_points
+      - name: 发现线索
+        variable: clues_found
+    footer: |
+      ---
+      
+      感谢游玩《星光学院的秘密》！
+    next: title_screen
+
+  title_screen:
+    type: call
+    function: show_title_screen
+    next: end
+
+# ============================================
+# 常用命令参考
+# ============================================
+
+# 节点类型：
+# - scene: 场景切换
+# - dialogue: 对话
+# - choice: 选择
+# - character: 角色操作
+# - effect: 特效
+# - branch: 条件分支
+# - ending: 结局
+# - stats: 统计
+# - call: 函数调用
+# - goto: 跳转
+# - return: 返回
+
+# 效果操作：
+# - add: 增加
+# - subtract: 减少
+# - set: 设置
+# - multiply: 乘法
+# - divide: 除法
+
+# 条件操作符：
+# - "==": 等于
+# - "!=": 不等于
+# - ">": 大于
+# - ">=": 大于等于
+# - "<": 小于
+# - "<=": 小于等于
+
+# 过渡效果：
+# - fade: 淡入淡出
+# - slide_left: 左滑
+# - slide_right: 右滑
+# - slide_up: 上滑
+# - slide_down: 下滑

@@ -1,0 +1,37 @@
+[package]
+name = "gg-runtime-audio"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+cpal = { workspace = true, optional = true }
+rodio = { workspace = true, optional = true }
+wasm-bindgen = { workspace = true, optional = true }
+js-sys = { workspace = true, optional = true }
+wasm-bindgen-futures = { workspace = true, optional = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", optional = true, features = [
+    "AudioContext",
+    "AudioBuffer",
+    "AudioBufferSourceNode",
+    "AudioScheduledSourceNode",
+    "GainNode",
+    "AudioDestinationNode",
+    "AudioNode",
+    "BaseAudioContext",
+    "AnalyserNode",
+    "BiquadFilterNode",
+    "BiquadFilterType",
+    "ConvolverNode",
+    "Response",
+    "Window",
+] }
+
+[features]
+default = []
+cpal-backend = ["dep:cpal", "dep:rodio"]
+web-audio = ["dep:wasm-bindgen", "dep:js-sys", "dep:wasm-bindgen-futures", "dep:web-sys"]

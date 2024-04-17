@@ -1,0 +1,19 @@
+[package]
+name = "gg-runtime-net"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[features]
+default = []
+tls = ["tokio-rustls", "rustls-pemfile", "webpki-roots"]
+
+[dependencies]
+gg-core = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tokio-tungstenite = { workspace = true }
+futures = { workspace = true }
+tokio-rustls = { workspace = true, optional = true }
+rustls-pemfile = { workspace = true, optional = true }
+webpki-roots = { workspace = true, optional = true }

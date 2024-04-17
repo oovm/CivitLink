@@ -1,0 +1,17 @@
+[package]
+name = "gg-runtime-database"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+rusqlite = { workspace = true }
+postgres = { version = "0.19", optional = true }
+mysql = { version = "26", optional = true }
+
+[features]
+default = []
+postgres = ["dep:postgres"]
+mysql = ["dep:mysql"]

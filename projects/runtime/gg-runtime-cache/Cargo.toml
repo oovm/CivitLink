@@ -1,0 +1,16 @@
+[package]
+name = "gg-runtime-cache"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+redis = { workspace = true, optional = true }
+
+[features]
+default = []
+redis = ["dep:redis"]

@@ -1,0 +1,17 @@
+[package]
+name = "gg-editor-preview"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-engine-galgame = { workspace = true }
+gg-ecs = { workspace = true }
+gg-render = { workspace = true }
+gg-editor-shell = { workspace = true }
+gg-world = { workspace = true }
+gg-ui = { workspace = true }
+notify = { workspace = true }
+seahash = { workspace = true }

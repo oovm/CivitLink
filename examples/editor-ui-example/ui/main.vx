@@ -1,0 +1,96 @@
+<template>
+  <Layout id="main" class="container">
+    <Layout id="header" class="header">
+      <Text id="title" class="title">GG Engine Editor</Text>
+    </Layout>
+
+    <Layout id="content" class="content">
+      <Layout id="left-panel" class="panel">
+        <Text id="left-title" class="panel-title">Project</Text>
+        <Button id="new-project" class="button">New Project</Button>
+        <Button id="open-project" class="button">Open Project</Button>
+        <Button id="save-project" class="button">Save Project</Button>
+      </Layout>
+
+      <Layout id="center-panel" class="panel">
+        <Text id="center-title" class="panel-title">Scene</Text>
+        <Button id="add-object" class="button">Add Object</Button>
+        <Button id="remove-object" class="button">Remove Object</Button>
+      </Layout>
+
+      <Layout id="right-panel" class="panel">
+        <Text id="right-title" class="panel-title">Inspector</Text>
+        <Text id="object-name" class="label">Object Name: GameObject</Text>
+        <Text id="position-label" class="label">Position: 0, 0, 0</Text>
+        <Text id="rotation-label" class="label">Rotation: 0, 0, 0</Text>
+        <Text id="scale-label" class="label">Scale: 1, 1, 1</Text>
+      </Layout>
+    </Layout>
+
+    <Layout id="footer" class="footer">
+      <Text id="status" class="status">Ready</Text>
+      <Text id="fps" class="fps">60 FPS</Text>
+    </Layout>
+  </Layout>
+</template>
+
+<style>
+.container {
+  width: 100%;
+  height: 100%;
+  direction: column;
+}
+.header {
+  width: 100%;
+  height: 40px;
+  direction: row;
+  background: #1e1e2e;
+  padding: 8px;
+}
+.title {
+  font-size: 16px;
+  color: #cdd6f4;
+}
+.content {
+  width: 100%;
+  direction: row;
+  flex: 1;
+}
+.panel {
+  direction: column;
+  padding: 8px;
+  background: #313244;
+}
+.panel-title {
+  font-size: 14px;
+  color: #cdd6f4;
+  padding: 4px;
+}
+.button {
+  font-size: 12px;
+  color: #cdd6f4;
+  background: #45475a;
+  padding: 6px;
+  margin: 2px;
+}
+.label {
+  font-size: 12px;
+  color: #a6adc8;
+  padding: 2px;
+}
+.footer {
+  width: 100%;
+  height: 24px;
+  direction: row;
+  background: #1e1e2e;
+  padding: 4px;
+}
+.status {
+  font-size: 12px;
+  color: #a6adc8;
+}
+.fps {
+  font-size: 12px;
+  color: #a6adc8;
+}
+</style>
