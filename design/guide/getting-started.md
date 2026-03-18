@@ -82,8 +82,8 @@ edition = "2021"
 
 [dependencies]
 # 核心框架
-gwg-core = { path = "../../crates/core" }
-gwg-platform = { path = "../../crates/platform" }
+gwg-core = { path = "../../crates/frameworks/gwg-core" }
+gwg-platform = { path = "../../crates/platforms" }
 gwg-runtime = { path = "../../crates/runtime" }
 gwg-engine = { path = "../../crates/engine" }
 

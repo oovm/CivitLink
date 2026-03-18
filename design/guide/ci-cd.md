@@ -1,21 +1,98 @@
-# CI/CD 流水线模板
+# CI/CD 流水线与多平台构建指南
 
-本页面提供完整的 CI/CD 流水线模板，用于 WAE 项目的自动化构建、测试和部署。
+本指南基于 gwg 元引擎框架架构（whitebook2.md 和 whitebook3.md），提供完整的 CI/CD 流水线配置、多平台构建流程以及分发打包方案。
 
-## GitHub Actions
+## 目录
 
-### 完整 CI 流水线
+1. [多平台构建流程](#多平台构建流程)
+2. [自动化构建配置](#自动化构建配置)
+3. [分发打包步骤](#分发打包步骤)
+4. [引擎插件构建与发布](#引擎插件构建与发布)
+5. [游戏项目打包与分发](#游戏项目打包与分发)
+
+---
+
+## 多平台构建流程
+
+gwg 引擎支持 Windows、macOS、Linux、iOS、Android、WebAssembly（H5）以及微信小游戏等主要平台。以下是各平台的构建流程：
+
+### 1.1 桌面平台（Windows / macOS / Linux）
+
+#### Windows
+```bash
+# 构建目标
+cargo build --package galgame --target x86_64-pc-windows-msvc --release
+```
+
+#### macOS
+```bash
+# 构建目标
+cargo build --package galgame --target x86_64-apple-darwin --release
+# 或 Apple Silicon
+cargo build --package galgame --target aarch64-apple-darwin --release
+```
+
+#### Linux
+```bash
+# 构建目标
+cargo build --package galgame --target x86_64-unknown-linux-gnu --release
+```
+
+### 1.2 移动平台（iOS / Android）
+
+#### iOS
+```bash
+# 构建 iOS 目标
+cargo build --package galgame --target aarch64-apple-ios --release
+# 使用 xcodebuild 打包
+xcodebuild -scheme galgame -archivePath ./build/galgame.xcarchive archive
+xcodebuild -exportArchive -archivePath ./build/galgame.xcarchive -exportPath ./build -exportOptionsPlist exportOptions.plist
+```
+
+#### Android
+```bash
+# 构建 Android 目标
+cargo build --package galgame --target aarch64-linux-android --release
+# 使用 Gradle 打包
+./gradlew assembleRelease
+```
+
+### 1.3 WebAssembly 平台（H5 / 微信小游戏）
+
+#### WebAssembly (H5)
+```bash
+# 构建 WASM
+cargo build --package galgame --target wasm32-unknown-unknown --release
+# 生成绑定
+wasm-bindgen target/wasm32-unknown-unknown/release/galgame.wasm --out-dir ./web --target web
+```
+
+#### 微信小游戏
+```bash
+# 构建微信小游戏适配版
+cargo build --package galgame --features "platform/wechat" --target wasm32-unknown-unknown --release
+# 使用 wasm-bindgen
+wasm-bindgen target/wasm32-unknown-unknown/release/galgame.wasm --out-dir ./wechat-game --target wechat
+```
+
+---
+
+## 自动化构建配置
+
+### GitHub Actions 完整配置
+
+以下是适用于 gwg 引擎的 GitHub Actions CI/CD 配置示例：
 
 ```yaml
-name: WAE CI/CD
+name: gwg Engine CI/CD
 
 on:
     push:
-        branches: [main, master, dev]
+        branches: [main, master, develop]
         tags:
             - 'v*'
     pull_request:
-        branches: [main, master, dev]
+        branches: [main, master, develop]
     release:
         types: [created]
 
@@ -34,7 +111,7 @@ jobs:
               uses: actions/checkout@v4
 
             - name: Install Rust toolchain
-              uses: dtolnay/rust-toolchain@nightly
+              uses: dtolnay/rust-toolchain@stable
               with:
                   components: rustfmt, clippy
 
@@ -66,14 +143,13 @@ jobs:
             fail-fast: false
             matrix:
                 os: [ubuntu-latest, windows-latest, macos-latest]
-                feature: [no-default, default, all]
         runs-on: ${{ matrix.os }}
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
 
             - name: Install Rust toolchain
-              uses: dtolnay/rust-toolchain@nightly
+              uses: dtolnay/rust-toolchain@stable
 
             - name: Cache cargo registry
               uses: actions/cache@v4
@@ -82,70 +158,68 @@ jobs:
                       ~/.cargo/registry
                       ~/.cargo/git
                       target
-                  key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+                  key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
-                      ${{ runner.os }}-cargo-
+                      ${{ runner.os }}-cargo-test-
 
-            - name: Run tests (no-default features)
-              if: matrix.feature == 'no-default'
-              run: cargo test --workspace --no-default-features
-
-            - name: Run tests (default features)
-              if: matrix.feature == 'default'
-              run: cargo test --workspace
-
-            - name: Run tests (all features)
-              if: matrix.feature == 'all'
+            - name: Run tests
               run: cargo test --workspace --all-features
 
-    # JavaScript/TypeScript 检查
-    js-check:
-        name: JavaScript/TypeScript Check
-        runs-on: ubuntu-latest
+    # 构建桌面平台
+    build-desktop:
+        name: Build Desktop Platforms
+        needs: rust-test
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: windows-latest
+                      target: x86_64-pc-windows-msvc
+                      artifact-name: windows
+                    - os: macos-latest
+                      target: x86_64-apple-darwin
+                      artifact-name: macos-x64
+                    - os: macos-latest
+                      target: aarch64-apple-darwin
+                      artifact-name: macos-arm64
+                    - os: ubuntu-latest
+                      target: x86_64-unknown-linux-gnu
+                      artifact-name: linux
+        runs-on: ${{ matrix.os }}
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
+            - name: Install Rust toolchain
+              uses: dtolnay/rust-toolchain@stable
               with:
-                  node-version: "20"
+                  targets: ${{ matrix.target }}
 
-            - name: Install pnpm
-              uses: pnpm/action-setup@v4
-              with:
-                  version: 9
-
-            - name: Get pnpm store directory
-              shell: bash
-              run: |
-                  echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
-              id: pnpm-cache
-
-            - name: Setup pnpm cache
+            - name: Cache cargo registry
               uses: actions/cache@v4
               with:
-                  path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
-                  key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      target
+                  key: ${{ runner.os }}-cargo-build-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
                   restore-keys: |
-                      ${{ runner.os }}-pnpm-store-
+                      ${{ runner.os }}-cargo-build-${{ matrix.target }}-
 
-            - name: Install dependencies
-              run: pnpm install --frozen-lockfile
+            - name: Build for ${{ matrix.target }}
+              run: cargo build --package galgame --target ${{ matrix.target }} --release
 
-            - name: Run Biome CI (format + lint)
-              run: npx biome ci .
+            - name: Upload artifact
+              uses: actions/upload-artifact@v4
+              with:
+                  name: gwg-engine-${{ matrix.artifact-name }}
+                  path: target/${{ matrix.target }}/release/
 
-            - name: Run TypeScript type check
-              run: pnpm run typecheck:frontend
-
-            - name: Build frontend packages
-              run: pnpm run build:frontend
-
-    # 构建发布（仅在 tag 或 release 时触发）
-    build-release:
-        name: Build Release
-        needs: [rust-test, js-check]
+    # 构建 WebAssembly
+    build-wasm:
+        name: Build WebAssembly
+        needs: rust-test
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
         runs-on: ubuntu-latest
         steps:
@@ -153,9 +227,12 @@ jobs:
               uses: actions/checkout@v4
 
             - name: Install Rust toolchain
-              uses: dtolnay/rust-toolchain@nightly
+              uses: dtolnay/rust-toolchain@stable
               with:
-                  targets: x86_64-unknown-linux-gnu, x86_64-pc-windows-msvc, x86_64-apple-darwin
+                  targets: wasm32-unknown-unknown
+
+            - name: Install wasm-bindgen-cli
+              run: cargo install wasm-bindgen-cli
 
             - name: Cache cargo registry
               uses: actions/cache@v4
@@ -164,197 +241,280 @@ jobs:
                       ~/.cargo/registry
                       ~/.cargo/git
                       target
-                  key: ${{ runner.os }}-cargo-release-${{ hashFiles('**/Cargo.lock') }}
+                  key: wasm-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+                  restore-keys: |
+                      wasm-cargo-build-
 
-            - name: Build for Linux
-              run: cargo build --release --workspace --all-features
+            - name: Build WASM (H5)
+              run: cargo build --package galgame --target wasm32-unknown-unknown --release
 
-            - name: Upload artifacts
+            - name: Generate bindings (H5)
+              run: wasm-bindgen target/wasm32-unknown-unknown/release/galgame.wasm --out-dir ./web-h5 --target web
+
+            - name: Build WASM (WeChat Mini Game)
+              run: cargo build --package galgame --features "platform/wechat" --target wasm32-unknown-unknown --release
+
+            - name: Generate bindings (WeChat Mini Game)
+              run: wasm-bindgen target/wasm32-unknown-unknown/release/galgame.wasm --out-dir ./wechat-game --target wechat
+
+            - name: Upload H5 artifacts
               uses: actions/upload-artifact@v4
               with:
-                  name: wae-release
-                  path: target/release/
+                  name: gwg-engine-h5
+                  path: ./web-h5/
 
-    # 发布到 crates.io（仅在 tag 时触发）
-    publish-crates:
-        name: Publish to crates.io
-        needs: build-release
-        if: startsWith(github.ref, 'refs/tags/v')
+            - name: Upload WeChat Mini Game artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: gwg-engine-wechat-game
+                  path: ./wechat-game/
+
+    # 构建 Android
+    build-android:
+        name: Build Android
+        needs: rust-test
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
         runs-on: ubuntu-latest
-        environment: crates.io
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
 
             - name: Install Rust toolchain
-              uses: dtolnay/rust-toolchain@nightly
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
 
-            - name: Login to crates.io
-              run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
+            - name: Set up JDK
+              uses: actions/setup-java@v4
+              with:
+                  java-version: '17'
+                  distribution: 'temurin'
 
-            - name: Publish wae-types
-              run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} --manifest-path backends/wae-types/Cargo.toml
+            - name: Setup Android SDK
+              uses: android-actions/setup-android@v3
+              with:
+                  api-level: 33
+                  ndk: 25.2.9519653
 
-            - name: Publish wae-config
-              run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} --manifest-path backends/wae-config/Cargo.toml
+            - name: Install cargo-ndk
+              run: cargo install cargo-ndk
 
-            - name: Publish other crates
-              run: |
-                  for crate in $(find backends -name "Cargo.toml" -not -path "backends/wae-types/Cargo.toml" -not -path "backends/wae-config/Cargo.toml"); do
-                      cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} --manifest-path "$crate" || true
-                  done
+            - name: Build Android AAR
+              run: cargo ndk -t armeabi-v7a -t arm64-v8a -t x86 -t x86_64 -o ./jniLibs build --release
+
+            - name: Build APK with Gradle
+              run: cd android && ./gradlew assembleRelease
+
+            - name: Upload Android artifacts
+              uses: actions/upload-artifact@v4
+              with:
+                  name: gwg-engine-android
+                  path: android/app/build/outputs/apk/release/
 ```
 
-## GitLab CI
+---
 
-### 完整 CI 流水线
+## 分发打包步骤
 
+### 3.1 桌面平台打包
+
+#### Windows 安装程序
+```bash
+# 使用 NSIS 或 Inno Setup 创建安装程序
+# 示例：创建便携版 ZIP
+powershell Compress-Archive -Path target/x86_64-pc-windows-msvc/release/*.exe -DestinationPath gwg-engine-windows.zip
+```
+
+#### macOS .app 和 .dmg
+```bash
+# 创建 .app 包
+mkdir -p GalgameEngine.app/Contents/MacOS
+mkdir -p GalgameEngine.app/Contents/Resources
+cp target/x86_64-apple-darwin/release/galgame GalgameEngine.app/Contents/MacOS/
+cp Info.plist GalgameEngine.app/Contents/
+
+# 创建 .dmg
+hdiutil create -volname "Galgame Engine" -srcfolder GalgameEngine.app -ov -format UDZO galgame-engine-macos.dmg
+```
+
+#### Linux
+```bash
+# 创建 AppImage
+# 使用 linuxdeploy 工具
+# 或创建 deb/rpm 包
+cargo install cargo-deb
+cargo deb --package galgame
+```
+
+### 3.2 移动平台打包
+
+#### iOS .ipa
+```bash
+# 归档
+xcodebuild -workspace galgame.xcworkspace -scheme galgame -archivePath build/galgame.xcarchive archive
+
+# 导出 IPA
+xcodebuild -exportArchive -archivePath build/galgame.xcarchive -exportPath build -exportOptionsPlist ExportOptions.plist
+```
+
+#### Android .apk / .aab
+```bash
+# 构建 APK
+./gradlew assembleRelease
+
+# 构建 AAB (Android App Bundle)
+./gradlew bundleRelease
+
+# 签名
+jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore my-release-key.keystore app/build/outputs/apk/release/app-release-unsigned.apk alias_name
+
+# 对齐
+zipalign -v 4 app/build/outputs/apk/release/app-release-unsigned.apk galgame-engine.apk
+```
+
+### 3.3 Web 平台打包
+
+#### H5 (WebAssembly)
+```bash
+# 创建完整的 Web 部署包
+mkdir -p deploy-h5
+cp -r web-h5/* deploy-h5/
+cp index.html deploy-h5/
+
+# 压缩
+cd deploy-h5 && zip -r ../gwg-engine-h5.zip .
+```
+
+#### 微信小游戏
+```bash
+# 按照微信小游戏规范组织文件
+mkdir -p wechat-game-deploy
+cp -r wechat-game/* wechat-game-deploy/
+cp game.json wechat-game-deploy/
+cp project.config.json wechat-game-deploy/
+
+# 注意：主包大小限制 4MB，超过需分包
+```
+
+---
+
+## 引擎插件构建与发布
+
+### 4.1 插件开发结构
+
+gwg 引擎插件采用 Rust crate 形式开发，典型结构如下：
+
+```
+gwg-plugin-example/
+├── Cargo.toml
+├── src/
+│   ├── lib.rs
+│   ├── components.rs
+│   ├── systems.rs
+│   └── resources.rs
+└── README.md
+```
+
+### 4.2 插件发布流程
+
+#### 1. 准备插件
+```bash
+# 更新版本号
+# Cargo.toml
+version = "0.1.0"
+
+# 运行检查
+cargo fmt --check
+cargo clippy -- -D warnings
+cargo test
+```
+
+#### 2. 发布到 crates.io
+```bash
+# 登录
+cargo login <your-token>
+
+# 发布（dry-run 先检查）
+cargo publish --dry-run
+
+# 正式发布
+cargo publish
+```
+
+#### 3. GitHub 发布
 ```yaml
-stages:
-  - check
-  - test
-  - build
-  - deploy
+# 在 GitHub Actions 中添加插件发布 job
+publish-plugin:
+    name: Publish Plugin
+    needs: rust-test
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
 
-variables:
-  CARGO_TERM_COLOR: "always"
-  RUST_BACKTRACE: "1"
-  RUSTFLAGS: "-D warnings"
+        - name: Install Rust toolchain
+          uses: dtolnay/rust-toolchain@stable
 
-# Rust 检查
-rust-check:
-  stage: check
-  image: rust:latest
-  cache:
-    paths:
-      - target/
-      - ~/.cargo/registry/
-      - ~/.cargo/git/
-  before_script:
-    - rustup component add rustfmt clippy
-  script:
-    - cargo fmt --all -- --check
-    - cargo clippy --all-targets --all-features -- -D warnings
-    - cargo check --all-targets --all-features
+        - name: Login to crates.io
+          run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
 
-# Rust 测试 - Linux
-rust-test-linux:
-  stage: test
-  image: rust:latest
-  cache:
-    paths:
-      - target/
-      - ~/.cargo/registry/
-      - ~/.cargo/git/
-  script:
-    - cargo test --workspace --no-default-features
-    - cargo test --workspace
-    - cargo test --workspace --all-features
-
-# Rust 测试 - Windows
-rust-test-windows:
-  stage: test
-  tags:
-    - windows
-  cache:
-    paths:
-      - target/
-  script:
-    - cargo test --workspace --all-features
-
-# JavaScript/TypeScript 检查
-js-check:
-  stage: check
-  image: node:20
-  cache:
-    paths:
-      - node_modules/
-      - .pnpm-store/
-  before_script:
-    - corepack enable
-    - corepack prepare pnpm@latest --activate
-    - pnpm config set store-dir .pnpm-store
-  script:
-    - pnpm install --frozen-lockfile
-    - npx biome ci .
-    - pnpm run typecheck:frontend
-    - pnpm run build:frontend
-
-# 构建发布
-build-release:
-  stage: build
-  image: rust:latest
-  cache:
-    paths:
-      - target/
-      - ~/.cargo/registry/
-      - ~/.cargo/git/
-  only:
-    - tags
-    - /^v\d+\.\d+\.\d+$/
-  script:
-    - cargo build --release --workspace --all-features
-  artifacts:
-    paths:
-      - target/release/
-    expire_in: 1 week
-
-# 发布到 crates.io
-publish-crates:
-  stage: deploy
-  image: rust:latest
-  cache:
-    paths:
-      - target/
-      - ~/.cargo/registry/
-      - ~/.cargo/git/
-  only:
-    - tags
-    - /^v\d+\.\d+\.\d+$/
-  dependencies:
-    - build-release
-  script:
-    - cargo login $CRATES_IO_TOKEN
-    - cargo publish --token $CRATES_IO_TOKEN --manifest-path backends/wae-types/Cargo.toml
-    - cargo publish --token $CRATES_IO_TOKEN --manifest-path backends/wae-config/Cargo.toml
-    - |
-      for crate in $(find backends -name "Cargo.toml" -not -path "backends/wae-types/Cargo.toml" -not -path "backends/wae-config/Cargo.toml"); do
-          cargo publish --token $CRATES_IO_TOKEN --manifest-path "$crate" || true
-      done
+        - name: Publish plugin
+          run: cargo publish --token ${{ secrets.CRATES_IO_TOKEN }} --manifest-path crates/modules/galgame/Cargo.toml
 ```
 
-## 使用说明
+---
 
-### GitHub Actions
+## 游戏项目打包与分发
 
-1. 将 `.github/workflows/ci.yml` 文件复制到您的项目中
-2. 在 GitHub 仓库设置中添加 `CRATES_IO_TOKEN` secret（用于发布到 crates.io）
-3. 配置环境 `crates.io` 用于发布
+### 5.1 游戏项目结构
 
-### GitLab CI
+```
+my_galgame/
+├── game.toml                    # 游戏配置
+├── assets/                       # 资源文件
+│   ├── images/
+│   ├── audio/
+│   └── fonts/
+├── scripts/                      # 剧本文件
+├── dlc/                          # DLC目录
+└── mods/                         # Mod脚本
+```
 
-1. 将 `.gitlab-ci.yml` 文件复制到您的项目中
-2. 在 GitLab CI/CD 设置中添加 `CRATES_IO_TOKEN` 变量
-3. 根据需要配置 Runner（特别是 Windows Runner）
+### 5.2 游戏项目打包
 
-## 流水线功能
+#### 桌面平台
+```bash
+# 创建游戏项目 ZIP 包
+zip -r my-galgame-game.zip my_galgame/
+```
 
-### 代码检查
-- Rust 代码格式化检查
-- Rust Clippy  lint 检查
-- JavaScript/TypeScript 格式化和 lint 检查
-- TypeScript 类型检查
+#### 移动平台
+```bash
+# iOS：通过 iTunes 文件共享或 App 内下载
+# Android：放置在外部存储或应用内下载
+```
 
-### 测试
-- 多平台测试（Linux、Windows、macOS）
-- 多 feature 组合测试
-- 前端构建测试
+#### H5
+```bash
+# 小型游戏：预先打包进 WASM
+# 大型游戏：通过 HTTP 分块加载
+```
 
-### 构建
-- Release 模式构建
-- 多目标平台构建
-- 构建产物上传
+#### 微信小游戏
+```bash
+# 随小游戏代码包提交（4MB 内）
+# 或通过 CDN 分包下载
+```
 
-### 部署
-- 发布到 crates.io
-- 版本标签触发
+### 5.3 DLC 与 Mod 分发
+
+#### DLC 分发
+- 作为独立 ZIP 包发布
+- 玩家下载后解压到游戏项目的 `dlc/` 目录
+- 引擎自动合并 DLC 内容
+
+#### Mod 分发
+- 独立 `.gwg` 脚本文件
+- 玩家放置到 `mods/` 目录
+- 虚拟机自动加载并执行

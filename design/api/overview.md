@@ -1,479 +1,475 @@
 # API 概览
 
-WAE 提供统一的 API 设计，所有模块都遵循相同的设计原则。同时提供 Rust 后端和 TypeScript 前端的完整 API。
+GWG 元游戏引擎提供一套完整的 Rust API，支持从资深玩家开发引擎插件，到普通玩家创作游戏内容的完整链路。本文档概述了引擎的核心 API 概念、使用示例、模块分类和命名约定。
 
-## 核心 Trait
+## 核心 API 概念
 
-### 异步优先
+### EngineBuilder
 
-所有可能涉及 I/O 的操作都是异步的：
-
-```rust
-pub trait AuthService: Send + Sync {
-    async fn login(&self, credentials: &Credentials) -> WaeResult<AuthToken>;
-    async fn logout(&self, token: &str) -> WaeResult<()>;
-    async fn refresh_token(&self, refresh_token: &str) -> WaeResult<AuthToken>;
-    async fn validate_token(&self, token: &str) -> WaeResult<TokenValidation>;
-}
-
-pub trait StorageProvider: Send + Sync {
-    fn get_presigned_put_url(&self, key: &str, config: &StorageConfig) -> WaeResult<Url>;
-    fn sign_url(&self, path: &str, config: &StorageConfig) -> WaeResult<Url>;
-}
-```
-
-### 错误处理
-
-统一使用 `WaeResult<T>` 作为返回类型：
+引擎构建器，用于组合插件、配置运行时环境、最终构建并运行游戏引擎。
 
 ```rust
-pub type WaeResult<T> = Result<T, WaeError>;
+pub struct EngineBuilder {
+    // 内部字段
+}
 
-/// 错误分类
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ErrorCategory {
-    /// 验证错误 (400)
-    Validation,
-    /// 认证错误 (401)
-    Auth,
-    /// 权限错误 (403)
-    Permission,
-    /// 资源未找到 (404)
-    NotFound,
-    /// 请求冲突 (409)
-    Conflict,
-    /// 请求过多 (429)
-    RateLimited,
-    /// 网络/服务错误 (502/503)
-    Network,
-    /// 存储错误 (500)
-    Storage,
-    /// 数据库错误 (500)
-    Database,
-    /// 缓存错误 (500)
-    Cache,
-    /// 配置错误 (500)
-    Config,
-    /// 超时错误 (408/504)
-    Timeout,
-    /// 内部错误 (500)
-    Internal,
+impl EngineBuilder {
+    /// 创建新的引擎构建器
+    pub fn new() -> Self;
+    
+    /// 添加插件
+    pub fn add_plugin<P: Plugin>(mut self, plugin: P) -> Self;
+    
+    /// 启用编辑器模式
+    pub fn with_editor(mut self, enabled: bool) -> Self;
+    
+    /// 构建引擎
+    pub fn build(self) -> Engine;
 }
 ```
 
-## 后端模块 (wae-server)
+### Plugin trait
 
-All-in-one 入口包，导出所有后端模块：
-
-```rust
-pub use wae_ai as ai;
-pub use wae_config as config;
-#[cfg(any(feature = "database-turso", feature = "database-postgres", feature = "database-mysql"))]
-pub use wae_database as database;
-pub use wae_distributed as distributed;
-pub use wae_effect as effect;
-pub use wae_email as email;
-pub use wae_event as event;
-pub use wae_https as https;
-#[cfg(feature = "observability")]
-pub use wae_observability as observability;
-pub use wae_resilience as resilience;
-pub use wae_scheduler as scheduler;
-pub use wae_service as service;
-pub use wae_session as session;
-pub use wae_storage as storage;
-pub use wae_testing as testing;
-#[cfg(feature = "tools")]
-pub use wae_tools as tools;
-pub use wae_types as types;
-pub use wae_websocket as websocket;
-
-pub use types::{WaeError, WaeResult};
-```
-
-## 前端模块 (@wae/*)
-
-TypeScript/JavaScript 前端库：
-
-| 包名 | 说明 |
-|-----|------|
-| `@wae/core` | TypeScript 类型定义 |
-| `@wae/client` | HTTP 客户端 |
-| `@wae/auth` | 认证客户端 |
-| `@wae/websocket` | WebSocket 客户端 |
-| `@wae/storage` | 存储服务客户端 |
-
-### 使用示例
+插件是引擎功能的扩展单元，每个插件可以定义组件、系统、资源，并与 ECS 世界交互。
 
 ```rust
-// 使用 all-in-one
-use wae_server::{ai, storage, email, https, WaeError, WaeResult};
-
-// 或单独使用模块
-use wae_ai::{HunyuanProvider, ChatCapability};
-use wae_storage::{StorageService, StorageConfig};
-use wae_https::{HttpsServerBuilder, ApiResponse};
-use wae_resilience::{CircuitBreaker, CircuitBreakerConfig};
-use wae_scheduler::{CronScheduler, CronSchedulerConfig};
-use wae_authentication::{AuthService, AuthConfig, Credentials};
-use wae_websocket::{WebSocketServer, ServerConfig};
+pub trait Plugin {
+    /// 插件名称
+    fn name(&self) -> &'static str;
+    
+    /// 构建插件，注册组件、系统和资源
+    fn build(&self, app: &mut App);
+}
 ```
 
-## 模块概览
+### World
 
-### 核心模块
+世界是 ECS 的核心容器，存储所有实体、组件和资源。
+
+```rust
+pub struct World {
+    // 内部字段
+}
+
+impl World {
+    /// 创建空世界
+    pub fn new() -> Self;
+    
+    /// 生成新实体
+    pub fn spawn(&mut self) -> EntityBuilder;
+    
+    /// 获取实体引用
+    pub fn entity(&self, entity: Entity) -> EntityRef;
+    
+    /// 获取资源
+    pub fn get_resource<T: Resource>(&self) -> Option<&T>;
+    
+    /// 获取可变资源
+    pub fn get_resource_mut<T: Resource>(&mut self) -> Option<&mut T>;
+    
+    /// 插入资源
+    pub fn insert_resource<T: Resource>(&mut self, resource: T);
+}
+```
+
+### Entity
+
+实体是游戏对象的唯一标识符，本身不包含数据，只是一个轻量级的句柄。
+
+```rust
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Entity {
+    // 内部字段
+}
+
+impl Entity {
+    /// 实体 ID
+    pub fn id(self) -> u64;
+    
+    /// 实体生成版本
+    pub fn generation(self) -> u32;
+}
+```
+
+### Component
+
+组件是附加到实体上的数据，定义实体的行为和属性。
+
+```rust
+pub trait Component: Send + Sync + 'static {
+    // 可选：组件存储类型
+    type Storage: ComponentStorage;
+}
+
+/// 组件派生宏
+#[derive(Component)]
+struct Position {
+    x: f32,
+    y: f32,
+}
+
+#[derive(Component)]
+struct Velocity {
+    x: f32,
+    y: f32,
+}
+```
+
+### System
+
+系统是对组件数据进行操作的函数，定义游戏逻辑。
+
+```rust
+/// 系统 trait
+pub trait System: Send + Sync + 'static {
+    fn run(&mut self, world: &mut World);
+}
+
+/// 系统函数示例
+fn move_system(
+    mut query: Query<(&mut Position, &Velocity)>,
+) {
+    for (mut pos, vel) in query.iter_mut() {
+        pos.x += vel.x;
+        pos.y += vel.y;
+    }
+}
+```
+
+### Schedule
+
+调度器组织系统的执行顺序，支持并行调度。
+
+```rust
+pub struct Schedule {
+    // 内部字段
+}
+
+impl Schedule {
+    /// 添加系统
+    pub fn add_system<S: System>(&mut self, system: S);
+    
+    /// 添加系统到指定阶段
+    pub fn add_system_to_stage<S: System>(&mut self, stage: impl StageLabel, system: S);
+    
+    /// 运行调度器
+    pub fn run(&mut self, world: &mut World);
+}
+
+/// 内置执行阶段
+pub enum CoreStage {
+    /// 第一帧初始化
+    First,
+    /// 预更新
+    PreUpdate,
+    /// 更新
+    Update,
+    /// 后更新
+    PostUpdate,
+    /// 渲染前
+    PreRender,
+    /// 渲染
+    Render,
+    /// 最后
+    Last,
+}
+```
+
+### Resource
+
+资源是单例数据，存储全局状态。
+
+```rust
+pub trait Resource: Send + Sync + 'static {}
+
+/// 资源派生宏
+#[derive(Resource)]
+struct GameConfig {
+    screen_width: u32,
+    screen_height: u32,
+    title: String,
+}
+
+#[derive(Resource)]
+struct Time {
+    delta_seconds: f32,
+    elapsed_seconds: f32,
+}
+```
+
+## API 使用示例
+
+### 创建引擎
+
+```rust
+use gwg_engine::prelude::*;
+
+fn main() {
+    EngineBuilder::new()
+        .add_plugin(RenderPlugin::new_2d())
+        .add_plugin(AudioPlugin::default())
+        .add_plugin(UIPlugin::default())
+        .add_plugin(GalgamePlugin::new())
+        .with_editor(true)
+        .build()
+        .run();
+}
+```
+
+### 定义组件
+
+```rust
+use gwg_engine::prelude::*;
+
+/// 位置组件
+#[derive(Component, Debug, Clone, Copy)]
+pub struct Position {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl Position {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self { x, y }
+    }
+}
+
+/// 速度组件
+#[derive(Component, Debug, Clone, Copy)]
+pub struct Velocity {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl Velocity {
+    pub fn new(x: f32, y: f32) -> Self {
+        Self { x, y }
+    }
+}
+
+/// 精灵组件
+#[derive(Component)]
+pub struct Sprite {
+    pub texture: Handle<Texture>,
+    pub size: (f32, f32),
+    pub color: Color,
+}
+```
+
+### 编写系统
+
+```rust
+use gwg_engine::prelude::*;
+
+/// 移动系统
+pub fn move_system(
+    time: Res<Time>,
+    mut query: Query<(&mut Position, &Velocity)>,
+) {
+    let delta = time.delta_seconds();
+    for (mut pos, vel) in query.iter_mut() {
+        pos.x += vel.x * delta;
+        pos.y += vel.y * delta;
+    }
+}
+
+/// 输入系统
+pub fn input_system(
+    input: Res<Input>,
+    mut query: Query<&mut Velocity>,
+) {
+    let speed = 100.0;
+    for mut vel in query.iter_mut() {
+        vel.x = 0.0;
+        vel.y = 0.0;
+        
+        if input.key_pressed(KeyCode::W) || input.key_pressed(KeyCode::Up) {
+            vel.y = speed;
+        }
+        if input.key_pressed(KeyCode::S) || input.key_pressed(KeyCode::Down) {
+            vel.y = -speed;
+        }
+        if input.key_pressed(KeyCode::A) || input.key_pressed(KeyCode::Left) {
+            vel.x = -speed;
+        }
+        if input.key_pressed(KeyCode::D) || input.key_pressed(KeyCode::Right) {
+            vel.x = speed;
+        }
+    }
+}
+
+/// 渲染系统
+pub fn render_sprite_system(
+    mut renderer: ResMut<Renderer>,
+    camera: Res<Camera>,
+    query: Query<(&Position, &Sprite)>,
+) {
+    for (pos, sprite) in query.iter() {
+        renderer.draw_sprite(
+            &sprite.texture,
+            pos.x,
+            pos.y,
+            sprite.size.0,
+            sprite.size.1,
+            sprite.color,
+        );
+    }
+}
+```
+
+### 注册插件
+
+```rust
+use gwg_engine::prelude::*;
+
+/// 简单游戏插件
+pub struct SimpleGamePlugin;
+
+impl Plugin for SimpleGamePlugin {
+    fn name(&self) -> &'static str {
+        "SimpleGame"
+    }
+    
+    fn build(&self, app: &mut App) {
+        // 注册资源
+        app.insert_resource(GameConfig {
+            screen_width: 800,
+            screen_height: 600,
+            title: "简单游戏".to_string(),
+        });
+        
+        // 注册系统
+        app.add_system_to_stage(CoreStage::Update, input_system);
+        app.add_system_to_stage(CoreStage::Update, move_system);
+        app.add_system_to_stage(CoreStage::Render, render_sprite_system);
+        
+        // 初始化游戏
+        app.add_startup_system(setup);
+    }
+}
+
+/// 启动系统
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // 加载纹理
+    let texture = asset_server.load("player.png");
+    
+    // 生成玩家实体
+    commands.spawn((
+        Position::new(400.0, 300.0),
+        Velocity::new(0.0, 0.0),
+        Sprite {
+            texture,
+            size: (64.0, 64.0),
+            color: Color::WHITE,
+        },
+    ));
+    
+    // 生成相机
+    commands.spawn(Camera2d::default());
+}
+```
+
+## 模块 API 分类
+
+### 核心层 (Core)
 
 | 模块 | 说明 |
-|-----|------|
-| `wae-types` | 核心类型定义 (WaeError, WaeResult, ErrorCategory) |
-| `wae-config` | 配置管理 (ConfigLoader, load_config) |
-| `wae-https` | HTTP/HTTPS 服务 (HttpsServerBuilder, ApiResponse) |
-| `wae-database` | 数据库 ORM (条件编译) |
-| `wae-crypto` | 加密工具 (hash, hmac, password, totp) |
+|------|------|
+| `gwg_core::ecs` | ECS 核心（基于 bevy_ecs） |
+| `gwg_core::asset` | 资源管理系统（加载、缓存、句柄） |
+| `gwg_core::schedule` | 系统调度器扩展 |
+| `gwg_core::world` | 世界管理 |
+| `gwg_core::reflection` | 反射系统 |
 
-### 服务模块
-
-| 模块 | 说明 |
-|-----|------|
-| `wae-service` | 服务发现与注册 (ServiceRegistry, ServiceDiscovery, LoadBalancer) |
-| `wae-websocket` | WebSocket 服务 (WebSocketServer, WebSocketClient) |
-| `wae-storage` | 对象存储服务 (StorageService, StorageProvider) |
-| `wae-email` | 邮件服务 (SmtpEmailProvider, SendmailEmailProvider) |
-| `wae-ai` | AI 服务抽象 (ChatCapability, TextToImageCapability) |
-| `wae-search` | 搜索服务 (Elasticsearch, OpenSearch) |
-
-### 基础设施模块
+### 平台抽象层 (Platform Abstraction)
 
 | 模块 | 说明 |
-|-----|------|
-| `wae-resilience` | 弹性容错 (CircuitBreaker, RateLimiter, Retry, Timeout, Bulkhead) |
-| `wae-scheduler` | 任务调度器 (CronScheduler, IntervalScheduler, DelayedQueue) |
-| `wae-event` | 事件驱动 |
-| `wae-queue` | 消息队列 |
-| `wae-distributed` | 分布式支持 |
-| `wae-observability` | 可观测性 (logging, metrics, tracing, health) |
-| `wae-monitoring` | 监控服务 |
+|------|------|
+| `gwg_platform::window` | 窗口管理（winit 封装） |
+| `gwg_platform::input` | 输入抽象（键盘、鼠标、触摸、手柄） |
+| `gwg_platform::graphics` | 图形抽象（wgpu 封装） |
+| `gwg_platform::audio` | 音频抽象 |
+| `gwg_platform::filesystem` | 文件系统抽象（AssetIo trait） |
+| `gwg_platform::time` | 时间抽象 |
 
-### 认证模块
-
-| 模块 | 说明 |
-|-----|------|
-| `wae-authentication` | 认证服务 (JWT, OAuth2, SAML, TOTP) |
-| `wae-session` | Session 管理 (Session, SessionStore, SessionLayer) |
-
-### 开发工具模块
+### 运行时层 (Runtime)
 
 | 模块 | 说明 |
-|-----|------|
-| `wae-testing` | 测试支持 |
-| `wae-tools` | 开发工具 (迁移、自动迁移) |
-| `wae-macros` | 过程宏 |
-| `wae-schema` | Schema 定义 |
-| `wae-request` | HTTP 客户端 |
-| `wae-effect` | 副作用管理 |
-| `wae-cache` | 缓存服务 |
+|------|------|
+| `gwg_runtime::app` | 应用生命周期管理 |
+| `gwg_runtime::scene` | 场景管理 |
+| `gwg_runtime::prefab` | 预制体系统 |
+| `gwg_runtime::serialization` | 序列化 |
+
+### 虚拟机层 (VM)
+
+| 模块 | 说明 |
+|------|------|
+| `gwg_vm::core` | 虚拟机核心接口 |
+| `gwg_vm::wasmtime` | Wasmtime 后端（桌面） |
+| `gwg_vm::wasmi` | 轻量级解释器后端（嵌入式） |
+| `gwg_vm::api` | 暴露给脚本的 Rust API |
+| `gwg_vm::bindings` | 语言绑定生成 |
+
+### 引擎插件框架 (Engine)
+
+| 模块 | 说明 |
+|------|------|
+| `gwg_engine::plugin` | 插件 trait 定义 |
+| `gwg_engine::registry` | 插件注册表 |
+| `gwg_engine::builder` | 引擎构建器 |
+| `gwg_engine::manifest` | 引擎清单处理 |
+
+### 编辑器框架 (Editor)
+
+| 模块 | 说明 |
+|------|------|
+| `gwg_editor::ui` | 编辑器 UI 组件（egui） |
+| `gwg_editor::inspector` | 属性编辑器 |
+| `gwg_editor::scene_view` | 场景视图 |
+| `gwg_editor::asset_browser` | 资源浏览器 |
+| `gwg_editor::plugin` | 编辑器插件系统 |
+
+### 内置功能模块 (Modules)
+
+| 模块 | 说明 |
+|------|------|
+| `gwg_modules::rendering` | 渲染模块（2D/3D、精灵、文本、相机） |
+| `gwg_modules::physics` | 物理模块（2D/3D、碰撞检测、Rapier） |
+| `gwg_modules::animation` | 动画模块（精灵动画、变换动画、状态机） |
+| `gwg_modules::audio` | 音频模块（播放器、混音器、空间音频） |
+| `gwg_modules::ui` | UI 模块（核心、控件、布局、交互） |
+| `gwg_modules::input` | 输入模块（键盘、鼠标、触摸、手柄、映射） |
+| `gwg_modules::network` | 网络模块（核心、客户端、服务器、同步） |
 
 ## 命名约定
 
 | 类型 | 命名 | 示例 |
-|-----|------|------|
-| Trait | XxxCapability / XxxProvider / XxxService | ChatCapability, StorageProvider, AuthService |
-| Struct | XxxConfig / XxxParams | AiConfig, TextToImageParams, StorageConfig |
-| Enum | XxxType / XxxError / XxxState | StorageProviderType, WaeErrorKind, CircuitState |
-| Result | XxxResult | AiResult, StorageResult, WaeResult |
-| 错误 | XxxError | WaeError, WebSocketError, ConfigError |
-| Builder | XxxBuilder | HttpsServerBuilder, ResiliencePipelineBuilder |
-
-## HTTP API
-
-### 统一响应结构
-
-```rust
-pub struct ApiResponse<T> {
-    pub success: bool,
-    pub data: Option<T>,
-    pub error: Option<ApiErrorBody>,
-    pub trace_id: Option<String>,
-}
-
-pub struct ApiErrorBody {
-    pub code: String,
-    pub message: String,
-}
-```
-
-### 创建响应
-
-```rust
-// 成功响应
-let response = ApiResponse::success(user_data);
-let response = ApiResponse::success_with_trace(user_data, "trace-123");
-
-// 错误响应
-let response = ApiResponse::error("INVALID_PARAMS", "参数无效");
-let response = ApiResponse::error_with_trace("NOT_FOUND", "用户不存在", "trace-123");
-```
-
-### JSON 响应示例
-
-```json
-{
-    "success": true,
-    "data": {
-        "id": "user-001",
-        "username": "alice"
-    },
-    "error": null,
-    "trace_id": "trace-123"
-}
-```
-
-```json
-{
-    "success": false,
-    "data": null,
-    "error": {
-        "code": "NOT_FOUND",
-        "message": "用户不存在"
-    },
-    "trace_id": "trace-123"
-}
-```
-
-## 前端 API
-
-### HTTP 客户端
-
-```typescript
-import { createHttpClient, type ApiResponse } from "@wae/client";
-
-const client = createHttpClient({
-    baseUrl: "http://localhost:3000",
-    timeout: 30000,
-    maxRetries: 3,
-    retryDelay: 1000,
-});
-
-// GET 请求
-const response: ApiResponse<UserData> = await client.get("/users/1");
-
-// POST 请求
-const response: ApiResponse<UserData> = await client.post("/users", {
-    username: "alice",
-    email: "alice@example.com",
-});
-
-// 检查响应
-if (response.success && response.data) {
-    console.log(response.data);
-} else {
-    console.error(response.error?.message);
-}
-```
-
-### 认证客户端
-
-```typescript
-import { createAuthClient } from "@wae/auth";
-
-const auth = createAuthClient({
-    baseUrl: "http://localhost:3000",
-    tokenKey: "access_token",
-    refreshTokenKey: "refresh_token",
-});
-
-// 登录
-const token = await auth.login({
-    identifier: "user@example.com",
-    password: "password",
-});
-
-// 获取状态
-const state = auth.getState();
-console.log(state.isAuthenticated, state.user);
-
-// 订阅状态变化
-const unsubscribe = auth.subscribe((state) => {
-    console.log("Auth state changed:", state);
-});
-
-// 登出
-await auth.logout();
-```
-
-### WebSocket 客户端
-
-```typescript
-import { createWebSocketClient } from "@wae/websocket";
-
-const ws = createWebSocketClient({
-    url: "ws://localhost:8080",
-    reconnectInterval: 5000,
-    heartbeatInterval: 30000,
-    maxReconnectAttempts: 0,
-});
-
-// 连接
-await ws.connect();
-
-// 发送消息
-ws.sendText("Hello");
-ws.sendJson({ type: "chat", message: "Hello" });
-ws.sendBinary(new Uint8Array([1, 2, 3]));
-
-// 订阅事件
-ws.on("message", (data) => {
-    console.log("Received:", data.message);
-});
-
-ws.on("disconnect", (data) => {
-    console.log("Disconnected:", data.reason);
-});
-
-// 房间管理
-ws.joinRoom("room-1");
-ws.leaveRoom("room-1");
-```
-
-### 存储客户端
-
-```typescript
-import { createStorageClient } from "@wae/storage";
-
-const storage = createStorageClient({
-    baseUrl: "http://localhost:3000",
-});
-
-// 上传文件
-const result = await storage.uploadFile(file, "uploads/test.jpg", (progress) => {
-    console.log(`Progress: ${progress.percentage}%`);
-});
-
-console.log("Access URL:", result.accessUrl);
-
-// 下载文件
-const blob = await storage.downloadFile("uploads/test.jpg");
-const text = await storage.downloadAsText("uploads/test.txt");
-const json = await storage.downloadAsJson("uploads/data.json");
-
-// 获取签名 URL
-const signedUrl = await storage.getSignedUrl("uploads/test.jpg", 3600);
-```
-
-## 最佳实践
-
-### 配置管理
-
-```rust
-use wae_config::ConfigLoader;
-use serde::Deserialize;
-
-#[derive(Deserialize)]
-struct AppConfig {
-    listen_addr: String,
-    ai: AiConfig,
-    storage: StorageConfig,
-}
-
-impl AppConfig {
-    pub async fn load() -> Result<Self, WaeError> {
-        ConfigLoader::new()
-            .with_toml("config.toml")
-            .with_env("APP_")
-            .extract()
-    }
-}
-```
-
-### 错误处理
-
-```rust
-use wae_server::WaeError;
-
-async fn handle_request() -> Result<(), WaeError> {
-    let result = provider.chat(&params, &config).await?;
-    Ok(())
-}
-```
-
-### 弹性容错
-
-```rust
-use wae_resilience::{CircuitBreaker, CircuitBreakerConfig, RetryConfig, retry_async};
-
-let circuit_breaker = CircuitBreaker::new(CircuitBreakerConfig::default());
-
-let result = retry_async(
-    || async {
-        circuit_breaker.execute(|| async {
-            some_external_service().await
-        }).await
-    },
-    RetryConfig::default(),
-).await?;
-```
-
-### 任务调度
-
-```rust
-use wae_scheduler::{CronScheduler, CronSchedulerConfig};
-
-let scheduler = CronScheduler::new(CronSchedulerConfig::default());
-scheduler.schedule("0 0 * * * *", my_task).await?;
-scheduler.start().await?;
-```
-
-### WebSocket 服务端
-
-```rust
-use wae_websocket::{WebSocketServer, ServerConfig, ClientHandler, Connection, Message};
-
-struct MyHandler;
-
-impl ClientHandler for MyHandler {
-    async fn on_connect(&self, conn: &Connection) -> WaeResult<()> {
-        println!("Client connected: {}", conn.id);
-        Ok(())
-    }
-
-    async fn on_message(&self, conn: &Connection, msg: Message) -> WaeResult<()> {
-        println!("Received: {:?}", msg);
-        Ok(())
-    }
-
-    async fn on_disconnect(&self, conn: &Connection) {
-        println!("Client disconnected: {}", conn.id);
-    }
-}
-
-let server = WebSocketServer::new(ServerConfig::default());
-server.start(MyHandler).await?;
-```
-
-### 可观测性
-
-```rust
-use wae_observability::{logging, metrics, tracing};
-
-// 初始化日志
-logging::init();
-
-// 初始化指标
-metrics::init();
-
-// 初始化追踪
-tracing::init();
-```
-
-### 数据库操作
-
-```rust
-use wae_database::{ConnectionPool, QueryBuilder};
-
-// 执行查询
-let users = pool.query("SELECT * FROM users WHERE active = ?", &[true]).await?;
-
-// 使用 ORM
-let user = User::find_by_id(pool, 1).await?;
-let users = User::find_all(pool).await?;
-```
+|------|------|------|
+| Trait | Xxx | Plugin, Component, Resource, System |
+| Struct | Xxx | EngineBuilder, World, Entity, Position |
+| Enum | Xxx | CoreStage, KeyCode, Color |
+| 资源 | Xxx（实现 Resource trait） | GameConfig, Time, Input |
+| 组件 | Xxx（实现 Component trait） | Position, Velocity, Sprite |
+| 系统 | xxx_system | move_system, input_system, render_system |
+| 插件 | XxxPlugin | RenderPlugin, AudioPlugin, GalgamePlugin |
+| Builder | XxxBuilder | EngineBuilder, ScheduleBuilder |
+| Handle | Handle&lt;Xxx&gt; | Handle&lt;Texture&gt;, Handle&lt;Audio&gt; |
+| Query | Query&lt;...&gt; | Query&lt;(&amp;mut Position, &amp;Velocity)&gt; |
+| Res | Res&lt;Xxx&gt; / ResMut&lt;Xxx&gt; | Res&lt;Time&gt;, ResMut&lt;Renderer&gt; |
+| Commands | Commands | 用于生成/销毁实体、插入/移除组件 |
+
+### 模块命名
+
+- 小写单词，用下划线分隔：`gwg_core`, `gwg_platform`, `gwg_modules::rendering`
+- 避免缩写，除非是广泛认可的（如 `ecs`, `vm`）
+
+### 函数命名
+
+- 小写单词，用下划线分隔：`spawn`, `get_resource`, `add_system`
+- 布尔查询函数用 `is_` 或 `has_` 前缀：`is_empty`, `has_component`
+- 转换函数用 `to_` 或 `into_` 前缀：`to_string`, `into_inner`
+
+### 常量命名
+
+- 全大写，用下划线分隔：`MAX_ENTITIES`, `DEFAULT_SCREEN_WIDTH`

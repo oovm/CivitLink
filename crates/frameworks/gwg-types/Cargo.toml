@@ -1,0 +1,9 @@
+[package]
+name = "gwg-types"
+version = "0.1.0"
+edition = "2021"
+description = "GWG Engine 基础类型系统"
+license = "MIT"
+
+[dependencies]
+thiserror = { workspace = true }

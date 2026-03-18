@@ -1,0 +1,11 @@
+[package]
+name = "gwg-ecs"
+version = "0.1.0"
+edition = "2021"
+description = "GWG Engine ECS 核心实现"
+license = "MIT"
+
+[dependencies]
+gwg-types = { path = "../gwg-types", version = "0.1.0" }
+thiserror = { workspace = true }
+parking_lot = { workspace = true }

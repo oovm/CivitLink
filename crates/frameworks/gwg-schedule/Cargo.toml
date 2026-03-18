@@ -1,0 +1,10 @@
+[package]
+name = "gwg-schedule"
+version = "0.1.0"
+edition = "2021"
+description = "GWG Engine 调度器扩展"
+license = "MIT"
+
+[dependencies]
+gwg-ecs = { path = "../ecs", version = "0.1.0" }
+bevy_ecs = "0.15"
