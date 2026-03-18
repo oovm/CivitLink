@@ -6,5 +6,5 @@ description = "GWG Engine 反射系统"
 license = "MIT"
 
 [dependencies]
-bevy_reflect = { workspace = true }
-anyhow = { workspace = true }
+gwg-types = { path = "../gwg-types", version = "0.1.0" }
+thiserror = { workspace = true }

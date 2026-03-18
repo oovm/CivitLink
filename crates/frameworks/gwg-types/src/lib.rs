@@ -3,7 +3,7 @@
 //! 提供实体 ID、组件 trait、资源 trait 等核心抽象。
 
 use std::any::TypeId;
-use std::fmt;
+use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 
 /// 实体 ID，用于唯一标识游戏世界中的实体
@@ -34,7 +34,7 @@ impl Entity {
     }
 
     /// 创建一个占位符实体（索引为 0，代数为 0）
-    pub const fn PLACEHOLDER: Self = Self::new(0, 0);
+    pub const PLACEHOLDER: Entity = Entity::new(0, 0);
 }
 
 impl Hash for Entity {

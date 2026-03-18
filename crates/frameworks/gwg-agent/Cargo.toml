@@ -1,0 +1,9 @@
+[package]
+name = "gwg-agent"
+version = "0.1.0"
+edition = "2021"
+description = "GWG Engine 子代理框架"
+license = "MIT"
+
+[dependencies]
+thiserror = { workspace = true }

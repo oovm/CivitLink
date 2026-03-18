@@ -8,7 +8,7 @@ use std::ptr::{self, NonNull};
 
 use gwg_types::prelude::*;
 
-/// 组件列，存储同一类型的所有组件实例
+/// 动态组件列，存储任意类型的组件
 pub struct ComponentColumn {
     /// 组件类型 ID
     type_id: TypeId,
@@ -24,6 +24,8 @@ pub struct ComponentColumn {
     capacity: usize,
     /// 长度（组件数量）
     len: usize,
+    /// drop 函数指针
+    drop_fn: Option<unsafe fn(*mut u8, usize)>,
 }
 
 impl ComponentColumn {
@@ -37,6 +39,19 @@ impl ComponentColumn {
             data: NonNull::dangling(),
             capacity: 0,
             len: 0,
+            drop_fn: Some(Self::drop_impl::<T>),
+        }
+    }
+
+    /// drop 实现
+    unsafe fn drop_impl<T>(ptr: *mut u8, len: usize) {
+        let size = std::mem::size_of::<T>();
+        if size == 0 {
+            return;
+        }
+        for i in 0..len {
+            let item_ptr = ptr.add(i * size) as *mut T;
+            std::ptr::drop_in_place(item_ptr);
         }
     }
 
@@ -67,20 +82,17 @@ impl ComponentColumn {
         }
 
         let new_capacity = new_capacity.max(8).max(self.capacity * 2);
+        if self.size == 0 {
+            self.capacity = new_capacity;
+            return;
+        }
+
         let layout = Layout::from_size_align(new_capacity * self.size, self.align).unwrap();
 
-        let new_data = unsafe {
-            if self.capacity == 0 {
-                alloc(layout)
-            } else {
-                let old_layout = Layout::from_size_align(self.capacity * self.size, self.align).unwrap();
-                alloc(layout)
-            }
-        };
-
+        let new_data = unsafe { alloc(layout) };
         let new_data = NonNull::new(new_data).expect("allocation failed");
 
-        if self.capacity > 0 {
+        if self.capacity > 0 && self.len > 0 {
             unsafe {
                 ptr::copy_nonoverlapping(
                     self.data.as_ptr(),
@@ -96,21 +108,53 @@ impl ComponentColumn {
         self.capacity = new_capacity;
     }
 
+    /// 确保长度足够
+    pub fn ensure_len(&mut self, new_len: usize) {
+        if new_len > self.len {
+            self.ensure_capacity(new_len);
+            
+            if self.size > 0 {
+                unsafe {
+                    for i in self.len..new_len {
+                        let ptr = self.data.as_ptr().add(i * self.size);
+                        ptr::write_bytes(ptr, 0, self.size);
+                    }
+                }
+            }
+            self.len = new_len;
+        }
+    }
+
     /// 推入一个组件
     pub fn push<T: Component>(&mut self, component: T) {
         debug_assert_eq!(TypeId::of::<T>(), self.type_id);
         self.ensure_capacity(self.len + 1);
 
-        unsafe {
-            let ptr = self.data.as_ptr().add(self.len * self.size) as *mut T;
-            ptr.write(component);
+        if self.size > 0 {
+            unsafe {
+                let ptr = self.data.as_ptr().add(self.len * self.size) as *mut T;
+                ptr.write(component);
+            }
         }
         self.len += 1;
     }
 
+    /// 设置指定位置的组件
+    pub fn set<T: Component>(&mut self, index: usize, component: T) {
+        debug_assert_eq!(TypeId::of::<T>(), self.type_id);
+        debug_assert!(index < self.len);
+
+        if self.size > 0 {
+            unsafe {
+                let ptr = self.data.as_ptr().add(index * self.size) as *mut T;
+                ptr.write(component);
+            }
+        }
+    }
+
     /// 获取组件引用
     pub fn get<T: Component>(&self, index: usize) -> Option<&T> {
-        if index >= self.len || TypeId::of::<T>() != self.type_id {
+        if index >= self.len || TypeId::of::<T>() != self.type_id || self.size == 0 {
             return None;
         }
 
@@ -122,7 +166,7 @@ impl ComponentColumn {
 
     /// 获取组件可变引用
     pub fn get_mut<T: Component>(&mut self, index: usize) -> Option<&mut T> {
-        if index >= self.len || TypeId::of::<T>() != self.type_id {
+        if index >= self.len || TypeId::of::<T>() != self.type_id || self.size == 0 {
             return None;
         }
 
@@ -134,7 +178,7 @@ impl ComponentColumn {
 
     /// 移除并返回最后一个组件
     pub fn pop<T: Component>(&mut self) -> Option<T> {
-        if self.len == 0 || TypeId::of::<T>() != self.type_id {
+        if self.len == 0 || TypeId::of::<T>() != self.type_id || self.size == 0 {
             return None;
         }
 
@@ -147,7 +191,7 @@ impl ComponentColumn {
 
     /// 交换移除（将最后一个元素移到指定位置）
     pub fn swap_remove(&mut self, index: usize) {
-        if index >= self.len {
+        if index >= self.len || self.size == 0 {
             return;
         }
 
@@ -163,10 +207,11 @@ impl ComponentColumn {
 
     /// 将指定位置的组件移动到另一个列
     pub fn move_to(&mut self, index: usize, other: &mut Self) {
-        if index >= self.len || self.type_id != other.type_id {
+        if index >= self.len || self.type_id != other.type_id || self.size == 0 {
             return;
         }
 
+        other.ensure_capacity(other.len + 1);
         unsafe {
             let src = self.data.as_ptr().add(index * self.size);
             let dst = other.data.as_ptr().add(other.len * self.size);
@@ -179,9 +224,14 @@ impl ComponentColumn {
 
 impl Drop for ComponentColumn {
     fn drop(&mut self) {
-        if self.capacity > 0 {
+        if self.capacity > 0 && self.size > 0 {
+            if let Some(drop_fn) = self.drop_fn {
+                unsafe {
+                    drop_fn(self.data.as_ptr(), self.len);
+                }
+            }
+            let layout = Layout::from_size_align(self.capacity * self.size, self.align).unwrap();
             unsafe {
-                let layout = Layout::from_size_align(self.capacity * self.size, self.align).unwrap();
                 dealloc(self.data.as_ptr(), layout);
             }
         }

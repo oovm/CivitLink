@@ -1,12 +1,10 @@
 [package]
-name = "gwg-vm"
+name = "gwg-platform"
 version = "0.1.0"
 edition = "2021"
-description = "GWG Engine 虚拟机"
+description = "GWG Engine 平台抽象层"
 license = "MIT"
 
 [dependencies]
 gwg-types = { path = "../../frameworks/gwg-types", version = "0.1.0" }
-gwg-ecs = { path = "../../frameworks/gwg-ecs", version = "0.1.0" }
-gwg-ir = { path = "../gwg-ir", version = "0.1.0" }
 thiserror = { workspace = true }

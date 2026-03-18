@@ -9,7 +9,7 @@ use gwg_reflection::prelude::*;
 /// 游戏世界，整合 ECS 世界、资源服务器和反射注册表
 pub struct GameWorld {
     /// ECS 世界
-    pub ecs_world: GwgWorld,
+    pub ecs_world: World,
     /// 资源服务器
     pub asset_server: AssetServer,
     /// 反射注册表
@@ -24,7 +24,7 @@ impl GameWorld {
     /// 创建一个新的游戏世界
     pub fn new(name: String) -> Self {
         Self {
-            ecs_world: GwgWorld::new(),
+            ecs_world: World::new(),
             asset_server: AssetServer::new(),
             reflection_registry: ReflectionRegistry::new(),
             name,
@@ -45,14 +45,14 @@ impl GameWorld {
     /// 销毁世界
     pub fn destroy(&mut self) {
         if !self.is_destroyed {
-            self.ecs_world = GwgWorld::new();
+            self.ecs_world.clear();
             self.is_destroyed = true;
         }
     }
 
     /// 清空世界中的所有实体和资源
     pub fn clear(&mut self) {
-        self.ecs_world = GwgWorld::new();
+        self.ecs_world.clear();
         self.asset_server.cache().clear();
     }
 
@@ -67,28 +67,28 @@ impl GameWorld {
     }
 
     /// 获取 ECS 世界中的全局资源的可变引用
-    pub fn get_resource_mut<T: Resource>(&mut self) -> Option<Mut<'_, T>> {
+    pub fn get_resource_mut<T: Resource>(&mut self) -> Option<&mut T> {
         self.ecs_world.get_resource_mut()
     }
 
     /// 生成一个新实体
-    pub fn spawn(&mut self) -> EntityWorldMut<'_> {
-        self.ecs_world.spawn()
+    pub fn spawn_empty(&mut self) -> Entity {
+        self.ecs_world.spawn_empty()
     }
 
     /// 根据 ID 获取实体
-    pub fn entity(&self, entity: Entity) -> EntityRef<'_> {
+    pub fn entity(&self, entity: Entity) -> Option<EntityRef<'_>> {
         self.ecs_world.entity(entity)
     }
 
     /// 根据 ID 获取实体的可变引用
-    pub fn entity_mut(&mut self, entity: Entity) -> EntityWorldMut<'_> {
+    pub fn entity_mut(&mut self, entity: Entity) -> Option<EntityMut<'_>> {
         self.ecs_world.entity_mut(entity)
     }
 
     /// 销毁指定的实体
-    pub fn despawn(&mut self, entity: Entity) {
-        self.ecs_world.despawn(entity);
+    pub fn despawn(&mut self, entity: Entity) -> bool {
+        self.ecs_world.despawn(entity)
     }
 }
 

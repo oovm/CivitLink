@@ -82,16 +82,15 @@ edition = "2021"
 
 [dependencies]
 # 核心框架
-gwg-core = { path = "../../crates/frameworks/gwg-core" }
-gwg-platform = { path = "../../crates/platforms" }
-gwg-runtime = { path = "../../crates/runtime" }
-gwg-engine = { path = "../../crates/engine" }
+gwg-ecs = { path = "../../crates/frameworks/gwg-ecs" }
+gwg-asset = { path = "../../crates/frameworks/gwg-asset" }
+gwg-world = { path = "../../crates/frameworks/gwg-world" }
+gwg-schedule = { path = "../../crates/frameworks/gwg-schedule" }
+gwg-reflection = { path = "../../crates/frameworks/gwg-reflection" }
 
-# 内置模块
-gwg-modules-rendering = { path = "../../crates/modules/rendering" }
-gwg-modules-audio = { path = "../../crates/modules/audio" }
-gwg-modules-ui = { path = "../../crates/modules/ui" }
-gwg-modules-input = { path = "../../crates/modules/input" }
+# 运行时
+gwg-vm = { path = "../../crates/runtime/gwg-vm" }
+gwg-ir = { path = "../../crates/runtime/gwg-ir" }
 
 # 工具库
 tokio = { version = "1", features = ["full"] }

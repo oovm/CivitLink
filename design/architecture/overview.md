@@ -146,139 +146,28 @@ gwg-engine/
 │   └── meta-build/                # 引擎构建工具
 │
 ├── crates/                         # 第一层：功能领域
-│   ├── core/                       # 核心框架层
-│   │   ├── ecs/                    # ECS核心封装 (基于bevy_ecs)
-│   │   ├── asset/                  # 资源管理系统
-│   │   ├── schedule/               # 系统调度器扩展
-│   │   ├── world/                  # 世界管理
-│   │   └── reflection/             # 反射系统
+│   ├── frameworks/                 # 核心框架层
+│   │   ├── gwg-ecs/                # ECS核心封装 (基于bevy_ecs)
+│   │   ├── gwg-asset/              # 资源管理系统
+│   │   ├── gwg-schedule/           # 系统调度器扩展
+│   │   ├── gwg-world/              # 世界管理
+│   │   ├── gwg-reflection/         # 反射系统
+│   │   ├── gwg-types/              # 类型定义
+│   │   └── gwg-macros/             # 宏定义
 │   │
-│   ├── platform/                    # 平台抽象层
-│   │   ├── window/                  # 窗口管理 (winit封装)
-│   │   ├── input/                   # 输入抽象
-│   │   ├── graphics/                # 图形抽象 (wgpu封装)
-│   │   ├── audio/                   # 音频抽象
-│   │   ├── filesystem/              # 文件系统抽象
-│   │   └── time/                    # 时间抽象
-│   │
-│   ├── runtime/                      # 运行时层
-│   │   ├── app/                      # 应用生命周期
-│   │   ├── scene/                    # 场景管理
-│   │   ├── prefab/                   # 预制体系统
-│   │   └── serialization/            # 序列化
-│   │
-│   ├── vm/                            # 虚拟机层
-│   │   ├── core/                      # 虚拟机核心接口
-│   │   ├── wasmtime/                  # wasmtime后端
-│   │   ├── wasmi/                      # 轻量级解释器后端
-│   │   ├── api/                        # 暴露给脚本的Rust API
-│   │   └── bindings/                   # 语言绑定生成
-│   │
-│   ├── engine/                         # 引擎插件框架
-│   │   ├── plugin/                      # 插件trait定义
-│   │   ├── registry/                    # 插件注册表
-│   │   ├── builder/                      # 引擎构建器
-│   │   └── manifest/                     # 引擎清单处理
-│   │
-│   ├── editor/                          # 编辑器框架
-│   │   ├── ui/                           # 编辑器UI组件 (egui)
-│   │   ├── inspector/                     # 属性编辑器
-│   │   ├── scene-view/                     # 场景视图
-│   │   ├── asset-browser/                   # 资源浏览器
-│   │   └── plugin/                          # 编辑器插件系统
-│   │
-│   ├── modules/                          # 内置功能模块
-│   │   ├── rendering/                      # 渲染模块
-│   │   │   ├── core/                         # 渲染核心
-│   │   │   ├── 2d/                            # 2D渲染
-│   │   │   ├── 3d/                            # 3D渲染
-│   │   │   ├── sprite/                         # 精灵系统
-│   │   │   ├── text/                           # 文本渲染
-│   │   │   └── camera/                         # 相机系统
-│   │   │
-│   │   ├── physics/                        # 物理模块
-│   │   │   ├── 2d/                            # 2D物理
-│   │   │   ├── 3d/                            # 3D物理
-│   │   │   ├── collision/                      # 碰撞检测
-│   │   │   └── rapier/                         # Rapier物理后端
-│   │   │
-│   │   ├── animation/                       # 动画模块
-│   │   │   ├── core/                          # 动画核心
-│   │   │   ├── sprite/                        # 精灵动画
-│   │   │   ├── transform/                      # 变换动画
-│   │   │   └── state-machine/                  # 状态机
-│   │   │
-│   │   ├── audio/                           # 音频模块
-│   │   │   ├── player/                        # 播放器
-│   │   │   ├── mixer/                         # 混音器
-│   │   │   └── spatial/                       # 空间音频
-│   │   │
-│   │   ├── ui/                              # UI模块
-│   │   │   ├── core/                          # UI核心
-│   │   │   ├── widgets/                       # 基础控件
-│   │   │   ├── layout/                        # 布局系统
-│   │   │   └── interaction/                    # 交互处理
-│   │   │
-│   │   ├── input/                           # 输入模块
-│   │   │   ├── keyboard/                      # 键盘
-│   │   │   ├── mouse/                         # 鼠标
-│   │   │   ├── touch/                         # 触摸
-│   │   │   ├── gamepad/                       # 手柄
-│   │   │   └── mapping/                       # 输入映射
-│   │   │
-│   │   └── network/                         # 网络模块（可选）
-│   │       ├── core/                          # 网络核心
-│   │       ├── client/                        # 客户端
-│   │       ├── server/                        # 服务器
-│   │       └── sync/                          # 同步机制
-│   │
-│   ├── platforms/                          # 平台特定实现
-│   │   ├── desktop/                          # 桌面通用
-│   │   ├── windows/                          # Windows特定
-│   │   ├── macos/                            # macOS特定
-│   │   ├── linux/                            # Linux特定
-│   │   ├── ios/                              # iOS特定
-│   │   ├── android/                          # Android特定
-│   │   ├── web/                              # WebAssembly通用
-│   │   │   ├── h5/                             # 普通H5
-│   │   │   └── wechat/                         # 微信小游戏适配
-│   │   └── common/                           # 平台公共代码
-│   │
-│   └── examples/                            # 示例引擎
-│       ├── galgame/                           # Galgame引擎示例
-│       ├── stg/                                # 飞机大战引擎示例
-│       ├── platformer/                         # 横版闯关示例
-│       └── minimal/                            # 最小引擎示例
+│   ├── runtime/                     # 运行时层
+│   │   ├── gwg-ir/                  # 中间表示
+│   │   └── gwg-vm/                  # 虚拟机
 │
-└── bins/                                    # 最终生成的可执行文件（构建输出）
-    ├── galgame-editor.exe
-    ├── galgame-runner.exe
-    ├── stg-editor.exe
-    └── ...
+└── bins/                           # 最终生成的可执行文件（构建输出）
 ```
 
 ## 模块依赖关系图
 
 ```
-core
-├── ecs
-├── asset
-└── reflection
+frameworks (ecs/asset/schedule/world/reflection)
     ↓
-platform (各抽象层)
-    ↓
-runtime (整合平台与核心)
-    ↓
-modules (功能模块，相互可组合)
-    ├── rendering
-    ├── physics
-    ├── audio
-    ├── ui
-    └── ...
-    ↓
-engine (插件框架，整合模块)
-    ↓
-editor (编辑器框架，依赖engine和modules)
+runtime (ir/vm)
 ```
 
 ## 设计原则

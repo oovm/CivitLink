@@ -1,10 +1,30 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/*",
+    "crates/frameworks/gwg-asset",
+    "crates/frameworks/gwg-ecs",
+    "crates/frameworks/gwg-macros",
+    "crates/frameworks/gwg-reflection",
+    "crates/frameworks/gwg-schedule",
+    "crates/frameworks/gwg-types",
+    "crates/frameworks/gwg-world",
+    "crates/frameworks/gwg-agent",
+    "crates/frameworks/gwg-verification",
+    "crates/frameworks/gwg-dependency",
+    "crates/runtime/gwg-ir",
+    "crates/runtime/gwg-vm",
+    "crates/platforms/gwg-platform",
+    "crates/platforms/gwg-runtime-h5",
+    "crates/tools/sync-dev",
 ]
 default-members = [
-    "crates/framework/*",
+    "crates/frameworks/gwg-asset",
+    "crates/frameworks/gwg-ecs",
+    "crates/frameworks/gwg-macros",
+    "crates/frameworks/gwg-reflection",
+    "crates/frameworks/gwg-schedule",
+    "crates/frameworks/gwg-types",
+    "crates/frameworks/gwg-world",
 ]
 
 [workspace.package]

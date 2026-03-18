@@ -1,6 +1,6 @@
 # GWG 设计文档重写 - The Implementation Plan (Decomposed and Prioritized Task List)
 
-## [ ] Task 1: 重写首页文档 (design/index.md)
+## [x] Task 1: 重写首页文档 (design/index.md)
 - **Priority**: P0
 - **Depends On**: None
 - **Description**: 
@@ -13,7 +13,7 @@
   - `human-judgement` TR-1.2: 导航链接正确指向各文档页面
 - **Notes**: 参考现有首页和四个 whitebook 的内容
 
-## [ ] Task 2: 重写架构概览文档 (design/architecture/overview.md)
+## [x] Task 2: 重写架构概览文档 (design/architecture/overview.md)
 - **Priority**: P0
 - **Depends On**: None
 - **Description**: 
@@ -27,7 +27,7 @@
   - `human-judgement` TR-2.3: 包含模块依赖关系图
 - **Notes**: 现有架构文档已有部分内容，需要完善和整合
 
-## [ ] Task 3: 重写指南文档 (design/guide/)
+## [x] Task 3: 重写指南文档 (design/guide/)
 - **Priority**: P0
 - **Depends On**: None
 - **Description**: 
@@ -40,7 +40,7 @@
   - `human-judgement` TR-3.2: 核心功能模块完整列出
 - **Notes**: 参考 whitebook1 的目标用户描述
 
-## [ ] Task 4: 更新架构分层文档 (design/architecture/layers.md)
+## [x] Task 4: 更新架构分层文档 (design/architecture/layers.md)
 - **Priority**: P1
 - **Depends On**: [Task 2]
 - **Description**: 
@@ -51,7 +51,7 @@
   - `human-judgement` TR-4.1: 每层都有清晰的职责描述
 - **Notes**: 基于 whitebook1 和 whitebook2 的层次结构
 
-## [ ] Task 5: 更新模块文档 (design/modules/)
+## [x] Task 5: 更新模块文档 (design/modules/)
 - **Priority**: P1
 - **Depends On**: None
 - **Description**: 
@@ -64,7 +64,7 @@
   - `human-judgement` TR-5.2: 移除 WAE 相关模块，添加 GWG 模块
 - **Notes**: 现有模块文档主要是 WAE 框架的，需要替换为 GWG 元引擎的
 
-## [ ] Task 6: 添加神话隐喻文档
+## [x] Task 6: 添加神话隐喻文档
 - **Priority**: P2
 - **Depends On**: [Task 2]
 - **Description**: 
@@ -77,7 +77,7 @@
   - `human-judgement` TR-6.2: 神话解释与架构概念对应清晰
 - **Notes**: 可考虑创建 design/gnostic/ 目录
 
-## [ ] Task 7: 更新其他架构文档 (patterns.md 等)
+## [x] Task 7: 更新其他架构文档 (patterns.md 等)
 - **Priority**: P2
 - **Depends On**: [Task 2]
 - **Description**: 
@@ -88,7 +88,7 @@
   - `human-judgement` TR-7.1: 所有架构文档风格统一
 - **Notes**: 根据实际需要决定保留或重写
 
-## [ ] Task 8: 整体文档审查与优化
+## [x] Task 8: 整体文档审查与优化
 - **Priority**: P2
 - **Depends On**: [Task 1, Task 2, Task 3, Task 4, Task 5, Task 6, Task 7]
 - **Description**: 

@@ -2,59 +2,68 @@
 //!
 //! 提供动态类型查询和属性编辑功能。
 
-use bevy_reflect as reflect;
-use std::any::TypeId;
+use std::any::{Any, TypeId};
+use std::collections::HashMap;
 
-pub use reflect::prelude::*;
-pub use reflect::{
-    Array, ArrayInfo, DynamicArray, DynamicEnum, DynamicList, DynamicMap, DynamicStruct,
-    DynamicTuple, DynamicTupleStruct, Enum, EnumInfo, GetTypeRegistration, List, ListInfo,
-    Map, MapInfo, PartialReflect, Reflect, ReflectDeserialize, ReflectFromReflect,
-    ReflectSerialize, Struct, StructInfo, Tuple, TupleInfo, TupleStruct, TupleStructInfo,
-    TypeInfo, TypePath, TypeRegistration, TypeRegistry, TypeRegistryArc,
-};
+/// 反射 trait，所有可反射类型都需要实现
+pub trait Reflect: Any + Send + Sync {
+    /// 获取类型名称
+    fn type_name(&self) -> &'static str;
+
+    /// 获取类型 ID
+    fn type_id(&self) -> TypeId {
+        TypeId::of::<Self>()
+    }
+
+    /// 转换为 Any 引用
+    fn as_any(&self) -> &dyn Any;
+
+    /// 转换为 Any 可变引用
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+
+    /// 克隆为 Box
+    fn clone_value(&self) -> Box<dyn Reflect>;
+}
 
 /// 反射注册表，用于管理所有可反射类型
 pub struct ReflectionRegistry {
-    inner: TypeRegistry,
+    /// 类型注册表
+    types: HashMap<TypeId, TypeInfo>,
 }
 
 impl ReflectionRegistry {
-    /// 创建一个新的反射注册表
+    /// 创建新的反射注册表
     pub fn new() -> Self {
         Self {
-            inner: TypeRegistry::new(),
+            types: HashMap::new(),
         }
     }
 
     /// 注册一个可反射类型
-    pub fn register<T: GetTypeRegistration + 'static>(&mut self) {
-        self.inner.register::<T>();
-    }
-
-    /// 获取类型注册表的引用
-    pub fn get(&self) -> &TypeRegistry {
-        &self.inner
-    }
-
-    /// 获取类型注册表的可变引用
-    pub fn get_mut(&mut self) -> &mut TypeRegistry {
-        &mut self.inner
-    }
-
-    /// 根据 TypeId 获取类型信息
-    pub fn get_type_info(&self, type_id: TypeId) -> Option<&'static TypeInfo> {
-        self.inner.get_type_info(type_id)
-    }
-
-    /// 根据 TypeId 获取类型注册信息
-    pub fn get_registration(&self, type_id: TypeId) -> Option<&TypeRegistration> {
-        self.inner.get(type_id)
+    pub fn register<T: Reflect + 'static>(&mut self) {
+        let type_id = TypeId::of::<T>();
+        self.types.insert(
+            type_id,
+            TypeInfo {
+                type_id,
+                type_name: std::any::type_name::<T>(),
+            },
+        );
     }
 
     /// 检查类型是否已注册
     pub fn is_registered(&self, type_id: TypeId) -> bool {
-        self.inner.get(type_id).is_some()
+        self.types.contains_key(&type_id)
+    }
+
+    /// 获取类型信息
+    pub fn get_type_info(&self, type_id: TypeId) -> Option<&TypeInfo> {
+        self.types.get(&type_id)
+    }
+
+    /// 获取所有已注册类型
+    pub fn registered_types(&self) -> impl Iterator<Item = &TypeInfo> {
+        self.types.values()
     }
 }
 
@@ -64,20 +73,29 @@ impl Default for ReflectionRegistry {
     }
 }
 
+/// 类型信息
+#[derive(Clone, Debug)]
+pub struct TypeInfo {
+    /// 类型 ID
+    pub type_id: TypeId,
+    /// 类型名称
+    pub type_name: &'static str,
+}
+
 /// 属性编辑器 trait，用于动态编辑可反射类型的属性
 pub trait PropertyEditor {
     /// 获取可编辑属性的列表
     fn editable_properties(&self) -> Vec<PropertyInfo>;
 
     /// 获取属性的值
-    fn get_property(&self, name: &str) -> Option<&dyn PartialReflect>;
+    fn get_property(&self, name: &str) -> Option<&dyn Reflect>;
 
     /// 设置属性的值
-    fn set_property(&mut self, name: &str, value: Box<dyn PartialReflect>) -> anyhow::Result<()>;
+    fn set_property(&mut self, name: &str, value: Box<dyn Reflect>) -> Result<(), String>;
 }
 
 /// 属性信息
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct PropertyInfo {
     /// 属性名称
     pub name: String,
@@ -90,7 +108,7 @@ pub struct PropertyInfo {
 }
 
 impl PropertyInfo {
-    /// 创建一个新的属性信息
+    /// 创建新的属性信息
     pub fn new(name: String, type_name: &'static str, writable: bool) -> Self {
         Self {
             name,
@@ -107,68 +125,58 @@ impl PropertyInfo {
     }
 }
 
-/// 为结构体实现属性编辑器
-pub struct StructPropertyEditor<T: Struct> {
-    value: T,
-}
+/// 为基本类型实现 Reflect
+macro_rules! impl_reflect_primitive {
+    ($($ty:ty),*) => {
+        $(
+            impl Reflect for $ty {
+                fn type_name(&self) -> &'static str {
+                    std::any::type_name::<$ty>()
+                }
 
-impl<T: Struct> StructPropertyEditor<T> {
-    /// 创建一个新的结构体属性编辑器
-    pub fn new(value: T) -> Self {
-        Self { value }
-    }
+                fn as_any(&self) -> &dyn Any {
+                    self
+                }
 
-    /// 获取内部值的引用
-    pub fn get(&self) -> &T {
-        &self.value
-    }
+                fn as_any_mut(&mut self) -> &mut dyn Any {
+                    self
+                }
 
-    /// 获取内部值的可变引用
-    pub fn get_mut(&mut self) -> &mut T {
-        &mut self.value
-    }
-
-    /// 消费编辑器并返回内部值
-    pub fn into_inner(self) -> T {
-        self.value
-    }
-}
-
-impl<T: Struct> PropertyEditor for StructPropertyEditor<T> {
-    fn editable_properties(&self) -> Vec<PropertyInfo> {
-        let mut properties = Vec::new();
-        if let Some(TypeInfo::Struct(struct_info)) = self.value.get_represented_type_info() {
-            for field in struct_info.iter() {
-                properties.push(PropertyInfo {
-                    name: field.name().to_string(),
-                    type_name: field.type_path(),
-                    writable: true,
-                    description: None,
-                });
+                fn clone_value(&self) -> Box<dyn Reflect> {
+                    Box::new(*self)
+                }
             }
-        }
-        properties
+        )*
+    };
+}
+
+impl_reflect_primitive!(i8, i16, i32, i64, i128, isize);
+impl_reflect_primitive!(u8, u16, u32, u64, u128, usize);
+impl_reflect_primitive!(f32, f64);
+impl_reflect_primitive!(bool, char);
+
+impl Reflect for String {
+    fn type_name(&self) -> &'static str {
+        std::any::type_name::<String>()
     }
 
-    fn get_property(&self, name: &str) -> Option<&dyn PartialReflect> {
-        self.value.field(name)
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 
-    fn set_property(&mut self, name: &str, value: Box<dyn PartialReflect>) -> anyhow::Result<()> {
-        if let Some(field) = self.value.field_mut(name) {
-            field.apply(&*value);
-            Ok(())
-        } else {
-            Err(anyhow::anyhow!("Property not found: {}", name))
-        }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn clone_value(&self) -> Box<dyn Reflect> {
+        Box::new(self.clone())
     }
 }
 
 pub mod prelude {
     //! 反射系统的预导入模块
 
-    pub use super::reflect::prelude::*;
     pub use super::{
-        PropertyEditor, PropertyInfo, ReflectionRegistry, StructPropertyEditor,
+        PropertyInfo, PropertyEditor, Reflect, ReflectionRegistry, TypeInfo,
     };
 }

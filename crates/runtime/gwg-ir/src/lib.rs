@@ -1,156 +1,289 @@
-//! GWG Engine ECS 核心封装
+//! GWG Engine 中间表示
 //!
-//! 基于 bevy_ecs 提供简洁友好的实体组件系统 API。
+//! 提供游戏逻辑的中间表示层。
 
-pub use bevy_ecs::prelude::*;
-pub use bevy_ecs::schedule::{ScheduleLabel, SystemSet, *};
+pub use gwg_types::prelude::*;
+pub use gwg_ecs::prelude::*;
 
-/// 实体 ID，用于唯一标识游戏世界中的实体
-pub type EntityId = Entity;
-
-/// 世界容器，管理所有实体、组件和系统
-pub struct GwgWorld {
-    inner: bevy_ecs::world::World,
+/// IR 操作码
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OpCode {
+    /// 空操作
+    Nop,
+    /// 加载常量
+    LoadConst,
+    /// 加载变量
+    LoadVar,
+    /// 存储变量
+    StoreVar,
+    /// 加法
+    Add,
+    /// 减法
+    Sub,
+    /// 乘法
+    Mul,
+    /// 除法
+    Div,
+    /// 等于
+    Eq,
+    /// 不等于
+    Neq,
+    /// 小于
+    Lt,
+    /// 小于等于
+    Le,
+    /// 大于
+    Gt,
+    /// 大于等于
+    Ge,
+    /// 跳转
+    Jmp,
+    /// 条件跳转（真）
+    JmpIfTrue,
+    /// 条件跳转（假）
+    JmpIfFalse,
+    /// 调用函数
+    Call,
+    /// 从函数返回
+    Ret,
+    /// 创建实体
+    CreateEntity,
+    /// 销毁实体
+    DestroyEntity,
+    /// 添加组件
+    AddComponent,
+    /// 移除组件
+    RemoveComponent,
+    /// 获取组件
+    GetComponent,
+    /// 设置组件
+    SetComponent,
+    /// 查询开始
+    QueryStart,
+    /// 查询下一个
+    QueryNext,
+    /// 查询结束
+    QueryEnd,
+    /// 插入资源
+    InsertResource,
+    /// 获取资源
+    GetResource,
+    /// 设置资源
+    SetResource,
+    /// 移除资源
+    RemoveResource,
 }
 
-impl GwgWorld {
-    /// 创建一个新的空世界
-    pub fn new() -> Self {
+/// IR 指令
+#[derive(Clone, Debug)]
+pub struct Instruction {
+    /// 操作码
+    pub opcode: OpCode,
+    /// 操作数
+    pub operands: Vec<Operand>,
+}
+
+impl Instruction {
+    /// 创建新的指令
+    pub fn new(opcode: OpCode, operands: Vec<Operand>) -> Self {
+        Self { opcode, operands }
+    }
+}
+
+/// 操作数
+#[derive(Clone, Debug)]
+pub enum Operand {
+    /// 整数
+    Int(i64),
+    /// 浮点数
+    Float(f64),
+    /// 布尔值
+    Bool(bool),
+    /// 字符串
+    String(String),
+    /// 实体
+    Entity(Entity),
+    /// 寄存器索引
+    Register(usize),
+    /// 变量索引
+    Variable(usize),
+    /// 标签索引
+    Label(usize),
+    /// 函数索引
+    Function(usize),
+    /// 类型 ID 索引
+    TypeId(usize),
+}
+
+/// IR 值
+#[derive(Clone, Debug)]
+pub enum Value {
+    /// 空值
+    Unit,
+    /// 整数
+    Int(i64),
+    /// 浮点数
+    Float(f64),
+    /// 布尔值
+    Bool(bool),
+    /// 字符串
+    String(String),
+    /// 实体
+    Entity(Entity),
+}
+
+/// IR 函数
+#[derive(Clone, Debug)]
+pub struct Function {
+    /// 函数名
+    pub name: String,
+    /// 参数数量
+    pub arity: usize,
+    /// 局部变量数量
+    pub locals: usize,
+    /// 指令列表
+    pub instructions: Vec<Instruction>,
+    /// 标签位置
+    pub labels: Vec<usize>,
+}
+
+impl Function {
+    /// 创建新的函数
+    pub fn new(name: String, arity: usize, locals: usize) -> Self {
         Self {
-            inner: bevy_ecs::world::World::new(),
+            name,
+            arity,
+            locals,
+            instructions: Vec::new(),
+            labels: Vec::new(),
         }
     }
 
-    /// 生成一个新实体并返回其可变引用
-    pub fn spawn(&mut self) -> EntityWorldMut<'_> {
-        self.inner.spawn_empty()
+    /// 添加指令
+    pub fn add_instruction(&mut self, instr: Instruction) {
+        self.instructions.push(instr);
     }
 
-    /// 根据 ID 获取实体的可变引用
-    pub fn entity_mut(&mut self, entity: Entity) -> EntityWorldMut<'_> {
-        self.inner.entity_mut(entity)
-    }
-
-    /// 根据 ID 获取实体的不可变引用
-    pub fn entity(&self, entity: Entity) -> EntityRef<'_> {
-        self.inner.entity(entity)
-    }
-
-    /// 销毁指定的实体
-    pub fn despawn(&mut self, entity: Entity) {
-        self.inner.despawn(entity);
-    }
-
-    /// 插入或替换全局资源
-    pub fn insert_resource<T: Resource>(&mut self, resource: T) {
-        self.inner.insert_resource(resource);
-    }
-
-    /// 获取全局资源的不可变引用
-    pub fn get_resource<T: Resource>(&self) -> Option<&T> {
-        self.inner.get_resource()
-    }
-
-    /// 获取全局资源的可变引用
-    pub fn get_resource_mut<T: Resource>(&mut self) -> Option<Mut<'_, T>> {
-        self.inner.get_resource_mut()
-    }
-
-    /// 移除并返回全局资源
-    pub fn remove_resource<T: Resource>(&mut self) -> Option<T> {
-        self.inner.remove_resource()
-    }
-
-    /// 获取内部的 bevy_ecs World 引用
-    pub fn inner(&self) -> &bevy_ecs::world::World {
-        &self.inner
-    }
-
-    /// 获取内部的 bevy_ecs World 可变引用
-    pub fn inner_mut(&mut self) -> &mut bevy_ecs::world::World {
-        &mut self.inner
+    /// 添加标签
+    pub fn add_label(&mut self) -> usize {
+        let label = self.labels.len();
+        self.labels.push(self.instructions.len());
+        label
     }
 }
 
-impl Default for GwgWorld {
-    fn default() -> Self {
-        Self::new()
-    }
+/// IR 模块
+#[derive(Clone, Debug)]
+pub struct Module {
+    /// 模块名
+    pub name: String,
+    /// 类型 ID 表
+    pub type_ids: Vec<TypeId>,
+    /// 函数表
+    pub functions: Vec<Function>,
+    /// 常量池
+    pub constants: Vec<Value>,
 }
 
-/// 默认的调度标签
-#[derive(ScheduleLabel, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Update;
-
-/// 系统调度器，用于组织和执行系统
-pub struct GwgSchedule {
-    inner: bevy_ecs::schedule::Schedule,
-}
-
-impl GwgSchedule {
-    /// 创建一个新的空调度器
-    pub fn new() -> Self {
+impl Module {
+    /// 创建新的模块
+    pub fn new(name: String) -> Self {
         Self {
-            inner: bevy_ecs::schedule::Schedule::new(Update),
+            name,
+            type_ids: Vec::new(),
+            functions: Vec::new(),
+            constants: Vec::new(),
         }
     }
 
-    /// 添加一个系统到调度器
-    pub fn add_system<M>(&mut self, system: impl IntoSystemConfigs<M>) {
-        self.inner.add_systems(system);
+    /// 添加类型 ID
+    pub fn add_type_id(&mut self, type_id: TypeId) -> usize {
+        let index = self.type_ids.len();
+        self.type_ids.push(type_id);
+        index
     }
 
-    /// 运行调度器中的所有系统
-    pub fn run(&mut self, world: &mut GwgWorld) {
-        self.inner.run(world.inner_mut());
+    /// 添加函数
+    pub fn add_function(&mut self, func: Function) -> usize {
+        let index = self.functions.len();
+        self.functions.push(func);
+        index
     }
 
-    /// 获取内部的 bevy_ecs Schedule 引用
-    pub fn inner(&self) -> &bevy_ecs::schedule::Schedule {
-        &self.inner
-    }
-
-    /// 获取内部的 bevy_ecs Schedule 可变引用
-    pub fn inner_mut(&mut self) -> &mut bevy_ecs::schedule::Schedule {
-        &mut self.inner
-    }
-}
-
-impl Default for GwgSchedule {
-    fn default() -> Self {
-        Self::new()
+    /// 添加常量
+    pub fn add_constant(&mut self, value: Value) -> usize {
+        let index = self.constants.len();
+        self.constants.push(value);
+        index
     }
 }
 
-/// 组件 trait 别名
-pub use bevy_ecs::component::Component;
+/// IR 构建器
+pub struct ModuleBuilder {
+    module: Module,
+    current_function: Option<usize>,
+}
 
-/// 资源 trait 别名
-pub use bevy_ecs::system::Resource;
+impl ModuleBuilder {
+    /// 创建新的模块构建器
+    pub fn new(name: String) -> Self {
+        Self {
+            module: Module::new(name),
+            current_function: None,
+        }
+    }
 
-/// 系统 trait 别名
-pub use bevy_ecs::system::System;
+    /// 添加类型 ID
+    pub fn add_type_id(&mut self, type_id: TypeId) -> usize {
+        self.module.add_type_id(type_id)
+    }
 
-/// 查询类型，用于从世界中获取实体和组件
-pub use bevy_ecs::system::Query;
+    /// 开始函数
+    pub fn begin_function(&mut self, name: String, arity: usize, locals: usize) {
+        let func = Function::new(name, arity, locals);
+        let index = self.module.add_function(func);
+        self.current_function = Some(index);
+    }
 
-/// 变更检测包装类型
-pub use bevy_ecs::change_detection::Mut;
+    /// 结束函数
+    pub fn end_function(&mut self) {
+        self.current_function = None;
+    }
 
-/// 实体引用
-pub use bevy_ecs::world::EntityRef;
+    /// 添加指令
+    pub fn emit(&mut self, opcode: OpCode, operands: Vec<Operand>) {
+        if let Some(func_idx) = self.current_function {
+            let instr = Instruction::new(opcode, operands);
+            self.module.functions[func_idx].add_instruction(instr);
+        }
+    }
 
-/// 实体可变引用
-pub use bevy_ecs::world::EntityWorldMut;
+    /// 添加标签
+    pub fn label(&mut self) -> usize {
+        if let Some(func_idx) = self.current_function {
+            self.module.functions[func_idx].add_label()
+        } else {
+            0
+        }
+    }
 
-/// 实体迭代器
-pub use bevy_ecs::entity::Entities;
+    /// 添加常量
+    pub fn add_constant(&mut self, value: Value) -> usize {
+        self.module.add_constant(value)
+    }
 
-/// 系统配置
-pub use bevy_ecs::schedule::IntoSystemConfigs;
+    /// 构建模块
+    pub fn build(self) -> Module {
+        self.module
+    }
+}
 
 pub mod prelude {
-    //! ECS 核心的预导入模块
+    //! IR 的预导入模块
 
-    pub use super::*;
+    pub use super::{
+        Function, Instruction, Module, ModuleBuilder, OpCode, Operand, Value,
+    };
+    pub use gwg_types::prelude::*;
+    pub use gwg_ecs::prelude::*;
 }

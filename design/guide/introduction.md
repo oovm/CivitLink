@@ -49,32 +49,18 @@ GWG 的核心理念是让不同技能水平的玩家都能参与游戏创作，�
 ## 核心功能模块概览
 
 ### 1. 元引擎框架（编译时）
-- **ECS 核心**：基于 `bevy_ecs` 的高性能实体组件系统
-- **资源管理系统**：支持异步加载、热重载，与具体文件格式解耦
-- **虚拟机集成**：嵌入轻量级脚本运行时，定义安全的 Rust-脚本通信接口
-- **插件注册机制**：允许开发者将多个功能插件组合成一个完整引擎
-- **编辑器生成**：根据引擎插件暴露的可编辑数据自动生成编辑器界面
+- **ECS 核心 (gwg-ecs)**：基于 `bevy_ecs` 的高性能实体组件系统
+- **资源管理系统 (gwg-asset)**：支持异步加载、热重载，与具体文件格式解耦
+- **虚拟机集成 (gwg-vm)**：嵌入轻量级脚本运行时，定义安全的 Rust-脚本通信接口
+- **调度器 (gwg-schedule)**：系统调度器扩展
+- **世界管理 (gwg-world)**：世界管理
+- **反射系统 (gwg-reflection)**：反射系统
+- **类型定义 (gwg-types)**：共享类型定义
+- **宏定义 (gwg-macros)**：实用宏，简化开发
 
-### 2. 平台抽象层
-- **文件系统抽象**：统一接口适配桌面、移动端、H5、微信小游戏等
-- **输入抽象**：统一事件处理（键盘、鼠标/触摸、游戏手柄）
-- **渲染抽象**：基于 `wgpu` 的跨平台图形渲染
-- **音频抽象**：统一播放控制，支持常见格式
-- **时间与线程抽象**：统一获取系统时间、休眠、线程生成
-
-### 3. 运行时层
-- **应用生命周期管理**：处理平台特定的启动、暂停、恢复等
-- **场景管理**：游戏场景的加载、切换、销毁
-- **预制体系统**：可复用的实体模板
-- **序列化**：游戏数据的保存与加载
-
-### 4. 功能模块
-- **渲染模块**：2D/3D 渲染、精灵系统、文本渲染、相机系统
-- **物理模块**：2D/3D 物理、碰撞检测
-- **动画模块**：精灵动画、变换动画、状态机
-- **音频模块**：播放器、混音器、空间音频
-- **UI 模块**：基础控件、布局系统、交互处理
-- **输入模块**：键盘、鼠标、触摸、手柄、输入映射
+### 2. 运行时层
+- **中间表示 (gwg-ir)**：中间表示
+- **虚拟机 (gwg-vm)**：虚拟机执行环境
 
 ### 5. 多平台支持
 - **桌面平台**：Windows、macOS、Linux
@@ -84,89 +70,24 @@ GWG 的核心理念是让不同技能水平的玩家都能参与游戏创作，�
 
 ## 模块概览表格
 
-### 核心层模块
+### 核心层模块 (frameworks)
 
 | 模块 | 说明 |
 |-----|------|
-| core/ecs | ECS 核心封装（基于 bevy_ecs） |
-| core/asset | 资源管理系统 |
-| core/schedule | 系统调度器扩展 |
-| core/world | 世界管理 |
-| core/reflection | 反射系统 |
+| frameworks/gwg-ecs | ECS 核心封装（基于 bevy_ecs） |
+| frameworks/gwg-asset | 资源管理系统 |
+| frameworks/gwg-schedule | 系统调度器扩展 |
+| frameworks/gwg-world | 世界管理 |
+| frameworks/gwg-reflection | 反射系统 |
+| frameworks/gwg-types | 共享类型定义 |
+| frameworks/gwg-macros | 实用宏定义 |
 
-### 平台抽象层模块
-
-| 模块 | 说明 |
-|-----|------|
-| platform/window | 窗口管理（winit 封装） |
-| platform/input | 输入抽象 |
-| platform/graphics | 图形抽象（wgpu 封装） |
-| platform/audio | 音频抽象 |
-| platform/filesystem | 文件系统抽象 |
-| platform/time | 时间抽象 |
-
-### 运行时层模块
+### 运行时层模块 (runtime)
 
 | 模块 | 说明 |
 |-----|------|
-| runtime/app | 应用生命周期 |
-| runtime/scene | 场景管理 |
-| runtime/prefab | 预制体系统 |
-| runtime/serialization | 序列化 |
-
-### 虚拟机层模块
-
-| 模块 | 说明 |
-|-----|------|
-| vm/core | 虚拟机核心接口 |
-| vm/wasmtime | wasmtime 后端（桌面 JIT） |
-| vm/wasmi | 轻量级解释器后端 |
-| vm/api | 暴露给脚本的 Rust API |
-| vm/bindings | 语言绑定生成 |
-
-### 引擎插件框架模块
-
-| 模块 | 说明 |
-|-----|------|
-| engine/plugin | 插件 trait 定义 |
-| engine/registry | 插件注册表 |
-| engine/builder | 引擎构建器 |
-| engine/manifest | 引擎清单处理 |
-
-### 编辑器框架模块
-
-| 模块 | 说明 |
-|-----|------|
-| editor/ui | 编辑器 UI 组件（egui） |
-| editor/inspector | 属性编辑器 |
-| editor/scene-view | 场景视图 |
-| editor/asset-browser | 资源浏览器 |
-| editor/plugin | 编辑器插件系统 |
-
-### 内置功能模块
-
-| 模块 | 说明 |
-|-----|------|
-| modules/rendering | 渲染模块（2D/3D、精灵、文本、相机） |
-| modules/physics | 物理模块（2D/3D、碰撞检测） |
-| modules/animation | 动画模块（精灵、变换、状态机） |
-| modules/audio | 音频模块（播放器、混音器、空间音频） |
-| modules/ui | UI 模块（控件、布局、交互） |
-| modules/input | 输入模块（键盘、鼠标、触摸、手柄、映射） |
-| modules/network | 网络模块（客户端、服务器、同步） |
-
-### 平台特定实现模块
-
-| 模块 | 说明 |
-|-----|------|
-| platforms/desktop | 桌面通用实现 |
-| platforms/windows | Windows 特定实现 |
-| platforms/macos | macOS 特定实现 |
-| platforms/linux | Linux 特定实现 |
-| platforms/ios | iOS 特定实现 |
-| platforms/android | Android 特定实现 |
-| platforms/web/h5 | WebAssembly H5 实现 |
-| platforms/web/wechat | 微信小游戏适配 |
+| runtime/gwg-ir | 中间表示 |
+| runtime/gwg-vm | 虚拟机 |
 
 ## 下一步
 

@@ -1,0 +1,33 @@
+[package]
+name = "gwg-runtime-h5"
+version = "0.1.0"
+edition = "2021"
+description = "GWG Engine H5 (Web) 运行时"
+license = "MIT"
+
+[dependencies]
+gwg-types = { path = "../../frameworks/gwg-types", version = "0.1.0" }
+gwg-ecs = { path = "../../frameworks/gwg-ecs", version = "0.1.0" }
+gwg-asset = { path = "../../frameworks/gwg-asset", version = "0.1.0" }
+gwg-schedule = { path = "../../frameworks/gwg-schedule", version = "0.1.0" }
+gwg-world = { path = "../../frameworks/gwg-world", version = "0.1.0" }
+gwg-platform = { path = "../gwg-platform", version = "0.1.0" }
+gwg-ir = { path = "../../runtime/gwg-ir", version = "0.1.0" }
+gwg-vm = { path = "../../runtime/gwg-vm", version = "0.1.0" }
+wasm-bindgen = { version = "0.2.95", features = ["serde-serialize"] }
+js-sys = "0.3.72"
+web-sys = { version = "0.3.72", features = [
+    "Document",
+    "Element",
+    "Event",
+    "EventTarget",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "KeyboardEvent",
+    "MouseEvent",
+    "WheelEvent",
+    "Window",
+] }
+console_error_panic_hook = "0.1.7"
+serde = { version = "1.0.228", features = ["derive"] }
+thiserror = { workspace = true }

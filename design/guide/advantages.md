@@ -158,33 +158,25 @@ Mod 脚本可以：
 ```
 gwg-engine/
 ├── crates/                    # 第一层：功能领域
-│   ├── core/                  # 核心框架层
-│   │   ├── ecs/               # ECS 核心封装
-│   │   ├── asset/             # 资源管理
-│   │   └── ...
-│   ├── platform/              # 平台抽象层
+│   ├── frameworks/            # 核心框架层
+│   │   ├── gwg-ecs/          # ECS 核心封装
+│   │   ├── gwg-asset/        # 资源管理
+│   │   ├── gwg-schedule/     # 系统调度器扩展
+│   │   ├── gwg-world/        # 世界管理
+│   │   ├── gwg-reflection/   # 反射系统
+│   │   ├── gwg-types/        # 类型定义
+│   │   └── gwg-macros/       # 宏定义
 │   ├── runtime/               # 运行时层
-│   ├── vm/                    # 虚拟机层
-│   ├── engine/                # 引擎插件框架
-│   ├── editor/                # 编辑器框架
-│   ├── modules/               # 内置功能模块
-│   └── platforms/             # 平台特定实现
+│   │   ├── gwg-ir/           # 中间表示
+│   │   └── gwg-vm/           # 虚拟机
 └── tools/                     # 构建工具
 ```
 
 ### 模块依赖关系
 ```
-core (ECS/资源/反射)
+frameworks (ecs/asset/schedule/world/reflection)
     ↓
-platform (各抽象层)
-    ↓
-runtime (整合平台与核心)
-    ↓
-modules (功能模块可组合)
-    ↓
-engine (插件框架)
-    ↓
-editor (编辑器框架)
+runtime (ir/vm)
 ```
 
 ### Monorepo 优势

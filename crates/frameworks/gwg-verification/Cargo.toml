@@ -1,0 +1,10 @@
+[package]
+name = "gwg-verification"
+version = "0.1.0"
+edition = "2021"
+description = "GWG Engine 自动化验证系统"
+license = "MIT"
+
+[dependencies]
+gwg-agent = { path = "../gwg-agent", version = "0.1.0" }
+thiserror = { workspace = true }

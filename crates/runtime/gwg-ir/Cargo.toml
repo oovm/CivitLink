@@ -1,9 +1,10 @@
 [package]
-name = "gwg-ecs"
+name = "gwg-ir"
 version = "0.1.0"
 edition = "2021"
-description = "GWG Engine ECS 核心封装"
+description = "GWG Engine 中间表示"
 license = "MIT"
 
 [dependencies]
-bevy_ecs = "0.15"
+gwg-types = { path = "../../frameworks/gwg-types", version = "0.1.0" }
+gwg-ecs = { path = "../../frameworks/gwg-ecs", version = "0.1.0" }
