@@ -1,0 +1,10 @@
+[package]
+name = "gwg-reflection"
+version = "0.1.0"
+edition = "2021"
+description = "GWG Engine 反射系统"
+license = "MIT"
+
+[dependencies]
+bevy_reflect = { workspace = true }
+anyhow = { workspace = true }

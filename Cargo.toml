@@ -1,22 +1,15 @@
 [workspace]
 resolver = "2"
 members = [
-    "backends/*",
-    "examples/effect-basic",
-    "examples/https-basic",
-    "examples/config-basic",
-    "examples/effect-advanced",
-    "examples/database-basic",
-    "examples/auth-basic",
-    "examples/cache-basic",
-    "examples/observability-basic",
-    "examples/error-handling",
-    "examples/monitoring-basic",
-    "examples/monitoring-api",
+    "crates/core",
+    "crates/core/ecs",
+    "crates/core/asset",
+    "crates/core/reflection",
+    "crates/core/schedule",
+    "crates/core/world",
 ]
 default-members = [
-    "backends/wae-server",
-    "backends/wae-types",
+    "crates/core",
 ]
 
 [workspace.package]
@@ -109,6 +102,9 @@ tokio-test = "0.4.5"
 serde_urlencoded = "0.7.1"
 tempfile = "3.0.0"
 systemstat = "0.2.3"
+anyhow = "1.0.92"
+bevy_reflect = "0.15"
+dashmap = "6.1.0"
 
 
 wae-server = { path = "backends/wae-server", version = "0.0.2" }

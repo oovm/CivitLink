@@ -1,0 +1,13 @@
+[package]
+name = "gwg-asset"
+version = "0.1.0"
+edition = "2021"
+description = "GWG Engine 资源管理系统"
+license = "MIT"
+
+[dependencies]
+serde = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true }
+dashmap = { workspace = true }

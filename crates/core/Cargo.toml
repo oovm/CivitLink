@@ -1,0 +1,13 @@
+[package]
+name = "gwg-core"
+version = "0.1.0"
+edition = "2021"
+description = "GWG Engine 核心框架"
+license = "MIT"
+
+[dependencies]
+gwg-ecs = { path = "ecs", version = "0.1.0" }
+gwg-asset = { path = "asset", version = "0.1.0" }
+gwg-reflection = { path = "reflection", version = "0.1.0" }
+gwg-schedule = { path = "schedule", version = "0.1.0" }
+gwg-world = { path = "world", version = "0.1.0" }

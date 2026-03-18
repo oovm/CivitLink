@@ -1,0 +1,9 @@
+[package]
+name = "gwg-ecs"
+version = "0.1.0"
+edition = "2021"
+description = "GWG Engine ECS 核心封装"
+license = "MIT"
+
+[dependencies]
+bevy_ecs = "0.15"
