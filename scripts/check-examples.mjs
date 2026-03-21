@@ -13,7 +13,7 @@ const examples = [
   'error-handling'
 ];
 
-const waeRoot = 'e:\\灵之镜有限公司\\wae';
+const waeRoot = 'e:\\\\wae';
 
 console.log('Checking all examples for compilation...\n');
 

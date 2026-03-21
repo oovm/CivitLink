@@ -2,7 +2,7 @@ import { copyFile, mkdir, readFile, writeFile, readdir, cp, rename } from 'node:
 import { join, dirname } from 'node:path';
 import { existsSync } from 'node:fs';
 
-const baseDir = 'e:\\灵之镜有限公司\\gwg';
+const baseDir = 'e:\\\\gwg';
 
 async function moveDir(src, dest) {
   if (!existsSync(src)) {
