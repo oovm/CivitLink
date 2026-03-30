@@ -15,7 +15,7 @@
         "fmt": "cargo fmt --all && npx biome format --write .",
         "push": "git push && git push --tags --prune",
         "reset": "git reset Head~ --soft",
-        "u": "cargo upgrade --incompatible",
+        "u": "cargo upgrade --pinned",
         "p": "cargo workspaces publish --no-git-commit --allow-dirty --yes",
         "build:frontend": "pnpm -r run build",
         "build:doc": "pnpm --filter wae-docs run build",

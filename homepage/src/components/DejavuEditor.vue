@@ -40,9 +40,9 @@ function registerDejavuLanguage() {
     escapes: /\\(?:[btnfr\\"']|[0-7]{1,3}|x[0-9a-fA-F]{2}|u[0-9a-fA-F]{4}|U[0-9a-fA-F]{8})/,
     tokenizer: {
       root: [
-        [/\<$.!/, { token: 'comment', next: '@comment' }],
-        [/\<$[-_~=.]?/, { token: 'keyword', next: '@statement' }],
-        [/[^<$]+/, 'text'],
+        [/\<%.!/, { token: 'comment', next: '@comment' }],
+        [/\<%[-_~=.]?/, { token: 'keyword', next: '@statement' }],
+        [/[^<%]+/, 'text'],
         [/\{/, 'text']
       ],
       comment: [

@@ -131,7 +131,7 @@ macro_rules! impl_reflect_primitive {
         $(
             impl Reflect for $ty {
                 fn type_name(&self) -> &'static str {
-                    std::any::type_name::<$ty>()
+                    std::any::type_name::<%ty>()
                 }
 
                 fn as_any(&self) -> &dyn Any {
