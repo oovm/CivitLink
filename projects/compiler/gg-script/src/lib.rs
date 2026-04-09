@@ -31,7 +31,7 @@ impl ScriptCompiler {
         let source_text = SourceText::new(source);
         let mut cache = ParseSession::<ValkyrieLanguage>::default();
 
-        let result = builder.build(&source_text, &[], &mut cache);
+        let result = builder.build(source_text, &[], &mut cache);
 
         match result.result {
             Ok(root) => {

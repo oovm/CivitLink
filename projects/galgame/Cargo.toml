@@ -1,0 +1,16 @@
+[package]
+name = "gg-galgame"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gg-core = { path = "../core/gg-core" }
+gg-ecs = { path = "../core/gg-ecs" }
+gg-asset = { path = "../core/gg-asset" }
+gg-galgame-schema = { path = "../plugins/gg-galgame-schema" }
+gg-plugin-dialogue = { path = "../plugins/gg-plugin-dialogue" }
+gg-plugin-portrait = { path = "../plugins/gg-plugin-portrait" }
+gg-plugin-scene-transition = { path = "../plugins/gg-plugin-scene-transition" }
+gg-plugin-save = { path = "../plugins/gg-plugin-save" }
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"

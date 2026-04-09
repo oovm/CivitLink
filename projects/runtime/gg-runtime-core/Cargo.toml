@@ -10,3 +10,6 @@ gg-core = { workspace = true }
 gg-ecs = { workspace = true }
 gg-asset = { workspace = true }
 gg-render = { workspace = true }
+gg-script = { workspace = true }
+gg-ir = { workspace = true }
+gg-vm = { workspace = true }

@@ -1,0 +1,8 @@
+[package]
+name = "gg-editor-shell"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gg-core = { path = "../../core/gg-core" }
+gg-ecs = { path = "../../core/gg-ecs" }

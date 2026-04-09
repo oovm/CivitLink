@@ -1,0 +1,11 @@
+[package]
+name = "gg-plugin-save"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gg-core = { path = "../../core/gg-core" }
+gg-ecs = { path = "../../core/gg-ecs" }
+gg-galgame-schema = { path = "../gg-galgame-schema" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

@@ -3,13 +3,18 @@ members = [
     "projects/core/*",
     "projects/runtime/*",
     "projects/compiler/gg-script",
+    "projects/compiler/gg-compiler-script",
     "projects/plugins/*",
+    "projects/galgame",
+    "projects/editor/*",
     "examples/basic",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
+authors = ["Lingames"]
+license = "MIT"
 
 [workspace.dependencies]
 gg-core = { path = "projects/core/gg-core" }
@@ -20,4 +25,5 @@ gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
 gg-ir = { path = "projects/runtime/gg-ir" }
 gg-vm = { path = "projects/runtime/gg-vm" }
 gg-script = { path = "projects/compiler/gg-script" }
+gg-galgame-schema = { path = "projects/plugins/gg-galgame-schema" }
 serde = { version = "1", features = ["derive"] }

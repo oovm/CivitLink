@@ -1,7 +1,7 @@
 //! 氛围滤镜状态和管理模块
 //! 提供滤镜状态组件、滤镜系统和滤镜管理器
 
-use gg_core::{GError, GErrorKind, GResult};
+use gg_core::GResult;
 use gg_ecs::{Component, System, World};
 use gg_galgame_schema::components::{AmbientFilter, SceneBackground};
 
@@ -238,12 +238,11 @@ impl System for FilterSystem {
         }
 
         if let Some(target_filter) = completed_target {
-            for &entity in world.entities().iter() {
-                if world.get_component::<SceneBackground>(entity).is_some() {
-                    if let Some(background) = world.get_component_mut::<SceneBackground>(entity) {
-                        background.ambient_filter = target_filter;
-                        break;
-                    }
+            let bg_entities: Vec<_> = world.entities().iter().copied().collect();
+            for entity in bg_entities {
+                if let Some(background) = world.get_component_mut::<SceneBackground>(entity) {
+                    background.ambient_filter = target_filter;
+                    break;
                 }
             }
         }

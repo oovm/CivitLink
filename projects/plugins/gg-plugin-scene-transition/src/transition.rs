@@ -1,7 +1,7 @@
 //! 转场状态和管理模块
 //! 提供转场状态组件和转场管理器
 
-use gg_core::{GError, GErrorKind, GResult};
+use gg_core::GResult;
 use gg_ecs::{Component, Entity, World};
 use gg_galgame_schema::components::{SceneBackground, SlideDirection, TransitionType};
 
@@ -150,7 +150,8 @@ impl TransitionManager {
         }
 
         if let Some(path) = new_path {
-            for &entity in world.entities().iter() {
+            let bg_entities: Vec<_> = world.entities().iter().copied().collect();
+            for entity in bg_entities {
                 if let Some(background) = world.get_component_mut::<SceneBackground>(entity) {
                     background.asset_path = Some(path.clone());
                     break;

@@ -1,0 +1,10 @@
+[package]
+name = "gg-editor-character"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gg-core = { path = "../../core/gg-core" }
+gg-ecs = { path = "../../core/gg-ecs" }
+gg-galgame-schema = { path = "../../plugins/gg-galgame-schema" }
+gg-editor-shell = { path = "../gg-editor-shell" }
