@@ -2,6 +2,7 @@
 members = [
     "projects/core/*",
     "projects/runtime/*",
+    "projects/compiler/gg-script",
     "projects/plugins/*",
     "examples/basic",
 ]
@@ -18,4 +19,5 @@ gg-render = { path = "projects/core/gg-render" }
 gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
 gg-ir = { path = "projects/runtime/gg-ir" }
 gg-vm = { path = "projects/runtime/gg-vm" }
+gg-script = { path = "projects/compiler/gg-script" }
 serde = { version = "1", features = ["derive"] }

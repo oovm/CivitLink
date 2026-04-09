@@ -2,6 +2,7 @@
 //! 定义 Galgame 引擎所需的资源类型
 
 use crate::components::{PortraitState, VariableValue};
+use gg_ecs::Component;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -25,12 +26,16 @@ pub struct DialogueHistory {
     pub current_node_id: Option<String>,
 }
 
+impl Component for DialogueHistory {}
+
 /// 游戏变量
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameVariables {
     /// 变量映射
     pub variables: HashMap<String, VariableValue>,
 }
+
+impl Component for GameVariables {}
 
 impl GameVariables {
     /// 获取变量值

@@ -2,8 +2,8 @@
 name = "gg-basic-example"
 version = { workspace = true }
 edition = { workspace = true }
-authors = ["Lingames"]
-license = "MIT"
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
 gg-runtime-core = { workspace = true }
