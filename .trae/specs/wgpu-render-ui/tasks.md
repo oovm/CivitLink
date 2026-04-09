@@ -8,28 +8,28 @@
   - [x] SubTask 1.5: 移除原有占位实现 `RenderComponent`/`RenderSystem`
   - [x] SubTask 1.6: 更新 `gg-render/Cargo.toml` 依赖（移除 gg-ecs 依赖，渲染抽象不应依赖 ECS）
 
-- [ ] Task 2: 创建 gg-render-wgpu crate，实现 WGPU 渲染后端
-  - [ ] SubTask 2.1: 创建 `projects/runtime/gg-render-wgpu` 目录和 `Cargo.toml`，添加 wgpu、winit、image、ab_glyph 依赖
-  - [ ] SubTask 2.2: 实现 `WgpuRenderer` 结构：初始化 winit 窗口、wgpu 实例/适配器/设备/队列/surface
-  - [ ] SubTask 2.3: 实现窗口事件循环：处理 Resize、Close、FocusChange 事件，更新 surface 配置
-  - [ ] SubTask 2.4: 实现纹理加载：使用 image crate 解码 PNG/JPEG，创建 wgpu 纹理，返回 TextureId
-  - [ ] SubTask 2.5: 实现精灵渲染管线：创建顶点/索引缓冲、着色器、渲染管线，支持纹理采样和 alpha 混合
-  - [ ] SubTask 2.6: 实现文本渲染：使用 ab_glyph 光栅化字形，维护字形纹理图集缓存，渲染文本
-  - [ ] SubTask 2.7: 实现转场效果渲染：创建混合着色器，通过 uniform 传递进度参数
-  - [ ] SubTask 2.8: 实现 `Renderer` trait：`begin_frame`/`end_frame`/`draw`/`present`/`load_texture`/`resize`
-  - [ ] SubTask 2.9: 实现主循环：事件处理 → 清除帧缓冲 → 执行 DrawCommand 队列 → 提交渲染 → 呈现
-  - [ ] SubTask 2.10: 在根 `Cargo.toml` 中添加 `gg-render-wgpu` 到 workspace
+- [x] Task 2: 创建 gg-render-wgpu crate，实现 WGPU 渲染后端
+  - [x] SubTask 2.1: 创建 `projects/runtime/gg-render-wgpu` 目录和 `Cargo.toml`，添加 wgpu、winit、image、ab_glyph 依赖
+  - [x] SubTask 2.2: 实现 `WgpuRenderer` 结构：初始化 winit 窗口、wgpu 实例/适配器/设备/队列/surface
+  - [x] SubTask 2.3: 实现窗口事件循环：处理 Resize、Close、FocusChange 事件，更新 surface 配置
+  - [x] SubTask 2.4: 实现纹理加载：使用 image crate 解码 PNG/JPEG，创建 wgpu 纹理，返回 TextureId
+  - [x] SubTask 2.5: 实现精灵渲染管线：创建顶点/索引缓冲、着色器、渲染管线，支持纹理采样和 alpha 混合
+  - [x] SubTask 2.6: 实现文本渲染：使用 ab_glyph 光栅化字形，维护字形纹理图集缓存，渲染文本
+  - [x] SubTask 2.7: 实现转场效果渲染：创建混合着色器，通过 uniform 传递进度参数
+  - [x] SubTask 2.8: 实现 `Renderer` trait：`begin_frame`/`end_frame`/`draw`/`present`/`load_texture`/`resize`
+  - [x] SubTask 2.9: 实现主循环：事件处理 → 清除帧缓冲 → 执行 DrawCommand 队列 → 提交渲染 → 呈现
+  - [x] SubTask 2.10: 在根 `Cargo.toml` 中添加 `gg-render-wgpu` 到 workspace
 
-- [ ] Task 3: 创建 gg-ui crate，实现 UI 组件库
-  - [ ] SubTask 3.1: 创建 `projects/plugins/gg-ui` 目录和 `Cargo.toml`，依赖 gg-render
-  - [ ] SubTask 3.2: 定义 UI 核心类型：`UiNode`、`UiNodeId`、`UiTree`、`Style`、`LayoutResult`
-  - [ ] SubTask 3.3: 实现弹性布局引擎（Flexbox）：计算节点位置和尺寸，支持主轴/交叉轴对齐、换行、间距
-  - [ ] SubTask 3.4: 实现基础控件：`Button`（文本标签、点击回调、悬停/按下状态）
-  - [ ] SubTask 3.5: 实现基础控件：`TextBox`（多行文本、自动换行、滚动）
-  - [ ] SubTask 3.6: 实现基础控件：`Panel`（容器、背景色、边框、圆角、内边距）
-  - [ ] SubTask 3.7: 实现事件系统：输入事件路由、事件冒泡和拦截、事件处理器注册
-  - [ ] SubTask 3.8: 实现 UI 渲染：将 UiNode 树转换为 DrawCommand 序列，通过 Renderer trait 提交
-  - [ ] SubTask 3.9: 在根 `Cargo.toml` 中添加 `gg-ui` 到 workspace
+- [x] Task 3: 创建 gg-ui crate，实现 UI 组件库
+  - [x] SubTask 3.1: 创建 `projects/plugins/gg-ui` 目录和 `Cargo.toml`，依赖 gg-render
+  - [x] SubTask 3.2: 定义 UI 核心类型：`UiNode`、`UiNodeId`、`UiTree`、`Style`、`LayoutResult`
+  - [x] SubTask 3.3: 实现弹性布局引擎（Flexbox）：计算节点位置和尺寸，支持主轴/交叉轴对齐、换行、间距
+  - [x] SubTask 3.4: 实现基础控件：`Button`（文本标签、点击回调、悬停/按下状态）
+  - [x] SubTask 3.5: 实现基础控件：`TextBox`（多行文本、自动换行、滚动）
+  - [x] SubTask 3.6: 实现基础控件：`Panel`（容器、背景色、边框、圆角、内边距）
+  - [x] SubTask 3.7: 实现事件系统：输入事件路由、事件冒泡和拦截、事件处理器注册
+  - [x] SubTask 3.8: 实现 UI 渲染：将 UiNode 树转换为 DrawCommand 序列，通过 Renderer trait 提交
+  - [x] SubTask 3.9: 在根 `Cargo.toml` 中添加 `gg-ui` 到 workspace
 
 - [ ] Task 4: 适配现有插件对接新渲染接口
   - [ ] SubTask 4.1: 更新 `gg-plugin-portrait`：`PortraitRenderSystem` 使用 `Renderer` trait 提交精灵绘制指令

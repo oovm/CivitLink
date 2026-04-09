@@ -169,6 +169,7 @@ impl BytecodeWriter {
             | BytecodeInstruction::Sub
             | BytecodeInstruction::Mul
             | BytecodeInstruction::Div
+            | BytecodeInstruction::Mod
             | BytecodeInstruction::Neg
             | BytecodeInstruction::Eq
             | BytecodeInstruction::Ne
@@ -223,6 +224,7 @@ impl BytecodeWriter {
             OpCode::Sub => Ok(BytecodeInstruction::Sub),
             OpCode::Mul => Ok(BytecodeInstruction::Mul),
             OpCode::Div => Ok(BytecodeInstruction::Div),
+            OpCode::Mod => Ok(BytecodeInstruction::Mod),
             OpCode::Neg => Ok(BytecodeInstruction::Neg),
             OpCode::Eq => Ok(BytecodeInstruction::Eq),
             OpCode::Ne => Ok(BytecodeInstruction::Ne),

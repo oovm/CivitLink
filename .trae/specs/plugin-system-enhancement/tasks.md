@@ -1,12 +1,12 @@
 # Tasks
 
-- [ ] Task 1: 增强 Plugin trait 和 PluginRegistrar
-  - [ ] SubTask 1.1: 在 `gg-core::plugin` 中定义 `PluginRegistrar` 结构，包含待注册系统队列、待注册资源队列、依赖列表
-  - [ ] SubTask 1.2: 为 `PluginRegistrar` 实现 `register_system`、`insert_resource`、`add_dependency` 方法
-  - [ ] SubTask 1.3: 为 `PluginRegistrar` 实现 `apply` 方法，将收集的注册信息统一应用到 World
-  - [ ] SubTask 1.4: 修改 `Plugin` trait，增加 `build(&self, registrar: &mut PluginRegistrar)` 方法（提供默认空实现）
-  - [ ] SubTask 1.5: 修改 `Plugin` trait，增加 `dependencies(&self) -> Vec<&str>` 方法（提供默认空实现）
-  - [ ] SubTask 1.6: 在 `gg-core::plugin` 中实现 `PluginManager`，管理插件加载、依赖检查、生命周期
+- [x] Task 1: 增强 Plugin trait 和 PluginRegistrar
+  - [x] SubTask 1.1: 在 `gg-core::plugin` 中定义 `PluginRegistrar` 结构，包含待注册系统队列、待注册资源队列、依赖列表
+  - [x] SubTask 1.2: 为 `PluginRegistrar` 实现 `register_system`、`insert_resource`、`add_dependency` 方法
+  - [x] SubTask 1.3: 为 `PluginRegistrar` 实现 `apply` 方法，将收集的注册信息统一应用到 World
+  - [x] SubTask 1.4: 修改 `Plugin` trait，增加 `build(&self, registrar: &mut PluginRegistrar)` 方法（提供默认空实现）
+  - [x] SubTask 1.5: 修改 `Plugin` trait，增加 `dependencies(&self) -> Vec<&str>` 方法（提供默认空实现）
+  - [x] SubTask 1.6: 在 `gg-core::plugin` 中实现 `PluginManager`，管理插件加载、依赖检查、生命周期
 
 - [ ] Task 2: 适配现有插件到新 Plugin trait
   - [ ] SubTask 2.1: 更新 `DialoguePlugin`：在 `build` 中注册 `DialogueSystem`、`ChoiceSystem`、`TypewriterSystem` 和 `DialogueHistory`、`GameVariables`、`ChoiceState` 资源

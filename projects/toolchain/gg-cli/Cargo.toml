@@ -1,0 +1,16 @@
+[package]
+name = "gg-cli"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[[bin]]
+name = "gg-cli"
+path = "src/main.rs"
+
+[dependencies]
+gg-core = { workspace = true }
+gg-manifest = { workspace = true }
+gg-factory = { workspace = true }
+toml = { workspace = true }

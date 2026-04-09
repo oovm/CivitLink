@@ -1,18 +1,18 @@
 # Tasks
 
-- [ ] Task 1: 重构 gg-editor-shell 为微内核架构
-  - [ ] SubTask 1.1: 定义 `ServiceRegistry` 结构：`register<T: Any + Send + Sync>(&mut self, service: T)`、`get<T: Any>(&self) -> Option<&T>`、`get_mut<T: Any>(&mut self) -> Option<&mut T>`
-  - [ ] SubTask 1.2: 定义 `Command` trait：`execute(&mut self, context: &mut EditorContext) -> GResult<()>`、`undo(&mut self, context: &mut EditorContext) -> GResult<()>`、`description(&self) -> &str`
-  - [ ] SubTask 1.3: 定义 `CommandManager` 结构：`execute(&mut self, command: Box<dyn Command>, context: &mut EditorContext)`、`undo(&mut self, context: &mut EditorContext) -> GResult<()>`、`redo(&mut self, context: &mut EditorContext) -> GResult<()>`、`can_undo/can_redo`
-  - [ ] SubTask 1.4: 定义 `EditorEvent` 枚举：`EntitySelected`、`EntityDeselected`、`PropertyChanged`、`FileChanged`、`SceneLoaded`、`SceneUnloaded`、`Custom(String, Box<dyn Any + Send + Sync>)`
-  - [ ] SubTask 1.5: 定义 `EventBus` 结构：`subscribe(&mut self, handler: Box<dyn FnMut(&EditorEvent)>)`、`publish(&mut self, event: EditorEvent)`、`process_pending(&mut self)`
-  - [ ] SubTask 1.6: 定义 `EditorContext` 结构：包含 `services: &mut ServiceRegistry`、`commands: &mut CommandManager`、`events: &mut EventBus`
-  - [ ] SubTask 1.7: 定义 `EditorPlugin` trait：`name(&self) -> &str`、`initialize(&mut self, context: &mut EditorContext)`、`shutdown(&mut self, context: &mut EditorContext)`
-  - [ ] SubTask 1.8: 重构 `EditorShell`：新增 `services: ServiceRegistry`、`commands: CommandManager`、`events: EventBus`、`plugins: Vec<Box<dyn EditorPlugin>>` 字段；`run()` 启动时调用所有插件的 `initialize`，关闭时调用 `shutdown`
-  - [ ] SubTask 1.9: 重构 `EditorPanel` trait：新增 `on_register(&mut self, context: &mut EditorContext)`、`on_unregister(&mut self, context: &mut EditorContext)`；`render` 签名改为 `render(&mut self, context: &mut EditorContext) -> GResult<()>`
-  - [ ] SubTask 1.10: 定义 `PanelLayoutHint` 结构：`position: PanelPosition`（Left/Right/Center/Bottom/Floating）、`preferred_size: Option<(f32, f32)>`、`min_size: Option<(f32, f32)>`；`EditorPanel` trait 新增 `layout_hint(&self) -> PanelLayoutHint`
-  - [ ] SubTask 1.11: 移除 `PanelContext` 和 `PanelData`，所有现有面板迁移到使用 `EditorContext`
-  - [ ] SubTask 1.12: 更新 `gg-editor-shell/Cargo.toml` 依赖
+- [x] Task 1: 重构 gg-editor-shell 为微内核架构
+  - [x] SubTask 1.1: 定义 `ServiceRegistry` 结构：`register<T: Any + Send + Sync>(&mut self, service: T)`、`get<T: Any>(&self) -> Option<&T>`、`get_mut<T: Any>(&mut self) -> Option<&mut T>`
+  - [x] SubTask 1.2: 定义 `Command` trait：`execute(&mut self, context: &mut EditorContext) -> GResult<()>`、`undo(&mut self, context: &mut EditorContext) -> GResult<()>`、`description(&self) -> &str`
+  - [x] SubTask 1.3: 定义 `CommandManager` 结构：`execute(&mut self, command: Box<dyn Command>, context: &mut EditorContext)`、`undo(&mut self, context: &mut EditorContext) -> GResult<()>`、`redo(&mut self, context: &mut EditorContext) -> GResult<()>`、`can_undo/can_redo`
+  - [x] SubTask 1.4: 定义 `EditorEvent` 枚举：`EntitySelected`、`EntityDeselected`、`PropertyChanged`、`FileChanged`、`SceneLoaded`、`SceneUnloaded`、`Custom(String, Box<dyn Any + Send + Sync>)`
+  - [x] SubTask 1.5: 定义 `EventBus` 结构：`subscribe(&mut self, handler: Box<dyn FnMut(&EditorEvent)>)`、`publish(&mut self, event: EditorEvent)`、`process_pending(&mut self)`
+  - [x] SubTask 1.6: 定义 `EditorContext` 结构：包含 `services: &mut ServiceRegistry`、`commands: &mut CommandManager`、`events: &mut EventBus`
+  - [x] SubTask 1.7: 定义 `EditorPlugin` trait：`name(&self) -> &str`、`initialize(&mut self, context: &mut EditorContext)`、`shutdown(&mut self, context: &mut EditorContext)`
+  - [x] SubTask 1.8: 重构 `EditorShell`：新增 `services: ServiceRegistry`、`commands: CommandManager`、`events: EventBus`、`plugins: Vec<Box<dyn EditorPlugin>>` 字段；`run()` 启动时调用所有插件的 `initialize`，关闭时调用 `shutdown`
+  - [x] SubTask 1.9: 重构 `EditorPanel` trait：新增 `on_register(&mut self, context: &mut EditorContext)`、`on_unregister(&mut self, context: &mut EditorContext)`；`render` 签名改为 `render(&mut self, context: &mut EditorContext) -> GResult<()>`
+  - [x] SubTask 1.10: 定义 `PanelLayoutHint` 结构：`position: PanelPosition`（Left/Right/Center/Bottom/Floating）、`preferred_size: Option<(f32, f32)>`、`min_size: Option<(f32, f32)>`；`EditorPanel` trait 新增 `layout_hint(&self) -> PanelLayoutHint`
+  - [x] SubTask 1.11: 移除 `PanelContext` 和 `PanelData`，所有现有面板迁移到使用 `EditorContext`
+  - [x] SubTask 1.12: 更新 `gg-editor-shell/Cargo.toml` 依赖
 
 - [ ] Task 2: 增强属性检查器框架
   - [ ] SubTask 2.1: 定义 `PropertyType` 枚举：`String`、`Int`、`Float`、`Bool`、`Enum(Vec<String>)`、`Color`、`AssetPath(String)`、`Vec2`、`Custom(String)`
@@ -36,13 +36,13 @@
   - [ ] SubTask 3.4: 实现 `BaseSceneView` 结构：包含 `ViewportState`、`selected_entities: Vec<Entity>`、`grid_visible: bool`；实现视口平移/缩放、实体选择、网格渲染等基础功能
   - [ ] SubTask 3.5: 在根 `Cargo.toml` 中添加 `gg-editor-scene` 到 workspace
 
-- [ ] Task 4: 创建 gg-editor-lsp LSP 客户端接口
-  - [ ] SubTask 4.1: 创建 `projects/editor/gg-editor-lsp` 目录和 `Cargo.toml`，依赖 `gg-core`、`serde`、`serde_json`
-  - [ ] SubTask 4.2: 定义 LSP 基础类型：`Position`、`Range`、`Location`、`DiagnosticSeverity`、`Diagnostic`、`CompletionItem`、`Hover`、`TextDocumentIdentifier`、`VersionedTextDocumentIdentifier`
-  - [ ] SubTask 4.3: 定义 `LspTransport` trait：`send_request(&mut self, method: &str, params: serde_json::Value) -> GResult<serde_json::Value>`、`send_notification(&mut self, method: &str, params: serde_json::Value) -> GResult<()>`
-  - [ ] SubTask 4.4: 定义 `LspClient` 结构：封装 `LspTransport`，提供 `initialize`、`shutdown`、`did_open`、`did_change`、`did_close`、`completion`、`hover`、`goto_definition` 方法
-  - [ ] SubTask 4.5: 定义 `DiagnosticCollector` 结构：`add_diagnostics(&mut self, uri: &str, diagnostics: Vec<Diagnostic>)`、`clear_diagnostics(&mut self, uri: &str)`、`get_diagnostics(&self, uri: &str) -> &[Diagnostic]`、`get_all_diagnostics(&self) -> &HashMap<String, Vec<Diagnostic>>`
-  - [ ] SubTask 4.6: 在根 `Cargo.toml` 中添加 `gg-editor-lsp` 到 workspace
+- [x] Task 4: 创建 gg-editor-lsp LSP 客户端接口
+  - [x] SubTask 4.1: 创建 `projects/editor/gg-editor-lsp` 目录和 `Cargo.toml`，依赖 `gg-core`、`serde`、`serde_json`
+  - [x] SubTask 4.2: 定义 LSP 基础类型：`Position`、`Range`、`Location`、`DiagnosticSeverity`、`Diagnostic`、`CompletionItem`、`Hover`、`TextDocumentIdentifier`、`VersionedTextDocumentIdentifier`
+  - [x] SubTask 4.3: 定义 `LspTransport` trait：`send_request(&mut self, method: &str, params: serde_json::Value) -> GResult<serde_json::Value>`、`send_notification(&mut self, method: &str, params: serde_json::Value) -> GResult<()>`
+  - [x] SubTask 4.4: 定义 `LspClient` 结构：封装 `LspTransport`，提供 `initialize`、`shutdown`、`did_open`、`did_change`、`did_close`、`completion`、`hover`、`goto_definition` 方法
+  - [x] SubTask 4.5: 定义 `DiagnosticCollector` 结构：`add_diagnostics(&mut self, uri: &str, diagnostics: Vec<Diagnostic>)`、`clear_diagnostics(&mut self, uri: &str)`、`get_diagnostics(&self, uri: &str) -> &[Diagnostic]`、`get_all_diagnostics(&self) -> &HashMap<String, Vec<Diagnostic>>`
+  - [x] SubTask 4.6: 在根 `Cargo.toml` 中添加 `gg-editor-lsp` 到 workspace
 
 - [ ] Task 5: 迁移现有编辑器面板适配新架构
   - [ ] SubTask 5.1: 迁移 `gg-editor-asset-browser/AssetBrowserPanel`：`render` 签名改为 `&mut EditorContext`，移除 `PanelData` 依赖，通过 `EditorContext` 访问所需服务

@@ -46,6 +46,8 @@ pub enum BytecodeOpCode {
     Mul = 0x12,
     /// 除法
     Div = 0x13,
+    /// 取模
+    Mod = 0x15,
     /// 取负
     Neg = 0x14,
     /// 相等
@@ -108,6 +110,7 @@ impl BytecodeOpCode {
             0x11 => Some(BytecodeOpCode::Sub),
             0x12 => Some(BytecodeOpCode::Mul),
             0x13 => Some(BytecodeOpCode::Div),
+            0x15 => Some(BytecodeOpCode::Mod),
             0x14 => Some(BytecodeOpCode::Neg),
             0x20 => Some(BytecodeOpCode::Eq),
             0x21 => Some(BytecodeOpCode::Ne),
@@ -173,6 +176,8 @@ pub enum BytecodeInstruction {
     Mul,
     /// 除法
     Div,
+    /// 取模
+    Mod,
     /// 取负
     Neg,
     /// 相等
@@ -261,6 +266,7 @@ impl BytecodeInstruction {
             BytecodeInstruction::Sub => BytecodeOpCode::Sub,
             BytecodeInstruction::Mul => BytecodeOpCode::Mul,
             BytecodeInstruction::Div => BytecodeOpCode::Div,
+            BytecodeInstruction::Mod => BytecodeOpCode::Mod,
             BytecodeInstruction::Neg => BytecodeOpCode::Neg,
             BytecodeInstruction::Eq => BytecodeOpCode::Eq,
             BytecodeInstruction::Ne => BytecodeOpCode::Ne,

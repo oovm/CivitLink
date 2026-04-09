@@ -5,10 +5,14 @@ members = [
     "projects/compiler/gg-script",
     "projects/compiler/gg-compiler-script",
     "projects/compiler/gg-compiler-core",
+    "projects/compiler/gg-compiler-aot",
     "projects/plugins/*",
+    "projects/platforms/*",
     "projects/galgame",
     "projects/editor/*",
     "projects/toolchain/gg-manifest",
+    "projects/toolchain/gg-factory",
+    "projects/toolchain/gg-cli",
     "examples/basic",
 ]
 
@@ -33,11 +37,19 @@ gg-bytecode = { path = "projects/runtime/gg-bytecode" }
 gg-vm = { path = "projects/runtime/gg-vm" }
 gg-script = { path = "projects/compiler/gg-script" }
 gg-compiler-core = { path = "projects/compiler/gg-compiler-core" }
+gg-compiler-aot = { path = "projects/compiler/gg-compiler-aot" }
 oak-valkyrie = { path = "../oaks/examples/oak-valkyrie" }
 oak-core = { path = "../oaks/projects/oak-core" }
 gg-galgame-schema = { path = "projects/plugins/gg-galgame-schema" }
 gg-ui = { path = "projects/plugins/gg-ui" }
 gg-editor-lsp = { path = "projects/editor/gg-editor-lsp" }
 gg-manifest = { path = "projects/toolchain/gg-manifest" }
+gg-factory = { path = "projects/toolchain/gg-factory" }
+gg-cli = { path = "projects/toolchain/gg-cli" }
+gg-platform-mobile = { path = "projects/platforms/gg-platform-mobile" }
+gg-platform-desktop = { path = "projects/platforms/gg-platform-desktop" }
+gg-platform-web = { path = "projects/platforms/gg-platform-web" }
+gg-plugin-tilemap = { path = "projects/plugins/gg-plugin-tilemap" }
+gg-plugin-spine = { path = "projects/plugins/gg-plugin-spine" }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"

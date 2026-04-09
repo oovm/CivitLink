@@ -3,7 +3,7 @@
 
 use gg_core::GResult;
 use gg_ecs::Entity;
-use gg_editor_shell::panel::{EditorPanel, PanelContext, PanelData};
+use gg_editor_shell::{EditorContext, EditorPanel, PanelLayoutHint, PanelPosition};
 
 /// 资源类型枚举
 #[derive(Debug, Clone)]
@@ -121,7 +121,7 @@ impl AssetBrowserPanel {
     pub fn find_references(
         &self,
         asset_path: &str,
-        context: &mut PanelData,
+        context: &mut EditorContext,
     ) -> GResult<Vec<AssetReference>> {
         let _ = (asset_path, context);
         Ok(Vec::new())
@@ -129,19 +129,32 @@ impl AssetBrowserPanel {
 }
 
 impl EditorPanel for AssetBrowserPanel {
+    /// 获取面板名称
     fn name(&self) -> &str {
         "Asset Browser"
     }
 
+    /// 获取面板可见性
     fn is_visible(&self) -> bool {
         self.visible
     }
 
+    /// 设置面板可见性
     fn set_visible(&mut self, visible: bool) {
         self.visible = visible;
     }
 
-    fn render(&mut self, _context: &mut PanelContext) -> GResult<()> {
+    /// 渲染面板
+    fn render(&mut self, _context: &mut EditorContext) -> GResult<()> {
         Ok(())
+    }
+
+    /// 获取面板布局提示
+    fn layout_hint(&self) -> PanelLayoutHint {
+        PanelLayoutHint {
+            position: PanelPosition::Bottom,
+            preferred_size: Some((300.0, 200.0)),
+            min_size: Some((200.0, 150.0)),
+        }
     }
 }

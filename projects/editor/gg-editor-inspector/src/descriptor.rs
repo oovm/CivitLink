@@ -1,0 +1,122 @@
+//! 属性描述符模块
+//!
+//! 提供属性类型、属性约束、属性描述符、组件描述符和描述符注册表，
+//! 用于描述组件的属性结构信息，驱动检查器面板的动态属性编辑。
+
+/// 属性类型枚举
+///
+/// 定义属性支持的数据类型，用于驱动编辑器选择合适的属性编辑器。
+#[derive(Debug, Clone)]
+pub enum PropertyType {
+    /// 字符串类型
+    String,
+    /// 整数类型
+    Int,
+    /// 浮点数类型
+    Float,
+    /// 布尔类型
+    Bool,
+    /// 枚举类型，包含所有可选值
+    Enum(Vec<String>),
+    /// 颜色类型
+    Color,
+    /// 资源路径类型，包含资源扩展名过滤
+    AssetPath(String),
+    /// 二维向量类型
+    Vec2,
+    /// 自定义类型，包含类型标识符
+    Custom(String),
+}
+
+/// 属性约束
+///
+/// 为属性值提供验证和 UI 编辑约束，如范围限制、步进值和最大长度。
+#[derive(Debug, Clone, Default)]
+pub struct PropertyConstraints {
+    /// 最小值
+    pub min_value: Option<f64>,
+    /// 最大值
+    pub max_value: Option<f64>,
+    /// 步进值
+    pub step: Option<f64>,
+    /// 最大长度
+    pub max_length: Option<usize>,
+}
+
+/// 属性描述符
+///
+/// 描述单个属性的类型信息、显示名称和约束条件，
+/// 用于驱动检查器面板自动生成对应的属性编辑器。
+#[derive(Debug, Clone)]
+pub struct PropertyDescriptor {
+    /// 属性名称
+    pub name: String,
+    /// 显示名称
+    pub display_name: String,
+    /// 属性类型
+    pub property_type: PropertyType,
+    /// 默认值
+    pub default_value: Option<String>,
+    /// 属性约束
+    pub constraints: Option<PropertyConstraints>,
+}
+
+/// 组件描述符
+///
+/// 描述一个组件类型的所有属性信息，用于驱动检查器面板
+/// 自动生成该组件的完整属性编辑界面。
+#[derive(Debug, Clone)]
+pub struct ComponentDescriptor {
+    /// 类型名称
+    pub type_name: String,
+    /// 显示名称
+    pub display_name: String,
+    /// 属性列表
+    pub properties: Vec<PropertyDescriptor>,
+}
+
+/// 描述符注册表
+///
+/// 管理所有组件描述符的注册和查询，为检查器面板提供
+/// 按类型名称查找组件属性结构信息的能力。
+#[derive(Debug, Clone, Default)]
+pub struct DescriptorRegistry {
+    /// 已注册的组件描述符列表
+    descriptors: Vec<ComponentDescriptor>,
+}
+
+impl DescriptorRegistry {
+    /// 创建空的描述符注册表
+    pub fn new() -> Self {
+        Self {
+            descriptors: Vec::new(),
+        }
+    }
+
+    /// 注册组件描述符
+    ///
+    /// 将组件描述符添加到注册表中，若同名描述符已存在则替换。
+    pub fn register_component(&mut self, descriptor: ComponentDescriptor) {
+        if let Some(existing) = self
+            .descriptors
+            .iter_mut()
+            .find(|d| d.type_name == descriptor.type_name)
+        {
+            *existing = descriptor;
+        } else {
+            self.descriptors.push(descriptor);
+        }
+    }
+
+    /// 获取组件描述符
+    ///
+    /// 根据类型名称查找已注册的组件描述符。
+    pub fn get_component(&self, type_name: &str) -> Option<&ComponentDescriptor> {
+        self.descriptors.iter().find(|d| d.type_name == type_name)
+    }
+
+    /// 获取所有组件描述符
+    pub fn component_descriptors(&self) -> &[ComponentDescriptor] {
+        &self.descriptors
+    }
+}

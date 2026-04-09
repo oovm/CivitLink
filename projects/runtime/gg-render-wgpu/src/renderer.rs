@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use ab_glyph::ScaleFont;
+use ab_glyph::{Font, ScaleFont};
 use gg_core::{GError, GErrorKind, GResult};
 use gg_render::{
     DrawCommand, RenderContext, Renderer, SurfaceInfo, TextureId, Transform, TransitionKind,
@@ -82,11 +82,14 @@ impl WgpuRenderer {
                 surface_info.height,
             ));
 
+        #[allow(deprecated)]
         let window = Arc::new(
-            Window::new(event_loop, window_attrs).map_err(|e| GError {
-                kind: GErrorKind::Platform,
-                message: format!("无法创建窗口: {}", e),
-            })?,
+            event_loop
+                .create_window(window_attrs)
+                .map_err(|e| GError {
+                    kind: GErrorKind::Platform,
+                    message: format!("无法创建窗口: {}", e),
+                })?,
         );
 
         let (surface, device, queue, config) = pollster::block_on(async {
@@ -393,10 +396,9 @@ impl Renderer for WgpuRenderer {
                     let font = self.glyph_cache.font().ok_or_else(|| GError {
                         kind: GErrorKind::Runtime,
                         message: "未加载字体，无法渲染文本".to_string(),
-                    })?;
+                    })?.clone();
 
-                    let px_scale = ab_glyph::PxScale::uniform(*font_size);
-                    let scaled_font = font.as_scaled(px_scale);
+                    let px_scale = ab_glyph::PxScale { x: *font_size, y: *font_size };
 
                     for c in text.chars() {
                         let glyph_id = font.glyph_id(c);
@@ -473,7 +475,7 @@ impl Renderer for WgpuRenderer {
                         None => continue,
                     };
 
-                    let px_scale = ab_glyph::PxScale::uniform(*font_size);
+                    let px_scale = ab_glyph::PxScale { x: *font_size, y: *font_size };
                     let scaled_font = font.as_scaled(px_scale);
 
                     let mut cursor_x = position[0];

@@ -2,7 +2,7 @@
 //! 提供场景背景设置、立绘布局管理、BGM 配置和转场预览功能
 
 use gg_core::GResult;
-use gg_editor_shell::panel::{EditorPanel, PanelContext, PanelData};
+use gg_editor_shell::{EditorContext, EditorPanel, PanelLayoutHint, PanelPosition};
 use gg_galgame_schema::components::{PortraitPosition, TransitionType};
 
 /// Galgame 场景编辑器面板
@@ -37,7 +37,7 @@ impl GalgameSceneEditorPanel {
     pub fn set_background(
         &mut self,
         asset_path: String,
-        context: &mut PanelData,
+        context: &mut EditorContext,
     ) -> GResult<()> {
         let _ = (asset_path, context);
         Ok(())
@@ -50,7 +50,7 @@ impl GalgameSceneEditorPanel {
         &mut self,
         character_id: String,
         position: PortraitPosition,
-        context: &mut PanelData,
+        context: &mut EditorContext,
     ) -> GResult<()> {
         let _ = (character_id, position, context);
         Ok(())
@@ -62,7 +62,7 @@ impl GalgameSceneEditorPanel {
     pub fn remove_portrait_from_scene(
         &mut self,
         character_id: &str,
-        context: &mut PanelData,
+        context: &mut EditorContext,
     ) -> GResult<()> {
         let _ = (character_id, context);
         Ok(())
@@ -76,7 +76,7 @@ impl GalgameSceneEditorPanel {
         asset_path: String,
         volume: f32,
         fade_in: f32,
-        context: &mut PanelData,
+        context: &mut EditorContext,
     ) -> GResult<()> {
         let _ = (asset_path, volume, fade_in, context);
         Ok(())
@@ -91,19 +91,32 @@ impl GalgameSceneEditorPanel {
 }
 
 impl EditorPanel for GalgameSceneEditorPanel {
+    /// 获取面板名称
     fn name(&self) -> &str {
         "Scene Editor"
     }
 
+    /// 获取面板可见性
     fn is_visible(&self) -> bool {
         self.visible
     }
 
+    /// 设置面板可见性
     fn set_visible(&mut self, visible: bool) {
         self.visible = visible;
     }
 
-    fn render(&mut self, _context: &mut PanelContext) -> GResult<()> {
+    /// 渲染面板
+    fn render(&mut self, _context: &mut EditorContext) -> GResult<()> {
         Ok(())
+    }
+
+    /// 获取面板布局提示
+    fn layout_hint(&self) -> PanelLayoutHint {
+        PanelLayoutHint {
+            position: PanelPosition::Center,
+            preferred_size: Some((800.0, 600.0)),
+            min_size: Some((400.0, 300.0)),
+        }
     }
 }

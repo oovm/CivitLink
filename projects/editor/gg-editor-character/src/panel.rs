@@ -2,7 +2,7 @@
 //! 提供角色的 CRUD 操作、表情映射管理和批量导入功能
 
 use gg_core::GResult;
-use gg_editor_shell::panel::{EditorPanel, PanelContext, PanelData};
+use gg_editor_shell::{EditorContext, EditorPanel, PanelLayoutHint, PanelPosition};
 use gg_galgame_schema::components::PortraitPosition;
 
 /// 角色管理器面板
@@ -35,7 +35,7 @@ impl CharacterManagerPanel {
     ///
     /// 在世界中生成新实体并添加 `CharacterDef` 组件，
     /// 默认位置为 `PortraitPosition::Center`，无表情映射。
-    pub fn create_character(&mut self, context: &mut PanelData) -> GResult<()> {
+    pub fn create_character(&mut self, context: &mut EditorContext) -> GResult<()> {
         let _ = context;
         Ok(())
     }
@@ -44,7 +44,7 @@ impl CharacterManagerPanel {
     ///
     /// 根据 `character_id` 查找对应的实体并从世界中移除。
     /// 如果当前选中的角色被删除，将清除选中状态。
-    pub fn delete_character(&mut self, character_id: &str, context: &mut PanelData) -> GResult<()> {
+    pub fn delete_character(&mut self, character_id: &str, context: &mut EditorContext) -> GResult<()> {
         let _ = context;
         if self.selected_character_id.as_deref() == Some(character_id) {
             self.selected_character_id = None;
@@ -61,7 +61,7 @@ impl CharacterManagerPanel {
         character_id: &str,
         tag: String,
         asset_path: String,
-        context: &mut PanelData,
+        context: &mut EditorContext,
     ) -> GResult<()> {
         let _ = (character_id, tag, asset_path, context);
         Ok(())
@@ -74,7 +74,7 @@ impl CharacterManagerPanel {
         &mut self,
         character_id: &str,
         tag: &str,
-        context: &mut PanelData,
+        context: &mut EditorContext,
     ) -> GResult<()> {
         let _ = (character_id, tag, context);
         Ok(())
@@ -87,7 +87,7 @@ impl CharacterManagerPanel {
         &mut self,
         character_id: &str,
         position: PortraitPosition,
-        context: &mut PanelData,
+        context: &mut EditorContext,
     ) -> GResult<()> {
         let _ = (character_id, position, context);
         Ok(())
@@ -102,7 +102,7 @@ impl CharacterManagerPanel {
     pub fn batch_import(
         &mut self,
         directory: &str,
-        context: &mut PanelData,
+        context: &mut EditorContext,
     ) -> GResult<Vec<String>> {
         let _ = (directory, context);
         Ok(Vec::new())
@@ -110,19 +110,32 @@ impl CharacterManagerPanel {
 }
 
 impl EditorPanel for CharacterManagerPanel {
+    /// 获取面板名称
     fn name(&self) -> &str {
         "Character Manager"
     }
 
+    /// 获取面板可见性
     fn is_visible(&self) -> bool {
         self.visible
     }
 
+    /// 设置面板可见性
     fn set_visible(&mut self, visible: bool) {
         self.visible = visible;
     }
 
-    fn render(&mut self, _context: &mut PanelContext) -> GResult<()> {
+    /// 渲染面板
+    fn render(&mut self, _context: &mut EditorContext) -> GResult<()> {
         Ok(())
+    }
+
+    /// 获取面板布局提示
+    fn layout_hint(&self) -> PanelLayoutHint {
+        PanelLayoutHint {
+            position: PanelPosition::Right,
+            preferred_size: Some((300.0, 400.0)),
+            min_size: Some((250.0, 300.0)),
+        }
     }
 }

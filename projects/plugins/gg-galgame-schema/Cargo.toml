@@ -9,4 +9,5 @@ license = { workspace = true }
 gg-core = { workspace = true }
 gg-ecs = { workspace = true }
 gg-asset = { workspace = true }
+gg-manifest = { workspace = true }
 serde = { workspace = true }

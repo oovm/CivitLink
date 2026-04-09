@@ -1,10 +1,10 @@
 #![warn(missing_docs)]
 
-/// GG 引擎 IR 模块
-/// 提供中间表示和指令集定义
+//! GG 引擎 IR 模块
+//! 提供中间表示、指令集定义和优化 Pass 基础设施
 
 /// IR 值类型
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, serde::Serialize, serde::Deserialize)]
 pub enum IrValue {
     /// 整数
     Int(i64),
@@ -21,7 +21,7 @@ pub enum IrValue {
 }
 
 /// IR 操作码
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum OpCode {
     /// 从常量池加载常量到栈顶
     LoadConst(usize),
@@ -104,7 +104,7 @@ pub enum OpCode {
 }
 
 /// IR 函数
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct IrFunction {
     /// 函数名称
     pub name: String,
@@ -117,7 +117,7 @@ pub struct IrFunction {
 }
 
 /// IR 模块
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct IrModule {
     /// 模块名称
     pub name: String,
@@ -144,6 +144,19 @@ impl IrModule {
         index
     }
 
+    /// 查找常量池中已有的常量，若存在则返回索引
+    pub fn find_constant(&self, value: &IrValue) -> Option<usize> {
+        self.constants.iter().position(|c| c == value)
+    }
+
+    /// 添加常量到常量池，若已存在则复用索引
+    pub fn add_or_get_constant(&mut self, value: IrValue) -> usize {
+        if let Some(idx) = self.find_constant(&value) {
+            return idx;
+        }
+        self.add_constant(value)
+    }
+
     /// 添加函数
     pub fn add_function(&mut self, function: IrFunction) {
         self.functions.push(function);
@@ -158,4 +171,21 @@ impl IrModule {
     pub fn find_function_mut(&mut self, name: &str) -> Option<&mut IrFunction> {
         self.functions.iter_mut().find(|f| f.name == name)
     }
+}
+
+/// IR 优化 Pass 基础设施
+pub mod pass;
+/// 常量折叠优化 Pass
+pub mod constant_fold;
+/// 死代码消除优化 Pass
+pub mod dead_code;
+/// IR 优化转换器适配器
+pub mod transformer_adapter;
+
+/// 创建默认的 IR 优化器，包含常量折叠和死代码消除 Pass
+pub fn default_optimizer() -> pass::IrOptimizer {
+    let mut optimizer = pass::IrOptimizer::new();
+    optimizer.add_pass(Box::new(constant_fold::ConstantFoldPass));
+    optimizer.add_pass(Box::new(dead_code::DeadCodeElimPass));
+    optimizer
 }

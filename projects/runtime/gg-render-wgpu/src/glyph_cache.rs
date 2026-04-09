@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ab_glyph::{Font, FontArc, Glyph, ScaleFont};
+use ab_glyph::{Font, FontArc, Glyph};
 use gg_core::{GError, GErrorKind, GResult};
 use gg_render::TextureId;
 
@@ -104,12 +104,7 @@ impl GlyphCache {
             return Ok(*info);
         }
 
-        let scaled_font = font.as_scaled(ab_glyph::PxScale {
-            x: glyph.scale.x,
-            y: glyph.scale.y,
-        });
-
-        let outlined = font.outline_glyph(glyph.clone());
+        let outlined = font.outline_glyph(glyph);
         let glyph_info = if let Some(outlined) = outlined {
             let bounds = outlined.px_bounds();
             let width = bounds.width().ceil() as u32;

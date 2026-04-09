@@ -1,7 +1,7 @@
 //! 应用程序结构，提供插件系统集成的流式 API
 //!
 //! App 封装阶段调度器和 ECS 世界，提供便捷的系统注册和插件管理接口。
-//! RuntimePlugin trait 扩展了 Plugin，允许插件通过 build 方法注册系统到指定阶段。
+//! RuntimePlugin trait 扩展了 Plugin，允许插件通过 configure 方法注册系统到指定阶段。
 
 use std::sync::Arc;
 use gg_core::{GError, GErrorKind, GResult, plugin::Plugin};
@@ -11,7 +11,7 @@ use crate::stage::{Stage, SystemFn, SystemSetId};
 
 /// 运行时插件 trait
 ///
-/// 扩展 `Plugin` trait，增加 `build` 方法允许插件
+/// 扩展 `Plugin` trait，增加 `configure` 方法允许插件
 /// 通过 `App` 注册系统到指定阶段。
 ///
 /// # 示例
@@ -26,18 +26,18 @@ use crate::stage::{Stage, SystemFn, SystemSetId};
 /// }
 ///
 /// impl RuntimePlugin for MyPlugin {
-///     fn build(&self, app: &mut App) -> GResult<()> {
+///     fn configure(&self, app: &mut App) -> GResult<()> {
 ///         app.add_update_system("my_system", Box::new(my_system_fn));
 ///         Ok(())
 ///     }
 /// }
 /// ```
 pub trait RuntimePlugin: Plugin {
-    /// 构建插件，注册系统到应用程序
+    /// 配置插件，注册系统到应用程序
     ///
     /// 此方法在插件初始化后调用，插件可通过 `app` 参数
     /// 注册系统到指定阶段。
-    fn build(&self, _app: &mut App) -> GResult<()> {
+    fn configure(&self, _app: &mut App) -> GResult<()> {
         Ok(())
     }
 }
@@ -155,16 +155,16 @@ impl App {
 
     /// 添加运行时插件
     ///
-    /// 依次调用插件的 `initialize()` 和 `build()` 方法。
-    /// `initialize()` 用于插件初始化，`build()` 用于注册系统到指定阶段。
+    /// 依次调用插件的 `initialize()` 和 `configure()` 方法。
+    /// `initialize()` 用于插件初始化，`configure()` 用于注册系统到指定阶段。
     pub fn add_plugin(&mut self, plugin: Arc<dyn RuntimePlugin>) -> GResult<()> {
         plugin.initialize().map_err(|e| GError {
             kind: GErrorKind::Plugin,
             message: format!("Plugin '{}' initialize failed: {}", plugin.name(), e),
         })?;
-        plugin.build(self).map_err(|e| GError {
+        RuntimePlugin::configure(&*plugin, self).map_err(|e| GError {
             kind: GErrorKind::Plugin,
-            message: format!("Plugin '{}' build failed: {}", plugin.name(), e),
+            message: format!("Plugin '{}' configure failed: {}", plugin.name(), e),
         })?;
         self.plugins.push(plugin);
         Ok(())

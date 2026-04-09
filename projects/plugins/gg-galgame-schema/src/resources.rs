@@ -2,7 +2,7 @@
 //! 定义 Galgame 引擎所需的资源类型
 
 use crate::components::{PortraitState, VariableValue};
-use gg_ecs::Component;
+use gg_ecs::{Component, Resource};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -127,3 +127,12 @@ pub struct SaveData {
     /// 保存时间戳
     pub timestamp: f64,
 }
+
+/// 等待计时器
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WaitTimer {
+    /// 剩余等待时间（秒）
+    pub remaining_secs: f32,
+}
+
+impl Resource for WaitTimer {}

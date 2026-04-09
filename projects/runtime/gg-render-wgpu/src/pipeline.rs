@@ -403,15 +403,16 @@ fn create_render_pipeline(
     layout: &wgpu::PipelineLayout,
     shader: &wgpu::ShaderModule,
     format: wgpu::TextureFormat,
-    vertex_states: &[wgpu::VertexState<'_>],
+    vertex_state: wgpu::VertexState<'_>,
 ) -> wgpu::RenderPipeline {
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("render_pipeline"),
         layout: Some(layout),
-        vertex: vertex_states[0].clone(),
+        vertex: vertex_state,
         fragment: Some(wgpu::FragmentState {
             module: shader,
             entry_point: Some("fs_main"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
             targets: &[Some(wgpu::ColorTargetState {
                 format,
                 blend: Some(wgpu::BlendState {

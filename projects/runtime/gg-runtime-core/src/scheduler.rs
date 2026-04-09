@@ -170,9 +170,9 @@ impl StageScheduler {
     /// 首次调用时执行顺序为：Startup → PreUpdate → Update → PostUpdate → Render，
     /// 后续调用跳过 Startup 阶段。
     pub fn tick(&mut self, world: &mut World) -> GResult<()> {
-        let stages = if !self.startup_executed {
+        let stages: Vec<Stage> = if !self.startup_executed {
             self.startup_executed = true;
-            [
+            vec![
                 Stage::Startup,
                 Stage::PreUpdate,
                 Stage::Update,
@@ -180,7 +180,7 @@ impl StageScheduler {
                 Stage::Render,
             ]
         } else {
-            [
+            vec![
                 Stage::PreUpdate,
                 Stage::Update,
                 Stage::PostUpdate,
@@ -212,14 +212,17 @@ impl StageScheduler {
 
     /// 执行指定阶段的所有系统
     fn run_stage(&mut self, stage: Stage, world: &mut World) -> GResult<()> {
-        let systems = self.systems.entry(stage).or_default();
-
-        if systems.is_empty() {
+        let has_systems = self.systems.get(&stage).map_or(false, |v| !v.is_empty());
+        if !has_systems {
             return Ok(());
         }
 
-        let sorted_indices = self.topological_sort(systems)?;
+        let sorted_indices = {
+            let systems = self.systems.get(&stage).unwrap();
+            self.topological_sort(systems)?
+        };
 
+        let systems = self.systems.get_mut(&stage).unwrap();
         for idx in sorted_indices {
             let system = &mut systems[idx];
             (system.system)(world).map_err(|e| GError {
