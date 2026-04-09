@@ -9,6 +9,7 @@ use gg_galgame_schema::components::{
     AudioControl, DialogueCommand, PortraitState, SceneBackground, SeTrigger,
 };
 use gg_galgame_schema::resources::{GameVariables, WaitTimer};
+use gg_render::TextureId;
 
 /// 命令处理器 trait
 ///
@@ -195,6 +196,7 @@ impl CommandHandler for ShowPortraitHandler {
                 opacity: 1.0,
                 is_speaking: false,
                 z_order: 0,
+                texture_id: TextureId::INVALID,
             };
             world.add_component(entity, portrait)?;
         }

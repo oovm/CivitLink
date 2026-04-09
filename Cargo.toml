@@ -43,6 +43,7 @@ oak-core = { path = "../oaks/projects/oak-core" }
 gg-galgame-schema = { path = "projects/plugins/gg-galgame-schema" }
 gg-ui = { path = "projects/plugins/gg-ui" }
 gg-editor-lsp = { path = "projects/editor/gg-editor-lsp" }
+gg-editor-scene = { path = "projects/editor/gg-editor-scene" }
 gg-manifest = { path = "projects/toolchain/gg-manifest" }
 gg-factory = { path = "projects/toolchain/gg-factory" }
 gg-cli = { path = "projects/toolchain/gg-cli" }

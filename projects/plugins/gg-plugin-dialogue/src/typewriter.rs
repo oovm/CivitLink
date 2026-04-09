@@ -70,3 +70,7 @@ impl TypewriterState {
         self.is_complete
     }
 }
+
+impl Component for TypewriterState {}
+
+impl Resource for TypewriterState {}

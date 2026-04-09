@@ -5,6 +5,7 @@
 
 pub mod commands;
 pub mod history;
+pub mod loader;
 pub mod plugin;
 pub mod systems;
 pub mod typewriter;

@@ -6,6 +6,7 @@ use gg_asset::AssetManager;
 use gg_core::plugin::Plugin;
 use gg_core::GResult;
 use gg_ecs::Scheduler;
+use gg_platform_desktop::DesktopFileSystem;
 use gg_plugin_dialogue::plugin::DialoguePlugin;
 use gg_plugin_portrait::plugin::PortraitPlugin;
 use gg_plugin_save::plugin::SavePlugin;
@@ -39,7 +40,7 @@ impl GalgameEngine {
         Self {
             config,
             scheduler: Scheduler::new(),
-            asset_manager: AssetManager::new(),
+            asset_manager: AssetManager::new(Box::new(DesktopFileSystem::new())),
             is_editor_mode,
         }
     }

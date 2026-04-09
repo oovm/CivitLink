@@ -255,6 +255,24 @@ impl BytecodeInterpreter {
                 _ => BytecodeValue::Null,
             }),
 
+            BytecodeInstruction::Mod => self.binary_op(|a, b| match (a, b) {
+                (BytecodeValue::Int(x), BytecodeValue::Int(y)) => {
+                    if y == 0 {
+                        BytecodeValue::Null
+                    } else {
+                        BytecodeValue::Int(x % y)
+                    }
+                }
+                (BytecodeValue::Float(x), BytecodeValue::Float(y)) => {
+                    if y == 0.0 {
+                        BytecodeValue::Null
+                    } else {
+                        BytecodeValue::Float(x % y)
+                    }
+                }
+                _ => BytecodeValue::Null,
+            }),
+
             BytecodeInstruction::Neg => {
                 let value = match self.stack.pop() {
                     Some(v) => v,

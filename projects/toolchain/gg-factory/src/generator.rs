@@ -71,6 +71,7 @@ impl EngineFactory {
         deps.push_str("gg-core = { path = \"../../core/gg-core\" }\n");
         deps.push_str("gg-ecs = { path = \"../../core/gg-ecs\" }\n");
         deps.push_str("gg-asset = { path = \"../../core/gg-asset\" }\n");
+        deps.push_str("gg-platform-desktop = { path = \"../../platforms/gg-platform-desktop\" }\n");
         deps.push_str("serde = { version = \"1\", features = [\"derive\"] }\n");
         deps.push_str("toml = \"0.8\"\n");
 
@@ -333,6 +334,7 @@ use gg_asset::AssetManager;
 use gg_core::plugin::Plugin;
 use gg_core::GResult;
 use gg_ecs::Scheduler;
+use gg_platform_desktop::DesktopFileSystem;
 
 {plugin_imports}
 /// {engine_name} 引擎
@@ -353,7 +355,7 @@ impl {struct_name} {{
         Self {{
             config,
             scheduler: Scheduler::new(),
-            asset_manager: AssetManager::new(),
+            asset_manager: AssetManager::new(Box::new(DesktopFileSystem::new())),
             is_editor_mode,
         }}
     }}

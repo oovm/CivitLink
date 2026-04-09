@@ -1,7 +1,7 @@
 //! GG Galgame Schema 资源类型模块
 //! 定义 Galgame 引擎所需的资源类型
 
-use crate::components::{PortraitState, VariableValue};
+use crate::components::{CharacterDef, DialogueNode, PortraitState, VariableValue};
 use gg_ecs::{Component, Resource};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -28,6 +28,8 @@ pub struct DialogueHistory {
 
 impl Component for DialogueHistory {}
 
+impl Resource for DialogueHistory {}
+
 /// 游戏变量
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameVariables {
@@ -36,6 +38,8 @@ pub struct GameVariables {
 }
 
 impl Component for GameVariables {}
+
+impl Resource for GameVariables {}
 
 impl GameVariables {
     /// 获取变量值
@@ -136,3 +140,23 @@ pub struct WaitTimer {
 }
 
 impl Resource for WaitTimer {}
+
+/// 对话脚本
+///
+/// 从 JSON 文件加载的对话数据，包含节点、角色和变量定义。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DialogueScript {
+    /// 对话节点列表
+    pub nodes: Vec<DialogueNode>,
+    /// 角色定义列表
+    pub characters: Vec<CharacterDef>,
+    /// 初始变量值
+    pub variables: HashMap<String, VariableValue>,
+}
+
+impl DialogueScript {
+    /// 从 JSON 字符串解析对话脚本
+    pub fn from_json(json: &str) -> serde_json::Result<Self> {
+        serde_json::from_str(json)
+    }
+}

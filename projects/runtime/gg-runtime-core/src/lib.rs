@@ -34,6 +34,7 @@ use gg_runtime_audio::{AudioEngine, AudioContext};
 use gg_script::ScriptLoader;
 use gg_ir::{IrModule, IrValue};
 use gg_vm::{Vm, Host, VmResult};
+use gg_platform_desktop::DesktopFileSystem;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -236,7 +237,7 @@ impl ScriptEngine {
 /// 运行时系统
 ///
 /// 管理游戏循环的核心运行时，集成脚本引擎、阶段调度器、
-/// 渲染后端、音频后端和 HMR 热更新支持。
+/// 渲染后端、音频后端、平台服务和 HMR 热更新支持。
 pub struct Runtime {
     /// 脚本引擎
     script_engine: ScriptEngine,
@@ -254,6 +255,8 @@ pub struct Runtime {
     audio_engine: Option<Box<dyn AudioEngine>>,
     /// 音频上下文，收集每帧音频命令
     audio_context: AudioContext,
+    /// 平台服务
+    platform_services: gg_core::platform::PlatformServices,
     /// HMR 管理器
     hmr_manager: Option<HmrManager>,
     /// 插件列表
@@ -261,7 +264,6 @@ pub struct Runtime {
     /// 运行状态
     running: bool,
     /// 上一帧时间
-    #[allow(dead_code)]
     last_frame_time: Instant,
 }
 
@@ -285,15 +287,22 @@ impl Runtime {
             .map(|r| r.surface_info().height)
             .unwrap_or(600);
 
+        let platform_services = gg_platform_desktop::DesktopPlatformServices::create();
+
+        let asset_fs: Box<dyn gg_core::platform::FileSystem> =
+            Box::new(DesktopFileSystem::new());
+        let asset_server = AssetServer::new(asset_fs);
+
         Ok(Self {
             script_engine: ScriptEngine::new(),
             host: EngineHost::new(),
             stage_scheduler: StageScheduler::new(),
-            asset_server: AssetServer::new(),
+            asset_server,
             render_context: RenderContext::new(surface_width, surface_height),
             renderer,
             audio_engine,
             audio_context: AudioContext::new(),
+            platform_services,
             hmr_manager,
             plugins: Vec::new(),
             running: false,
@@ -344,6 +353,11 @@ impl Runtime {
     /// 获取音频上下文的可变引用
     pub fn audio_context(&mut self) -> &mut AudioContext {
         &mut self.audio_context
+    }
+
+    /// 获取平台服务的可变引用
+    pub fn platform_services(&mut self) -> &mut gg_core::platform::PlatformServices {
+        &mut self.platform_services
     }
 
     /// 获取 HMR 管理器的可变引用
@@ -432,8 +446,12 @@ impl Runtime {
 
     /// 执行一帧
     ///
-    /// 按顺序执行：HMR 事件处理 → 阶段调度 → 脚本更新 → 音频处理 → 渲染。
+    /// 按顺序执行：平台服务更新 → HMR 事件处理 → 阶段调度 → 脚本更新 → 音频处理 → 渲染。
     pub fn tick(&mut self, _delta: Duration) -> GResult<()> {
+        self.platform_services.time.update();
+
+        let _input_events = self.platform_services.input.poll_events();
+
         if let Some(ref mut hmr) = self.hmr_manager {
             if let Some(new_module) = hmr.process_script_reload() {
                 self.script_engine.replace_module(new_module.clone());

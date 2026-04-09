@@ -3,11 +3,15 @@
 //! GG 引擎资源管理模块
 //! 提供资源加载、缓存和类型安全的资源句柄功能
 
-use std::any::Any;
+use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::path::Path;
 use std::sync::Arc;
+
+use gg_core::{GError, GErrorKind, GResult};
+
+use gg_core::platform::FileSystem;
 
 /// 资源错误类型
 #[derive(Debug)]
@@ -186,16 +190,21 @@ impl AssetCache {
 
 /// 资源服务器
 ///
-/// 提供资源管理的上层接口，内部封装资源缓存。
+/// 提供资源管理的上层接口，内部封装资源缓存和文件系统访问。
 pub struct AssetServer {
+    /// 文件系统服务
+    file_system: Box<dyn FileSystem>,
     /// 内部资源缓存
     cache: AssetCache,
 }
 
 impl AssetServer {
     /// 创建新的资源服务器
-    pub fn new() -> Self {
+    ///
+    /// 需要传入文件系统实例用于资源加载。
+    pub fn new(file_system: Box<dyn FileSystem>) -> Self {
         Self {
+            file_system,
             cache: AssetCache::new(),
         }
     }
@@ -211,6 +220,11 @@ impl AssetServer {
     pub fn cache(&self) -> &AssetCache {
         &self.cache
     }
+
+    /// 获取文件系统服务的引用
+    pub fn file_system(&self) -> &dyn FileSystem {
+        self.file_system.as_ref()
+    }
 }
 
 /// 资源 trait
@@ -225,10 +239,105 @@ pub trait Asset: Send + Sync + 'static {
 
 /// 资源加载器 trait
 ///
-/// 定义异步加载资源的接口，由具体的资源加载器实现。
+/// 定义加载资源的接口，由具体的资源加载器实现。
+/// 通过 `FileSystem` 抽象层访问文件系统，实现跨平台资源加载。
 pub trait AssetLoader<T: Asset> {
-    /// 异步加载指定路径的资源
-    async fn load(&self, path: &Path) -> Result<T, AssetError>;
+    /// 加载指定路径的资源
+    ///
+    /// 使用提供的文件系统抽象读取资源数据。
+    fn load(&self, path: &Path, fs: &dyn FileSystem) -> GResult<T>;
+}
+
+trait ErasedLoader: Send + Sync {
+    fn load_erased(&self, path: &Path, fs: &dyn FileSystem) -> GResult<Box<dyn Any + Send + Sync>>;
+}
+
+struct TypedLoader<T: Asset, L: AssetLoader<T>> {
+    loader: L,
+    _marker: PhantomData<T>,
+}
+
+impl<T: Asset + 'static, L: AssetLoader<T> + Send + Sync + 'static> ErasedLoader
+    for TypedLoader<T, L>
+{
+    fn load_erased(&self, path: &Path, fs: &dyn FileSystem) -> GResult<Box<dyn Any + Send + Sync>> {
+        self.loader
+            .load(path, fs)
+            .map(|asset| Box::new(asset) as Box<dyn Any + Send + Sync>)
+    }
+}
+
+/// 资源管理器
+///
+/// 通过 `FileSystem` 抽象层加载和管理资源，
+/// 支持注册自定义加载器和类型安全的资源缓存。
+pub struct AssetManager {
+    /// 文件系统抽象
+    file_system: Box<dyn FileSystem>,
+    /// 资源缓存
+    cache: AssetCache,
+    /// 类型擦除的资源加载器映射
+    loaders: HashMap<TypeId, Box<dyn ErasedLoader>>,
+}
+
+impl AssetManager {
+    /// 创建新的资源管理器
+    ///
+    /// # 参数
+    ///
+    /// - `file_system` - 文件系统抽象实现
+    pub fn new(file_system: Box<dyn FileSystem>) -> Self {
+        Self {
+            file_system,
+            cache: AssetCache::new(),
+            loaders: HashMap::new(),
+        }
+    }
+
+    /// 注册资源加载器
+    ///
+    /// 将加载器与资源类型关联，后续可通过 `load` 方法加载该类型的资源。
+    pub fn register_loader<T: Asset + 'static, L: AssetLoader<T> + Send + Sync + 'static>(
+        &mut self,
+        loader: L,
+    ) {
+        let type_id = TypeId::of::<T>();
+        self.loaders.insert(
+            type_id,
+            Box::new(TypedLoader {
+                loader,
+                _marker: PhantomData,
+            }),
+        );
+    }
+
+    /// 加载资源
+    ///
+    /// 使用已注册的加载器从文件系统加载指定路径的资源，
+    /// 并将结果存入缓存返回类型安全的句柄。
+    pub fn load<T: Asset + 'static>(&mut self, path: &str) -> GResult<Handle<T>> {
+        let type_id = TypeId::of::<T>();
+        let loader = self.loaders.get(&type_id).ok_or_else(|| GError {
+            kind: GErrorKind::Asset,
+            message: format!("No loader registered for type {}", std::any::type_name::<T>()),
+        })?;
+        let asset_box = loader.load_erased(Path::new(path), self.file_system.as_ref())?;
+        let asset = asset_box.downcast::<T>().map_err(|_| GError {
+            kind: GErrorKind::Asset,
+            message: "Type mismatch when downcasting loaded asset".to_string(),
+        })?;
+        Ok(self.cache.insert(path, *asset))
+    }
+
+    /// 获取内部资源缓存的引用
+    pub fn cache(&self) -> &AssetCache {
+        &self.cache
+    }
+
+    /// 根据句柄获取资源的共享引用
+    pub fn get<T: Send + Sync + 'static>(&self, handle: &Handle<T>) -> Option<Arc<T>> {
+        self.cache.get(handle)
+    }
 }
 
 /// 文本资源
@@ -272,13 +381,12 @@ impl Asset for TextAsset {
 
 /// 文本资源加载器
 ///
-/// 从文件系统异步加载文本文件为 `TextAsset`。
+/// 通过 `FileSystem` 抽象层加载文本文件为 `TextAsset`。
 pub struct TextLoader;
 
 impl AssetLoader<TextAsset> for TextLoader {
-    async fn load(&self, path: &Path) -> Result<TextAsset, AssetError> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| AssetError::LoadError(format!("Failed to read text file: {}", e)))?;
+    fn load(&self, path: &Path, fs: &dyn FileSystem) -> GResult<TextAsset> {
+        let content = fs.read_to_string(path)?;
         let name = path
             .file_name()
             .and_then(|n| n.to_str())
@@ -328,13 +436,12 @@ impl Asset for BinaryAsset {
 
 /// 二进制资源加载器
 ///
-/// 从文件系统异步加载二进制文件为 `BinaryAsset`。
+/// 通过 `FileSystem` 抽象层加载二进制文件为 `BinaryAsset`。
 pub struct BinaryLoader;
 
 impl AssetLoader<BinaryAsset> for BinaryLoader {
-    async fn load(&self, path: &Path) -> Result<BinaryAsset, AssetError> {
-        let data = std::fs::read(path)
-            .map_err(|e| AssetError::LoadError(format!("Failed to read binary file: {}", e)))?;
+    fn load(&self, path: &Path, fs: &dyn FileSystem) -> GResult<BinaryAsset> {
+        let data = fs.read(path)?;
         let name = path
             .file_name()
             .and_then(|n| n.to_str())

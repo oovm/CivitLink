@@ -4,6 +4,7 @@
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::{Component, Entity, World};
 use gg_galgame_schema::components::{PortraitPosition, PortraitState, SlideDirection, TransitionType};
+use gg_render::TextureId;
 
 /// 立绘动画状态组件
 ///
@@ -141,6 +142,7 @@ impl PortraitManager {
             opacity: 1.0,
             is_speaking: false,
             z_order: 0,
+            texture_id: TextureId::INVALID,
         };
         world.add_component(entity, state)?;
         let animation = PortraitAnimationState::new(transition);

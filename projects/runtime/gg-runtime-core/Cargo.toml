@@ -14,3 +14,4 @@ gg-script = { workspace = true }
 gg-ir = { workspace = true }
 gg-vm = { workspace = true }
 gg-runtime-audio = { workspace = true }
+gg-platform-desktop = { workspace = true }

@@ -8,5 +8,7 @@ license = { workspace = true }
 [dependencies]
 gg-core = { workspace = true }
 gg-ir = { workspace = true }
+gg-bytecode = { workspace = true }
+gg-compiler-core = { workspace = true }
 oak-valkyrie = { workspace = true }
 oak-core = { workspace = true }

@@ -294,6 +294,12 @@ impl GgWorld {
             .and_then(|r| r.downcast_mut::<T>())
     }
 
+    /// 移除全局资源并返回被移除的资源
+    pub fn remove_resource<T: Resource + 'static>(&mut self) -> Option<Box<dyn Any + Send + Sync>> {
+        let type_id = TypeId::of::<T>();
+        self.resources.remove(&type_id)
+    }
+
     /// 查询拥有指定组件类型的所有实体，返回查询迭代器
     pub fn query<T: Component>(&self) -> Query<'_, T> {
         let type_id = TypeId::of::<T>();

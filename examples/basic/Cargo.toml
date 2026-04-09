@@ -8,4 +8,5 @@ license = { workspace = true }
 [dependencies]
 gg-runtime-core = { workspace = true }
 gg-core = { workspace = true }
+gg-ecs = { workspace = true }
 gg-vm = { workspace = true }

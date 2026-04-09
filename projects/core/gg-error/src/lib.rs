@@ -4,7 +4,7 @@
 //! 提供统一的错误处理类型
 
 /// 错误类型枚举
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum GErrorKind {
     /// IO 错误
     Io,

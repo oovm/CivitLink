@@ -4,6 +4,7 @@
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 use gg_galgame_schema::components::PortraitState;
+use gg_render::{Color, DrawCommand, RenderContext, TextureId, Transform};
 
 use crate::animation::PortraitAnimationState;
 use crate::layout::PortraitLayout;
@@ -37,6 +38,44 @@ impl PortraitRenderSystem {
             screen_width,
             screen_height,
         }
+    }
+
+    /// 将立绘渲染指令提交到渲染上下文
+    ///
+    /// 遍历所有带 `PortraitState` 的实体，
+    /// 按 `z_order` 排序后为每个立绘生成 `DrawCommand::Sprite`。
+    ///
+    /// # 参数
+    ///
+    /// - `world` - ECS 世界
+    /// - `context` - 渲染上下文
+    pub fn render_to_context(&self, world: &World, context: &mut RenderContext) -> GResult<()> {
+        let entities: Vec<Entity> = world.entities().iter().copied().collect();
+        let mut portraits: Vec<(Entity, PortraitState)> = Vec::new();
+        for entity in entities {
+            if let Some(state) = world.get_component::<PortraitState>(entity) {
+                portraits.push((entity, state.clone()));
+            }
+        }
+        portraits.sort_by_key(|(_, state)| state.z_order);
+        let layout = PortraitLayout::new(self.screen_width, self.screen_height);
+        for (_, state) in &portraits {
+            let (x, y) = layout.calculate_position(&state.position);
+            let transform = Transform {
+                position: [x, y],
+                z_index: state.z_order as f32,
+                ..Transform::IDENTITY
+            };
+            let tint = Color::new(1.0, 1.0, 1.0, state.opacity);
+            context.draw(DrawCommand::Sprite {
+                texture_id: TextureId::INVALID,
+                transform,
+                size: [state.scale * 200.0, state.scale * 400.0],
+                tint,
+                clip_rect: None,
+            });
+        }
+        Ok(())
     }
 }
 

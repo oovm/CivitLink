@@ -7,6 +7,7 @@ use crate::panel::EditorPanel;
 use crate::plugin::EditorPlugin;
 use crate::service::ServiceRegistry;
 use gg_core::GResult;
+use gg_ui::{LayoutEngine, UiTree};
 
 /// 编辑器壳程序
 ///
@@ -23,6 +24,8 @@ pub struct EditorShell {
     panels: Vec<Box<dyn EditorPanel>>,
     /// 已注册的插件列表
     plugins: Vec<Box<dyn EditorPlugin>>,
+    /// UI 节点树
+    ui_tree: UiTree,
     /// 是否运行中
     is_running: bool,
 }
@@ -36,6 +39,7 @@ impl EditorShell {
             events: EventBus::new(),
             panels: Vec::new(),
             plugins: Vec::new(),
+            ui_tree: UiTree::new(),
             is_running: false,
         }
     }
@@ -89,16 +93,18 @@ impl EditorShell {
 
     /// 执行一帧
     ///
-    /// 先处理待处理事件，再渲染所有可见面板。
+    /// 先处理待处理事件，再构建所有可见面板的 UI 节点树，
+    /// 然后计算布局，最后渲染。
     pub fn tick(&mut self) -> GResult<()> {
         self.events.process_pending();
         let mut context =
             EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
         for panel in &mut self.panels {
             if panel.is_visible() {
-                panel.render(&mut context)?;
+                panel.build_ui(&mut context, &mut self.ui_tree)?;
             }
         }
+        LayoutEngine::compute(&mut self.ui_tree, 800.0, 600.0);
         Ok(())
     }
 

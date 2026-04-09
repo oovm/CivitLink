@@ -1,12 +1,14 @@
 //! 存档系统插件模块
 //! 实现 Plugin trait，负责存档系统的初始化和关闭
 
-use gg_core::plugin::Plugin;
+use gg_core::plugin::{Plugin, PluginRegistrar};
 use gg_core::GResult;
+
+use crate::systems::SaveSystem;
 
 /// 存档系统插件
 ///
-/// 负责初始化存档系统所需的资源，
+/// 负责初始化存档系统所需的系统（SaveSystem），
 /// 并在关闭时清理这些资源。
 pub struct SavePlugin;
 
@@ -14,6 +16,18 @@ impl Plugin for SavePlugin {
     /// 返回插件名称
     fn name(&self) -> &str {
         "save"
+    }
+
+    /// 构建存档系统插件
+    ///
+    /// 注册存档系统。
+    fn build(&self, registrar: &mut PluginRegistrar) {
+        registrar.register_system(Box::new(SaveSystem::new()));
+    }
+
+    /// 返回插件依赖列表
+    fn dependencies(&self) -> Vec<&str> {
+        Vec::new()
     }
 
     /// 初始化存档系统资源

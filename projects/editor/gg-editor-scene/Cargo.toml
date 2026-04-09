@@ -1,10 +1,9 @@
 [package]
-name = "gg-editor-shell"
+name = "gg-editor-scene"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 gg-core = { path = "../../core/gg-core" }
 gg-ecs = { path = "../../core/gg-ecs" }
-gg-render = { path = "../../core/gg-render" }
-gg-ui = { path = "../../plugins/gg-ui" }
+gg-editor-shell = { path = "../gg-editor-shell" }

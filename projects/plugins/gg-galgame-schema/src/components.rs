@@ -202,6 +202,9 @@ pub struct PortraitState {
     pub is_speaking: bool,
     /// Z 轴排序
     pub z_order: i32,
+    /// 立绘纹理标识
+    #[serde(skip)]
+    pub texture_id: TextureId,
 }
 
 impl Component for PortraitState {}
@@ -245,6 +248,9 @@ pub struct SceneBackground {
     pub transition: TransitionType,
     /// 氛围滤镜
     pub ambient_filter: Option<AmbientFilter>,
+    /// 背景纹理标识
+    #[serde(skip)]
+    pub texture_id: TextureId,
 }
 
 impl Component for SceneBackground {}

@@ -1,12 +1,13 @@
 [package]
 name = "gg-galgame"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 gg-core = { path = "../core/gg-core" }
 gg-ecs = { path = "../core/gg-ecs" }
 gg-asset = { path = "../core/gg-asset" }
+gg-platform-desktop = { path = "../platforms/gg-platform-desktop" }
 gg-galgame-schema = { path = "../plugins/gg-galgame-schema" }
 gg-plugin-dialogue = { path = "../plugins/gg-plugin-dialogue" }
 gg-plugin-portrait = { path = "../plugins/gg-plugin-portrait" }

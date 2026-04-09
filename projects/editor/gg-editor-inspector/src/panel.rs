@@ -6,7 +6,7 @@
 
 use gg_core::GResult;
 use gg_editor_shell::panel::{PanelLayoutHint, PanelPosition};
-use gg_editor_shell::{EditorContext, EditorEvent, EditorPanel};
+use gg_editor_shell::{EditorContext, EditorPanel};
 
 use crate::descriptor::{
     ComponentDescriptor, DescriptorRegistry, PropertyConstraints, PropertyDescriptor, PropertyType,
@@ -52,6 +52,16 @@ impl InspectorPanel {
         };
         panel.register_default_descriptors();
         panel
+    }
+
+    /// 获取当前选中的实体 ID
+    pub fn selected_entity(&self) -> Option<u64> {
+        self.selected_entity
+    }
+
+    /// 设置当前选中的实体 ID
+    pub fn set_selected_entity(&mut self, entity: Option<u64>) {
+        self.selected_entity = entity;
     }
 
     /// 获取描述符注册表引用

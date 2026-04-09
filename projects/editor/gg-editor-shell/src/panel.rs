@@ -2,6 +2,7 @@
 
 use crate::context::EditorContext;
 use gg_core::GResult;
+use gg_ui::UiTree;
 
 /// 面板位置
 pub enum PanelPosition {
@@ -58,8 +59,19 @@ pub trait EditorPanel {
     /// 面板注销时调用
     fn on_unregister(&mut self, _context: &mut EditorContext) {}
 
-    /// 渲染面板
-    fn render(&mut self, context: &mut EditorContext) -> GResult<()>;
+    /// 构建面板 UI 节点树
+    ///
+    /// # 参数
+    ///
+    /// - `context` - 编辑器上下文
+    /// - `ui_tree` - UI 节点树
+    fn build_ui(&mut self, context: &mut EditorContext, ui_tree: &mut UiTree) -> GResult<()>;
+
+    /// 渲染面板（已弃用，保留向后兼容）
+    #[deprecated(note = "使用 build_ui 替代")]
+    fn render(&mut self, _context: &mut EditorContext) -> GResult<()> {
+        Ok(())
+    }
 
     /// 面板布局提示
     fn layout_hint(&self) -> PanelLayoutHint {

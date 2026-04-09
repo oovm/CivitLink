@@ -1,8 +1,10 @@
 //! 场景转场插件模块
 //! 实现 Plugin trait，负责场景转场系统的初始化和关闭
 
-use gg_core::plugin::Plugin;
+use gg_core::plugin::{Plugin, PluginRegistrar};
 use gg_core::GResult;
+
+use crate::systems::TransitionSystem;
 
 /// 场景转场插件
 ///
@@ -14,6 +16,18 @@ impl Plugin for SceneTransitionPlugin {
     /// 返回插件名称
     fn name(&self) -> &str {
         "scene-transition"
+    }
+
+    /// 构建场景转场插件
+    ///
+    /// 注册转场系统。
+    fn build(&self, registrar: &mut PluginRegistrar) {
+        registrar.register_system(Box::new(TransitionSystem::new()));
+    }
+
+    /// 返回插件依赖列表
+    fn dependencies(&self) -> Vec<&str> {
+        Vec::new()
     }
 
     /// 初始化场景转场系统

@@ -2,7 +2,9 @@
 //! 实现转场系统，负责每帧更新转场进度并完成转场
 
 use gg_core::GResult;
-use gg_ecs::{System, World};
+use gg_ecs::{Entity, System, World};
+use gg_galgame_schema::components::{SlideDirection, TransitionType};
+use gg_render::{DrawCommand, RenderContext, TransitionKind};
 
 use crate::transition::{TransitionManager, TransitionState};
 
@@ -21,6 +23,43 @@ impl TransitionSystem {
         Self {
             last_time_secs: 0.0,
         }
+    }
+
+    /// 将转场渲染指令提交到渲染上下文
+    ///
+    /// 遍历所有带 `TransitionState` 的实体，
+    /// 为正在进行的转场生成 `DrawCommand::Transition`。
+    ///
+    /// # 参数
+    ///
+    /// - `world` - ECS 世界
+    /// - `context` - 渲染上下文
+    pub fn render_to_context(&self, world: &World, context: &mut RenderContext) -> GResult<()> {
+        let entities: Vec<_> = world.entities().iter().copied().collect();
+        for entity in entities {
+            if let Some(state) = world.get_component::<TransitionState>(entity) {
+                if !state.is_complete {
+                    let kind = match &state.transition_type {
+                        TransitionType::Fade { .. } => TransitionKind::Fade,
+                        TransitionType::CrossDissolve { .. } => TransitionKind::CrossDissolve,
+                        TransitionType::Slide { direction, .. } => match direction {
+                            SlideDirection::Left => TransitionKind::SlideLeft,
+                            SlideDirection::Right => TransitionKind::SlideRight,
+                            SlideDirection::Up => TransitionKind::SlideUp,
+                            SlideDirection::Down => TransitionKind::SlideDown,
+                        },
+                        TransitionType::None => continue,
+                    };
+                    context.draw(DrawCommand::Transition {
+                        old_texture: None,
+                        new_texture: None,
+                        progress: state.progress,
+                        kind,
+                    });
+                }
+            }
+        }
+        Ok(())
     }
 }
 

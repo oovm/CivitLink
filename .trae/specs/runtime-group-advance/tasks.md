@@ -38,14 +38,14 @@
   - [x] SubTask 5.3: 定义 `WasmSandboxConfig` 结构：内存限制、执行时间限制、允许的导入函数列表
   - [x] SubTask 5.4: 定义 `WasmModuleId` 和 `WasmInstanceId` 类型
 
-- [ ] Task 6: 重构 gg-runtime-core Runtime 结构
-  - [ ] SubTask 6.1: 定义 `RuntimeBuilder` 结构：提供 builder 模式构建 Runtime，支持 `renderer()`、`audio_engine()`、`hmr_enabled()` 方法
-  - [ ] SubTask 6.2: 重构 `Runtime` 结构：替换 `RenderSystem` 为 `Box<dyn Renderer>`，替换 `Scheduler` 为 `StageScheduler`，添加 `Option<Box<dyn AudioEngine>>` 和 `Option<HmrManager>`
-  - [ ] SubTask 6.3: 实现组件注册表（ComponentRegistry）：替代 EngineHost 中硬编码的 Position/Velocity，支持动态注册组件类型
-  - [ ] SubTask 6.4: 重构 `EngineHost`：使用 ComponentRegistry 处理组件操作，移除硬编码组件类型
-  - [ ] SubTask 6.5: 重构 `Runtime::tick`：使用 StageScheduler 按阶段执行系统，集成 HMR 检查
-  - [ ] SubTask 6.6: 重构 `Runtime::start`：使用 RuntimeBuilder 构建参数初始化渲染器和音频引擎
-  - [ ] SubTask 6.7: 更新 `gg-runtime-core/Cargo.toml` 依赖：添加 gg-runtime-audio
+- [x] Task 6: 重构 gg-runtime-core Runtime 结构
+  - [x] SubTask 6.1: 定义 `RuntimeBuilder` 结构：提供 builder 模式构建 Runtime，支持 `renderer()`、`audio_engine()`、`hmr_enabled()` 方法
+  - [x] SubTask 6.2: 重构 `Runtime` 结构：替换 `RenderSystem` 为 `Box<dyn Renderer>`，替换 `Scheduler` 为 `StageScheduler`，添加 `Option<Box<dyn AudioEngine>>` 和 `Option<HmrManager>`
+  - [x] SubTask 6.3: 实现组件注册表（ComponentRegistry）：替代 EngineHost 中硬编码的 Position/Velocity，支持动态注册组件类型
+  - [x] SubTask 6.4: 重构 `EngineHost`：使用 ComponentRegistry 处理组件操作，移除硬编码组件类型
+  - [x] SubTask 6.5: 重构 `Runtime::tick`：使用 StageScheduler 按阶段执行系统，集成 HMR 检查
+  - [x] SubTask 6.6: 重构 `Runtime::start`：使用 RuntimeBuilder 构建参数初始化渲染器和音频引擎
+  - [x] SubTask 6.7: 更新 `gg-runtime-core/Cargo.toml` 依赖：添加 gg-runtime-audio
 
 - [ ] Task 7: 更新示例和集成验证
   - [ ] SubTask 7.1: 更新 `examples/basic` 使用 RuntimeBuilder 构建 Runtime

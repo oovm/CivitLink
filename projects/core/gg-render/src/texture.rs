@@ -17,6 +17,13 @@ pub enum PixelFormat {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TextureId(u64);
 
+impl Default for TextureId {
+    /// 默认值为 `TextureId::INVALID`
+    fn default() -> Self {
+        Self::INVALID
+    }
+}
+
 impl TextureId {
     /// 创建一个新的纹理标识符
     ///
