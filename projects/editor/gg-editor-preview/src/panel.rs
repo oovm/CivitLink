@@ -2,7 +2,7 @@
 //! 提供游戏运行时预览的启动、停止、暂停和 HMR 热更新功能
 
 use gg_core::GResult;
-use gg_editor_shell::panel::{EditorPanel, PanelContext, PanelData};
+use gg_editor_shell::{EditorContext, EditorPanel, PanelLayoutHint, PanelPosition};
 
 /// 实时预览面板
 ///
@@ -36,7 +36,7 @@ impl PreviewPanel {
     /// 启动预览
     ///
     /// 从当前配置的起始节点开始运行游戏预览。
-    pub fn start_preview(&mut self, context: &mut PanelData) -> GResult<()> {
+    pub fn start_preview(&mut self, context: &mut EditorContext) -> GResult<()> {
         let _ = context;
         self.is_running = true;
         self.is_paused = false;
@@ -78,7 +78,7 @@ impl PreviewPanel {
     pub fn restart_from_node(
         &mut self,
         node_id: String,
-        context: &mut PanelData,
+        context: &mut EditorContext,
     ) -> GResult<()> {
         self.start_node_id = Some(node_id);
         self.is_paused = false;
@@ -89,26 +89,39 @@ impl PreviewPanel {
     /// 触发 HMR 热更新
     ///
     /// 检测文件变更并重新加载受影响的资源，无需重启预览。
-    pub fn trigger_hmr_reload(&mut self, context: &mut PanelData) -> GResult<()> {
+    pub fn trigger_hmr_reload(&mut self, context: &mut EditorContext) -> GResult<()> {
         let _ = context;
         Ok(())
     }
 }
 
 impl EditorPanel for PreviewPanel {
+    /// 获取面板名称
     fn name(&self) -> &str {
         "Live Preview"
     }
 
+    /// 获取面板可见性
     fn is_visible(&self) -> bool {
         self.visible
     }
 
+    /// 设置面板可见性
     fn set_visible(&mut self, visible: bool) {
         self.visible = visible;
     }
 
-    fn render(&mut self, _context: &mut PanelContext) -> GResult<()> {
+    /// 渲染面板
+    fn render(&mut self, _context: &mut EditorContext) -> GResult<()> {
         Ok(())
+    }
+
+    /// 获取面板布局提示
+    fn layout_hint(&self) -> PanelLayoutHint {
+        PanelLayoutHint {
+            position: PanelPosition::Center,
+            preferred_size: Some((800.0, 600.0)),
+            min_size: Some((400.0, 300.0)),
+        }
     }
 }

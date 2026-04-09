@@ -1,8 +1,9 @@
 //! 剧本编辑器面板
 
 use gg_core::{GError, GErrorKind, GResult};
+use gg_ecs::World;
+use gg_editor_shell::{EditorContext, EditorPanel, PanelLayoutHint, PanelPosition};
 use gg_galgame_schema::components::DialogueNode;
-use gg_editor_shell::panel::{EditorPanel, PanelContext, PanelData};
 
 use crate::graph::{NodeGraph, NodeGraphEntry};
 use crate::templates::ScriptTemplate;
@@ -45,13 +46,13 @@ impl ScriptEditorPanel {
     }
 
     /// 创建新对话节点
-    pub fn create_node(&mut self, context: &mut PanelData) -> GResult<()> {
-        let world = context.world().ok_or_else(|| GError {
+    pub fn create_node(&mut self, context: &mut EditorContext) -> GResult<()> {
+        let world = context.services_mut().get_mut::<World>().ok_or_else(|| GError {
             kind: GErrorKind::Other,
-            message: "World not available".to_string(),
+            message: "World 服务不可用".to_string(),
         })?;
 
-        let entity = world.spawn();
+        let entity = world.spawn().id();
         let node_id = format!("node_{}", entity);
 
         let node = DialogueNode {
@@ -79,7 +80,7 @@ impl ScriptEditorPanel {
     }
 
     /// 删除节点
-    pub fn delete_node(&mut self, node_id: &str, context: &mut PanelData) -> GResult<()> {
+    pub fn delete_node(&mut self, node_id: &str, context: &mut EditorContext) -> GResult<()> {
         let _ = context;
 
         self.graph.remove_node(node_id);
@@ -157,20 +158,20 @@ impl ScriptEditorPanel {
     }
 
     /// 插入模板
-    pub fn insert_template(&mut self, template: ScriptTemplate, context: &mut PanelData) -> GResult<()> {
+    pub fn insert_template(&mut self, template: ScriptTemplate, context: &mut EditorContext) -> GResult<()> {
         let nodes = match template {
             ScriptTemplate::DailyConversation => crate::templates::generate_daily_conversation(),
             ScriptTemplate::ConfessionScene => crate::templates::generate_confession_scene(),
             ScriptTemplate::BattleNarration => crate::templates::generate_battle_narration(),
         };
 
-        let world = context.world().ok_or_else(|| GError {
+        let world = context.services_mut().get_mut::<World>().ok_or_else(|| GError {
             kind: GErrorKind::Other,
-            message: "World not available".to_string(),
+            message: "World 服务不可用".to_string(),
         })?;
 
         for (i, node) in nodes.into_iter().enumerate() {
-            let entity = world.spawn();
+            let entity = world.spawn().id();
             world.add_component(entity, node.clone())?;
 
             let position = (
@@ -203,19 +204,32 @@ impl Default for ScriptEditorPanel {
 }
 
 impl EditorPanel for ScriptEditorPanel {
+    /// 获取面板名称
     fn name(&self) -> &str {
         "Script Editor"
     }
 
+    /// 获取面板可见性
     fn is_visible(&self) -> bool {
         self.visible
     }
 
+    /// 设置面板可见性
     fn set_visible(&mut self, visible: bool) {
         self.visible = visible;
     }
 
-    fn render(&mut self, _context: &mut PanelContext) -> GResult<()> {
+    /// 渲染面板
+    fn render(&mut self, _context: &mut EditorContext) -> GResult<()> {
         Ok(())
+    }
+
+    /// 获取面板布局提示
+    fn layout_hint(&self) -> PanelLayoutHint {
+        PanelLayoutHint {
+            position: PanelPosition::Center,
+            preferred_size: Some((800.0, 600.0)),
+            min_size: Some((400.0, 300.0)),
+        }
     }
 }

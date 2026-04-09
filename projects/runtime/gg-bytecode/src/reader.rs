@@ -149,6 +149,7 @@ impl BytecodeReader {
             BytecodeOpCode::Sub => BytecodeInstruction::Sub,
             BytecodeOpCode::Mul => BytecodeInstruction::Mul,
             BytecodeOpCode::Div => BytecodeInstruction::Div,
+            BytecodeOpCode::Mod => BytecodeInstruction::Mod,
             BytecodeOpCode::Neg => BytecodeInstruction::Neg,
             BytecodeOpCode::Eq => BytecodeInstruction::Eq,
             BytecodeOpCode::Ne => BytecodeInstruction::Ne,

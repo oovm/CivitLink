@@ -2,7 +2,7 @@
 //! 提供预览运行时的状态捕获和调试信息查询功能
 
 use gg_core::GResult;
-use gg_editor_shell::panel::PanelData;
+use gg_editor_shell::EditorContext;
 
 /// 预览调试器
 ///
@@ -32,9 +32,9 @@ impl PreviewDebugger {
 
     /// 捕获当前状态
     ///
-    /// 从面板数据中捕获当前游戏预览的运行时状态，
+    /// 从编辑器上下文中捕获当前游戏预览的运行时状态，
     /// 包括当前节点、对话历史和实体数量等信息。
-    pub fn capture_state(context: &mut PanelData) -> GResult<Self> {
+    pub fn capture_state(context: &mut EditorContext) -> GResult<Self> {
         let _ = context;
         Ok(Self::new())
     }

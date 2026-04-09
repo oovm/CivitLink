@@ -8,3 +8,4 @@ gg-core = { path = "../../core/gg-core" }
 gg-ecs = { path = "../../core/gg-ecs" }
 gg-asset = { path = "../../core/gg-asset" }
 gg-galgame-schema = { path = "../gg-galgame-schema" }
+gg-render = { workspace = true }
