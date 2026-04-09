@@ -1,0 +1,27 @@
+- [ ] gg-manifest crate 存在且包含 EngineManifest 及其子结构体定义
+- [ ] EngineManifest 支持 TOML 反序列化，包含 [engine]、[modules]、[platforms]、[toolchain]、[display] 五个节
+- [ ] EngineManifest 验证逻辑正确拒绝缺少必填字段的清单
+- [ ] 游戏类型模板函数（visual_novel_template, arpg_template, custom_template）可正确生成默认清单
+- [ ] gg-manifest 单元测试全部通过
+- [ ] gg-core 的 BuildConfig 包含 target_triple, release, features, output_dir 字段
+- [ ] gg-core 的 GenerateContext 包含 manifest 引用、output_dir、template_dir 字段
+- [ ] gg-core 的 PackageContext 包含 build_output_dir, package_output_dir, manifest 引用、assets_dir 字段
+- [ ] gg-core 的 RunContext 包含 executable_path, project_dir, args 字段
+- [ ] gg-factory crate 存在且 EngineFactory::generate() 可根据清单生成完整项目
+- [ ] 生成的 Cargo.toml 包含正确的依赖项（gg-core, gg-ecs, gg-asset 及清单声明的插件）
+- [ ] 生成的 src/main.rs 包含命令行参数解析和插件初始化代码
+- [ ] 生成的 src/config.rs 包含 GameSection, DisplaySection, AudioSection 类型定义
+- [ ] 生成的 src/engine.rs 包含引擎结构体及 initialize/tick/run 方法
+- [ ] gg-cli crate 存在且支持 init, generate, build, new-game 子命令
+- [ ] gg-cli init 可创建引擎项目目录并生成 Engine.toml 模板
+- [ ] gg-cli generate 可调用 gg-factory 生成引擎代码
+- [ ] gg-cli build 可调用 cargo build 编译生成的项目
+- [ ] gg-cli new-game 可创建游戏项目骨架
+- [ ] GalgameManifest 实现了 From<&EngineManifest> 转换
+- [ ] workspace Cargo.toml 包含 projects/toolchain/* 成员
+- [ ] CI 流水线包含标签触发的多平台构建 job（Windows, macOS, Linux）
+- [ ] CI 流水线包含 WASM 构建 job
+- [ ] 所有 public 结构体、枚举、方法、字段都有文档注释
+- [ ] cargo check --workspace 通过
+- [ ] cargo test --workspace 通过
+- [ ] cargo clippy --all-targets --all-features 通过

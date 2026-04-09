@@ -1,9 +1,9 @@
 {
-    "name": "wae",
+    "name": "gg-game-engine",
     "private": true,
-    "description": "微服务优先的 Rust 异步框架，深度融合 tokio 运行时",
-    "repository": "https://github.com/oovm/wae",
-    "homepage": "https://github.com/oovm/wae",
+    "description": "以元游戏为核心的现代游戏引擎，Rust 编写，多平台支持，可组合的 ECS 架构",
+    "repository": "",
+    "homepage": "",
     "license": "MIT",
     "scripts": {
         "check:ci": "node scripts/check.mjs",
@@ -12,14 +12,8 @@
         "coverage": "node scripts/coverage.mjs html",
         "coverage:json": "node scripts/coverage.mjs json",
         "coverage:lcov": "node scripts/coverage.mjs lcov",
-        "fmt": "cargo fmt --all && npx biome format --write .",
-        "push": "git push && git push --tags --prune",
-        "reset": "git reset Head~ --soft",
-        "u": "cargo upgrade --pinned",
-        "p": "cargo workspaces publish --no-git-commit --allow-dirty --yes",
-        "build:frontend": "pnpm -r run build",
-        "build:doc": "pnpm --filter wae-docs run build",
-        "typecheck:frontend": "pnpm -r run typecheck"
+        "fmt": "cargo fmt --all",
+        "dev": "pnpm --filter gg-engine-homepage run dev"
     },
     "devDependencies": {
         "@biomejs/biome": "^2.4.6",

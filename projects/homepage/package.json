@@ -1,7 +1,7 @@
 {
-    "name": "wae-homepage",
+    "name": "gg-engine-homepage",
     "version": "0.1.0",
-    "description": "WAE - Rust Async Utilities Homepage and Documentation",
+    "description": "GG Game Engine - 元游戏架构的现代游戏引擎",
     "private": true,
     "type": "module",
     "scripts": {

@@ -268,7 +268,7 @@ impl FilterManager {
     pub fn apply_filter(world: &mut World, filter: AmbientFilter, duration_secs: f32) -> GResult<()> {
         let current_filter = Self::get_current_filter(world);
 
-        let entity = world.spawn();
+        let entity = world.spawn().id();
         let state = FilterState::new(current_filter, Some(filter), duration_secs);
         world.add_component(entity, state)?;
         Ok(())
@@ -281,7 +281,7 @@ impl FilterManager {
     pub fn remove_filter(world: &mut World, duration_secs: f32) -> GResult<()> {
         let current_filter = Self::get_current_filter(world);
 
-        let entity = world.spawn();
+        let entity = world.spawn().id();
         let state = FilterState::new(current_filter, None, duration_secs);
         world.add_component(entity, state)?;
         Ok(())

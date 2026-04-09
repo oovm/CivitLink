@@ -3,6 +3,20 @@
 //! GG 引擎运行时核心模块
 //! 提供脚本驱动的运行时系统和游戏循环
 
+pub mod app;
+pub mod hmr;
+pub mod hmr_state;
+pub mod scheduler;
+pub mod stage;
+pub mod wasm;
+
+pub use app::{App, RuntimePlugin};
+pub use hmr::{HmrEvent, HmrManager, HmrMigrationResult};
+pub use hmr_state::{StateMigrator, StateSnapshot};
+pub use scheduler::StageScheduler;
+pub use stage::{Stage, SystemDescriptor, SystemFn, SystemSet, SystemSetId};
+pub use wasm::{WasmError, WasmHostFunctions, WasmInstanceId, WasmModuleId, WasmRuntime, WasmSandboxConfig};
+
 use gg_core::{GResult, GError, GErrorKind, plugin::Plugin};
 use gg_ecs::{Scheduler, World, Entity, Component};
 use gg_asset::AssetManager;
@@ -125,11 +139,43 @@ impl Host for EngineHost {
         match name {
             "print" => {
                 for arg in &args {
-                    println!("{:?}", arg);
+                    match arg {
+                        IrValue::String(s) => println!("{}", s),
+                        IrValue::Int(i) => println!("{}", i),
+                        IrValue::Float(f) => println!("{}", f),
+                        IrValue::Bool(b) => println!("{}", b),
+                        IrValue::Entity(e) => println!("Entity({})", e),
+                        IrValue::Null => println!("null"),
+                    }
+                }
+                None
+            }
+            "spawn_entity" => {
+                let entity_id = self.spawn_entity();
+                Some(IrValue::Entity(entity_id))
+            }
+            "add_component" => {
+                if args.len() >= 2 {
+                    if let (IrValue::Entity(entity_id), IrValue::String(component_type)) = (&args[0], &args[1]) {
+                        self.add_component(*entity_id, component_type, IrValue::Null);
+                    }
+                }
+                None
+            }
+            "set_field" => {
+                if args.len() >= 4 {
+                    if let (IrValue::Entity(entity_id), IrValue::String(component_type), IrValue::String(field), value) = (&args[0], &args[1], &args[2], args[3].clone()) {
+                        self.set_component_field(*entity_id, component_type, field, value);
+                    }
                 }
                 None
             }
             "get_field" => {
+                if args.len() >= 3 {
+                    if let (IrValue::Entity(entity_id), IrValue::String(component_type), IrValue::String(field)) = (&args[0], &args[1], &args[2]) {
+                        return self.get_component_field(*entity_id, component_type, field);
+                    }
+                }
                 None
             }
             _ => {
@@ -170,10 +216,6 @@ impl ScriptEngine {
     /// 从字符串加载脚本
     pub fn load_script_string(&mut self, source: &str, module_name: &str) -> GResult<()> {
         let module = self.loader.load_string(source, module_name)?;
-        println!("Script compiled: module={}, functions={}", module.name, module.functions.len());
-        for func in &module.functions {
-            println!("  Function: {} (params={}, locals={}, instructions={})", func.name, func.param_count, func.local_count, func.instructions.len());
-        }
         self.module = Some(module);
         Ok(())
     }

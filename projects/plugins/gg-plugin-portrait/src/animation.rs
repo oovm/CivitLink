@@ -132,7 +132,7 @@ impl PortraitManager {
         position: PortraitPosition,
         transition: TransitionType,
     ) -> GResult<Entity> {
-        let entity = world.spawn();
+        let entity = world.spawn().id();
         let state = PortraitState {
             character_id,
             current_expression: expression,

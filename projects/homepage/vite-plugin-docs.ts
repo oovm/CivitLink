@@ -16,7 +16,7 @@ export default function docsPlugin(): Plugin {
         },
         load(id) {
             if (id === RESOLVED_DOCS_VIRTUAL_MODULE_ID) {
-                const docsDir = path.resolve(__dirname, "../../documentation/zh-hans");
+                const docsDir = path.resolve(__dirname, "../../design");
 
                 const docs: Record<string, string> = {};
 

@@ -3,109 +3,237 @@
 //! GG 引擎核心模块
 //! 提供基础类型、错误处理和平台抽象接口
 
-/// 错误类型枚举
-#[derive(Debug)]
-pub enum GErrorKind {
-    /// IO 错误
-    Io,
-    /// 资源错误
-    Asset,
-    /// 平台错误
-    Platform,
-    /// ECS 错误
-    Ecs,
-    /// 插件错误
-    Plugin,
-    /// 运行时错误
-    Runtime,
-    /// 其他错误
-    Other,
-}
-
-/// GG 引擎错误类型
-#[derive(Debug)]
-pub struct GError {
-    /// 错误类型
-    pub kind: GErrorKind,
-    /// 错误消息
-    pub message: String,
-}
-
-impl std::fmt::Display for GError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}: {}", self.kind, self.message)
-    }
-}
-
-impl std::error::Error for GError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
-    }
-}
-
-/// GG 引擎结果类型
-pub type GResult<T> = std::result::Result<T, GError>;
+pub use gg_error::{GError, GErrorKind, GResult};
 
 /// 平台抽象层
-pub mod platform {
-    /// 平台标识
-    pub type PlatformId = String;
-    
-    /// 构建配置
-    pub struct BuildConfig {
-        // 构建配置字段
+pub mod platform;
+
+/// 插件系统
+pub mod plugin {
+    use gg_ecs::{Entity, GgWorld, Resource, System};
+    use gg_error::{GError, GErrorKind, GResult};
+    use std::any::{Any, TypeId};
+    use std::collections::HashSet;
+
+    /// 类型擦除的资源条目
+    struct ResourceEntry {
+        /// 类型擦除的资源
+        resource: Box<dyn Any + Send + Sync>,
+        /// 资源类型 ID
+        type_id: TypeId,
     }
-    
-    /// 生成上下文
-    pub struct GenerateContext {
-        // 生成上下文字段
+
+    /// 类型擦除的组件条目
+    struct ComponentEntry {
+        /// 目标实体
+        entity: Entity,
+        /// 类型擦除的组件
+        component: Box<dyn Any + Send + Sync>,
+        /// 组件类型 ID
+        type_id: TypeId,
     }
-    
-    /// 打包上下文
-    pub struct PackageContext {
-        // 打包上下文字段
+
+    /// 插件注册器
+    ///
+    /// 在插件的 build 阶段收集注册信息，包括系统、资源和依赖。
+    /// 在 apply 阶段统一将注册信息应用到 World。
+    pub struct PluginRegistrar {
+        /// 待注册的系统列表
+        systems: Vec<Box<dyn System>>,
+        /// 待注册的全局资源列表
+        resources: Vec<ResourceEntry>,
+        /// 待注册的组件条目列表
+        components: Vec<ComponentEntry>,
+        /// 依赖插件名称列表
+        dependencies: Vec<String>,
     }
-    
-    /// 运行上下文
-    pub struct RunContext {
-        // 运行上下文字段
+
+    impl PluginRegistrar {
+        /// 创建新的插件注册器
+        pub fn new() -> Self {
+            Self {
+                systems: Vec::new(),
+                resources: Vec::new(),
+                components: Vec::new(),
+                dependencies: Vec::new(),
+            }
+        }
+
+        /// 注册系统
+        ///
+        /// 将系统添加到待注册队列，在 apply 阶段注册到 World。
+        pub fn register_system(&mut self, system: Box<dyn System>) {
+            self.systems.push(system);
+        }
+
+        /// 插入全局资源
+        ///
+        /// 将资源添加到待注册队列，在 apply 阶段插入到 World 的全局资源。
+        pub fn insert_resource<T: Resource + 'static>(&mut self, resource: T) {
+            let type_id = TypeId::of::<T>();
+            self.resources.push(ResourceEntry {
+                resource: Box::new(resource),
+                type_id,
+            });
+        }
+
+        /// 向实体插入组件
+        ///
+        /// 将组件添加到待注册队列，在 apply 阶段添加到指定实体。
+        pub fn insert_component<T: gg_ecs::Component + 'static>(
+            &mut self,
+            entity: Entity,
+            component: T,
+        ) {
+            let type_id = TypeId::of::<T>();
+            self.components.push(ComponentEntry {
+                entity,
+                component: Box::new(component),
+                type_id,
+            });
+        }
+
+        /// 添加依赖
+        ///
+        /// 声明当前插件依赖的另一个插件。
+        pub fn add_dependency(&mut self, plugin_name: &str) {
+            self.dependencies.push(plugin_name.to_string());
+        }
+
+        /// 将收集的注册信息应用到 World
+        ///
+        /// 依次执行：插入全局资源 → 插入组件 → 注册系统
+        pub fn apply(self, world: &mut GgWorld) -> GResult<()> {
+            for entry in self.resources {
+                world.insert_resource_raw(entry.resource, entry.type_id);
+            }
+            for entry in self.components {
+                world.add_component_raw(entry.entity, entry.component, entry.type_id)?;
+            }
+            for system in self.systems {
+                world.register_system(system);
+            }
+            Ok(())
+        }
+
+        /// 获取依赖列表
+        pub fn dependencies(&self) -> &[String] {
+            &self.dependencies
+        }
     }
-    
-    /// 平台 trait
-    pub trait Platform {
-        /// 获取平台标识
-        fn id(&self) -> PlatformId;
-        
-        /// 获取平台显示名称
-        fn display_name(&self) -> &str;
-        
-        /// 配置构建
-        fn configure_build(&self, config: &mut BuildConfig);
-        
-        /// 生成平台特定代码
-        fn generate_code(&self, ctx: &GenerateContext) -> super::GResult<std::path::PathBuf>;
-        
-        /// 打包最终产物
-        fn package(&self, ctx: &PackageContext) -> super::GResult<Vec<std::path::PathBuf>>;
-        
-        /// 本地运行/部署
-        fn run(&self, ctx: &RunContext) -> super::GResult<()> {
+
+    /// 插件 trait
+    ///
+    /// 所有引擎插件都需要实现此 trait。
+    /// 通过 build 方法注册系统、资源和依赖，
+    /// 通过 initialize/shutdown 管理插件生命周期。
+    pub trait Plugin {
+        /// 插件名称
+        fn name(&self) -> &str;
+
+        /// 构建插件
+        ///
+        /// 通过 PluginRegistrar 注册系统、资源和依赖。
+        /// 此阶段仅收集注册信息，不修改 World。
+        fn build(&self, registrar: &mut PluginRegistrar) {
+            let _ = registrar;
+        }
+
+        /// 插件依赖列表
+        ///
+        /// 返回此插件依赖的其他插件名称列表。
+        fn dependencies(&self) -> Vec<&str> {
+            Vec::new()
+        }
+
+        /// 初始化插件
+        fn initialize(&self) -> GResult<()>;
+
+        /// 关闭插件
+        fn shutdown(&self) -> GResult<()>;
+    }
+
+    /// 插件管理器
+    ///
+    /// 管理插件的加载、依赖检查和生命周期。
+    pub struct PluginManager {
+        /// 已注册的插件列表
+        plugins: Vec<Box<dyn Plugin>>,
+        /// 已注册的插件名称集合
+        plugin_names: HashSet<String>,
+    }
+
+    impl PluginManager {
+        /// 创建新的插件管理器
+        pub fn new() -> Self {
+            Self {
+                plugins: Vec::new(),
+                plugin_names: HashSet::new(),
+            }
+        }
+
+        /// 注册插件
+        ///
+        /// 将插件添加到管理器中，检查依赖是否满足。
+        pub fn register(&mut self, plugin: Box<dyn Plugin>) -> GResult<()> {
+            for dep in plugin.dependencies() {
+                if !self.plugin_names.contains(dep) {
+                    return Err(GError {
+                        kind: GErrorKind::Plugin,
+                        message: format!(
+                            "Plugin '{}' depends on '{}' which is not registered",
+                            plugin.name(),
+                            dep
+                        ),
+                    });
+                }
+            }
+            self.plugin_names.insert(plugin.name().to_string());
+            self.plugins.push(plugin);
+            Ok(())
+        }
+
+        /// 构建所有插件
+        ///
+        /// 依次调用每个插件的 build 方法，收集注册信息并应用到 World。
+        pub fn build_all(&mut self, world: &mut GgWorld) -> GResult<()> {
+            for plugin in &self.plugins {
+                let mut registrar = PluginRegistrar::new();
+                plugin.build(&mut registrar);
+                registrar.apply(world)?;
+            }
+            Ok(())
+        }
+
+        /// 初始化所有插件
+        pub fn initialize_all(&self) -> GResult<()> {
+            for plugin in &self.plugins {
+                plugin.initialize()?;
+            }
+            Ok(())
+        }
+
+        /// 关闭所有插件
+        ///
+        /// 按注册的逆序关闭插件。
+        pub fn shutdown_all(&self) -> GResult<()> {
+            for plugin in self.plugins.iter().rev() {
+                plugin.shutdown()?;
+            }
             Ok(())
         }
     }
 }
 
-/// 插件系统
-pub mod plugin {
-    /// 插件 trait
-    pub trait Plugin {
-        /// 插件名称
-        fn name(&self) -> &str;
-        
-        /// 初始化插件
-        fn initialize(&self) -> super::GResult<()>;
-        
-        /// 关闭插件
-        fn shutdown(&self) -> super::GResult<()>;
-    }
-}
+pub use platform::DirEntry;
+pub use platform::FileMetadata;
+pub use platform::FileSystem;
+pub use platform::FileType;
+pub use platform::Input;
+pub use platform::InputEvent;
+pub use platform::KeyCode;
+pub use platform::KeyState;
+pub use platform::PlatformServices;
+pub use platform::PointerAction;
+pub use platform::PointerButton;
+pub use platform::Time;

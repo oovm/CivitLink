@@ -4,9 +4,11 @@ members = [
     "projects/runtime/*",
     "projects/compiler/gg-script",
     "projects/compiler/gg-compiler-script",
+    "projects/compiler/gg-compiler-core",
     "projects/plugins/*",
     "projects/galgame",
     "projects/editor/*",
+    "projects/toolchain/gg-manifest",
     "examples/basic",
 ]
 
@@ -18,12 +20,24 @@ license = "MIT"
 
 [workspace.dependencies]
 gg-core = { path = "projects/core/gg-core" }
+gg-error = { path = "projects/core/gg-error" }
 gg-ecs = { path = "projects/core/gg-ecs" }
 gg-asset = { path = "projects/core/gg-asset" }
+gg-reflection = { path = "projects/core/gg-reflection" }
 gg-render = { path = "projects/core/gg-render" }
+gg-render-wgpu = { path = "projects/runtime/gg-render-wgpu" }
 gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
+gg-runtime-audio = { path = "projects/runtime/gg-runtime-audio" }
 gg-ir = { path = "projects/runtime/gg-ir" }
+gg-bytecode = { path = "projects/runtime/gg-bytecode" }
 gg-vm = { path = "projects/runtime/gg-vm" }
 gg-script = { path = "projects/compiler/gg-script" }
+gg-compiler-core = { path = "projects/compiler/gg-compiler-core" }
+oak-valkyrie = { path = "../oaks/examples/oak-valkyrie" }
+oak-core = { path = "../oaks/projects/oak-core" }
 gg-galgame-schema = { path = "projects/plugins/gg-galgame-schema" }
+gg-ui = { path = "projects/plugins/gg-ui" }
+gg-editor-lsp = { path = "projects/editor/gg-editor-lsp" }
+gg-manifest = { path = "projects/toolchain/gg-manifest" }
 serde = { version = "1", features = ["derive"] }
+toml = "0.8"

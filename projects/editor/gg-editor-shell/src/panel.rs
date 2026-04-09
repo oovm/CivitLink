@@ -1,80 +1,47 @@
-//! 编辑器面板 trait 和注册机制
+//! 编辑器面板 trait 和布局提示
 
+use crate::context::EditorContext;
 use gg_core::GResult;
-use gg_ecs::{Entity, World};
 
-/// 面板共享数据
-pub struct PanelData {
-    /// World 的原始指针
-    world_ptr: *mut World,
-    /// 当前选中的实体
-    selected_entity: Option<Entity>,
-    /// 项目路径
-    project_path: Option<String>,
+/// 面板位置
+pub enum PanelPosition {
+    /// 左侧
+    Left,
+    /// 右侧
+    Right,
+    /// 中央
+    Center,
+    /// 底部
+    Bottom,
+    /// 浮动
+    Floating,
 }
 
-impl PanelData {
-    /// 创建新的面板数据
-    pub fn new() -> Self {
-        Self {
-            world_ptr: std::ptr::null_mut(),
-            selected_entity: None,
-            project_path: None,
-        }
-    }
-
-    /// 设置 World 引用
-    pub fn set_world(&mut self, world: &mut World) {
-        self.world_ptr = world as *mut World;
-    }
-
-    /// 获取 World 的可变引用
-    ///
-    /// # Safety
-    ///
-    /// 调用者必须确保在获取引用期间没有其他可变引用指向同一 World。
-    pub fn world(&mut self) -> Option<&mut World> {
-        if self.world_ptr.is_null() {
-            None
-        } else {
-            unsafe { Some(&mut *self.world_ptr) }
-        }
-    }
-
-    /// 获取选中实体
-    pub fn selected_entity(&self) -> Option<Entity> {
-        self.selected_entity
-    }
-
-    /// 设置选中实体
-    pub fn set_selected_entity(&mut self, entity: Option<Entity>) {
-        self.selected_entity = entity;
-    }
-
-    /// 获取项目路径
-    pub fn project_path(&self) -> Option<&str> {
-        self.project_path.as_deref()
-    }
-
-    /// 设置项目路径
-    pub fn set_project_path(&mut self, path: Option<String>) {
-        self.project_path = path;
-    }
+/// 面板布局提示
+///
+/// 为布局系统提供面板的位置和尺寸偏好信息。
+pub struct PanelLayoutHint {
+    /// 面板位置
+    pub position: PanelPosition,
+    /// 首选尺寸 (宽, 高)
+    pub preferred_size: Option<(f32, f32)>,
+    /// 最小尺寸 (宽, 高)
+    pub min_size: Option<(f32, f32)>,
 }
 
-impl Default for PanelData {
+impl Default for PanelLayoutHint {
     fn default() -> Self {
-        Self::new()
+        Self {
+            position: PanelPosition::Center,
+            preferred_size: None,
+            min_size: None,
+        }
     }
-}
-
-/// 面板渲染上下文
-pub struct PanelContext<'a> {
-    /// 面板共享数据
-    pub panel_data: &'a mut PanelData,
 }
 
 /// 编辑器面板 trait
+///
+/// 所有编辑器面板都应实现此 trait，通过 `EditorContext` 访问编辑器核心子系统。
 pub trait EditorPanel {
     /// 面板名称
     fn name(&self) -> &str;
@@ -85,6 +52,17 @@ pub trait EditorPanel {
     /// 设置可见性
     fn set_visible(&mut self, visible: bool);
 
+    /// 面板注册时调用
+    fn on_register(&mut self, _context: &mut EditorContext) {}
+
+    /// 面板注销时调用
+    fn on_unregister(&mut self, _context: &mut EditorContext) {}
+
     /// 渲染面板
-    fn render(&mut self, context: &mut PanelContext) -> GResult<()>;
+    fn render(&mut self, context: &mut EditorContext) -> GResult<()>;
+
+    /// 面板布局提示
+    fn layout_hint(&self) -> PanelLayoutHint {
+        PanelLayoutHint::default()
+    }
 }

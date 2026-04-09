@@ -294,6 +294,24 @@ impl Vm {
                 _ => IrValue::Null,
             }),
 
+            OpCode::Mod => self.binary_op(|a, b| match (a, b) {
+                (IrValue::Int(x), IrValue::Int(y)) => {
+                    if y == 0 {
+                        IrValue::Null
+                    } else {
+                        IrValue::Int(x % y)
+                    }
+                }
+                (IrValue::Float(x), IrValue::Float(y)) => {
+                    if y == 0.0 {
+                        IrValue::Null
+                    } else {
+                        IrValue::Float(x % y)
+                    }
+                }
+                _ => IrValue::Null,
+            }),
+
             OpCode::Neg => {
                 let value = match self.stack.pop() {
                     Some(v) => v,
@@ -444,28 +462,12 @@ impl Vm {
                     None => return Err(VmResult::Error("栈下溢: Call".to_string())),
                 };
 
-                let func_name_idx = match func_name_value {
-                    IrValue::String(idx) => idx,
+                let func_name = match func_name_value {
+                    IrValue::String(s) => s,
                     _ => {
                         return Err(VmResult::Error(format!(
-                            "Call 函数名必须是字符串常量索引: {:?}",
+                            "Call 函数名必须是字符串: {:?}",
                             func_name_value
-                        )));
-                    }
-                };
-
-                let func_name = match module.constants.get(func_name_idx) {
-                    Some(IrValue::String(s)) => s.to_string(),
-                    Some(v) => {
-                        return Err(VmResult::Error(format!(
-                            "常量池中索引 {} 不是字符串: {:?}",
-                            func_name_idx, v
-                        )));
-                    }
-                    None => {
-                        return Err(VmResult::Error(format!(
-                            "常量索引越界: {}",
-                            func_name_idx
                         )));
                     }
                 };

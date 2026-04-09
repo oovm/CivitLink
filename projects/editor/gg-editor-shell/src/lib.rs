@@ -1,10 +1,22 @@
 #![warn(missing_docs)]
 
 //! GG 编辑器壳程序框架
-//! 提供编辑器面板 trait 和注册机制
+//!
+//! 提供微内核架构的编辑器基础设施，包括服务注册表、命令系统、事件总线、
+//! 插件系统和面板管理。
 
+pub mod command;
+pub mod context;
+pub mod event;
 pub mod panel;
+pub mod plugin;
+pub mod service;
 pub mod shell;
 
-pub use panel::{EditorPanel, PanelContext, PanelData};
+pub use command::{Command, CommandManager};
+pub use context::EditorContext;
+pub use event::{EditorEvent, EventBus, SubscriptionId};
+pub use panel::{EditorPanel, PanelLayoutHint, PanelPosition};
+pub use plugin::EditorPlugin;
+pub use service::ServiceRegistry;
 pub use shell::EditorShell;

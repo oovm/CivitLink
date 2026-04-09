@@ -4,10 +4,10 @@
       <div class="container mx-auto px-4">
         <div class="flex items-center justify-between h-20">
           <div class="flex items-center gap-3 cursor-pointer" @click="$router.push('/')">
-            <div class="w-12 h-12 bg-gradient-to-br from-orange-500 via-red-600 to-orange-700 rounded-xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
-              <span class="text-white font-extrabold text-2xl">W</span>
+            <div class="w-12 h-12 bg-gradient-to-br from-purple-600 via-violet-700 to-purple-800 rounded-xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+              <span class="text-white font-extrabold text-2xl">G</span>
             </div>
-            <span class="text-2xl font-extrabold bg-gradient-to-r from-orange-600 via-red-600 to-orange-700 bg-clip-text text-transparent hover:scale-[1.02] transition-transform">WAE</span>
+            <span class="text-2xl font-extrabold bg-gradient-to-r from-purple-700 via-violet-600 to-purple-800 bg-clip-text text-transparent hover:scale-[1.02] transition-transform">GG Engine</span>
           </div>
           
           <nav class="flex items-center gap-1">
@@ -16,7 +16,7 @@
               :class="[
                 'px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center gap-2',
                 $route.path === '/' 
-                  ? 'text-white bg-gradient-to-r from-orange-600 to-red-700 shadow-md' 
+                  ? 'text-white bg-gradient-to-r from-purple-700 to-violet-800 shadow-md' 
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               ]"
             >
@@ -27,7 +27,7 @@
               :class="[
                 'px-4 py-2.5 rounded-lg font-medium transition-all duration-200',
                 $route.path === '/i' 
-                  ? 'text-white bg-gradient-to-r from-orange-600 to-red-700 shadow-md' 
+                  ? 'text-white bg-gradient-to-r from-purple-700 to-violet-800 shadow-md' 
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               ]"
             >
@@ -38,7 +38,7 @@
               :class="[
                 'px-4 py-2.5 rounded-lg font-medium transition-all duration-200',
                 $route.path === '/t' 
-                  ? 'text-white bg-gradient-to-r from-orange-600 to-red-700 shadow-md' 
+                  ? 'text-white bg-gradient-to-r from-purple-700 to-violet-800 shadow-md' 
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               ]"
             >
@@ -49,8 +49,8 @@
               :class="[
                 'px-4 py-2.5 rounded-lg font-medium transition-all duration-200 ml-2',
                 $route.path === '/d' 
-                  ? 'text-white bg-gradient-to-r from-orange-700 to-red-800 shadow-md' 
-                  : 'text-white bg-gradient-to-r from-orange-600 to-red-700 hover:from-orange-700 hover:to-red-800 shadow-md'
+                  ? 'text-white bg-gradient-to-r from-purple-800 to-violet-900 shadow-md' 
+                  : 'text-white bg-gradient-to-r from-purple-700 to-violet-800 hover:from-purple-800 hover:to-violet-900 shadow-md'
               ]"
             >
               文档
@@ -67,13 +67,13 @@
         <div class="grid md:grid-cols-4 gap-12">
           <div class="md:col-span-2">
             <div class="flex items-center gap-3 mb-6">
-              <div class="w-12 h-12 bg-gradient-to-br from-orange-500 via-red-600 to-orange-700 rounded-xl flex items-center justify-center">
-                <span class="text-white font-extrabold text-2xl">W</span>
+              <div class="w-12 h-12 bg-gradient-to-br from-purple-600 via-violet-700 to-purple-800 rounded-xl flex items-center justify-center">
+                <span class="text-white font-extrabold text-2xl">G</span>
               </div>
-              <span class="text-2xl font-extrabold text-white">WAE</span>
+              <span class="text-2xl font-extrabold text-white">GG Engine</span>
             </div>
             <p class="text-slate-400 mb-6 leading-relaxed max-w-md">
-              微服务优先的 Rust 异步框架，完全替代 axum，深度融合 tokio，提供一站式全栈解决方案。
+              以元游戏为核心的现代游戏引擎，Rust 编写，多平台支持，可组合的 ECS 架构，支持任意游戏类型。
             </p>
             <div class="flex gap-4">
               <a href="https://github.com/oovm/wae" class="w-10 h-10 bg-slate-800 hover:bg-slate-700 rounded-lg flex items-center justify-center transition-colors">
@@ -107,7 +107,7 @@
         
         <div class="border-t border-slate-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p class="text-slate-500 text-sm">
-            © 2024 WAE. 保留所有权利。
+            © 2024 GG Engine. 保留所有权利。
           </p>
           <div class="flex gap-6 text-sm">
             <a href="#" class="text-slate-500 hover:text-white transition-colors">隐私政策</a>

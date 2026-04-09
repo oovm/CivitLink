@@ -1,0 +1,15 @@
+[package]
+name = "gg-runtime-audio"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+cpal = { version = "0.15", optional = true }
+rodio = { version = "0.19", optional = true }
+
+[features]
+default = []
+cpal-backend = ["dep:cpal", "dep:rodio"]

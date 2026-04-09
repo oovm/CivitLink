@@ -6,4 +6,5 @@ authors = { workspace = true }
 license = { workspace = true }
 
 [dependencies]
-# 依赖项
+gg-error = { workspace = true }
+gg-ecs = { workspace = true }

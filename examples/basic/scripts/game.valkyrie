@@ -1,26 +1,26 @@
-// GG 引擎基本示例脚本
+# GG 引擎基本示例脚本
 
-// 初始化函数，在引擎启动时调用
+# 初始化函数，在引擎启动时调用
 micro init() {
-    // 创建实体 1
+    # 创建实体 1
     let entity1 = spawn_entity()
     add_component(entity1, "Position")
     add_component(entity1, "Velocity")
     add_component(entity1, "RenderComponent")
 
-    // 设置实体 1 的初始位置和速度
+    # 设置实体 1 的初始位置和速度
     set_field(entity1, "Position", "x", 0.0)
     set_field(entity1, "Position", "y", 0.0)
     set_field(entity1, "Velocity", "dx", 1.0)
     set_field(entity1, "Velocity", "dy", 1.0)
 
-    // 创建实体 2
+    # 创建实体 2
     let entity2 = spawn_entity()
     add_component(entity2, "Position")
     add_component(entity2, "Velocity")
     add_component(entity2, "RenderComponent")
 
-    // 设置实体 2 的初始位置和速度
+    # 设置实体 2 的初始位置和速度
     set_field(entity2, "Position", "x", 10.0)
     set_field(entity2, "Position", "y", 10.0)
     set_field(entity2, "Velocity", "dx", -0.5)
@@ -29,8 +29,8 @@ micro init() {
     print("Game initialized with 2 entities")
 }
 
-// 更新函数，每帧调用
+# 更新函数，每帧调用
 micro update() {
-    // 这里可以添加每帧更新的逻辑
-    // 目前由 ECS 系统处理移动
+    # 这里可以添加每帧更新的逻辑
+    # 目前由 ECS 系统处理移动
 }

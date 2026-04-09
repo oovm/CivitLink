@@ -1,0 +1,29 @@
+- [ ] gg-core::platform 模块包含 FileSystem trait，定义 read、read_to_string、exists、write、create_dir_all、read_dir、metadata、remove_file 方法
+- [ ] gg-core::platform 模块包含 Input trait，定义 poll_events、is_key_pressed、is_pointer_down、pointer_position 方法
+- [ ] gg-core::platform 模块包含 Time trait，定义 delta、elapsed、update 方法
+- [ ] gg-core::platform 模块包含 PlatformServices 结构体，聚合 FileSystem、Input、Time 服务
+- [ ] FileSystem trait 的所有方法和关联类型（FileType、FileMetadata、DirEntry）都有文档注释
+- [ ] Input trait 的所有方法、InputEvent 枚举、KeyCode 枚举、KeyState 枚举、PointerAction 枚举、PointerButton 枚举都有文档注释
+- [ ] Time trait 的所有方法都有文档注释
+- [ ] 原有 Platform trait 移至 platform::build 子模块，功能不变
+- [ ] gg-platform-desktop crate 实现 DesktopFileSystem（基于 std::fs）
+- [ ] gg-platform-desktop crate 实现 DesktopInput（维护按键状态和事件缓冲）
+- [ ] gg-platform-desktop crate 实现 DesktopTime（基于 std::time::Instant）
+- [ ] gg-platform-desktop crate 实现 DesktopPlatformServices 聚合所有服务
+- [ ] gg-platform-web crate 实现 WebFileSystem（基于 fetch API 和 localStorage）
+- [ ] gg-platform-web crate 实现 WebInput（基于 DOM 事件）
+- [ ] gg-platform-web crate 实现 WebTime（基于 performance.now()）
+- [ ] gg-platform-web crate 实现 WebPlatformServices 聚合所有服务
+- [ ] gg-platform-mobile crate 包含 MobileLifecycle trait 定义（on_pause、on_resume、on_destroy）
+- [ ] gg-platform-mobile crate 包含 MobileInput trait 定义（多点触控、加速度计）
+- [ ] AssetManager 构造函数接受 Box<dyn FileSystem> 参数
+- [ ] TextLoader 和 BinaryLoader 通过 FileSystem trait 读取文件
+- [ ] gg-asset 中不再有 std::fs::File 或 std::io::Read 的直接使用
+- [ ] workspace Cargo.toml 包含 projects/platforms/* 成员
+- [ ] workspace.dependencies 包含 gg-platform-desktop、gg-platform-web、gg-platform-mobile
+- [ ] Runtime 结构体包含 platform_services 字段
+- [ ] Runtime::new() 初始化平台服务
+- [ ] Runtime::tick() 中调用 Input::poll_events 处理输入事件
+- [ ] Runtime::tick() 中调用 Time::update 更新时间
+- [ ] cargo check 编译通过
+- [ ] 所有 public 结构体、枚举、方法、字段都有文档注释

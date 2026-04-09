@@ -151,7 +151,7 @@ pub struct ShowPortraitHandler;
 
 impl CommandHandler for ShowPortraitHandler {
     fn execute(&self, world: &mut World) -> GResult<()> {
-        let entity = world.spawn();
+        let entity = world.spawn().id();
         let portrait = PortraitState {
             character_id: String::new(),
             current_expression: String::new(),

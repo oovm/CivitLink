@@ -19,7 +19,7 @@ World 模块提供游戏世界的创建、销毁和管理功能，整合了 ECS 
 
 ```rust
 pub struct GameWorld {
-    pub ecs_world: GwgWorld,
+    pub ecs_world: GgWorld,
     pub asset_server: AssetServer,
     pub reflection_registry: ReflectionRegistry,
     name: String,
@@ -71,7 +71,7 @@ pub struct WorldManager {
 ### 单世界使用
 
 ```rust
-use gwg_world::prelude::*;
+use gg_world::prelude::*;
 
 fn main() {
     let mut world = GameWorld::new("My Game".to_string());
@@ -104,7 +104,7 @@ fn main() {
 ### 多世界管理
 
 ```rust
-use gwg_world::prelude::*;
+use gg_world::prelude::*;
 
 fn main() {
     let mut manager = WorldManager::new();

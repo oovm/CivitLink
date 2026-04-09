@@ -74,8 +74,8 @@ pub enum CoreSet {
 ### 基本调度
 
 ```rust
-use gwg_schedule::prelude::*;
-use gwg_ecs::prelude::*;
+use gg_schedule::prelude::*;
+use gg_ecs::prelude::*;
 
 fn startup_system() {
     println!("Game starting...");
@@ -90,7 +90,7 @@ fn render_system() {
 }
 
 fn main() {
-    let mut world = GwgWorld::new();
+    let mut world = GgWorld::new();
     
     // 创建不同阶段的调度器
     let mut startup_schedule = Schedule::new(Startup);
@@ -114,8 +114,8 @@ fn main() {
 ### 系统集使用
 
 ```rust
-use gwg_schedule::prelude::*;
-use gwg_ecs::prelude::*;
+use gg_schedule::prelude::*;
+use gg_ecs::prelude::*;
 
 fn input_system() {}
 fn physics_system() {}
@@ -135,8 +135,8 @@ fn main() {
 ### 系统排序
 
 ```rust
-use gwg_schedule::prelude::*;
-use gwg_ecs::prelude::*;
+use gg_schedule::prelude::*;
+use gg_ecs::prelude::*;
 
 fn system_a() {}
 fn system_b() {}

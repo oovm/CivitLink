@@ -1,0 +1,24 @@
+@node start
+[speaker:] 这是一个晴朗的早晨...
+-> start_d1
+
+@node start_d1
+[speaker:heroine] 早上好！
+[show_portrait:heroine:smile:center]
+-> start_d2
+
+@node start_d2
+[speaker:] 你要怎么回应？
++ 早上好！ -> start_good
++ 你是谁？ -> start_who
+
+@node start_good
+[speaker:heroine] 嗯，早上好！
+-> start_end
+
+@node start_who
+[speaker:heroine] 我是...你不记得我了吗？
+-> start_end
+
+@node start_end
+[speaker:] 故事才刚刚开始...

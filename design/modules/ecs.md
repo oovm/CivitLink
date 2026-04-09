@@ -2,7 +2,7 @@
 
 ## 概述
 
-ECS（Entity-Component-System）是 GWG 元引擎的核心框架，基于 `bevy_ecs` 提供高性能、数据驱动的游戏对象系统。
+ECS（Entity-Component-System）是 GG 元引擎的核心框架，采用自研实现，提供高性能、数据驱动的游戏对象系统。
 
 ## 核心概念
 
@@ -10,9 +10,9 @@ ECS（Entity-Component-System）是 GWG 元引擎的核心框架，基于 `bevy_
 实体是游戏世界中对象的唯一标识符，本身不包含任何数据或逻辑。
 
 ```rust
-use gwg_ecs::prelude::*;
+use gg_ecs::prelude::*;
 
-let mut world = GwgWorld::new();
+let mut world = GgWorld::new();
 let entity = world.spawn().id();
 ```
 
@@ -57,13 +57,15 @@ struct GameTime {
 
 ## 核心类型
 
-### GwgWorld
+### GgWorld
 
 游戏世界的主容器，管理所有实体、组件和资源。
 
 ```rust
-pub struct GwgWorld {
-    inner: bevy_ecs::world::World,
+pub struct GgWorld {
+    entities: EntityManager,
+    components: ComponentManager,
+    resources: ResourceManager,
 }
 ```
 
@@ -77,13 +79,14 @@ pub struct GwgWorld {
 - `insert_resource(resource)` - 插入全局资源
 - `get_resource<T>()` - 获取全局资源
 
-### GwgSchedule
+### GgSchedule
 
 系统调度器，用于组织和执行系统。
 
 ```rust
-pub struct GwgSchedule {
-    inner: bevy_ecs::schedule::Schedule,
+pub struct GgSchedule {
+    systems: Vec<Box<dyn System>>,
+    phases: Vec<SchedulePhase>,
 }
 ```
 
@@ -98,7 +101,7 @@ pub struct GwgSchedule {
 ### 基础用法
 
 ```rust
-use gwg_ecs::prelude::*;
+use gg_ecs::prelude::*;
 
 #[derive(Component, Debug)]
 struct Health(f32);
@@ -116,8 +119,8 @@ fn damage_system(mut query: Query<(&mut Health, &Damage)>) {
 }
 
 fn main() {
-    let mut world = GwgWorld::new();
-    let mut schedule = GwgSchedule::new();
+    let mut world = GgWorld::new();
+    let mut schedule = GgSchedule::new();
 
     schedule.add_system(damage_system);
 

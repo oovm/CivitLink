@@ -1,0 +1,22 @@
+- [ ] gg-compiler-core 定义了 Transformer trait，签名为 `fn transform(inputs: &ArtifactSet, context: &mut BuildContext) -> GResult<ArtifactSet>`
+- [ ] gg-compiler-core 定义了 ArtifactSet 类型，支持按类型键查找编译产物
+- [ ] gg-compiler-core 定义了 BuildContext 结构，提供编译配置和诊断收集能力
+- [ ] gg-compiler-core 的 Pipeline 支持 DAG 拓扑排序和按依赖顺序调度执行 Transformer
+- [ ] gg-compiler-core 的 Pipeline 支持增量编译，未变更的 Transformer 节点可被跳过
+- [ ] gg-bytecode 定义了可移植字节码二进制格式，包含魔数头、版本号、常量池、函数表
+- [ ] gg-bytecode 的 BytecodeWriter 能将 IrModule 序列化为字节码二进制格式
+- [ ] gg-bytecode 的 BytecodeReader 能从二进制数据反序列化为 BytecodeModule
+- [ ] gg-bytecode 的 BytecodeInterpreter 能执行 BytecodeModule 中的字节码指令
+- [ ] gg-bytecode 的 BytecodeInterpreter 通过 Host trait 与引擎交互
+- [ ] gg-compiler-aot 定义了 TargetPlatform 枚举，支持 6 种目标平台
+- [ ] gg-compiler-aot 定义了 AotBackend trait 和 AotBackendRegistry
+- [ ] gg-ir 实现了 IrPass trait 和 IrOptimizer
+- [ ] gg-ir 实现了常量折叠 Pass，能折叠编译时可计算的常量表达式
+- [ ] gg-ir 实现了死代码消除 Pass，能移除不可达的代码块
+- [ ] gg-vm 重构为从 BytecodeModule 执行，不再直接消费 IrModule 的 OpCode
+- [ ] gg-vm 的 Host trait、VmResult、CallFrame 等公共 API 保持兼容
+- [ ] gg-script 的编译输出改为经 IR 优化后序列化的 BytecodeModule
+- [ ] gg-runtime-core 适配新的字节码解释器，脚本加载和执行流程正常
+- [ ] 端到端测试通过：脚本源码 → IR → 优化 → 字节码 → 执行
+- [ ] 所有新增的 public 结构体、枚举、方法、字段都有文档注释
+- [ ] 根 Cargo.toml 包含 gg-compiler-core、gg-bytecode、gg-compiler-aot 到 workspace

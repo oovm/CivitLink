@@ -29,7 +29,22 @@ impl Plugin for ExamplePlugin {
 }
 
 /// Valkyrie 游戏脚本
-const GAME_SCRIPT: &str = r#"micro add(x: i32, y: i32) -> i32 { x + y }"#;
+const GAME_SCRIPT: &str = r#"
+micro init() {
+    let entity1 = spawn_entity()
+    add_component(entity1, "Position")
+    set_field(entity1, "Position", "x", 0.0)
+    set_field(entity1, "Position", "y", 0.0)
+    add_component(entity1, "Velocity")
+    set_field(entity1, "Velocity", "dx", 1.0)
+    set_field(entity1, "Velocity", "dy", 1.0)
+    print("Game initialized with entity")
+}
+
+micro update() {
+    print("Update tick")
+}
+"#;
 
 fn main() -> gg_core::GResult<()> {
     println!("GG Engine Basic Example");
@@ -44,13 +59,13 @@ fn main() -> gg_core::GResult<()> {
 
     runtime.render_system().init()?;
 
-    if runtime.script_engine().has_function("add") {
-        match runtime.call_script_function("add") {
+    if runtime.script_engine().has_function("init") {
+        match runtime.call_script_function("init") {
             VmResult::Ok | VmResult::Return(_) => {
-                println!("Script add executed successfully");
+                println!("Script init executed successfully");
             }
             VmResult::Error(e) => {
-                eprintln!("Script add error: {}", e);
+                eprintln!("Script init error: {}", e);
             }
             _ => {}
         }

@@ -112,7 +112,7 @@ impl TransitionManager {
         new_background_path: String,
         transition_type: TransitionType,
     ) -> GResult<Entity> {
-        let entity = world.spawn();
+        let entity = world.spawn().id();
         let state = TransitionState::new(transition_type, Some(new_background_path));
         world.add_component(entity, state)?;
         Ok(entity)

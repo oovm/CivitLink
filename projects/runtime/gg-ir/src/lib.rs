@@ -12,8 +12,8 @@ pub enum IrValue {
     Float(f64),
     /// 布尔值
     Bool(bool),
-    /// 字符串（索引到常量池）
-    String(usize),
+    /// 字符串值
+    String(String),
     /// 实体 ID
     Entity(u64),
     /// 空值
@@ -45,6 +45,8 @@ pub enum OpCode {
     Mul,
     /// 栈顶两个值相除
     Div,
+    /// 栈顶两个值取模
+    Mod,
     /// 栈顶值取负
     Neg,
 

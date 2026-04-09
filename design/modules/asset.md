@@ -2,7 +2,7 @@
 
 ## 概述
 
-Asset 模块提供异步资源加载、缓存和句柄系统，是 GWG 元引擎的资源管理核心。
+Asset 模块提供异步资源加载、缓存和句柄系统，是 GG 元引擎的资源管理核心。
 
 ## 核心概念
 
@@ -10,7 +10,7 @@ Asset 模块提供异步资源加载、缓存和句柄系统，是 GWG 元引擎
 资源是游戏中使用的数据，例如图片、音频、模型、剧本等。
 
 ```rust
-use gwg_asset::prelude::*;
+use gg_asset::prelude::*;
 
 struct Texture {
     data: Vec<u8>,
@@ -107,7 +107,7 @@ pub enum AssetError {
 ### 基础用法
 
 ```rust
-use gwg_asset::prelude::*;
+use gg_asset::prelude::*;
 use std::sync::Arc;
 
 #[derive(Debug)]

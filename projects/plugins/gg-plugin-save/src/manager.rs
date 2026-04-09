@@ -139,7 +139,7 @@ impl SaveManager {
         }
 
         for portrait_state in &save_data.portrait_states {
-            let entity = world.spawn();
+            let entity = world.spawn().id();
             world.add_component(entity, portrait_state.clone())?;
         }
 
