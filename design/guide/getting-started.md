@@ -11,6 +11,7 @@
 访问 [Rust 官网](https://www.rust-lang.org/tools/install) 下载并安装最新版本的 Rust：
 
 **Windows:**
+
 ```bash
 # 使用 rustup 安装
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -47,14 +48,17 @@ rustup target add wasm32-unknown-unknown
 根据目标平台，可能需要安装额外的系统依赖：
 
 **Windows:**
+
 - 安装 Visual Studio Build Tools（包含 C++ 编译器）
 
 **macOS:**
+
 ```bash
 xcode-select --install
 ```
 
 **Linux (Ubuntu/Debian):**
+
 ```bash
 sudo apt install build-essential pkg-config libssl-dev libasound2-dev
 ```
@@ -417,3 +421,4 @@ se_volume = 1.0
 - [核心优势](/guide/advantages) - 了解 gwg 元引擎的设计理念
 - [架构设计](/architecture/overview) - 深入了解 gwg 的架构
 - [模块文档](/modules/rendering) - 了解各个功能模块的使用
+
