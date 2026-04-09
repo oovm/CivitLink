@@ -140,9 +140,10 @@ impl SpritePipeline {
             &pipeline_layout,
             &shader,
             format,
-            &[wgpu::VertexState {
+            wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Vertex,
@@ -151,7 +152,7 @@ impl SpritePipeline {
                         1 => Float32x2,
                     ],
                 }],
-            }],
+            },
         );
 
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
@@ -304,9 +305,10 @@ impl TransitionPipeline {
             &pipeline_layout,
             &shader,
             format,
-            &[wgpu::VertexState {
+            wgpu::VertexState {
                 module: &shader,
                 entry_point: Some("vs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
                 buffers: &[wgpu::VertexBufferLayout {
                     array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
                     step_mode: wgpu::VertexStepMode::Vertex,
@@ -315,7 +317,7 @@ impl TransitionPipeline {
                         1 => Float32x2,
                     ],
                 }],
-            }],
+            },
         );
 
         Self {
