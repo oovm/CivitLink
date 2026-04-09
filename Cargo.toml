@@ -3,6 +3,7 @@ members = [
     "projects/core/gg-core",
     "projects/core/gg-ecs",
     "projects/core/gg-asset",
+    "projects/core/gg-render",
     "projects/runtime/gg-runtime-core",
     "examples/basic",
 ]

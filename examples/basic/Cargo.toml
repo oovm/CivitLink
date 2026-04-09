@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 gg-runtime-core = { path = "../../projects/runtime/gg-runtime-core" }
 gg-core = { path = "../../projects/core/gg-core" }
+gg-render = { path = "../../projects/core/gg-render" }

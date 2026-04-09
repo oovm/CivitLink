@@ -4,6 +4,7 @@
 use gg_core::{GResult, plugin::Plugin};
 use gg_ecs::{Scheduler, World, System, Entity};
 use gg_asset::AssetManager;
+use gg_render::{RenderSystem, RenderComponent};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -13,21 +14,27 @@ pub struct Runtime {
     scheduler: Scheduler,
     /// 资源管理器
     asset_manager: AssetManager,
+    /// 渲染系统
+    render_system: RenderSystem,
     /// 插件列表
     plugins: Vec<Arc<dyn Plugin>>,
     /// 运行状态
     running: bool,
+    /// 上一帧时间
+    last_frame_time: Instant,
 }
 
 impl Runtime {
     /// 创建新的运行时
-    pub fn new() -> Self {
-        Self {
+    pub fn new() -> GResult<Self> {
+        Ok(Self {
             scheduler: Scheduler::new(),
             asset_manager: AssetManager::new(),
+            render_system: RenderSystem::new()?,
             plugins: Vec::new(),
             running: false,
-        }
+            last_frame_time: Instant::now(),
+        })
     }
     
     /// 获取调度器
@@ -40,6 +47,11 @@ impl Runtime {
         &mut self.asset_manager
     }
     
+    /// 获取渲染系统
+    pub fn render_system(&mut self) -> &mut RenderSystem {
+        &mut self.render_system
+    }
+    
     /// 注册插件
     pub fn register_plugin(&mut self, plugin: Arc<dyn Plugin>) -> GResult<()> {
         plugin.initialize()?;
@@ -49,6 +61,9 @@ impl Runtime {
     
     /// 启动运行时
     pub fn start(&mut self) -> GResult<()> {
+        // 初始化渲染系统
+        self.render_system.init()?;
+        
         self.running = true;
         self.run()
     }
@@ -87,6 +102,9 @@ impl Runtime {
     pub fn tick(&mut self, delta: Duration) -> GResult<()> {
         // 执行 ECS 系统
         self.scheduler.tick()?;
+        
+        // 渲染一帧
+        self.render_system.render()?;
         
         Ok(())
     }

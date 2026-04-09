@@ -7,3 +7,4 @@ edition = "2021"
 gg-core = { path = "../../core/gg-core" }
 gg-ecs = { path = "../../core/gg-ecs" }
 gg-asset = { path = "../../core/gg-asset" }
+gg-render = { path = "../../core/gg-render" }

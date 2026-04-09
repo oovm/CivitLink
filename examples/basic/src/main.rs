@@ -3,6 +3,7 @@
 
 use gg_runtime_core::{Runtime, EntityCountSystem, MovementSystem, Position, Velocity};
 use gg_core::plugin::Plugin;
+use gg_render::RenderComponent;
 use std::sync::Arc;
 
 /// 示例插件
@@ -28,11 +29,14 @@ fn main() -> gg_core::GResult<()> {
     println!("GG Engine Basic Example");
     
     // 创建运行时
-    let mut runtime = Runtime::new();
+    let mut runtime = Runtime::new()?;
     
     // 注册插件
     let plugin = Arc::new(ExamplePlugin);
     runtime.register_plugin(plugin)?;
+    
+    // 初始化渲染系统
+    runtime.render_system().init()?;
     
     // 注册系统和创建实体
     {
@@ -46,10 +50,12 @@ fn main() -> gg_core::GResult<()> {
         let entity1 = world.spawn();
         world.add_component(entity1, Position { x: 0.0, y: 0.0 })?;
         world.add_component(entity1, Velocity { dx: 1.0, dy: 1.0 })?;
+        world.add_component(entity1, RenderComponent { width: 50.0, height: 50.0, color: [1.0, 0.0, 0.0, 1.0] })?;
         
         let entity2 = world.spawn();
         world.add_component(entity2, Position { x: 10.0, y: 10.0 })?;
         world.add_component(entity2, Velocity { dx: -0.5, dy: -0.5 })?;
+        world.add_component(entity2, RenderComponent { width: 50.0, height: 50.0, color: [0.0, 1.0, 0.0, 1.0] })?;
         
         println!("Created entities: {} and {}", entity1, entity2);
     }
