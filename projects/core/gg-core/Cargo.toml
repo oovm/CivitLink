@@ -2,8 +2,8 @@
 name = "gg-core"
 version = { workspace = true }
 edition = { workspace = true }
-authors = ["灵之镜有限公司"]
-license = "MIT"
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
 # 依赖项

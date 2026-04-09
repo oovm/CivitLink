@@ -2,8 +2,8 @@
 name = "gg-asset"
 version = { workspace = true }
 edition = { workspace = true }
-authors = ["Lingames"]
-license = "MIT"
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
 gg-core = { workspace = true }

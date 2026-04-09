@@ -1,9 +1,11 @@
 [package]
 name = "gg-script"
-version = "0.1.0"
-edition = "2021"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
-gg-core = { path = "../../core/gg-core" }
-gg-ir = { path = "../../runtime/gg-ir" }
+gg-core = { workspace = true }
+gg-ir = { workspace = true }
 oak-valkyrie = { path = "../../../../oaks/examples/oak-valkyrie" }

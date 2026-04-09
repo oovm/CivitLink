@@ -2,8 +2,8 @@
 name = "gg-render"
 version = { workspace = true }
 edition = { workspace = true }
-authors = ["灵之镜有限公司"]
-license = "MIT"
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
 gg-core = { workspace = true }

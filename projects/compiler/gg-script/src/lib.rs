@@ -1,4 +1,5 @@
 #![feature(new_range_api)]
+#![warn(missing_docs)]
 
 use std::collections::HashMap;
 use std::path::Path;
