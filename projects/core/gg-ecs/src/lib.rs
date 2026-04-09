@@ -1,3 +1,5 @@
+#![warn(missing_docs)]
+
 //! GG 引擎 ECS 核心模块
 //! 提供实体-组件-系统架构
 

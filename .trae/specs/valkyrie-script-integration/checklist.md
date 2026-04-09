@@ -1,0 +1,12 @@
+- [ ] gg-ir 模块定义了完整的 IR 指令集（OpCode），包括常量加载、算术运算、比较、跳转、函数调用、实体/组件操作
+- [ ] gg-ir 模块定义了 IrModule 和 IrFunction 结构，能表示一个完整的脚本模块
+- [ ] gg-vm 模块实现了字节码虚拟机，能执行基本指令（算术、比较、跳转、函数调用）
+- [ ] gg-vm 模块实现了宿主接口（Host），VM 能通过宿主接口调用引擎 Rust API
+- [ ] gg-vm 模块实现了实体/组件操作指令，脚本能创建实体和操作组件
+- [ ] gg-script 模块集成了 Valkyrie 语言前端，能将 .valkyrie 源码编译为 AST
+- [ ] gg-script 模块实现了 AST 到 IR 的转换器，能将 ValkyrieRoot 转换为 IrModule
+- [ ] gg-runtime-core 集成了脚本执行环境，Runtime 包含 ScriptEngine
+- [ ] 游戏循环中脚本的 init/update 函数能被正确调用
+- [ ] examples/basic 使用 Valkyrie 脚本编写游戏逻辑，不再直接用 Rust
+- [ ] 示例能成功编译运行，脚本能创建实体、添加组件、执行系统逻辑
+- [ ] 所有新增的 public 结构体、枚举、方法、字段都有文档注释

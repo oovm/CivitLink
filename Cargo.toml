@@ -1,16 +1,21 @@
 [workspace]
 members = [
-    "projects/core/gg-core",
-    "projects/core/gg-ecs",
-    "projects/core/gg-asset",
-    "projects/core/gg-render",
-    "projects/runtime/gg-runtime-core",
+    "projects/core/*",
+    "projects/runtime/*",
+    "projects/plugins/*",
     "examples/basic",
 ]
 
 [workspace.package]
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [workspace.dependencies]
-# 公共依赖
+gg-core = { path = "projects/core/gg-core" }
+gg-ecs = { path = "projects/core/gg-ecs" }
+gg-asset = { path = "projects/core/gg-asset" }
+gg-render = { path = "projects/core/gg-render" }
+gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
+gg-ir = { path = "projects/runtime/gg-ir" }
+gg-vm = { path = "projects/runtime/gg-vm" }
+serde = { version = "1", features = ["derive"] }

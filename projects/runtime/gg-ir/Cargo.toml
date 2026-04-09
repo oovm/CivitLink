@@ -1,8 +1,8 @@
 [package]
-name = "gg-asset"
+name = "gg-ir"
 version = { workspace = true }
 edition = { workspace = true }
-authors = ["Lingames"]
+authors = ["灵之镜有限公司"]
 license = "MIT"
 
 [dependencies]
