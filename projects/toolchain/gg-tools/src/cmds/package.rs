@@ -74,7 +74,7 @@ pub fn cmd_package(manifest_path: &str, platform: Option<&str>, release: bool) -
 
 /// 打包 Windows 平台产物
 ///
-/// 收集 exe 和同目录下的 DLL 文件，复制到 dist 目录
+/// 收集 exe 和同目录下的 DLL 文件，复制到 dist 目录并压缩为 zip
 fn package_windows(build_dir: &PathBuf, dist_dir: &PathBuf, package_name: &str) -> GResult<()> {
     let exe_path = build_dir.join(format!("{}.exe", package_name));
     copy_file(&exe_path, dist_dir)?;
@@ -94,6 +94,13 @@ fn package_windows(build_dir: &PathBuf, dist_dir: &PathBuf, package_name: &str) 
             }
         }
     }
+
+    let zip_path = dist_dir
+        .parent()
+        .unwrap_or(dist_dir)
+        .join(format!("{}-windows.zip", package_name));
+    create_zip_from_dir(dist_dir, &zip_path)?;
+    println!("  Zipped: {}", zip_path.display());
 
     Ok(())
 }
@@ -173,4 +180,50 @@ fn generate_web_html(package_name: &str) -> String {
 </html>
 "#
     )
+}
+
+/// 将目录中的所有文件压缩为 zip
+///
+/// 遍历指定目录下的文件，逐个添加到 zip 归档中
+fn create_zip_from_dir(dir: &std::path::Path, zip_path: &std::path::Path) -> GResult<()> {
+    let file = std::fs::File::create(zip_path).map_err(|e| GError {
+        kind: GErrorKind::Io,
+        message: format!("Failed to create zip file '{}': {}", zip_path.display(), e),
+    })?;
+    let mut zip = zip::ZipWriter::new(file);
+    let options = zip::write::SimpleFileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+
+    for entry in std::fs::read_dir(dir).map_err(|e| GError {
+        kind: GErrorKind::Io,
+        message: format!("Failed to read directory '{}': {}", dir.display(), e),
+    })? {
+        let entry = entry.map_err(|e| GError {
+            kind: GErrorKind::Io,
+            message: format!("Failed to read directory entry: {}", e),
+        })?;
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let name = path.file_name().unwrap().to_str().unwrap();
+        zip.start_file(name, options).map_err(|e| GError {
+            kind: GErrorKind::Io,
+            message: format!("Failed to add '{}' to zip: {}", name, e),
+        })?;
+        let mut f = std::fs::File::open(&path).map_err(|e| GError {
+            kind: GErrorKind::Io,
+            message: format!("Failed to open '{}': {}", path.display(), e),
+        })?;
+        std::io::copy(&mut f, &mut zip).map_err(|e| GError {
+            kind: GErrorKind::Io,
+            message: format!("Failed to write '{}' to zip: {}", name, e),
+        })?;
+    }
+
+    zip.finish().map_err(|e| GError {
+        kind: GErrorKind::Io,
+        message: format!("Failed to finalize zip: {}", e),
+    })?;
+    Ok(())
 }

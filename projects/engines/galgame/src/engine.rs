@@ -4,7 +4,7 @@
 use crate::config::GalgameConfig;
 use gg_asset::AssetManager;
 use gg_core::{GResult, plugin::Plugin};
-use gg_ecs::GgWorld;
+use gg_ecs::World;
 use gg_platform_desktop::DesktopFileSystem;
 use gg_plugin_dialogue::plugin::DialoguePlugin;
 use gg_plugin_portrait::plugin::PortraitPlugin;
@@ -26,7 +26,7 @@ pub struct GalgameEngine {
     /// 游戏配置
     pub config: GalgameConfig,
     /// ECS 世界
-    pub world: GgWorld,
+    pub world: World,
     /// 资源管理器
     pub asset_manager: AssetManager,
     /// 是否编辑器模式

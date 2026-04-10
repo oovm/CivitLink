@@ -8,6 +8,7 @@ use std::{
 
 use crate::{
     codegen::{self, CodegenConfig},
+    config::SheetConfig,
     error::{SheetError, SheetResult},
     merge::merge_tables,
     reader::load_table,
@@ -28,6 +29,15 @@ impl SheetCompiler {
     /// 创建新的配置表编译器
     pub fn new(sheet_dir: impl Into<PathBuf>, output_dir: impl Into<PathBuf>) -> Self {
         Self { sheet_dir: sheet_dir.into(), output_dir: output_dir.into(), file_hashes: HashMap::new() }
+    }
+
+    /// 从配置创建编译器
+    pub fn from_config(config: &SheetConfig) -> Self {
+        Self {
+            sheet_dir: PathBuf::from(&config.sheet_dir),
+            output_dir: PathBuf::from(&config.output_dir),
+            file_hashes: HashMap::new(),
+        }
     }
 
     /// 获取配置表目录路径

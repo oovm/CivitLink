@@ -6,7 +6,6 @@ members = [
     "projects/compiler/gg-compiler-script",
     "projects/compiler/gg-compiler-core",
     "projects/compiler/gg-compiler-aot",
-    "projects/compiler/gg-compiler-vx",
     "projects/compiler/gg-sheet",
     "projects/editor/*",
     "projects/plugins/*",
@@ -50,6 +49,7 @@ syn = "2"
 quote = "1"
 proc-macro2 = "1"
 uuid = { version = "1.8", features = ["serde", "v7"] }
+zip = "2"
 chrono = "0.4"
 tempfile = "3.9"
 
@@ -75,14 +75,12 @@ gg-script = { path = "projects/compiler/gg-script" }
 gg-compiler-core = { path = "projects/compiler/gg-compiler-core" }
 gg-compiler-aot = { path = "projects/compiler/gg-compiler-aot" }
 gg-sheet = { path = "projects/compiler/gg-sheet" }
-gg-galgame-schema = { path = "projects/engines/gg-galgame-schema" }
-gg-galgame-editor-scene = { path = "projects/engines/gg-galgame-editor-scene" }
 gg-ui = { path = "projects/plugins/gg-ui" }
-gg-plugin-dialogue = { path = "projects/plugins/gg-plugin-dialogue" }
-gg-plugin-portrait = { path = "projects/plugins/gg-plugin-portrait" }
-gg-plugin-scene-transition = { path = "projects/plugins/gg-plugin-scene-transition" }
-gg-plugin-save = { path = "projects/plugins/gg-plugin-save" }
-gg-editor-lsp = { path = "projects/editor/gg-editor-lsp" }
+gg-manifest = { path = "projects/toolchain/gg-manifest" }
+gg-factory = { path = "projects/toolchain/gg-factory" }
+gg-tools = { path = "projects/toolchain/gg-tools" }
+
+# gnostic gamer editors
 gg-editor-scene = { path = "projects/editor/gg-editor-scene" }
 gg-editor-shell = { path = "projects/editor/gg-editor-shell" }
 gg-editor-asset-browser = { path = "projects/editor/gg-editor-asset-browser" }
@@ -91,14 +89,26 @@ gg-editor-inspector = { path = "projects/editor/gg-editor-inspector" }
 gg-editor-preview = { path = "projects/editor/gg-editor-preview" }
 gg-editor-scene-galgame = { path = "projects/editor/gg-editor-scene-galgame" }
 gg-editor-script = { path = "projects/editor/gg-editor-script" }
-gg-manifest = { path = "projects/toolchain/gg-manifest" }
-gg-factory = { path = "projects/toolchain/gg-factory" }
-gg-tools = { path = "projects/toolchain/gg-tools" }
+gg-editor-lsp = { path = "projects/editor/gg-editor-lsp" }
+
+# gnostic gamer platforms
 gg-platform-mobile = { path = "projects/platforms/gg-platform-mobile" }
 gg-platform-desktop = { path = "projects/platforms/gg-platform-desktop" }
 gg-platform-web = { path = "projects/platforms/gg-platform-web" }
+
+# gnostic gamer plugins
+gg-plugin-dialogue = { path = "projects/plugins/gg-plugin-dialogue" }
+gg-plugin-portrait = { path = "projects/plugins/gg-plugin-portrait" }
+gg-plugin-scene-transition = { path = "projects/plugins/gg-plugin-scene-transition" }
+gg-plugin-save = { path = "projects/plugins/gg-plugin-save" }
 gg-plugin-tilemap = { path = "projects/plugins/gg-plugin-tilemap" }
 gg-plugin-spine = { path = "projects/plugins/gg-plugin-spine" }
+
+# gnostic gamer engines
+gg-galgame-schema = { path = "projects/engines/gg-galgame-schema" }
+gg-galgame-compiler = { path = "projects/engines/gg-galgame-compiler" }
+gg-galgame-editor-scene = { path = "projects/engines/gg-galgame-editor-scene" }
+
 # oak parsers
 oak-core = { path = "../oaks/projects/oak-core" }
 oak-von = { path = "../oaks/examples/oak-von" }

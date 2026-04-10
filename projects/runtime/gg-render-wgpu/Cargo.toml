@@ -9,8 +9,10 @@ license = { workspace = true }
 gg-core = { workspace = true }
 gg-render = { workspace = true }
 wgpu = { workspace = true }
-winit = { workspace = true }
 image = { workspace = true }
 ab_glyph = { workspace = true }
 bytemuck = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+winit = { workspace = true }
 pollster = { workspace = true }

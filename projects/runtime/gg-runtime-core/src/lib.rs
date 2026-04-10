@@ -36,6 +36,18 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// 帧时间资源
+///
+/// 存储当前帧的时间信息，作为 ECS 资源注册到世界中，
+/// 供游戏系统查询使用。
+#[derive(Clone, Copy, Debug)]
+pub struct FrameTime {
+    /// 当前帧的 delta 时间（秒）
+    pub delta_seconds: f32,
+    /// 累计运行时间（秒）
+    pub elapsed_seconds: f32,
+}
+
 /// 引擎宿主，实现 Host trait，将 VM 指令桥接到 ECS 世界
 ///
 /// 通过 ComponentRegistry 实现动态组件操作，
@@ -77,23 +89,28 @@ impl EngineHost {
 impl Host for EngineHost {
     fn spawn_entity(&mut self) -> u64 {
         let entity = self.world.spawn();
-        entity.id()
+        let id = entity.id();
+        ((id.generation() as u64) << 32) | (id.index() as u64)
     }
 
     fn despawn_entity(&mut self, entity_id: u64) {
-        self.world.despawn(entity_id as Entity).ok();
+        let entity = Entity::new((entity_id & 0xFFFFFFFF) as u32, (entity_id >> 32) as u32);
+        self.world.despawn(entity).ok();
     }
 
     fn add_component(&mut self, entity_id: u64, component_type: &str, _value: BytecodeValue) {
-        self.registry.add_default(&mut self.world, entity_id as Entity, component_type);
+        let entity = Entity::new((entity_id & 0xFFFFFFFF) as u32, (entity_id >> 32) as u32);
+        self.registry.add_default(&mut self.world, entity, component_type);
     }
 
     fn get_component_field(&mut self, entity_id: u64, component_type: &str, field: &str) -> Option<BytecodeValue> {
-        self.registry.get_field(&self.world, entity_id as Entity, component_type, field)
+        let entity = Entity::new((entity_id & 0xFFFFFFFF) as u32, (entity_id >> 32) as u32);
+        self.registry.get_field(&self.world, entity, component_type, field)
     }
 
     fn set_component_field(&mut self, entity_id: u64, component_type: &str, field: &str, value: BytecodeValue) {
-        self.registry.set_field(&mut self.world, entity_id as Entity, component_type, field, value);
+        let entity = Entity::new((entity_id & 0xFFFFFFFF) as u32, (entity_id >> 32) as u32);
+        self.registry.set_field(&mut self.world, entity, component_type, field, value);
     }
 
     fn call_host_function(&mut self, name: &str, args: Vec<BytecodeValue>) -> Option<BytecodeValue> {
@@ -194,7 +211,7 @@ impl ScriptEngine {
             self.vm.execute(module, function_name, host)
         }
         else {
-            VmResult::Error("No script loaded".to_string())
+            VmResult::Error { message: "No script loaded".to_string(), source_location: None }
         }
     }
 
@@ -427,8 +444,8 @@ impl Runtime {
         if self.script_engine.has_function("init") {
             match self.script_engine.call_function("init", &mut self.host) {
                 VmResult::Ok | VmResult::Return(_) => {}
-                VmResult::Error(e) => {
-                    return Err(GError { kind: GErrorKind::Runtime, message: format!("Script init error: {}", e) });
+                VmResult::Error { message, .. } => {
+                return Err(GError { kind: GErrorKind::Runtime, message: format!("Script init error: {}", message) });
                 }
             }
         }
@@ -441,8 +458,8 @@ impl Runtime {
                     VmResult::Ok | VmResult::Return(_) => {
                         eprintln!("Plugin initialized: {}", plugin.config.name);
                     }
-                    VmResult::Error(e) => {
-                        eprintln!("Plugin initialization error ({}): {}", plugin.config.name, e);
+                    VmResult::Error { message, .. } => {
+                        eprintln!("Plugin initialization error ({}): {}", plugin.config.name, message);
                     }
                 }
             }
@@ -462,8 +479,8 @@ impl Runtime {
                     VmResult::Ok | VmResult::Return(_) => {
                         eprintln!("Plugin shutdown: {}", plugin.config.name);
                     }
-                    VmResult::Error(e) => {
-                        eprintln!("Plugin shutdown error ({}): {}", plugin.config.name, e);
+                    VmResult::Error { message, .. } => {
+                        eprintln!("Plugin shutdown error ({}): {}", plugin.config.name, message);
                     }
                 }
             }
@@ -485,8 +502,8 @@ impl Runtime {
 
             if self.renderer.is_none() {
                 let frame_elapsed = frame_start.elapsed();
-                if frame_elapsed < TARGET_FRAME_TIME {
-                    std::thread::sleep(TARGET_FRAME_TIME - frame_elapsed);
+                if frame_elapsed < Self::TARGET_FRAME_TIME {
+                    std::thread::sleep(Self::TARGET_FRAME_TIME - frame_elapsed);
                 }
             }
         }
@@ -510,7 +527,11 @@ impl Runtime {
     pub fn tick(&mut self, delta: Duration) -> GResult<()> {
         self.platform_services.time.update();
 
-        let _ = delta;
+        let frame_time = FrameTime {
+            delta_seconds: DeltaTimer::delta_seconds(delta),
+            elapsed_seconds: DeltaTimer::delta_seconds(self.delta_timer.elapsed()),
+        };
+        self.host.world_mut().insert_resource(frame_time);
 
         let _input_events = self.platform_services.input.poll_events();
 
@@ -524,8 +545,8 @@ impl Runtime {
                         VmResult::Ok | VmResult::Return(_) => {
                             hmr.confirm_script_reload(new_module);
                         }
-                        VmResult::Error(e) => {
-                            eprintln!("HMR state migration failed: {}, rolling back", e);
+                        VmResult::Error { message, .. } => {
+                            eprintln!("HMR state migration failed: {}, rolling back", message);
                             if let Some(old) = old_module {
                                 self.script_engine.replace_module(old);
                             }
@@ -577,8 +598,8 @@ impl Runtime {
         if self.script_engine.has_function("update") {
             match self.script_engine.call_function("update", &mut self.host) {
                 VmResult::Ok | VmResult::Return(_) => {}
-                VmResult::Error(e) => {
-                    eprintln!("Script update error: {}", e);
+                VmResult::Error { message, .. } => {
+                    eprintln!("Script update error: {}", message);
                 }
             }
         }
@@ -589,8 +610,8 @@ impl Runtime {
                 let mut vm = Vm::new();
                 match vm.execute(&plugin.bytecode, "update", &mut self.host) {
                     VmResult::Ok | VmResult::Return(_) => {}
-                    VmResult::Error(e) => {
-                        eprintln!("Plugin update error ({}): {}", plugin.config.name, e);
+                    VmResult::Error { message, .. } => {
+                        eprintln!("Plugin update error ({}): {}", plugin.config.name, message);
                     }
                 }
             }

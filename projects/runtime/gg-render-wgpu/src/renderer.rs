@@ -3,6 +3,8 @@ use std::{path::Path, sync::Arc};
 use ab_glyph::{Font, ScaleFont};
 use gg_core::{GError, GErrorKind, GResult};
 use gg_render::{DrawCommand, RenderContext, Renderer, SurfaceInfo, TextureId, Transform, TransitionKind, WindowEvent};
+
+#[cfg(not(target_arch = "wasm32"))]
 use winit::{
     event::Event,
     event_loop::EventLoop,
@@ -23,12 +25,14 @@ use crate::{
 ///
 /// # 使用方式
 ///
-/// 1. 通过 [`WgpuRenderer::new`] 创建渲染器（需要传入 winit 事件循环）
-/// 2. 在 winit 事件循环中调用 [`WgpuRenderer::handle_window_event`] 转发事件
+/// 1. 通过 [`WgpuRenderer::new`] 创建渲染器（桌面平台，需要传入 winit 事件循环）
+///    或通过 [`WgpuRenderer::new_from_surface`] 从已有的 wgpu 对象创建（所有平台）
+/// 2. 在 winit 事件循环中调用 [`WgpuRenderer::handle_window_event`] 转发事件（桌面平台）
 /// 3. 每帧依次调用 [`Renderer::begin_frame`]、[`Renderer::draw`]、[`Renderer::end_frame`]、[`Renderer::present`]
 /// 4. 通过 [`WgpuRenderer::poll_events`] 获取窗口事件
 pub struct WgpuRenderer {
-    /// 窗口
+    /// 窗口（桌面平台）
+    #[cfg(not(target_arch = "wasm32"))]
     window: Arc<Window>,
     /// 渲染表面
     surface: wgpu::Surface<'static>,
@@ -63,7 +67,112 @@ pub struct WgpuRenderer {
 }
 
 impl WgpuRenderer {
-    /// 创建新的 WGPU 渲染器
+    /// 检查窗口是否应该关闭
+    pub fn should_close(&self) -> bool {
+        self.should_close
+    }
+
+    /// 轮询窗口事件
+    ///
+    /// 返回并清空内部事件缓冲区中的所有窗口事件。
+    /// 桌面平台通过 [`WgpuRenderer::handle_window_event`] 转发 winit 事件，
+    /// Web 平台通过 [`WgpuRenderer::push_event`] 推送事件。
+    pub fn poll_events(&mut self) -> Vec<WindowEvent> {
+        std::mem::take(&mut self.pending_events)
+    }
+
+    /// 获取 wgpu 设备的引用
+    pub fn device(&self) -> &wgpu::Device {
+        &self.device
+    }
+
+    /// 获取字形缓存的可变引用
+    pub fn glyph_cache_mut(&mut self) -> &mut GlyphCache {
+        &mut self.glyph_cache
+    }
+
+    /// 计算正交投影矩阵
+    ///
+    /// 创建一个将像素坐标映射到裁剪空间的正交投影矩阵。
+    /// 原点在左上角，X 轴向右，Y 轴向下。
+    fn orthographic(width: f32, height: f32) -> [[f32; 4]; 4] {
+        [[2.0 / width, 0.0, 0.0, 0.0], [0.0, -2.0 / height, 0.0, 0.0], [0.0, 0.0, 0.5, 0.0], [-1.0, 1.0, 0.5, 1.0]]
+    }
+
+    /// 计算平移矩阵
+    fn translate(tx: f32, ty: f32) -> [[f32; 4]; 4] {
+        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [tx, ty, 0.0, 1.0]]
+    }
+
+    /// 计算旋转矩阵
+    fn rotate(angle: f32) -> [[f32; 4]; 4] {
+        let (s, c) = (angle.sin(), angle.cos());
+        [[c, s, 0.0, 0.0], [-s, c, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    }
+
+    /// 计算缩放矩阵
+    fn scale(sx: f32, sy: f32) -> [[f32; 4]; 4] {
+        [[sx, 0.0, 0.0, 0.0], [0.0, sy, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+    }
+
+    /// 4x4 矩阵乘法
+    fn mat4_mul(a: &[[f32; 4]; 4], b: &[[f32; 4]; 4]) -> [[f32; 4]; 4] {
+        let mut result = [[0.0f32; 4]; 4];
+        for i in 0..4 {
+            for j in 0..4 {
+                result[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j] + a[i][3] * b[3][j];
+            }
+        }
+        result
+    }
+
+    /// 计算精灵的 MVP 矩阵
+    fn compute_sprite_mvp(transform: &Transform, size: [f32; 2], surface_width: u32, surface_height: u32) -> [[f32; 4]; 4] {
+        let projection = Self::orthographic(surface_width as f32, surface_height as f32);
+        let model_t = Self::translate(transform.position[0], transform.position[1]);
+        let model_r = Self::rotate(transform.rotation);
+        let model_s = Self::scale(size[0] * transform.scale[0], size[1] * transform.scale[1]);
+        let model = Self::mat4_mul(&model_t, &Self::mat4_mul(&model_r, &model_s));
+        Self::mat4_mul(&projection, &model)
+    }
+
+    /// 计算全屏四边形的 MVP 矩阵
+    fn compute_fullscreen_mvp(surface_width: u32, surface_height: u32) -> [[f32; 4]; 4] {
+        let projection = Self::orthographic(surface_width as f32, surface_height as f32);
+        let model = Self::scale(surface_width as f32, surface_height as f32);
+        Self::mat4_mul(&projection, &model)
+    }
+
+    /// 将过渡类型转换为着色器参数值
+    fn transition_kind_to_param(kind: TransitionKind) -> f32 {
+        match kind {
+            TransitionKind::Fade => 0.0,
+            TransitionKind::CrossDissolve => 1.0,
+            TransitionKind::SlideLeft => 2.0,
+            TransitionKind::SlideRight => 3.0,
+            TransitionKind::SlideUp => 4.0,
+            TransitionKind::SlideDown => 5.0,
+        }
+    }
+
+    /// 重新加载纹理（用于 HMR 热更新）
+    ///
+    /// 从指定路径重新加载纹理数据并更新 GPU 纹理对象。
+    /// 如果加载失败，保留旧纹理不变。
+    ///
+    /// # 参数
+    ///
+    /// - `path` - 纹理文件路径
+    pub fn reload_texture(&mut self, path: &str) -> GResult<()> {
+        let path = std::path::Path::new(path);
+        self.texture_cache.load_texture(path, &self.device, &self.queue)?;
+        Ok(())
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl WgpuRenderer {
+    /// 创建新的 WGPU 渲染器（桌面平台）
     ///
     /// 使用指定的 winit 事件循环和渲染表面信息创建渲染器。
     /// 内部会创建窗口、初始化 WGPU 设备和渲染管线。
@@ -172,17 +281,60 @@ impl WgpuRenderer {
         })
     }
 
-    /// 检查窗口是否应该关闭
-    pub fn should_close(&self) -> bool {
-        self.should_close
-    }
-
-    /// 轮询窗口事件
+    /// 从已有的 wgpu 对象创建渲染器（桌面平台）
     ///
-    /// 返回并清空内部事件缓冲区中的所有窗口事件。
-    /// 需要通过 [`WgpuRenderer::handle_window_event`] 方法将 winit 事件转发到此渲染器。
-    pub fn poll_events(&mut self) -> Vec<WindowEvent> {
-        std::mem::take(&mut self.pending_events)
+    /// 适用于自定义窗口系统集成场景，
+    /// 调用者负责创建 wgpu 实例、适配器、设备和表面。
+    ///
+    /// # 参数
+    ///
+    /// - `surface` - wgpu 渲染表面
+    /// - `device` - wgpu 设备
+    /// - `queue` - wgpu 命令队列
+    /// - `config` - 表面配置
+    /// - `surface_info` - 渲染表面信息
+    /// - `window` - winit 窗口
+    pub fn new_from_surface(
+        surface: wgpu::Surface<'static>,
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+        config: wgpu::SurfaceConfiguration,
+        surface_info: SurfaceInfo,
+        window: Arc<Window>,
+    ) -> GResult<Self> {
+        let sprite_pipeline = SpritePipeline::new(&device, config.format);
+        let transition_pipeline = TransitionPipeline::new(&device, config.format);
+
+        let mut texture_cache = TextureCache::new();
+        let white_pixel_data: [u8; 4] = [255, 255, 255, 255];
+        let white_pixel_texture =
+            texture_cache.create_texture_from_data(1, 1, &white_pixel_data, &device, &queue, "white_pixel").map_err(|e| {
+                GError { kind: GErrorKind::Platform, message: format!("无法创建白色像素纹理: {}", e.message) }
+            })?;
+
+        let glyph_cache = GlyphCache::new();
+
+        let buffer_size = std::cmp::max(std::mem::size_of::<SpriteUniforms>(), std::mem::size_of::<TransitionUniforms>());
+        let uniform_pool = UniformPool::new(buffer_size);
+
+        Ok(Self {
+            window,
+            surface,
+            device,
+            queue,
+            config,
+            surface_info,
+            texture_cache,
+            glyph_cache,
+            sprite_pipeline,
+            transition_pipeline,
+            should_close: false,
+            pending_events: Vec::new(),
+            frame_output: None,
+            command_encoder: None,
+            white_pixel_texture,
+            uniform_pool,
+        })
     }
 
     /// 处理 winit 窗口事件
@@ -238,93 +390,75 @@ impl WgpuRenderer {
     pub fn window(&self) -> &Arc<Window> {
         &self.window
     }
+}
 
-    /// 获取 wgpu 设备的引用
-    pub fn device(&self) -> &wgpu::Device {
-        &self.device
-    }
-
-    /// 获取字形缓存的可变引用
-    pub fn glyph_cache_mut(&mut self) -> &mut GlyphCache {
-        &mut self.glyph_cache
-    }
-
-    /// 计算正交投影矩阵
+#[cfg(target_arch = "wasm32")]
+impl WgpuRenderer {
+    /// 从已有的 wgpu 对象创建渲染器（Web 平台）
     ///
-    /// 创建一个将像素坐标映射到裁剪空间的正交投影矩阵。
-    /// 原点在左上角，X 轴向右，Y 轴向下。
-    fn orthographic(width: f32, height: f32) -> [[f32; 4]; 4] {
-        [[2.0 / width, 0.0, 0.0, 0.0], [0.0, -2.0 / height, 0.0, 0.0], [0.0, 0.0, 0.5, 0.0], [-1.0, 1.0, 0.5, 1.0]]
-    }
-
-    /// 计算平移矩阵
-    fn translate(tx: f32, ty: f32) -> [[f32; 4]; 4] {
-        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [tx, ty, 0.0, 1.0]]
-    }
-
-    /// 计算旋转矩阵
-    fn rotate(angle: f32) -> [[f32; 4]; 4] {
-        let (s, c) = (angle.sin(), angle.cos());
-        [[c, s, 0.0, 0.0], [-s, c, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
-    }
-
-    /// 计算缩放矩阵
-    fn scale(sx: f32, sy: f32) -> [[f32; 4]; 4] {
-        [[sx, 0.0, 0.0, 0.0], [0.0, sy, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
-    }
-
-    /// 4x4 矩阵乘法
-    fn mat4_mul(a: &[[f32; 4]; 4], b: &[[f32; 4]; 4]) -> [[f32; 4]; 4] {
-        let mut result = [[0.0f32; 4]; 4];
-        for i in 0..4 {
-            for j in 0..4 {
-                result[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j] + a[i][3] * b[3][j];
-            }
-        }
-        result
-    }
-
-    /// 计算精灵的 MVP 矩阵
-    fn compute_sprite_mvp(transform: &Transform, size: [f32; 2], surface_width: u32, surface_height: u32) -> [[f32; 4]; 4] {
-        let projection = Self::orthographic(surface_width as f32, surface_height as f32);
-        let model_t = Self::translate(transform.position[0], transform.position[1]);
-        let model_r = Self::rotate(transform.rotation);
-        let model_s = Self::scale(size[0] * transform.scale[0], size[1] * transform.scale[1]);
-        let model = Self::mat4_mul(&model_t, &Self::mat4_mul(&model_r, &model_s));
-        Self::mat4_mul(&projection, &model)
-    }
-
-    /// 计算全屏四边形的 MVP 矩阵
-    fn compute_fullscreen_mvp(surface_width: u32, surface_height: u32) -> [[f32; 4]; 4] {
-        let projection = Self::orthographic(surface_width as f32, surface_height as f32);
-        let model = Self::scale(surface_width as f32, surface_height as f32);
-        Self::mat4_mul(&projection, &model)
-    }
-
-    /// 将过渡类型转换为着色器参数值
-    fn transition_kind_to_param(kind: TransitionKind) -> f32 {
-        match kind {
-            TransitionKind::Fade => 0.0,
-            TransitionKind::CrossDissolve => 1.0,
-            TransitionKind::SlideLeft => 2.0,
-            TransitionKind::SlideRight => 3.0,
-            TransitionKind::SlideUp => 4.0,
-            TransitionKind::SlideDown => 5.0,
-        }
-    }
-
-    /// 重新加载纹理（用于 HMR 热更新）
-    ///
-    /// 从指定路径重新加载纹理数据并更新 GPU 纹理对象。
-    /// 如果加载失败，保留旧纹理不变。
+    /// 适用于 Web 平台，调用者负责通过异步方式
+    /// 创建 wgpu 实例、适配器、设备和表面。
     ///
     /// # 参数
     ///
-    /// - `path` - 纹理文件路径
-    pub fn reload_texture(&mut self, path: &str) -> GResult<()> {
-        let path = std::path::Path::new(path);
-        self.texture_cache.load_texture(path, &self.device, &self.queue)?;
-        Ok(())
+    /// - `surface` - wgpu 渲染表面
+    /// - `device` - wgpu 设备
+    /// - `queue` - wgpu 命令队列
+    /// - `config` - 表面配置
+    /// - `surface_info` - 渲染表面信息
+    pub fn new_from_surface(
+        surface: wgpu::Surface<'static>,
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+        config: wgpu::SurfaceConfiguration,
+        surface_info: SurfaceInfo,
+    ) -> GResult<Self> {
+        let sprite_pipeline = SpritePipeline::new(&device, config.format);
+        let transition_pipeline = TransitionPipeline::new(&device, config.format);
+
+        let mut texture_cache = TextureCache::new();
+        let white_pixel_data: [u8; 4] = [255, 255, 255, 255];
+        let white_pixel_texture =
+            texture_cache.create_texture_from_data(1, 1, &white_pixel_data, &device, &queue, "white_pixel").map_err(|e| {
+                GError { kind: GErrorKind::Platform, message: format!("无法创建白色像素纹理: {}", e.message) }
+            })?;
+
+        let glyph_cache = GlyphCache::new();
+
+        let buffer_size = std::cmp::max(std::mem::size_of::<SpriteUniforms>(), std::mem::size_of::<TransitionUniforms>());
+        let uniform_pool = UniformPool::new(buffer_size);
+
+        Ok(Self {
+            surface,
+            device,
+            queue,
+            config,
+            surface_info,
+            texture_cache,
+            glyph_cache,
+            sprite_pipeline,
+            transition_pipeline,
+            should_close: false,
+            pending_events: Vec::new(),
+            frame_output: None,
+            command_encoder: None,
+            white_pixel_texture,
+            uniform_pool,
+        })
+    }
+
+    /// 推送窗口事件到内部缓冲区
+    ///
+    /// Web 平台通过此方法将 JavaScript 端的事件转换为引擎事件。
+    ///
+    /// # 参数
+    ///
+    /// - `event` - 窗口事件
+    pub fn push_event(&mut self, event: WindowEvent) {
+        if matches!(event, WindowEvent::CloseRequested) {
+            self.should_close = true;
+        }
+        self.pending_events.push(event);
     }
 }
 

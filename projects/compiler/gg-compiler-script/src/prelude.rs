@@ -1,9 +1,8 @@
-//! GG 剧本编译转换器 prelude 模块
-//! 导出最常用的剧本编译类型
+//! GG 统一脚本编译器 prelude 模块
+//! 导出最常用的脚本编译类型
 
-pub use crate::{
-    compiler::{DialogueDB, ScriptCompiler, StorySequence, ValidationError},
-    incremental::IncrementalCompiler,
-    transformer::ScriptTransformer,
-    valkyrie_transformer::ValkyrieScriptTransformer,
+pub use crate::shader::{
+    ShaderBlock, ShaderFile, ShaderFunction, ShaderFunctionKind, ShaderParser, ShaderTransformer,
 };
+pub use crate::valkyrie_transformer::ValkyrieScriptTransformer;
+pub use crate::vx::{VxFile, VxParser, VxTransformer};

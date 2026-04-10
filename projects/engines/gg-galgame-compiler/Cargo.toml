@@ -1,12 +1,12 @@
 [package]
-name = "gg-compiler-script"
+name = "gg-galgame-compiler"
 version = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }
 license = { workspace = true }
 
 [dependencies]
-gg-bytecode = { workspace = true }
-gg-compiler-core = { workspace = true }
 gg-core = { workspace = true }
-gg-script = { workspace = true }
+gg-galgame-schema = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
