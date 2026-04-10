@@ -2,7 +2,7 @@ use std::{path::Path, sync::Arc};
 
 use ab_glyph::{Font, ScaleFont};
 use gg_core::{GError, GErrorKind, GResult};
-use gg_render::{DrawCommand, RenderContext, Renderer, SurfaceInfo, TextureId, Transform, TransitionKind, WindowEvent};
+use gg_render::{Camera, DrawCommand, RenderContext, Renderer, SurfaceInfo, TextureId, Transform, TransitionKind, WindowEvent};
 
 #[cfg(not(target_arch = "wasm32"))]
 use winit::{
@@ -13,15 +13,51 @@ use winit::{
 
 use crate::{
     glyph_cache::GlyphCache,
-    pipeline::{RenderItem, RenderItemType, SpritePipeline, SpriteUniforms, TransitionPipeline, TransitionUniforms},
+    pipeline::{BatchSpritePipeline, RenderItem, RenderItemType, SpritePipeline, SpriteUniforms, TransitionPipeline, TransitionUniforms},
+    sprite_batch::{SpriteBatch, SpriteBatcher},
     texture_cache::TextureCache,
     uniform_pool::UniformPool,
 };
 
+/// 离屏渲染目标
+///
+/// 封装一个可渲染的离屏纹理视图。
+/// 渲染目标的纹理已注册到纹理缓存中，可通过 `texture_id` 作为精灵纹理使用。
+pub struct RenderTarget {
+    /// 纹理视图，用于渲染通道的颜色附件
+    view: wgpu::TextureView,
+    /// 纹理标识符，可用于精灵绘制
+    texture_id: TextureId,
+    /// 渲染目标宽度（像素）
+    width: u32,
+    /// 渲染目标高度（像素）
+    height: u32,
+}
+
+impl RenderTarget {
+    /// 获取纹理标识符
+    ///
+    /// 返回的标识符可用于精灵绘制命令中的纹理引用。
+    pub fn texture_id(&self) -> TextureId {
+        self.texture_id
+    }
+
+    /// 获取渲染目标宽度（像素）
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    /// 获取渲染目标高度（像素）
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+}
+
 /// WGPU 渲染器
 ///
 /// 基于 WGPU 实现的渲染器，提供跨平台的 2D 图形渲染能力。
-/// 支持精灵绘制、文本渲染、矩形绘制和场景过渡动画。
+/// 支持精灵批渲染、文本渲染、几何图形绘制、场景过渡动画、
+/// 相机变换和裁剪矩形。
 ///
 /// # 使用方式
 ///
@@ -48,8 +84,10 @@ pub struct WgpuRenderer {
     texture_cache: TextureCache,
     /// 字形缓存
     glyph_cache: GlyphCache,
-    /// 精灵渲染管线
+    /// 精灵渲染管线（非批渲染，用于过渡动画）
     sprite_pipeline: SpritePipeline,
+    /// 批渲染精灵管线
+    batch_sprite_pipeline: BatchSpritePipeline,
     /// 过渡渲染管线
     transition_pipeline: TransitionPipeline,
     /// 是否应该关闭窗口
@@ -126,14 +164,41 @@ impl WgpuRenderer {
         result
     }
 
-    /// 计算精灵的 MVP 矩阵
-    fn compute_sprite_mvp(transform: &Transform, size: [f32; 2], surface_width: u32, surface_height: u32) -> [[f32; 4]; 4] {
+    /// 计算视图投影矩阵
+    ///
+    /// 根据相机参数计算视图投影矩阵。
+    /// 无相机时返回正交投影矩阵，有相机时叠加相机变换。
+    fn compute_view_projection(
+        surface_width: u32,
+        surface_height: u32,
+        camera: Option<&Camera>,
+    ) -> [[f32; 4]; 4] {
         let projection = Self::orthographic(surface_width as f32, surface_height as f32);
+
+        match camera {
+            None => projection,
+            Some(cam) => {
+                let half_w = surface_width as f32 * 0.5;
+                let half_h = surface_height as f32 * 0.5;
+                let view_t = Self::translate(-cam.position[0], -cam.position[1]);
+                let view_r = Self::rotate(-cam.rotation);
+                let view_s = Self::scale(cam.zoom, cam.zoom);
+                let center_t = Self::translate(half_w, half_h);
+                let center_t_inv = Self::translate(-half_w, -half_h);
+
+                let view = Self::mat4_mul(&center_t, &Self::mat4_mul(&view_r, &Self::mat4_mul(&view_s, &Self::mat4_mul(&center_t_inv, &view_t))));
+                Self::mat4_mul(&projection, &view)
+            }
+        }
+    }
+
+    /// 计算精灵的 MVP 矩阵
+    fn compute_sprite_mvp(transform: &Transform, size: [f32; 2], view_projection: &[[f32; 4]; 4]) -> [[f32; 4]; 4] {
         let model_t = Self::translate(transform.position[0], transform.position[1]);
         let model_r = Self::rotate(transform.rotation);
         let model_s = Self::scale(size[0] * transform.scale[0], size[1] * transform.scale[1]);
         let model = Self::mat4_mul(&model_t, &Self::mat4_mul(&model_r, &model_s));
-        Self::mat4_mul(&projection, &model)
+        Self::mat4_mul(view_projection, &model)
     }
 
     /// 计算全屏四边形的 MVP 矩阵
@@ -153,6 +218,329 @@ impl WgpuRenderer {
             TransitionKind::SlideUp => 4.0,
             TransitionKind::SlideDown => 5.0,
         }
+    }
+
+    /// 生成圆形的三角扇形顶点
+    ///
+    /// 返回 (vertices, indices)，使用 32 段近似圆。
+    fn generate_circle_geometry(center: [f32; 2], radius: f32, segments: u32) -> (Vec<[f32; 2]>, Vec<u16>) {
+        let mut vertices = vec![center];
+        for i in 0..=segments {
+            let angle = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
+            vertices.push([center[0] + radius * angle.cos(), center[1] + radius * angle.sin()]);
+        }
+        let mut indices = Vec::new();
+        for i in 1..=segments {
+            indices.extend_from_slice(&[0, i as u16, (i + 1) as u16]);
+        }
+        (vertices, indices)
+    }
+
+    /// 创建离屏渲染目标
+    ///
+    /// 创建一个指定尺寸的离屏纹理，可作为渲染目标使用。
+    /// 纹理格式与当前渲染表面格式一致，支持渲染附件和纹理绑定。
+    /// 创建后纹理已注册到纹理缓存，可通过 `texture_id` 作为精灵纹理引用。
+    ///
+    /// # 参数
+    ///
+    /// - `width` - 渲染目标宽度（像素）
+    /// - `height` - 渲染目标高度（像素）
+    ///
+    /// # 返回值
+    ///
+    /// 成功时返回渲染目标，包含纹理标识符
+    pub fn create_render_target(&mut self, width: u32, height: u32) -> GResult<RenderTarget> {
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("render_target"),
+            size: wgpu::Extent3d { width, height, depth_or_array_layers: 1 },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: self.config.format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            view_formats: &[],
+        });
+
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        let texture_id = self.texture_cache.register_texture(texture);
+
+        Ok(RenderTarget {
+            texture: self.texture_cache.get_texture(texture_id).unwrap().clone(),
+            view,
+            texture_id,
+            width,
+            height,
+        })
+    }
+
+    /// 渲染到离屏纹理
+    ///
+    /// 将渲染上下文中的绘制命令渲染到指定的离屏渲染目标，
+    /// 而非屏幕表面。渲染完成后命令自动提交到 GPU 队列。
+    ///
+    /// # 参数
+    ///
+    /// - `target` - 离屏渲染目标
+    /// - `context` - 渲染上下文
+    pub fn draw_to_target(&mut self, target: &RenderTarget, context: &RenderContext) -> GResult<()> {
+        let surface_width = target.width;
+        let surface_height = target.height;
+        let view_projection = Self::compute_view_projection(surface_width, surface_height, context.camera());
+
+        {
+            for cmd in context.commands() {
+                if let DrawCommand::Text { text, font_size, .. } = cmd {
+                    let font = self
+                        .glyph_cache
+                        .font()
+                        .ok_or_else(|| GError {
+                            kind: GErrorKind::Runtime, message: "未加载字体，无法渲染文本".to_string()
+                        })?
+                        .clone();
+
+                    let px_scale = ab_glyph::PxScale { x: *font_size, y: *font_size };
+
+                    for c in text.chars() {
+                        let glyph_id = font.glyph_id(c);
+                        let glyph = glyph_id.with_scale(px_scale);
+                        self.glyph_cache.get_or_rasterize(glyph, &self.device, &self.queue, &mut self.texture_cache)?;
+                    }
+                }
+            }
+        }
+
+        let commands = context.commands();
+        let mut indexed: Vec<IndexedCommand> = commands
+            .iter()
+            .enumerate()
+            .map(|(i, cmd)| {
+                let (z, is_t) = match cmd {
+                    DrawCommand::Sprite { transform, .. } => (transform.z_index, false),
+                    DrawCommand::Text { .. } => (0.0, false),
+                    DrawCommand::Rect { .. } => (0.0, false),
+                    DrawCommand::Line { .. } => (0.0, false),
+                    DrawCommand::Circle { .. } => (0.0, false),
+                    DrawCommand::Ellipse { .. } => (0.0, false),
+                    DrawCommand::Transition { .. } => (f32::MAX, true),
+                };
+                IndexedCommand { index: i, z_index: z, is_transition: is_t }
+            })
+            .collect();
+
+        indexed.sort_by(|a, b| {
+            if a.is_transition != b.is_transition {
+                if a.is_transition { std::cmp::Ordering::Greater } else { std::cmp::Ordering::Less }
+            } else {
+                a.z_index.partial_cmp(&b.z_index).unwrap_or(std::cmp::Ordering::Equal)
+            }
+        });
+
+        let mut sprite_batcher = SpriteBatcher::new();
+        let mut transition_items: Vec<RenderItem> = Vec::new();
+
+        for ic in &indexed {
+            let cmd = &commands[ic.index];
+            match cmd {
+                DrawCommand::Sprite { texture_id, transform, size, tint, .. } => {
+                    let mvp = Self::compute_sprite_mvp(transform, *size, &view_projection);
+                    sprite_batcher.push(*texture_id, mvp, [tint.r, tint.g, tint.b, tint.a], [0.0, 0.0, 1.0, 1.0]);
+                }
+                DrawCommand::Text { text, position, font_size, color, .. } => {
+                    let font = match self.glyph_cache.font() {
+                        Some(f) => f.clone(),
+                        None => continue,
+                    };
+
+                    let px_scale = ab_glyph::PxScale { x: *font_size, y: *font_size };
+                    let scaled_font = font.as_scaled(px_scale);
+
+                    let mut cursor_x = position[0];
+                    let cursor_y = position[1];
+
+                    for c in text.chars() {
+                        let glyph_id = font.glyph_id(c);
+                        let advance = scaled_font.h_advance(glyph_id);
+                        let glyph = glyph_id.with_scale(px_scale);
+
+                        let glyph_info = match self.glyph_cache.get_or_rasterize(
+                            glyph,
+                            &self.device,
+                            &self.queue,
+                            &mut self.texture_cache,
+                        ) {
+                            Ok(info) => info,
+                            Err(_) => {
+                                cursor_x += advance;
+                                continue;
+                            }
+                        };
+
+                        if glyph_info.texture_id != TextureId::INVALID && glyph_info.size[0] > 0.0 && glyph_info.size[1] > 0.0 {
+                            let glyph_transform = Transform {
+                                position: [cursor_x + glyph_info.offset[0], cursor_y + glyph_info.offset[1]],
+                                scale: [1.0, 1.0],
+                                rotation: 0.0,
+                                z_index: 0.0,
+                            };
+
+                            let mvp = Self::compute_sprite_mvp(&glyph_transform, glyph_info.size, &view_projection);
+                            let uv_transform = [
+                                glyph_info.uv_rect[0],
+                                glyph_info.uv_rect[1],
+                                glyph_info.uv_rect[2] - glyph_info.uv_rect[0],
+                                glyph_info.uv_rect[3] - glyph_info.uv_rect[1],
+                            ];
+                            sprite_batcher.push(glyph_info.texture_id, mvp, [color.r, color.g, color.b, color.a], uv_transform);
+                        }
+
+                        cursor_x += advance;
+                    }
+                }
+                DrawCommand::Rect { rect, color, .. } => {
+                    let transform = Transform { position: [rect.x, rect.y], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
+                    let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], &view_projection);
+                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                }
+                DrawCommand::Line { start, end, color, width } => {
+                    let dx = end[0] - start[0];
+                    let dy = end[1] - start[1];
+                    let length = (dx * dx + dy * dy).sqrt();
+                    if length < 0.001 {
+                        continue;
+                    }
+                    let angle = dy.atan2(dx);
+                    let transform = Transform {
+                        position: *start,
+                        scale: [1.0, 1.0],
+                        rotation: angle,
+                        z_index: 0.0,
+                    };
+                    let mvp = Self::compute_sprite_mvp(&transform, [length, *width], &view_projection);
+                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                }
+                DrawCommand::Circle { center, radius, color, .. } => {
+                    let transform = Transform {
+                        position: [center[0] - radius, center[1] - radius],
+                        scale: [1.0, 1.0],
+                        rotation: 0.0,
+                        z_index: 0.0,
+                    };
+                    let size = [radius * 2.0, radius * 2.0];
+                    let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
+                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                }
+                DrawCommand::Ellipse { center, radii, color, .. } => {
+                    let transform = Transform {
+                        position: [center[0] - radii[0], center[1] - radii[1]],
+                        scale: [1.0, 1.0],
+                        rotation: 0.0,
+                        z_index: 0.0,
+                    };
+                    let size = [radii[0] * 2.0, radii[1] * 2.0];
+                    let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
+                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                }
+                DrawCommand::Transition { old_texture, new_texture, progress, kind } => {
+                    let old_id = old_texture.unwrap_or(self.white_pixel_texture);
+                    let new_id = new_texture.unwrap_or(self.white_pixel_texture);
+
+                    let mvp = Self::compute_fullscreen_mvp(surface_width, surface_height);
+                    let uniforms = TransitionUniforms {
+                        mvp,
+                        params: [*progress, Self::transition_kind_to_param(*kind), 0.0, 0.0],
+                        tint: [1.0, 1.0, 1.0, 1.0],
+                    };
+                    let uniform_buffer =
+                        self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
+                    let uniform_bind_group = self.transition_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
+                    let texture_bind_group = self
+                        .texture_cache
+                        .create_transition_bind_group(old_id, new_id, &self.device, self.transition_pipeline.texture_layout())
+                        .ok_or_else(|| GError {
+                            kind: GErrorKind::Asset, message: "无法创建过渡纹理绑定组".to_string()
+                        })?;
+
+                    transition_items.push(RenderItem {
+                        item_type: RenderItemType::Transition,
+                        uniform_bind_group,
+                        texture_bind_group,
+                        uniform_buffer,
+                    });
+                }
+            }
+        }
+
+        let sprite_batches = sprite_batcher.flush();
+
+        let encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_target_encoder") });
+
+        let scissor_rect = context.clip_rect().map(|r| wgpu::Rect {
+            x: r.x.max(0.0) as u32,
+            y: r.y.max(0.0) as u32,
+            w: r.width.max(0.0) as u32,
+            h: r.height.max(0.0) as u32,
+        });
+
+        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("render_target_pass"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &target.view,
+                resolve_target: None,
+                ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store },
+            })],
+            depth_stencil_attachment: None,
+            timestamp_writes: None,
+            occlusion_query_set: None,
+        });
+
+        if let Some(rect) = &scissor_rect {
+            render_pass.set_scissor_rect(rect.x, rect.y, rect.w, rect.h);
+        }
+
+        for SpriteBatch { texture_id, instances } in &sprite_batches {
+            let instance_buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("sprite_instance_buffer"),
+                    contents: bytemuck::cast_slice(instances),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+
+            let texture_bind_group = self
+                .texture_cache
+                .create_bind_group(*texture_id, &self.device, self.batch_sprite_pipeline.texture_layout())
+                .ok_or_else(|| GError {
+                    kind: GErrorKind::Asset,
+                    message: format!("无法创建精灵纹理绑定组，纹理 ID: {:?}", texture_id),
+                })?;
+
+            render_pass.set_pipeline(self.batch_sprite_pipeline.pipeline());
+            render_pass.set_vertex_buffer(0, self.batch_sprite_pipeline.vertex_buffer().slice(..));
+            render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
+            render_pass.set_index_buffer(self.batch_sprite_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_bind_group(0, &texture_bind_group, &[]);
+            render_pass.draw_indexed(0..6, 0, 0..instances.len() as u32);
+        }
+
+        for item in &transition_items {
+            render_pass.set_pipeline(self.transition_pipeline.pipeline());
+            render_pass.set_vertex_buffer(0, self.sprite_pipeline.vertex_buffer().slice(..));
+            render_pass.set_index_buffer(self.sprite_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_bind_group(0, &item.uniform_bind_group, &[]);
+            render_pass.set_bind_group(1, &item.texture_bind_group, &[]);
+            render_pass.draw_indexed(0..6, 0, 0..1);
+        }
+
+        drop(render_pass);
+
+        for RenderItem { uniform_buffer, .. } in transition_items {
+            self.uniform_pool.mark_used(uniform_buffer);
+        }
+
+        self.queue.submit(std::iter::once(encoder.finish()));
+
+        Ok(())
     }
 
     /// 重新加载纹理（用于 HMR 热更新）
@@ -181,10 +569,6 @@ impl WgpuRenderer {
     ///
     /// - `event_loop` - winit 事件循环引用
     /// - `surface_info` - 渲染表面信息
-    ///
-    /// # 返回值
-    ///
-    /// 成功时返回渲染器实例
     pub fn new(event_loop: &EventLoop<()>, surface_info: SurfaceInfo) -> GResult<Self> {
         let window_attrs = WindowAttributes::default()
             .with_title(&surface_info.title)
@@ -247,6 +631,7 @@ impl WgpuRenderer {
         })?;
 
         let sprite_pipeline = SpritePipeline::new(&device, config.format);
+        let batch_sprite_pipeline = BatchSpritePipeline::new(&device, config.format);
         let transition_pipeline = TransitionPipeline::new(&device, config.format);
 
         let mut texture_cache = TextureCache::new();
@@ -271,6 +656,7 @@ impl WgpuRenderer {
             texture_cache,
             glyph_cache,
             sprite_pipeline,
+            batch_sprite_pipeline,
             transition_pipeline,
             should_close: false,
             pending_events: Vec::new(),
@@ -303,6 +689,7 @@ impl WgpuRenderer {
         window: Arc<Window>,
     ) -> GResult<Self> {
         let sprite_pipeline = SpritePipeline::new(&device, config.format);
+        let batch_sprite_pipeline = BatchSpritePipeline::new(&device, config.format);
         let transition_pipeline = TransitionPipeline::new(&device, config.format);
 
         let mut texture_cache = TextureCache::new();
@@ -327,6 +714,7 @@ impl WgpuRenderer {
             texture_cache,
             glyph_cache,
             sprite_pipeline,
+            batch_sprite_pipeline,
             transition_pipeline,
             should_close: false,
             pending_events: Vec::new(),
@@ -340,7 +728,6 @@ impl WgpuRenderer {
     /// 处理 winit 窗口事件
     ///
     /// 将 winit 的窗口事件转换为引擎的 `WindowEvent` 并存入内部缓冲区。
-    /// 应在 winit 事件循环的回调中调用此方法。
     ///
     /// # 参数
     ///
@@ -414,6 +801,7 @@ impl WgpuRenderer {
         surface_info: SurfaceInfo,
     ) -> GResult<Self> {
         let sprite_pipeline = SpritePipeline::new(&device, config.format);
+        let batch_sprite_pipeline = BatchSpritePipeline::new(&device, config.format);
         let transition_pipeline = TransitionPipeline::new(&device, config.format);
 
         let mut texture_cache = TextureCache::new();
@@ -437,6 +825,7 @@ impl WgpuRenderer {
             texture_cache,
             glyph_cache,
             sprite_pipeline,
+            batch_sprite_pipeline,
             transition_pipeline,
             should_close: false,
             pending_events: Vec::new(),
@@ -462,6 +851,16 @@ impl WgpuRenderer {
     }
 }
 
+/// 带索引的绘制命令，用于 Z 排序时保持原始顺序
+struct IndexedCommand {
+    /// 原始命令索引
+    index: usize,
+    /// Z 层级值
+    z_index: f32,
+    /// 是否为过渡命令（过渡命令始终最后渲染）
+    is_transition: bool,
+}
+
 impl Renderer for WgpuRenderer {
     fn begin_frame(&mut self) -> GResult<()> {
         self.uniform_pool.recycle_frame();
@@ -482,6 +881,7 @@ impl Renderer for WgpuRenderer {
     fn draw(&mut self, context: &RenderContext) -> GResult<()> {
         let surface_width = context.surface_width();
         let surface_height = context.surface_height();
+        let view_projection = Self::compute_view_projection(surface_width, surface_height, context.camera());
 
         // 阶段 1：预光栅化所有文本字形
         {
@@ -506,32 +906,43 @@ impl Renderer for WgpuRenderer {
             }
         }
 
-        // 阶段 2：创建渲染项
-        let mut render_items: Vec<RenderItem> = Vec::new();
+        // 阶段 2：Z 排序 - 稳定排序绘制命令
+        let commands = context.commands();
+        let mut indexed: Vec<IndexedCommand> = commands
+            .iter()
+            .enumerate()
+            .map(|(i, cmd)| {
+                let (z, is_t) = match cmd {
+                    DrawCommand::Sprite { transform, .. } => (transform.z_index, false),
+                    DrawCommand::Text { .. } => (0.0, false),
+                    DrawCommand::Rect { .. } => (0.0, false),
+                    DrawCommand::Line { .. } => (0.0, false),
+                    DrawCommand::Circle { .. } => (0.0, false),
+                    DrawCommand::Ellipse { .. } => (0.0, false),
+                    DrawCommand::Transition { .. } => (f32::MAX, true),
+                };
+                IndexedCommand { index: i, z_index: z, is_transition: is_t }
+            })
+            .collect();
 
-        for cmd in context.commands() {
+        indexed.sort_by(|a, b| {
+            if a.is_transition != b.is_transition {
+                if a.is_transition { std::cmp::Ordering::Greater } else { std::cmp::Ordering::Less }
+            } else {
+                a.z_index.partial_cmp(&b.z_index).unwrap_or(std::cmp::Ordering::Equal)
+            }
+        });
+
+        // 阶段 3：收集精灵批次和过渡渲染项
+        let mut sprite_batcher = SpriteBatcher::new();
+        let mut transition_items: Vec<RenderItem> = Vec::new();
+
+        for ic in &indexed {
+            let cmd = &commands[ic.index];
             match cmd {
                 DrawCommand::Sprite { texture_id, transform, size, tint, .. } => {
-                    let mvp = Self::compute_sprite_mvp(transform, *size, surface_width, surface_height);
-                    let uniforms =
-                        SpriteUniforms { mvp, tint: [tint.r, tint.g, tint.b, tint.a], uv_transform: [0.0, 0.0, 1.0, 1.0] };
-                    let uniform_buffer =
-                        self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
-                    let uniform_bind_group = self.sprite_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
-                    let texture_bind_group = self
-                        .texture_cache
-                        .create_bind_group(*texture_id, &self.device, self.sprite_pipeline.texture_layout())
-                        .ok_or_else(|| GError {
-                            kind: GErrorKind::Asset,
-                            message: format!("无法创建精灵纹理绑定组，纹理 ID: {:?}", texture_id),
-                        })?;
-
-                    render_items.push(RenderItem {
-                        item_type: RenderItemType::Sprite,
-                        uniform_bind_group,
-                        texture_bind_group,
-                        uniform_buffer,
-                    });
+                    let mvp = Self::compute_sprite_mvp(transform, *size, &view_projection);
+                    sprite_batcher.push(*texture_id, mvp, [tint.r, tint.g, tint.b, tint.a], [0.0, 0.0, 1.0, 1.0]);
                 }
                 DrawCommand::Text { text, position, font_size, color, .. } => {
                     let font = match self.glyph_cache.font() {
@@ -571,32 +982,14 @@ impl Renderer for WgpuRenderer {
                                 z_index: 0.0,
                             };
 
-                            let mvp =
-                                Self::compute_sprite_mvp(&glyph_transform, glyph_info.size, surface_width, surface_height);
+                            let mvp = Self::compute_sprite_mvp(&glyph_transform, glyph_info.size, &view_projection);
                             let uv_transform = [
                                 glyph_info.uv_rect[0],
                                 glyph_info.uv_rect[1],
                                 glyph_info.uv_rect[2] - glyph_info.uv_rect[0],
                                 glyph_info.uv_rect[3] - glyph_info.uv_rect[1],
                             ];
-                            let uniforms = SpriteUniforms { mvp, tint: [color.r, color.g, color.b, color.a], uv_transform };
-                            let uniform_buffer =
-                                self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
-                            let uniform_bind_group =
-                                self.sprite_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
-
-                            if let Some(texture_bind_group) = self.texture_cache.create_bind_group(
-                                glyph_info.texture_id,
-                                &self.device,
-                                self.sprite_pipeline.texture_layout(),
-                            ) {
-                                render_items.push(RenderItem {
-                                    item_type: RenderItemType::Sprite,
-                                    uniform_bind_group,
-                                    texture_bind_group,
-                                    uniform_buffer,
-                                });
-                            }
+                            sprite_batcher.push(glyph_info.texture_id, mvp, [color.r, color.g, color.b, color.a], uv_transform);
                         }
 
                         cursor_x += advance;
@@ -604,25 +997,47 @@ impl Renderer for WgpuRenderer {
                 }
                 DrawCommand::Rect { rect, color, .. } => {
                     let transform = Transform { position: [rect.x, rect.y], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
-                    let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], surface_width, surface_height);
-                    let uniforms =
-                        SpriteUniforms { mvp, tint: [color.r, color.g, color.b, color.a], uv_transform: [0.0, 0.0, 1.0, 1.0] };
-                    let uniform_buffer =
-                        self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
-                    let uniform_bind_group = self.sprite_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
-                    let texture_bind_group = self
-                        .texture_cache
-                        .create_bind_group(self.white_pixel_texture, &self.device, self.sprite_pipeline.texture_layout())
-                        .ok_or_else(|| GError {
-                            kind: GErrorKind::Asset, message: "无法创建矩形纹理绑定组".to_string()
-                        })?;
-
-                    render_items.push(RenderItem {
-                        item_type: RenderItemType::Sprite,
-                        uniform_bind_group,
-                        texture_bind_group,
-                        uniform_buffer,
-                    });
+                    let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], &view_projection);
+                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                }
+                DrawCommand::Line { start, end, color, width } => {
+                    let dx = end[0] - start[0];
+                    let dy = end[1] - start[1];
+                    let length = (dx * dx + dy * dy).sqrt();
+                    if length < 0.001 {
+                        continue;
+                    }
+                    let angle = dy.atan2(dx);
+                    let transform = Transform {
+                        position: *start,
+                        scale: [1.0, 1.0],
+                        rotation: angle,
+                        z_index: 0.0,
+                    };
+                    let mvp = Self::compute_sprite_mvp(&transform, [length, *width], &view_projection);
+                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                }
+                DrawCommand::Circle { center, radius, color, .. } => {
+                    let transform = Transform {
+                        position: [center[0] - radius, center[1] - radius],
+                        scale: [1.0, 1.0],
+                        rotation: 0.0,
+                        z_index: 0.0,
+                    };
+                    let size = [radius * 2.0, radius * 2.0];
+                    let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
+                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                }
+                DrawCommand::Ellipse { center, radii, color, .. } => {
+                    let transform = Transform {
+                        position: [center[0] - radii[0], center[1] - radii[1]],
+                        scale: [1.0, 1.0],
+                        rotation: 0.0,
+                        z_index: 0.0,
+                    };
+                    let size = [radii[0] * 2.0, radii[1] * 2.0];
+                    let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
+                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
                 }
                 DrawCommand::Transition { old_texture, new_texture, progress, kind } => {
                     let old_id = old_texture.unwrap_or(self.white_pixel_texture);
@@ -644,7 +1059,7 @@ impl Renderer for WgpuRenderer {
                             kind: GErrorKind::Asset, message: "无法创建过渡纹理绑定组".to_string()
                         })?;
 
-                    render_items.push(RenderItem {
+                    transition_items.push(RenderItem {
                         item_type: RenderItemType::Transition,
                         uniform_bind_group,
                         texture_bind_group,
@@ -654,7 +1069,9 @@ impl Renderer for WgpuRenderer {
             }
         }
 
-        // 阶段 3：记录渲染通道
+        let sprite_batches = sprite_batcher.flush();
+
+        // 阶段 4：记录渲染通道
         let encoder = self.command_encoder.as_mut().ok_or_else(|| GError {
             kind: GErrorKind::Runtime,
             message: "命令编码器不存在，请先调用 begin_frame".to_string(),
@@ -666,8 +1083,12 @@ impl Renderer for WgpuRenderer {
             })?;
         let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let sprite_pipeline = &self.sprite_pipeline;
-        let transition_pipeline = &self.transition_pipeline;
+        let scissor_rect = context.clip_rect().map(|r| wgpu::Rect {
+            x: r.x.max(0.0) as u32,
+            y: r.y.max(0.0) as u32,
+            w: r.width.max(0.0) as u32,
+            h: r.height.max(0.0) as u32,
+        });
 
         let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("render_pass"),
@@ -681,19 +1102,41 @@ impl Renderer for WgpuRenderer {
             occlusion_query_set: None,
         });
 
-        for item in &render_items {
-            match item.item_type {
-                RenderItemType::Sprite => {
-                    render_pass.set_pipeline(sprite_pipeline.pipeline());
-                    render_pass.set_vertex_buffer(0, sprite_pipeline.vertex_buffer().slice(..));
-                    render_pass.set_index_buffer(sprite_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
-                }
-                RenderItemType::Transition => {
-                    render_pass.set_pipeline(transition_pipeline.pipeline());
-                    render_pass.set_vertex_buffer(0, sprite_pipeline.vertex_buffer().slice(..));
-                    render_pass.set_index_buffer(sprite_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
-                }
-            }
+        if let Some(rect) = &scissor_rect {
+            render_pass.set_scissor_rect(rect.x, rect.y, rect.w, rect.h);
+        }
+
+        // 绘制精灵批次
+        for SpriteBatch { texture_id, instances } in &sprite_batches {
+            let instance_buffer = self
+                .device
+                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("sprite_instance_buffer"),
+                    contents: bytemuck::cast_slice(instances),
+                    usage: wgpu::BufferUsages::VERTEX,
+                });
+
+            let texture_bind_group = self
+                .texture_cache
+                .create_bind_group(*texture_id, &self.device, self.batch_sprite_pipeline.texture_layout())
+                .ok_or_else(|| GError {
+                    kind: GErrorKind::Asset,
+                    message: format!("无法创建精灵纹理绑定组，纹理 ID: {:?}", texture_id),
+                })?;
+
+            render_pass.set_pipeline(self.batch_sprite_pipeline.pipeline());
+            render_pass.set_vertex_buffer(0, self.batch_sprite_pipeline.vertex_buffer().slice(..));
+            render_pass.set_vertex_buffer(1, instance_buffer.slice(..));
+            render_pass.set_index_buffer(self.batch_sprite_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_bind_group(0, &texture_bind_group, &[]);
+            render_pass.draw_indexed(0..6, 0, 0..instances.len() as u32);
+        }
+
+        // 绘制过渡动画
+        for item in &transition_items {
+            render_pass.set_pipeline(self.transition_pipeline.pipeline());
+            render_pass.set_vertex_buffer(0, self.sprite_pipeline.vertex_buffer().slice(..));
+            render_pass.set_index_buffer(self.sprite_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
             render_pass.set_bind_group(0, &item.uniform_bind_group, &[]);
             render_pass.set_bind_group(1, &item.texture_bind_group, &[]);
             render_pass.draw_indexed(0..6, 0, 0..1);
@@ -701,7 +1144,7 @@ impl Renderer for WgpuRenderer {
 
         drop(render_pass);
 
-        for RenderItem { uniform_buffer, .. } in render_items {
+        for RenderItem { uniform_buffer, .. } in transition_items {
             self.uniform_pool.mark_used(uniform_buffer);
         }
 

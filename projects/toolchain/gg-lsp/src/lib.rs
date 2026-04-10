@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+#![feature(new_range_api)]
 
 //! GG 引擎 LSP 模块
 //! 提供语言服务器相关功能
@@ -48,4 +49,4 @@ impl<V: Vfs + Send + Sync + 'static + oak_vfs::WritableVfs> LanguageService for 
     fn hover(&self, _uri: &str, _range: Range<usize>) -> impl Future<Output = Option<LspHover>> + Send + '_ {
         async move { None }
     }
-};
+}

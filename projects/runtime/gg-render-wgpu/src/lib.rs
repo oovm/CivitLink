@@ -3,7 +3,8 @@
 //! GG 引擎 WGPU 渲染后端
 //!
 //! 基于 WGPU 实现跨平台 2D 图形渲染，
-//! 支持精灵绘制、文本渲染、矩形绘制和场景过渡动画。
+//! 支持精灵批渲染、文本渲染、几何图形绘制、场景过渡动画、
+//! 相机变换和裁剪矩形。
 
 /// 字形纹理图集模块
 pub mod glyph_atlas;
@@ -15,6 +16,8 @@ pub mod pipeline;
 pub mod renderer;
 /// 着色器源码模块
 pub mod shader;
+/// 精灵批渲染模块
+pub mod sprite_batch;
 /// 纹理缓存模块
 pub mod texture_cache;
 /// Uniform 缓冲区池模块

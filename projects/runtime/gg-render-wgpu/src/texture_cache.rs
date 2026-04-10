@@ -132,6 +132,25 @@ impl TextureCache {
         Ok(id)
     }
 
+    /// 注册外部创建的纹理
+    ///
+    /// 将已有的 wgpu 纹理对象注册到缓存中，使其可以通过 `TextureId` 引用。
+    /// 适用于渲染目标纹理等由外部创建的纹理资源。
+    ///
+    /// # 参数
+    ///
+    /// - `texture` - wgpu 纹理对象
+    ///
+    /// # 返回值
+    ///
+    /// 新分配的纹理标识符
+    pub fn register_texture(&mut self, texture: wgpu::Texture) -> TextureId {
+        let id = TextureId::new(self.next_id);
+        self.next_id += 1;
+        self.textures.insert(id, texture);
+        id
+    }
+
     /// 根据标识符查找纹理
     ///
     /// # 参数

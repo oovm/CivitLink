@@ -23,4 +23,3 @@ pub async fn serve_gg_mcp(vfs: MemoryVfs) {
         panic!("MCP service requires 'lsp' feature to be enabled")
     }
 }
-;
