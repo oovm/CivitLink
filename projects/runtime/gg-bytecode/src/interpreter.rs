@@ -1,7 +1,7 @@
-use crate::format::{
-    BytecodeInstruction, BytecodeModule, BytecodeValue,
+use crate::{
+    format::{BytecodeInstruction, BytecodeModule, BytecodeValue},
+    host::Host,
 };
-use crate::host::Host;
 
 /// 解释器执行结果
 #[derive(Debug, Clone)]
@@ -39,20 +39,11 @@ pub struct BytecodeInterpreter {
 impl BytecodeInterpreter {
     /// 创建新的字节码解释器
     pub fn new() -> Self {
-        Self {
-            stack: Vec::new(),
-            call_stack: Vec::new(),
-            running: false,
-        }
+        Self { stack: Vec::new(), call_stack: Vec::new(), running: false }
     }
 
     /// 执行模块中的指定函数
-    pub fn execute<H: Host>(
-        &mut self,
-        module: &BytecodeModule,
-        function_name: &str,
-        host: &mut H,
-    ) -> InterpretResult {
+    pub fn execute<H: Host>(&mut self, module: &BytecodeModule, function_name: &str, host: &mut H) -> InterpretResult {
         let function = match module.find_function(function_name) {
             Some(f) => f.clone(),
             None => {
@@ -69,12 +60,7 @@ impl BytecodeInterpreter {
 
         let stack_base = self.stack.len();
 
-        self.call_stack.push(InterpreterFrame {
-            function_name: function.name,
-            ip: 0,
-            locals,
-            stack_base,
-        });
+        self.call_stack.push(InterpreterFrame { function_name: function.name, ip: 0, locals, stack_base });
 
         self.running = true;
         let result = self.execute_instructions(module, host);
@@ -83,11 +69,7 @@ impl BytecodeInterpreter {
     }
 
     /// 执行当前栈帧的指令序列
-    fn execute_instructions<H: Host>(
-        &mut self,
-        module: &BytecodeModule,
-        host: &mut H,
-    ) -> InterpretResult {
+    fn execute_instructions<H: Host>(&mut self, module: &BytecodeModule, host: &mut H) -> InterpretResult {
         while self.running {
             let (function_name, ip) = match self.call_stack.last() {
                 Some(f) => (f.function_name.clone(), f.ip),
@@ -114,7 +96,8 @@ impl BytecodeInterpreter {
 
             if let Some(f) = self.call_stack.last_mut() {
                 f.ip += 1;
-            } else {
+            }
+            else {
                 return InterpretResult::Error("调用栈为空".to_string());
             }
 
@@ -153,10 +136,7 @@ impl BytecodeInterpreter {
                 let value = match module.constants.get(index as usize) {
                     Some(v) => v.clone(),
                     None => {
-                        return Err(InterpretResult::Error(format!(
-                            "常量索引越界: {}",
-                            index
-                        )));
+                        return Err(InterpretResult::Error(format!("常量索引越界: {}", index)));
                     }
                 };
                 self.stack.push(value);
@@ -186,10 +166,7 @@ impl BytecodeInterpreter {
                 let value = match frame.locals.get(index as usize) {
                     Some(v) => v.clone(),
                     None => {
-                        return Err(InterpretResult::Error(format!(
-                            "局部变量索引越界: {}",
-                            index
-                        )));
+                        return Err(InterpretResult::Error(format!("局部变量索引越界: {}", index)));
                     }
                 };
                 self.stack.push(value);
@@ -200,9 +177,7 @@ impl BytecodeInterpreter {
                 let value = match self.stack.pop() {
                     Some(v) => v,
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: StoreLocal".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: StoreLocal".to_string()));
                     }
                 };
                 let frame = match self.call_stack.last_mut() {
@@ -210,10 +185,7 @@ impl BytecodeInterpreter {
                     None => return Err(InterpretResult::Error("调用栈为空".to_string())),
                 };
                 if index as usize >= frame.locals.len() {
-                    return Err(InterpretResult::Error(format!(
-                        "局部变量索引越界: {}",
-                        index
-                    )));
+                    return Err(InterpretResult::Error(format!("局部变量索引越界: {}", index)));
                 }
                 frame.locals[index as usize] = value;
                 Ok(ControlFlow::Continue)
@@ -241,14 +213,16 @@ impl BytecodeInterpreter {
                 (BytecodeValue::Int(x), BytecodeValue::Int(y)) => {
                     if y == 0 {
                         BytecodeValue::Null
-                    } else {
+                    }
+                    else {
                         BytecodeValue::Int(x / y)
                     }
                 }
                 (BytecodeValue::Float(x), BytecodeValue::Float(y)) => {
                     if y == 0.0 {
                         BytecodeValue::Null
-                    } else {
+                    }
+                    else {
                         BytecodeValue::Float(x / y)
                     }
                 }
@@ -259,14 +233,16 @@ impl BytecodeInterpreter {
                 (BytecodeValue::Int(x), BytecodeValue::Int(y)) => {
                     if y == 0 {
                         BytecodeValue::Null
-                    } else {
+                    }
+                    else {
                         BytecodeValue::Int(x % y)
                     }
                 }
                 (BytecodeValue::Float(x), BytecodeValue::Float(y)) => {
                     if y == 0.0 {
                         BytecodeValue::Null
-                    } else {
+                    }
+                    else {
                         BytecodeValue::Float(x % y)
                     }
                 }
@@ -277,19 +253,14 @@ impl BytecodeInterpreter {
                 let value = match self.stack.pop() {
                     Some(v) => v,
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: Neg".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: Neg".to_string()));
                     }
                 };
                 let result = match value {
                     BytecodeValue::Int(x) => BytecodeValue::Int(-x),
                     BytecodeValue::Float(x) => BytecodeValue::Float(-x),
                     _ => {
-                        return Err(InterpretResult::Error(format!(
-                            "Neg 操作数类型错误: {:?}",
-                            value
-                        )));
+                        return Err(InterpretResult::Error(format!("Neg 操作数类型错误: {:?}", value)));
                     }
                 };
                 self.stack.push(result);
@@ -328,29 +299,19 @@ impl BytecodeInterpreter {
                 let b = match self.stack.pop() {
                     Some(BytecodeValue::Bool(v)) => v,
                     Some(v) => {
-                        return Err(InterpretResult::Error(format!(
-                            "And 操作数类型错误: {:?}",
-                            v
-                        )));
+                        return Err(InterpretResult::Error(format!("And 操作数类型错误: {:?}", v)));
                     }
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: And".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: And".to_string()));
                     }
                 };
                 let a = match self.stack.pop() {
                     Some(BytecodeValue::Bool(v)) => v,
                     Some(v) => {
-                        return Err(InterpretResult::Error(format!(
-                            "And 操作数类型错误: {:?}",
-                            v
-                        )));
+                        return Err(InterpretResult::Error(format!("And 操作数类型错误: {:?}", v)));
                     }
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: And".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: And".to_string()));
                     }
                 };
                 self.stack.push(BytecodeValue::Bool(a && b));
@@ -361,29 +322,19 @@ impl BytecodeInterpreter {
                 let b = match self.stack.pop() {
                     Some(BytecodeValue::Bool(v)) => v,
                     Some(v) => {
-                        return Err(InterpretResult::Error(format!(
-                            "Or 操作数类型错误: {:?}",
-                            v
-                        )));
+                        return Err(InterpretResult::Error(format!("Or 操作数类型错误: {:?}", v)));
                     }
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: Or".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: Or".to_string()));
                     }
                 };
                 let a = match self.stack.pop() {
                     Some(BytecodeValue::Bool(v)) => v,
                     Some(v) => {
-                        return Err(InterpretResult::Error(format!(
-                            "Or 操作数类型错误: {:?}",
-                            v
-                        )));
+                        return Err(InterpretResult::Error(format!("Or 操作数类型错误: {:?}", v)));
                     }
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: Or".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: Or".to_string()));
                     }
                 };
                 self.stack.push(BytecodeValue::Bool(a || b));
@@ -394,15 +345,10 @@ impl BytecodeInterpreter {
                 let value = match self.stack.pop() {
                     Some(BytecodeValue::Bool(v)) => v,
                     Some(v) => {
-                        return Err(InterpretResult::Error(format!(
-                            "Not 操作数类型错误: {:?}",
-                            v
-                        )));
+                        return Err(InterpretResult::Error(format!("Not 操作数类型错误: {:?}", v)));
                     }
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: Not".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: Not".to_string()));
                     }
                 };
                 self.stack.push(BytecodeValue::Bool(!value));
@@ -415,18 +361,13 @@ impl BytecodeInterpreter {
                 let value = match self.stack.pop() {
                     Some(v) => v,
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: JumpIfFalse".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: JumpIfFalse".to_string()));
                     }
                 };
                 match value {
                     BytecodeValue::Bool(false) => Ok(ControlFlow::Jump(address as usize)),
                     BytecodeValue::Bool(true) => Ok(ControlFlow::Continue),
-                    _ => Err(InterpretResult::Error(format!(
-                        "JumpIfFalse 操作数类型错误: {:?}",
-                        value
-                    ))),
+                    _ => Err(InterpretResult::Error(format!("JumpIfFalse 操作数类型错误: {:?}", value))),
                 }
             }
 
@@ -434,18 +375,13 @@ impl BytecodeInterpreter {
                 let value = match self.stack.pop() {
                     Some(v) => v,
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: JumpIfTrue".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: JumpIfTrue".to_string()));
                     }
                 };
                 match value {
                     BytecodeValue::Bool(true) => Ok(ControlFlow::Jump(address as usize)),
                     BytecodeValue::Bool(false) => Ok(ControlFlow::Continue),
-                    _ => Err(InterpretResult::Error(format!(
-                        "JumpIfTrue 操作数类型错误: {:?}",
-                        value
-                    ))),
+                    _ => Err(InterpretResult::Error(format!("JumpIfTrue 操作数类型错误: {:?}", value))),
                 }
             }
 
@@ -453,19 +389,14 @@ impl BytecodeInterpreter {
                 let func_name_value = match self.stack.pop() {
                     Some(v) => v,
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: Call".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: Call".to_string()));
                     }
                 };
 
                 let func_name = match func_name_value {
                     BytecodeValue::String(s) => s,
                     _ => {
-                        return Err(InterpretResult::Error(format!(
-                            "Call 函数名必须是字符串: {:?}",
-                            func_name_value
-                        )));
+                        return Err(InterpretResult::Error(format!("Call 函数名必须是字符串: {:?}", func_name_value)));
                     }
                 };
 
@@ -474,9 +405,7 @@ impl BytecodeInterpreter {
                     match self.stack.pop() {
                         Some(v) => args.push(v),
                         None => {
-                            return Err(InterpretResult::Error(
-                                "栈下溢: Call 参数不足".to_string(),
-                            ));
+                            return Err(InterpretResult::Error("栈下溢: Call 参数不足".to_string()));
                         }
                     }
                 }
@@ -508,15 +437,10 @@ impl BytecodeInterpreter {
                 let entity_id = match self.stack.pop() {
                     Some(BytecodeValue::Entity(id)) => id,
                     Some(v) => {
-                        return Err(InterpretResult::Error(format!(
-                            "DespawnEntity 操作数类型错误: {:?}",
-                            v
-                        )));
+                        return Err(InterpretResult::Error(format!("DespawnEntity 操作数类型错误: {:?}", v)));
                     }
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: DespawnEntity".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: DespawnEntity".to_string()));
                     }
                 };
                 host.despawn_entity(entity_id);
@@ -527,32 +451,22 @@ impl BytecodeInterpreter {
                 let type_name = match module.string_pool.get(type_name_index as usize) {
                     Some(s) => s.clone(),
                     None => {
-                        return Err(InterpretResult::Error(format!(
-                            "字符串池索引越界: {}",
-                            type_name_index
-                        )));
+                        return Err(InterpretResult::Error(format!("字符串池索引越界: {}", type_name_index)));
                     }
                 };
                 let value = match self.stack.pop() {
                     Some(v) => v,
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: AddComponent 值".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: AddComponent 值".to_string()));
                     }
                 };
                 let entity_id = match self.stack.pop() {
                     Some(BytecodeValue::Entity(id)) => id,
                     Some(v) => {
-                        return Err(InterpretResult::Error(format!(
-                            "AddComponent 实体 ID 类型错误: {:?}",
-                            v
-                        )));
+                        return Err(InterpretResult::Error(format!("AddComponent 实体 ID 类型错误: {:?}", v)));
                     }
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: AddComponent 实体 ID".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: AddComponent 实体 ID".to_string()));
                     }
                 };
                 host.add_component(entity_id, &type_name, value);
@@ -563,29 +477,19 @@ impl BytecodeInterpreter {
                 let type_name = match module.string_pool.get(type_name_index as usize) {
                     Some(s) => s.clone(),
                     None => {
-                        return Err(InterpretResult::Error(format!(
-                            "字符串池索引越界: {}",
-                            type_name_index
-                        )));
+                        return Err(InterpretResult::Error(format!("字符串池索引越界: {}", type_name_index)));
                     }
                 };
                 let entity_id = match self.stack.pop() {
                     Some(BytecodeValue::Entity(id)) => id,
                     Some(v) => {
-                        return Err(InterpretResult::Error(format!(
-                            "GetComponent 实体 ID 类型错误: {:?}",
-                            v
-                        )));
+                        return Err(InterpretResult::Error(format!("GetComponent 实体 ID 类型错误: {:?}", v)));
                     }
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: GetComponent 实体 ID".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: GetComponent 实体 ID".to_string()));
                     }
                 };
-                let value = host
-                    .get_component_field(entity_id, &type_name, "")
-                    .unwrap_or(BytecodeValue::Null);
+                let value = host.get_component_field(entity_id, &type_name, "").unwrap_or(BytecodeValue::Null);
                 self.stack.push(value);
                 Ok(ControlFlow::Continue)
             }
@@ -594,49 +498,33 @@ impl BytecodeInterpreter {
                 let type_name = match module.string_pool.get(type_name_index as usize) {
                     Some(s) => s.clone(),
                     None => {
-                        return Err(InterpretResult::Error(format!(
-                            "字符串池索引越界: {}",
-                            type_name_index
-                        )));
+                        return Err(InterpretResult::Error(format!("字符串池索引越界: {}", type_name_index)));
                     }
                 };
                 let value = match self.stack.pop() {
                     Some(v) => v,
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: SetComponent 值".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: SetComponent 值".to_string()));
                     }
                 };
                 let entity_id = match self.stack.pop() {
                     Some(BytecodeValue::Entity(id)) => id,
                     Some(v) => {
-                        return Err(InterpretResult::Error(format!(
-                            "SetComponent 实体 ID 类型错误: {:?}",
-                            v
-                        )));
+                        return Err(InterpretResult::Error(format!("SetComponent 实体 ID 类型错误: {:?}", v)));
                     }
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: SetComponent 实体 ID".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: SetComponent 实体 ID".to_string()));
                     }
                 };
                 host.set_component_field(entity_id, &type_name, "", value);
                 Ok(ControlFlow::Continue)
             }
 
-            BytecodeInstruction::HostCall {
-                name_index,
-                arg_count,
-            } => {
+            BytecodeInstruction::HostCall { name_index, arg_count } => {
                 let name = match module.string_pool.get(name_index as usize) {
                     Some(s) => s.clone(),
                     None => {
-                        return Err(InterpretResult::Error(format!(
-                            "字符串池索引越界: {}",
-                            name_index
-                        )));
+                        return Err(InterpretResult::Error(format!("字符串池索引越界: {}", name_index)));
                     }
                 };
                 let mut args = Vec::with_capacity(arg_count as usize);
@@ -644,9 +532,7 @@ impl BytecodeInterpreter {
                     match self.stack.pop() {
                         Some(v) => args.push(v),
                         None => {
-                            return Err(InterpretResult::Error(
-                                "栈下溢: HostCall 参数不足".to_string(),
-                            ));
+                            return Err(InterpretResult::Error("栈下溢: HostCall 参数不足".to_string()));
                         }
                     }
                 }
@@ -669,9 +555,7 @@ impl BytecodeInterpreter {
                 let value = match self.stack.last() {
                     Some(v) => v.clone(),
                     None => {
-                        return Err(InterpretResult::Error(
-                            "栈下溢: Dup".to_string(),
-                        ));
+                        return Err(InterpretResult::Error("栈下溢: Dup".to_string()));
                     }
                 };
                 self.stack.push(value);
@@ -688,17 +572,13 @@ impl BytecodeInterpreter {
         let b = match self.stack.pop() {
             Some(v) => v,
             None => {
-                return Err(InterpretResult::Error(
-                    "栈下溢: 二元操作右操作数".to_string(),
-                ));
+                return Err(InterpretResult::Error("栈下溢: 二元操作右操作数".to_string()));
             }
         };
         let a = match self.stack.pop() {
             Some(v) => v,
             None => {
-                return Err(InterpretResult::Error(
-                    "栈下溢: 二元操作左操作数".to_string(),
-                ));
+                return Err(InterpretResult::Error("栈下溢: 二元操作左操作数".to_string()));
             }
         };
         let result = op(a, b);
@@ -714,17 +594,13 @@ impl BytecodeInterpreter {
         let b = match self.stack.pop() {
             Some(v) => v,
             None => {
-                return Err(InterpretResult::Error(
-                    "栈下溢: 比较操作右操作数".to_string(),
-                ));
+                return Err(InterpretResult::Error("栈下溢: 比较操作右操作数".to_string()));
             }
         };
         let a = match self.stack.pop() {
             Some(v) => v,
             None => {
-                return Err(InterpretResult::Error(
-                    "栈下溢: 比较操作左操作数".to_string(),
-                ));
+                return Err(InterpretResult::Error("栈下溢: 比较操作左操作数".to_string()));
             }
         };
         let result = op(&a, &b);
@@ -748,5 +624,3 @@ enum ControlFlow {
     /// 从函数返回
     Return(Option<BytecodeValue>),
 }
-
-

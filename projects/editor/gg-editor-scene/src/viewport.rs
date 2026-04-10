@@ -19,31 +19,21 @@ impl ViewportState {
     ///
     /// 默认偏移为 (0, 0)，缩放为 1.0，尺寸为 (1280, 720)。
     pub fn new() -> Self {
-        Self {
-            offset: (0.0, 0.0),
-            zoom: 1.0,
-            size: (1280.0, 720.0),
-        }
+        Self { offset: (0.0, 0.0), zoom: 1.0, size: (1280.0, 720.0) }
     }
 
     /// 将世界坐标转换为屏幕坐标
     ///
     /// 应用偏移和缩放变换：`screen = (world - offset) * zoom`
     pub fn world_to_screen(&self, world_pos: (f32, f32)) -> (f32, f32) {
-        (
-            (world_pos.0 - self.offset.0) * self.zoom,
-            (world_pos.1 - self.offset.1) * self.zoom,
-        )
+        ((world_pos.0 - self.offset.0) * self.zoom, (world_pos.1 - self.offset.1) * self.zoom)
     }
 
     /// 将屏幕坐标转换为世界坐标
     ///
     /// 应用逆变换：`world = screen / zoom + offset`
     pub fn screen_to_world(&self, screen_pos: (f32, f32)) -> (f32, f32) {
-        (
-            screen_pos.0 / self.zoom + self.offset.0,
-            screen_pos.1 / self.zoom + self.offset.1,
-        )
+        (screen_pos.0 / self.zoom + self.offset.0, screen_pos.1 / self.zoom + self.offset.1)
     }
 
     /// 平移视口

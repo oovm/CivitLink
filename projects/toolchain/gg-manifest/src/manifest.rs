@@ -109,32 +109,19 @@ pub struct DisplaySection {
 
 impl Default for ModulesSection {
     fn default() -> Self {
-        Self {
-            gom: String::new(),
-            vm: default_vm(),
-            render: default_render(),
-            plugins: Vec::new(),
-        }
+        Self { gom: String::new(), vm: default_vm(), render: default_render(), plugins: Vec::new() }
     }
 }
 
 impl Default for ToolchainSection {
     fn default() -> Self {
-        Self {
-            compiler_steps: Vec::new(),
-            editor_panels: Vec::new(),
-        }
+        Self { compiler_steps: Vec::new(), editor_panels: Vec::new() }
     }
 }
 
 impl Default for DisplaySection {
     fn default() -> Self {
-        Self {
-            width: default_width(),
-            height: default_height(),
-            fullscreen: false,
-            title: String::new(),
-        }
+        Self { width: default_width(), height: default_height(), fullscreen: false, title: String::new() }
     }
 }
 
@@ -160,19 +147,14 @@ pub struct EngineManifest {
 impl EngineManifest {
     /// 从 TOML 字符串解析引擎清单
     pub fn from_toml(toml_str: &str) -> GResult<Self> {
-        toml::from_str(toml_str).map_err(|e| GError {
-            kind: GErrorKind::Runtime,
-            message: format!("Failed to parse manifest TOML: {}", e),
-        })
+        toml::from_str(toml_str)
+            .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to parse manifest TOML: {}", e) })
     }
 
     /// 验证清单的必填字段
     pub fn validate(&self) -> GResult<()> {
         if self.engine.name.is_empty() {
-            return Err(GError {
-                kind: GErrorKind::Runtime,
-                message: "engine.name must not be empty".to_string(),
-            });
+            return Err(GError { kind: GErrorKind::Runtime, message: "engine.name must not be empty".to_string() });
         }
         if self.modules.plugins.is_empty() {
             return Err(GError {
@@ -181,20 +163,15 @@ impl EngineManifest {
             });
         }
         if self.platforms.is_empty() {
-            return Err(GError {
-                kind: GErrorKind::Runtime,
-                message: "platforms must have at least one entry".to_string(),
-            });
+            return Err(GError { kind: GErrorKind::Runtime, message: "platforms must have at least one entry".to_string() });
         }
         Ok(())
     }
 
     /// 从文件路径加载引擎清单
     pub fn load_from_file(path: &Path) -> GResult<Self> {
-        let content = std::fs::read_to_string(path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read manifest file {:?}: {}", path, e),
-        })?;
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read manifest file {:?}: {}", path, e) })?;
         Self::from_toml(&content)
     }
 }

@@ -3,9 +3,7 @@
 //! 平台服务聚合
 //! 将文件系统、输入和时间服务统一管理
 
-use super::fs::FileSystem;
-use super::input::Input;
-use super::time::Time;
+use super::{fs::FileSystem, input::Input, time::Time};
 
 /// 平台服务集合
 ///
@@ -22,15 +20,7 @@ pub struct PlatformServices {
 
 impl PlatformServices {
     /// 创建平台服务实例
-    pub fn new(
-        file_system: Box<dyn FileSystem>,
-        input: Box<dyn Input>,
-        time: Box<dyn Time>,
-    ) -> Self {
-        Self {
-            file_system,
-            input,
-            time,
-        }
+    pub fn new(file_system: Box<dyn FileSystem>, input: Box<dyn Input>, time: Box<dyn Time>) -> Self {
+        Self { file_system, input, time }
     }
 }

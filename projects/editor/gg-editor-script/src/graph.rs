@@ -20,18 +20,12 @@ pub struct NodeGraph {
 impl NodeGraph {
     /// 创建新的节点图
     pub fn new() -> Self {
-        Self {
-            entries: Vec::new(),
-        }
+        Self { entries: Vec::new() }
     }
 
     /// 添加节点
     pub fn add_node(&mut self, id: String, position: (f32, f32)) {
-        self.entries.push(NodeGraphEntry {
-            id,
-            position,
-            connections: Vec::new(),
-        });
+        self.entries.push(NodeGraphEntry { id, position, connections: Vec::new() });
     }
 
     /// 移除节点
@@ -83,10 +77,7 @@ impl NodeGraph {
         for (i, entry) in self.entries.iter_mut().enumerate() {
             let column = i % max_per_row;
             let row = i / max_per_row;
-            entry.position = (
-                column as f32 * horizontal_spacing,
-                row as f32 * vertical_spacing,
-            );
+            entry.position = (column as f32 * horizontal_spacing, row as f32 * vertical_spacing);
         }
 
         let _ = count;

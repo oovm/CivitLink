@@ -30,10 +30,7 @@ pub struct CommandManager {
 impl CommandManager {
     /// 创建空的命令管理器
     pub fn new() -> Self {
-        Self {
-            undo_stack: Vec::new(),
-            redo_stack: Vec::new(),
-        }
+        Self { undo_stack: Vec::new(), redo_stack: Vec::new() }
     }
 
     /// 执行命令
@@ -50,10 +47,10 @@ impl CommandManager {
     ///
     /// 从撤销栈弹出最近执行的命令，调用其 `undo` 方法，然后压入重做栈。
     pub fn undo(&mut self, context: &mut EditorContext) -> GResult<()> {
-        let mut command = self.undo_stack.pop().ok_or_else(|| GError {
-            kind: GErrorKind::Other,
-            message: "没有可撤销的命令".to_string(),
-        })?;
+        let mut command = self
+            .undo_stack
+            .pop()
+            .ok_or_else(|| GError { kind: GErrorKind::Other, message: "没有可撤销的命令".to_string() })?;
         command.undo(context)?;
         self.redo_stack.push(command);
         Ok(())
@@ -63,10 +60,10 @@ impl CommandManager {
     ///
     /// 从重做栈弹出最近撤销的命令，调用其 `execute` 方法，然后压入撤销栈。
     pub fn redo(&mut self, context: &mut EditorContext) -> GResult<()> {
-        let mut command = self.redo_stack.pop().ok_or_else(|| GError {
-            kind: GErrorKind::Other,
-            message: "没有可重做的命令".to_string(),
-        })?;
+        let mut command = self
+            .redo_stack
+            .pop()
+            .ok_or_else(|| GError { kind: GErrorKind::Other, message: "没有可重做的命令".to_string() })?;
         command.execute(context)?;
         self.undo_stack.push(command);
         Ok(())

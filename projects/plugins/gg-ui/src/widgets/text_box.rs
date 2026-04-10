@@ -1,6 +1,8 @@
-use crate::node::{UiNodeData, UiNodeId, UiTree};
-use crate::style::{FontStyle, LayoutStyle, SizeValue, Style};
-use crate::widget::Widget;
+use crate::{
+    node::{UiNodeData, UiNodeId, UiTree},
+    style::{FontStyle, LayoutStyle, SizeValue, Style},
+    widget::Widget,
+};
 
 /// 文本框控件
 ///
@@ -25,17 +27,9 @@ impl TextBox {
     ///
     /// - `text` - 初始文本内容
     pub fn new(text: impl Into<String>) -> Self {
-        let style = Style::new()
-            .with_layout(LayoutStyle::new().with_padding(4.0))
-            .with_font(FontStyle::new());
+        let style = Style::new().with_layout(LayoutStyle::new().with_padding(4.0)).with_font(FontStyle::new());
 
-        Self {
-            text: text.into(),
-            style,
-            max_width: None,
-            word_wrap: true,
-            node_id: None,
-        }
+        Self { text: text.into(), style, max_width: None, word_wrap: true, node_id: None }
     }
 
     /// 设置最大宽度
@@ -59,26 +53,14 @@ impl TextBox {
 
 impl Widget for TextBox {
     fn build(&self, tree: &mut UiTree) -> UiNodeId {
-        let width_value = if let Some(max_w) = self.max_width {
-            SizeValue::Px(max_w)
-        } else {
-            SizeValue::Auto
-        };
+        let width_value = if let Some(max_w) = self.max_width { SizeValue::Px(max_w) } else { SizeValue::Auto };
 
-        let style = Style {
-            layout: LayoutStyle {
-                width: width_value,
-                ..self.style.layout.clone()
-            },
-            ..self.style.clone()
-        };
+        let style = Style { layout: LayoutStyle { width: width_value, ..self.style.layout.clone() }, ..self.style.clone() };
 
         let id = tree.create_node(
             format!("TextBox({})", &self.text[..self.text.len().min(16)]),
             style,
-            UiNodeData::Text {
-                content: self.text.clone(),
-            },
+            UiNodeData::Text { content: self.text.clone() },
         );
 
         id
@@ -87,9 +69,7 @@ impl Widget for TextBox {
     fn update(&self, tree: &mut UiTree) {
         if let Some(id) = self.node_id {
             if let Some(node) = tree.get_mut(id) {
-                node.data = UiNodeData::Text {
-                    content: self.text.clone(),
-                };
+                node.data = UiNodeData::Text { content: self.text.clone() };
             }
         }
     }

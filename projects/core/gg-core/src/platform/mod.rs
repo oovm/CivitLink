@@ -10,7 +10,7 @@ pub mod services;
 pub mod time;
 
 pub use build::{BuildConfig, GenerateContext, PackageContext, Platform, RunContext};
-pub use fs::{DirEntry, FileMetadata, FileType, FileSystem};
+pub use fs::{DirEntry, FileMetadata, FileSystem, FileType};
 pub use input::{Input, InputEvent, KeyCode, KeyState, PointerAction, PointerButton};
 pub use services::PlatformServices;
 pub use time::Time;

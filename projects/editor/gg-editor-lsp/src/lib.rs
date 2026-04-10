@@ -12,6 +12,6 @@ pub use client::LspClient;
 pub use diagnostic::DiagnosticCollector;
 pub use transport::LspTransport;
 pub use types::{
-    CompletionItem, Diagnostic, DiagnosticSeverity, Hover, Location, Position, Range,
-    TextDocumentContentChangeEvent, TextDocumentIdentifier, VersionedTextDocumentIdentifier,
+    CompletionItem, Diagnostic, DiagnosticSeverity, Hover, Location, Position, Range, TextDocumentContentChangeEvent,
+    TextDocumentIdentifier, VersionedTextDocumentIdentifier,
 };

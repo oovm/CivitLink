@@ -6,8 +6,10 @@ use gg_editor_shell::{EditorContext, EditorPanel, PanelLayoutHint, PanelPosition
 use gg_galgame_schema::components::DialogueNode;
 use gg_ui::UiTree;
 
-use crate::graph::{NodeGraph, NodeGraphEntry};
-use crate::templates::ScriptTemplate;
+use crate::{
+    graph::{NodeGraph, NodeGraphEntry},
+    templates::ScriptTemplate,
+};
 
 /// 剧本编辑器面板
 pub struct ScriptEditorPanel {
@@ -48,10 +50,10 @@ impl ScriptEditorPanel {
 
     /// 创建新对话节点
     pub fn create_node(&mut self, context: &mut EditorContext) -> GResult<()> {
-        let world = context.services_mut().get_mut::<World>().ok_or_else(|| GError {
-            kind: GErrorKind::Other,
-            message: "World 服务不可用".to_string(),
-        })?;
+        let world = context
+            .services_mut()
+            .get_mut::<World>()
+            .ok_or_else(|| GError { kind: GErrorKind::Other, message: "World 服务不可用".to_string() })?;
 
         let entity = world.spawn().id();
         let node_id = format!("node_{}", entity);
@@ -67,10 +69,7 @@ impl ScriptEditorPanel {
 
         world.add_component(entity, node.clone())?;
 
-        let position = (
-            self.scroll_offset.0 + 100.0,
-            self.scroll_offset.1 + 100.0,
-        );
+        let position = (self.scroll_offset.0 + 100.0, self.scroll_offset.1 + 100.0);
 
         self.graph.add_node(node_id.clone(), position);
         self.sync_nodes();
@@ -106,10 +105,7 @@ impl ScriptEditorPanel {
         if query.is_empty() {
             return self.nodes.iter().collect();
         }
-        self.nodes
-            .iter()
-            .filter(|e| e.id.contains(query))
-            .collect()
+        self.nodes.iter().filter(|e| e.id.contains(query)).collect()
     }
 
     /// 获取搜索关键词
@@ -166,19 +162,16 @@ impl ScriptEditorPanel {
             ScriptTemplate::BattleNarration => crate::templates::generate_battle_narration(),
         };
 
-        let world = context.services_mut().get_mut::<World>().ok_or_else(|| GError {
-            kind: GErrorKind::Other,
-            message: "World 服务不可用".to_string(),
-        })?;
+        let world = context
+            .services_mut()
+            .get_mut::<World>()
+            .ok_or_else(|| GError { kind: GErrorKind::Other, message: "World 服务不可用".to_string() })?;
 
         for (i, node) in nodes.into_iter().enumerate() {
             let entity = world.spawn().id();
             world.add_component(entity, node.clone())?;
 
-            let position = (
-                self.scroll_offset.0 + i as f32 * 300.0,
-                self.scroll_offset.1,
-            );
+            let position = (self.scroll_offset.0 + i as f32 * 300.0, self.scroll_offset.1);
 
             self.graph.add_node(node.id.clone(), position);
 

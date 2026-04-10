@@ -18,13 +18,7 @@ impl UiRenderer {
     }
 
     /// 渲染单个节点（递归）
-    fn render_node(
-        tree: &UiTree,
-        node_id: UiNodeId,
-        context: &mut RenderContext,
-        offset_x: f32,
-        offset_y: f32,
-    ) {
+    fn render_node(tree: &UiTree, node_id: UiNodeId, context: &mut RenderContext, offset_x: f32, offset_y: f32) {
         let node = tree.get(node_id);
         let node = match node {
             Some(n) => n,
@@ -68,11 +62,7 @@ impl UiRenderer {
                     position: [abs_x + node.style.layout.padding, abs_y + node.style.layout.padding],
                     font_size: font.size,
                     color: font.color,
-                    max_width: if layout.width > 0.0 {
-                        Some(layout.width - 2.0 * node.style.layout.padding)
-                    } else {
-                        None
-                    },
+                    max_width: if layout.width > 0.0 { Some(layout.width - 2.0 * node.style.layout.padding) } else { None },
                 });
             }
         }

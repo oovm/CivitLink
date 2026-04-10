@@ -43,11 +43,7 @@ impl DesktopInput {
                     self.pressed_keys.remove(key);
                 }
             },
-            InputEvent::Pointer {
-                position,
-                action,
-                button,
-            } => {
+            InputEvent::Pointer { position, action, button } => {
                 self.pointer_position = *position;
                 match action {
                     PointerAction::Down => {

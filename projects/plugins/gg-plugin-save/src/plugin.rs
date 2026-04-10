@@ -1,8 +1,10 @@
 //! 存档系统插件模块
 //! 实现 Plugin trait，负责存档系统的初始化和关闭
 
-use gg_core::plugin::{Plugin, PluginRegistrar};
-use gg_core::GResult;
+use gg_core::{
+    GResult,
+    plugin::{Plugin, PluginRegistrar},
+};
 
 use crate::systems::SaveSystem;
 

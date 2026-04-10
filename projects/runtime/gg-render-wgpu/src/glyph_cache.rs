@@ -48,10 +48,7 @@ impl GlyphCache {
     ///
     /// 初始状态下不包含字体，需要调用 [`GlyphCache::load_font`] 加载字体后才能渲染文本。
     pub fn new() -> Self {
-        Self {
-            font: None,
-            cache: HashMap::new(),
-        }
+        Self { font: None, cache: HashMap::new() }
     }
 
     /// 从字节数据加载字体
@@ -90,15 +87,14 @@ impl GlyphCache {
         queue: &wgpu::Queue,
         texture_cache: &mut TextureCache,
     ) -> GResult<GlyphInfo> {
-        let font = self.font.as_ref().ok_or_else(|| GError {
-            kind: GErrorKind::Runtime,
-            message: "未加载字体，无法光栅化字形".to_string(),
-        })?;
+        let font = self
+            .font
+            .as_ref()
+            .ok_or_else(|| GError {
+                kind: GErrorKind::Runtime, message: "未加载字体，无法光栅化字形".to_string()
+            })?;
 
-        let key = GlyphKey {
-            codepoint: glyph.id.0 as u32,
-            font_size: glyph.scale.y as u32,
-        };
+        let key = GlyphKey { codepoint: glyph.id.0 as u32, font_size: glyph.scale.y as u32 };
 
         if let Some(info) = self.cache.get(&key) {
             return Ok(*info);
@@ -117,7 +113,8 @@ impl GlyphCache {
                     size: [0.0, 0.0],
                     offset: [bounds.min.x, bounds.min.y],
                 }
-            } else {
+            }
+            else {
                 let mut rgba_data = vec![0u8; (width * height * 4) as usize];
 
                 outlined.draw(|x, y, v| {
@@ -146,13 +143,9 @@ impl GlyphCache {
                     offset: [bounds.min.x, bounds.min.y],
                 }
             }
-        } else {
-            GlyphInfo {
-                texture_id: TextureId::INVALID,
-                uv_rect: [0.0, 0.0, 0.0, 0.0],
-                size: [0.0, 0.0],
-                offset: [0.0, 0.0],
-            }
+        }
+        else {
+            GlyphInfo { texture_id: TextureId::INVALID, uv_rect: [0.0, 0.0, 0.0, 0.0], size: [0.0, 0.0], offset: [0.0, 0.0] }
         };
 
         self.cache.insert(key, glyph_info);

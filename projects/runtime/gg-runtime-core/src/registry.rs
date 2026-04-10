@@ -3,8 +3,8 @@
 //! 管理组件类型的动态注册和访问，替代硬编码的组件类型匹配。
 //! 脚本虚拟机和 WASM 沙箱通过注册表按名称操作组件。
 
-use gg_ecs::{Entity, World};
 use gg_bytecode::BytecodeValue;
+use gg_ecs::{Entity, World};
 use std::collections::HashMap;
 
 /// 组件字段访问器 trait
@@ -34,9 +34,7 @@ pub struct ComponentRegistry {
 impl ComponentRegistry {
     /// 创建新的组件注册表
     pub fn new() -> Self {
-        Self {
-            accessors: HashMap::new(),
-        }
+        Self { accessors: HashMap::new() }
     }
 
     /// 注册组件类型
@@ -45,27 +43,12 @@ impl ComponentRegistry {
     }
 
     /// 获取组件字段值
-    pub fn get_field(
-        &self,
-        world: &World,
-        entity: Entity,
-        type_name: &str,
-        field: &str,
-    ) -> Option<BytecodeValue> {
-        self.accessors
-            .get(type_name)
-            .and_then(|a| a.get_field(world, entity, field))
+    pub fn get_field(&self, world: &World, entity: Entity, type_name: &str, field: &str) -> Option<BytecodeValue> {
+        self.accessors.get(type_name).and_then(|a| a.get_field(world, entity, field))
     }
 
     /// 设置组件字段值
-    pub fn set_field(
-        &self,
-        world: &mut World,
-        entity: Entity,
-        type_name: &str,
-        field: &str,
-        value: BytecodeValue,
-    ) {
+    pub fn set_field(&self, world: &mut World, entity: Entity, type_name: &str, field: &str, value: BytecodeValue) {
         if let Some(accessor) = self.accessors.get(type_name) {
             accessor.set_field(world, entity, field, value);
         }

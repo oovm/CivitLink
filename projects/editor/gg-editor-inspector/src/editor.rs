@@ -43,9 +43,7 @@ pub struct PropertyEditorRegistry {
 impl PropertyEditorRegistry {
     /// 创建空的属性编辑器注册表
     pub fn new() -> Self {
-        Self {
-            factories: Vec::new(),
-        }
+        Self { factories: Vec::new() }
     }
 
     /// 注册编辑器工厂
@@ -57,10 +55,7 @@ impl PropertyEditorRegistry {
     ///
     /// 遍历已注册的工厂，返回第一个能编辑指定属性类型的工厂所创建的编辑器。
     pub fn create_editor(&self, property_type: &PropertyType) -> Option<Box<dyn PropertyEditorWidget>> {
-        self.factories
-            .iter()
-            .find(|f| f.can_edit(property_type))
-            .map(|f| f.create_editor())
+        self.factories.iter().find(|f| f.can_edit(property_type)).map(|f| f.create_editor())
     }
 }
 
@@ -83,10 +78,7 @@ pub struct StringEditorWidget {
 impl StringEditorWidget {
     /// 创建新的字符串编辑器组件
     pub fn new() -> Self {
-        Self {
-            value: String::new(),
-            initial_value: String::new(),
-        }
+        Self { value: String::new(), initial_value: String::new() }
     }
 }
 
@@ -141,10 +133,7 @@ pub struct NumericEditorWidget {
 impl NumericEditorWidget {
     /// 创建新的数值编辑器组件
     pub fn new() -> Self {
-        Self {
-            value: String::new(),
-            initial_value: String::new(),
-        }
+        Self { value: String::new(), initial_value: String::new() }
     }
 }
 
@@ -199,10 +188,7 @@ pub struct BoolEditorWidget {
 impl BoolEditorWidget {
     /// 创建新的布尔编辑器组件
     pub fn new() -> Self {
-        Self {
-            value: String::new(),
-            initial_value: String::new(),
-        }
+        Self { value: String::new(), initial_value: String::new() }
     }
 }
 
@@ -257,10 +243,7 @@ pub struct EnumEditorWidget {
 impl EnumEditorWidget {
     /// 创建新的枚举编辑器组件
     pub fn new() -> Self {
-        Self {
-            value: String::new(),
-            initial_value: String::new(),
-        }
+        Self { value: String::new(), initial_value: String::new() }
     }
 }
 
@@ -315,10 +298,7 @@ pub struct ColorEditorWidget {
 impl ColorEditorWidget {
     /// 创建新的颜色编辑器组件
     pub fn new() -> Self {
-        Self {
-            value: String::new(),
-            initial_value: String::new(),
-        }
+        Self { value: String::new(), initial_value: String::new() }
     }
 }
 
@@ -373,10 +353,7 @@ pub struct AssetPathEditorWidget {
 impl AssetPathEditorWidget {
     /// 创建新的资源路径编辑器组件
     pub fn new() -> Self {
-        Self {
-            value: String::new(),
-            initial_value: String::new(),
-        }
+        Self { value: String::new(), initial_value: String::new() }
     }
 }
 

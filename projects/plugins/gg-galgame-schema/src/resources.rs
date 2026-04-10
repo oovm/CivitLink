@@ -62,17 +62,23 @@ impl GameVariables {
 
         let (var_name, operator, value_str) = if let Some(idx) = trimmed.find(">=") {
             (&trimmed[..idx], ">=", &trimmed[idx + 2..])
-        } else if let Some(idx) = trimmed.find("<=") {
+        }
+        else if let Some(idx) = trimmed.find("<=") {
             (&trimmed[..idx], "<=", &trimmed[idx + 2..])
-        } else if let Some(idx) = trimmed.find("!=") {
+        }
+        else if let Some(idx) = trimmed.find("!=") {
             (&trimmed[..idx], "!=", &trimmed[idx + 2..])
-        } else if let Some(idx) = trimmed.find("==") {
+        }
+        else if let Some(idx) = trimmed.find("==") {
             (&trimmed[..idx], "==", &trimmed[idx + 2..])
-        } else if let Some(idx) = trimmed.find('>') {
+        }
+        else if let Some(idx) = trimmed.find('>') {
             (&trimmed[..idx], ">", &trimmed[idx + 1..])
-        } else if let Some(idx) = trimmed.find('<') {
+        }
+        else if let Some(idx) = trimmed.find('<') {
             (&trimmed[..idx], "<", &trimmed[idx + 1..])
-        } else {
+        }
+        else {
             return false;
         };
 
@@ -87,8 +93,10 @@ impl GameVariables {
         match operator {
             "==" => Self::compare_equal(var_value, value_str),
             "!=" => !Self::compare_equal(var_value, value_str),
-            ">=" => Self::compare_order(var_value, value_str).map_or(false, |o| o == std::cmp::Ordering::Greater || o == std::cmp::Ordering::Equal),
-            "<=" => Self::compare_order(var_value, value_str).map_or(false, |o| o == std::cmp::Ordering::Less || o == std::cmp::Ordering::Equal),
+            ">=" => Self::compare_order(var_value, value_str)
+                .map_or(false, |o| o == std::cmp::Ordering::Greater || o == std::cmp::Ordering::Equal),
+            "<=" => Self::compare_order(var_value, value_str)
+                .map_or(false, |o| o == std::cmp::Ordering::Less || o == std::cmp::Ordering::Equal),
             ">" => Self::compare_order(var_value, value_str).map_or(false, |o| o == std::cmp::Ordering::Greater),
             "<" => Self::compare_order(var_value, value_str).map_or(false, |o| o == std::cmp::Ordering::Less),
             _ => false,

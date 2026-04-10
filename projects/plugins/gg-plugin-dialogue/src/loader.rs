@@ -21,10 +21,8 @@ impl DialogueScriptLoader {
     /// - `world` - 游戏世界
     /// - `json` - JSON 格式的对话脚本数据
     pub fn load_from_json(world: &mut GgWorld, json: &str) -> GResult<()> {
-        let script = DialogueScript::from_json(json).map_err(|e| GError {
-            kind: GErrorKind::Asset,
-            message: format!("Failed to parse dialogue script: {}", e),
-        })?;
+        let script = DialogueScript::from_json(json)
+            .map_err(|e| GError { kind: GErrorKind::Asset, message: format!("Failed to parse dialogue script: {}", e) })?;
 
         for node in script.nodes {
             let entity = world.spawn().id();

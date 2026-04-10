@@ -325,13 +325,7 @@ pub struct BytecodeModule {
 impl BytecodeModule {
     /// 创建新的字节码模块
     pub fn new(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            version: VERSION,
-            constants: Vec::new(),
-            string_pool: Vec::new(),
-            functions: Vec::new(),
-        }
+        Self { name: name.to_string(), version: VERSION, constants: Vec::new(), string_pool: Vec::new(), functions: Vec::new() }
     }
 
     /// 添加常量到常量池，返回索引
@@ -375,9 +369,7 @@ pub(crate) struct BinaryWriter {
 impl BinaryWriter {
     /// 创建新的二进制写入器
     pub fn new() -> Self {
-        Self {
-            buffer: Vec::new(),
-        }
+        Self { buffer: Vec::new() }
     }
 
     /// 写入 u8
@@ -448,8 +440,7 @@ impl<'a> BinaryReader<'a> {
     pub fn read_u8(&mut self) -> GResult<u8> {
         if self.position >= self.data.len() {
             return Err(gg_core::GError {
-                kind: gg_core::GErrorKind::Runtime,
-                message: "读取 u8 时数据不足".to_string(),
+                kind: gg_core::GErrorKind::Runtime, message: "读取 u8 时数据不足".to_string()
             });
         }
         let value = self.data[self.position];
@@ -461,13 +452,10 @@ impl<'a> BinaryReader<'a> {
     pub fn read_u32(&mut self) -> GResult<u32> {
         if self.position + 4 > self.data.len() {
             return Err(gg_core::GError {
-                kind: gg_core::GErrorKind::Runtime,
-                message: "读取 u32 时数据不足".to_string(),
+                kind: gg_core::GErrorKind::Runtime, message: "读取 u32 时数据不足".to_string()
             });
         }
-        let bytes: [u8; 4] = self.data[self.position..self.position + 4]
-            .try_into()
-            .unwrap();
+        let bytes: [u8; 4] = self.data[self.position..self.position + 4].try_into().unwrap();
         self.position += 4;
         Ok(u32::from_le_bytes(bytes))
     }
@@ -476,13 +464,10 @@ impl<'a> BinaryReader<'a> {
     pub fn read_i64(&mut self) -> GResult<i64> {
         if self.position + 8 > self.data.len() {
             return Err(gg_core::GError {
-                kind: gg_core::GErrorKind::Runtime,
-                message: "读取 i64 时数据不足".to_string(),
+                kind: gg_core::GErrorKind::Runtime, message: "读取 i64 时数据不足".to_string()
             });
         }
-        let bytes: [u8; 8] = self.data[self.position..self.position + 8]
-            .try_into()
-            .unwrap();
+        let bytes: [u8; 8] = self.data[self.position..self.position + 8].try_into().unwrap();
         self.position += 8;
         Ok(i64::from_le_bytes(bytes))
     }
@@ -491,13 +476,10 @@ impl<'a> BinaryReader<'a> {
     pub fn read_f64(&mut self) -> GResult<f64> {
         if self.position + 8 > self.data.len() {
             return Err(gg_core::GError {
-                kind: gg_core::GErrorKind::Runtime,
-                message: "读取 f64 时数据不足".to_string(),
+                kind: gg_core::GErrorKind::Runtime, message: "读取 f64 时数据不足".to_string()
             });
         }
-        let bytes: [u8; 8] = self.data[self.position..self.position + 8]
-            .try_into()
-            .unwrap();
+        let bytes: [u8; 8] = self.data[self.position..self.position + 8].try_into().unwrap();
         self.position += 8;
         Ok(f64::from_le_bytes(bytes))
     }
@@ -506,13 +488,10 @@ impl<'a> BinaryReader<'a> {
     pub fn read_u64(&mut self) -> GResult<u64> {
         if self.position + 8 > self.data.len() {
             return Err(gg_core::GError {
-                kind: gg_core::GErrorKind::Runtime,
-                message: "读取 u64 时数据不足".to_string(),
+                kind: gg_core::GErrorKind::Runtime, message: "读取 u64 时数据不足".to_string()
             });
         }
-        let bytes: [u8; 8] = self.data[self.position..self.position + 8]
-            .try_into()
-            .unwrap();
+        let bytes: [u8; 8] = self.data[self.position..self.position + 8].try_into().unwrap();
         self.position += 8;
         Ok(u64::from_le_bytes(bytes))
     }
@@ -534,9 +513,9 @@ impl<'a> BinaryReader<'a> {
     /// 读取长度前缀的字符串
     pub fn read_string(&mut self) -> GResult<String> {
         let bytes = self.read_bytes()?;
-        String::from_utf8(bytes.to_vec()).map_err(|e| gg_core::GError {
-            kind: gg_core::GErrorKind::Runtime,
-            message: format!("字符串解码失败: {}", e),
-        })
+        String::from_utf8(bytes.to_vec())
+            .map_err(|e| gg_core::GError {
+                kind: gg_core::GErrorKind::Runtime, message: format!("字符串解码失败: {}", e)
+            })
     }
 }

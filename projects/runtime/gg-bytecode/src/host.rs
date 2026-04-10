@@ -12,21 +12,10 @@ pub trait Host {
     fn add_component(&mut self, entity_id: u64, component_type: &str, value: BytecodeValue);
 
     /// 获取组件字段值
-    fn get_component_field(
-        &mut self,
-        entity_id: u64,
-        component_type: &str,
-        field: &str,
-    ) -> Option<BytecodeValue>;
+    fn get_component_field(&mut self, entity_id: u64, component_type: &str, field: &str) -> Option<BytecodeValue>;
 
     /// 设置组件字段值
-    fn set_component_field(
-        &mut self,
-        entity_id: u64,
-        component_type: &str,
-        field: &str,
-        value: BytecodeValue,
-    );
+    fn set_component_field(&mut self, entity_id: u64, component_type: &str, field: &str, value: BytecodeValue);
 
     /// 调用宿主函数
     fn call_host_function(&mut self, name: &str, args: Vec<BytecodeValue>) -> Option<BytecodeValue>;

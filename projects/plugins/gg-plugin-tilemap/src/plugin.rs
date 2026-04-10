@@ -1,10 +1,14 @@
 //! 瓦片地图插件模块
 
-use gg_core::plugin::{Plugin, PluginRegistrar};
-use gg_core::GResult;
+use gg_core::{
+    GResult,
+    plugin::{Plugin, PluginRegistrar},
+};
 
-use crate::resources::TileCollisionState;
-use crate::systems::{TileCollisionSystem, TilemapRenderSystem};
+use crate::{
+    resources::TileCollisionState,
+    systems::{TileCollisionSystem, TilemapRenderSystem},
+};
 
 /// 瓦片地图插件
 ///

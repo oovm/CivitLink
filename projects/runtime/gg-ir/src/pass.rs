@@ -23,9 +23,7 @@ pub struct IrOptimizer {
 impl IrOptimizer {
     /// 创建空的 IR 优化器
     pub fn new() -> Self {
-        Self {
-            passes: Vec::new(),
-        }
+        Self { passes: Vec::new() }
     }
 
     /// 添加一个优化 Pass 到优化器
@@ -48,17 +46,14 @@ impl IrOptimizer {
 
     /// 反复执行所有优化 Pass 直到不再产生修改或达到最大迭代次数
     /// 返回 Ok(true) 表示至少有一次迭代做了修改
-    pub fn optimize_until_fixed_point(
-        &self,
-        module: &mut IrModule,
-        max_iterations: usize,
-    ) -> GResult<bool> {
+    pub fn optimize_until_fixed_point(&self, module: &mut IrModule, max_iterations: usize) -> GResult<bool> {
         let mut any_changed = false;
         for _ in 0..max_iterations {
             let changed = self.optimize(module)?;
             if changed {
                 any_changed = true;
-            } else {
+            }
+            else {
                 break;
             }
         }

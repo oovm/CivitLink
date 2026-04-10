@@ -20,9 +20,7 @@ pub struct TransitionSystem {
 impl TransitionSystem {
     /// 创建新的转场系统
     pub fn new() -> Self {
-        Self {
-            last_time_secs: 0.0,
-        }
+        Self { last_time_secs: 0.0 }
     }
 
     /// 将转场渲染指令提交到渲染上下文

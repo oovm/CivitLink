@@ -17,12 +17,7 @@ impl Transform {
     /// 单位变换
     ///
     /// 位置为原点，缩放为 `(1.0, 1.0)`，无旋转，层级为 `0.0`。
-    pub const IDENTITY: Self = Self {
-        position: [0.0, 0.0],
-        scale: [1.0, 1.0],
-        rotation: 0.0,
-        z_index: 0.0,
-    };
+    pub const IDENTITY: Self = Self { position: [0.0, 0.0], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
 
     /// 创建单位变换
     pub fn identity() -> Self {
@@ -35,10 +30,7 @@ impl Transform {
     ///
     /// - `pos` - 位置 `[x, y]`
     pub fn with_position(pos: [f32; 2]) -> Self {
-        Self {
-            position: pos,
-            ..Self::IDENTITY
-        }
+        Self { position: pos, ..Self::IDENTITY }
     }
 
     /// 创建具有指定 Z 层级的变换
@@ -47,9 +39,6 @@ impl Transform {
     ///
     /// - `z` - Z 层级值
     pub fn with_z_index(z: f32) -> Self {
-        Self {
-            z_index: z,
-            ..Self::IDENTITY
-        }
+        Self { z_index: z, ..Self::IDENTITY }
     }
 }

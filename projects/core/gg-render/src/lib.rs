@@ -1,5 +1,4 @@
 #![warn(missing_docs)]
-
 #![doc = include_str!("readme.md")]
 
 /// 颜色类型
@@ -29,11 +28,13 @@ pub use transform::Transform;
 ///
 /// 包含 gg-render 中最常用的类型，方便一次性导入。
 pub mod prelude {
-    pub use crate::color::Color;
-    pub use crate::command::{DrawCommand, TransitionKind};
-    pub use crate::rect::Rect;
-    pub use crate::renderer::{RenderContext, Renderer};
-    pub use crate::surface::{SurfaceInfo, WindowEvent};
-    pub use crate::texture::{PixelFormat, TextureDescriptor, TextureId};
-    pub use crate::transform::Transform;
+    pub use crate::{
+        color::Color,
+        command::{DrawCommand, TransitionKind},
+        rect::Rect,
+        renderer::{RenderContext, Renderer},
+        surface::{SurfaceInfo, WindowEvent},
+        texture::{PixelFormat, TextureDescriptor, TextureId},
+        transform::Transform,
+    };
 }

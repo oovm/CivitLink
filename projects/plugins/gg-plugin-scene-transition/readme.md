@@ -51,4 +51,9 @@ fn main() {
 
 - **gg-core**：核心功能和平台抽象
 - **gg-world**：游戏世界管理
--
+- **gg-render**：渲染系统
+- **gg-error**：错误处理系统
+
+## 📖 相关文档
+
+- [插件系统设计](../../../design/architecture/overview.md) - 了解插件系统的设计理念

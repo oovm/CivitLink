@@ -1,9 +1,11 @@
 use gg_core::{GError, GErrorKind, GResult};
 
-use crate::transport::LspTransport;
-use crate::types::{
-    CompletionItem, Hover, Location, Position, TextDocumentContentChangeEvent,
-    TextDocumentIdentifier, VersionedTextDocumentIdentifier,
+use crate::{
+    transport::LspTransport,
+    types::{
+        CompletionItem, Hover, Location, Position, TextDocumentContentChangeEvent, TextDocumentIdentifier,
+        VersionedTextDocumentIdentifier,
+    },
 };
 
 /// LSP 客户端，封装与语言服务器的交互逻辑
@@ -20,10 +22,7 @@ impl LspClient {
     /// # 参数
     /// - `transport`: LSP 传输层实现
     pub fn new(transport: Box<dyn LspTransport>) -> Self {
-        Self {
-            transport,
-            initialized: false,
-        }
+        Self { transport, initialized: false }
     }
 
     /// 初始化语言服务器
@@ -40,8 +39,7 @@ impl LspClient {
         self.transport.send_request("initialize", params)?;
         self.initialized = true;
         let initialized_params = serde_json::json!({});
-        self.transport
-            .send_notification("initialized", initialized_params)?;
+        self.transport.send_notification("initialized", initialized_params)?;
         Ok(())
     }
 
@@ -49,10 +47,8 @@ impl LspClient {
     ///
     /// 发送 shutdown 请求，成功后设置 initialized 为 false
     pub fn shutdown(&mut self) -> GResult<()> {
-        self.transport
-            .send_request("shutdown", serde_json::Value::Null)?;
-        self.transport
-            .send_notification("exit", serde_json::Value::Null)?;
+        self.transport.send_request("shutdown", serde_json::Value::Null)?;
+        self.transport.send_notification("exit", serde_json::Value::Null)?;
         self.initialized = false;
         Ok(())
     }
@@ -63,12 +59,7 @@ impl LspClient {
     /// - `document`: 带版本号的文本文档标识符
     /// - `language_id`: 语言标识
     /// - `text`: 文档文本内容
-    pub fn did_open(
-        &mut self,
-        document: &VersionedTextDocumentIdentifier,
-        language_id: &str,
-        text: &str,
-    ) -> GResult<()> {
+    pub fn did_open(&mut self, document: &VersionedTextDocumentIdentifier, language_id: &str, text: &str) -> GResult<()> {
         let params = serde_json::json!({
             "textDocument": {
                 "uri": document.uri,
@@ -77,8 +68,7 @@ impl LspClient {
                 "text": text,
             }
         });
-        self.transport
-            .send_notification("textDocument/didOpen", params)
+        self.transport.send_notification("textDocument/didOpen", params)
     }
 
     /// 通知语言服务器文档内容已变更
@@ -98,25 +88,20 @@ impl LspClient {
             },
             "contentChanges": changes,
         });
-        self.transport
-            .send_notification("textDocument/didChange", params)
+        self.transport.send_notification("textDocument/didChange", params)
     }
 
     /// 通知语言服务器文档已关闭
     ///
     /// # 参数
     /// - `document`: 文本文档标识符
-    pub fn did_close(
-        &mut self,
-        document: &TextDocumentIdentifier,
-    ) -> GResult<()> {
+    pub fn did_close(&mut self, document: &TextDocumentIdentifier) -> GResult<()> {
         let params = serde_json::json!({
             "textDocument": {
                 "uri": document.uri,
             }
         });
-        self.transport
-            .send_notification("textDocument/didClose", params)
+        self.transport.send_notification("textDocument/didClose", params)
     }
 
     /// 请求自动补全
@@ -127,11 +112,7 @@ impl LspClient {
     ///
     /// # 返回
     /// 补全项列表
-    pub fn completion(
-        &mut self,
-        document: &TextDocumentIdentifier,
-        position: &Position,
-    ) -> GResult<Vec<CompletionItem>> {
+    pub fn completion(&mut self, document: &TextDocumentIdentifier, position: &Position) -> GResult<Vec<CompletionItem>> {
         let params = serde_json::json!({
             "textDocument": {
                 "uri": document.uri,
@@ -141,15 +122,9 @@ impl LspClient {
                 "character": position.character,
             }
         });
-        let result = self
-            .transport
-            .send_request("textDocument/completion", params)?;
-        let items: Vec<CompletionItem> = serde_json::from_value(result).map_err(|e| {
-            GError {
-                kind: GErrorKind::Other,
-                message: format!("解析补全结果失败: {}", e),
-            }
-        })?;
+        let result = self.transport.send_request("textDocument/completion", params)?;
+        let items: Vec<CompletionItem> = serde_json::from_value(result)
+            .map_err(|e| GError { kind: GErrorKind::Other, message: format!("解析补全结果失败: {}", e) })?;
         Ok(items)
     }
 
@@ -161,11 +136,7 @@ impl LspClient {
     ///
     /// # 返回
     /// 悬停信息，如果无可用信息则返回 None
-    pub fn hover(
-        &mut self,
-        document: &TextDocumentIdentifier,
-        position: &Position,
-    ) -> GResult<Option<crate::types::Hover>> {
+    pub fn hover(&mut self, document: &TextDocumentIdentifier, position: &Position) -> GResult<Option<crate::types::Hover>> {
         let params = serde_json::json!({
             "textDocument": {
                 "uri": document.uri,
@@ -175,18 +146,13 @@ impl LspClient {
                 "character": position.character,
             }
         });
-        let result = self
-            .transport
-            .send_request("textDocument/hover", params)?;
+        let result = self.transport.send_request("textDocument/hover", params)?;
         if result.is_null() {
             Ok(None)
-        } else {
-            let hover: Hover = serde_json::from_value(result).map_err(|e| {
-                GError {
-                    kind: GErrorKind::Other,
-                    message: format!("解析悬停结果失败: {}", e),
-                }
-            })?;
+        }
+        else {
+            let hover: Hover = serde_json::from_value(result)
+                .map_err(|e| GError { kind: GErrorKind::Other, message: format!("解析悬停结果失败: {}", e) })?;
             Ok(Some(hover))
         }
     }
@@ -199,11 +165,7 @@ impl LspClient {
     ///
     /// # 返回
     /// 定义位置，如果无可用定义则返回 None
-    pub fn goto_definition(
-        &mut self,
-        document: &TextDocumentIdentifier,
-        position: &Position,
-    ) -> GResult<Option<Location>> {
+    pub fn goto_definition(&mut self, document: &TextDocumentIdentifier, position: &Position) -> GResult<Option<Location>> {
         let params = serde_json::json!({
             "textDocument": {
                 "uri": document.uri,
@@ -213,18 +175,13 @@ impl LspClient {
                 "character": position.character,
             }
         });
-        let result = self
-            .transport
-            .send_request("textDocument/definition", params)?;
+        let result = self.transport.send_request("textDocument/definition", params)?;
         if result.is_null() {
             Ok(None)
-        } else {
-            let location: Location = serde_json::from_value(result).map_err(|e| {
-                GError {
-                    kind: GErrorKind::Other,
-                    message: format!("解析定义位置结果失败: {}", e),
-                }
-            })?;
+        }
+        else {
+            let location: Location = serde_json::from_value(result)
+                .map_err(|e| GError { kind: GErrorKind::Other, message: format!("解析定义位置结果失败: {}", e) })?;
             Ok(Some(location))
         }
     }

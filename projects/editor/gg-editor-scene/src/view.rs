@@ -1,7 +1,7 @@
 //! 场景视图 trait 定义
 
-use gg_editor_shell::{EditorContext, EditorPanel};
 use gg_core::GResult;
+use gg_editor_shell::{EditorContext, EditorPanel};
 
 /// 场景视图 trait
 ///
@@ -18,13 +18,7 @@ pub trait SceneView: EditorPanel {
     fn on_entity_selected(&mut self, _entity: u64, _context: &mut EditorContext) {}
 
     /// 实体移动时调用
-    fn on_entity_moved(
-        &mut self,
-        _entity: u64,
-        _delta: (f32, f32),
-        _context: &mut EditorContext,
-    ) {
-    }
+    fn on_entity_moved(&mut self, _entity: u64, _delta: (f32, f32), _context: &mut EditorContext) {}
 
     /// 渲染叠加层
     ///

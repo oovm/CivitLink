@@ -24,12 +24,7 @@ pub struct CharacterManagerPanel {
 impl CharacterManagerPanel {
     /// 创建新的角色管理器面板
     pub fn new() -> Self {
-        Self {
-            visible: true,
-            selected_character_id: None,
-            preview_expression: None,
-            import_path: None,
-        }
+        Self { visible: true, selected_character_id: None, preview_expression: None, import_path: None }
     }
 
     /// 创建新角色
@@ -71,12 +66,7 @@ impl CharacterManagerPanel {
     /// 移除表情映射
     ///
     /// 从指定角色的表情映射中移除给定标签的条目。
-    pub fn remove_expression(
-        &mut self,
-        character_id: &str,
-        tag: &str,
-        context: &mut EditorContext,
-    ) -> GResult<()> {
+    pub fn remove_expression(&mut self, character_id: &str, tag: &str, context: &mut EditorContext) -> GResult<()> {
         let _ = (character_id, tag, context);
         Ok(())
     }
@@ -100,11 +90,7 @@ impl CharacterManagerPanel {
     /// 自动创建角色定义和表情映射。
     ///
     /// 返回创建的角色 ID 列表。
-    pub fn batch_import(
-        &mut self,
-        directory: &str,
-        context: &mut EditorContext,
-    ) -> GResult<Vec<String>> {
+    pub fn batch_import(&mut self, directory: &str, context: &mut EditorContext) -> GResult<Vec<String>> {
         let _ = (directory, context);
         Ok(Vec::new())
     }
@@ -133,10 +119,6 @@ impl EditorPanel for CharacterManagerPanel {
 
     /// 获取面板布局提示
     fn layout_hint(&self) -> PanelLayoutHint {
-        PanelLayoutHint {
-            position: PanelPosition::Right,
-            preferred_size: Some((300.0, 400.0)),
-            min_size: Some((250.0, 300.0)),
-        }
+        PanelLayoutHint { position: PanelPosition::Right, preferred_size: Some((300.0, 400.0)), min_size: Some((250.0, 300.0)) }
     }
 }

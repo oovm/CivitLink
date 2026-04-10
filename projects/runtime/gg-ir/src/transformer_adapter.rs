@@ -23,10 +23,7 @@ pub struct IrOptimizeTransformer {
 impl IrOptimizeTransformer {
     /// 创建新的 IR 优化转换器
     pub fn new(name: &str, optimizer: IrOptimizer) -> Self {
-        Self {
-            transformer_name: name.to_string(),
-            optimizer,
-        }
+        Self { transformer_name: name.to_string(), optimizer }
     }
 }
 
@@ -46,11 +43,7 @@ impl Transformer for IrOptimizeTransformer {
         vec![ArtifactKey::new(IR_MODULE_TYPE, "*")]
     }
 
-    fn transform(
-        &self,
-        inputs: &ArtifactSet,
-        _context: &mut BuildContext,
-    ) -> GResult<ArtifactSet> {
+    fn transform(&self, inputs: &ArtifactSet, _context: &mut BuildContext) -> GResult<ArtifactSet> {
         let mut output = ArtifactSet::new();
 
         for key in inputs.keys() {
@@ -63,18 +56,14 @@ impl Transformer for IrOptimizeTransformer {
                 message: format!("Artifact not found for key: {}/{}", key.type_name, key.id),
             })?;
 
-            let module: IrModule = serde_json::from_slice(&artifact.data).map_err(|e| GError {
-                kind: GErrorKind::Other,
-                message: format!("Failed to deserialize IrModule: {}", e),
-            })?;
+            let module: IrModule = serde_json::from_slice(&artifact.data)
+                .map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to deserialize IrModule: {}", e) })?;
 
             let mut module = module;
             self.optimizer.optimize(&mut module)?;
 
-            let data = serde_json::to_vec(&module).map_err(|e| GError {
-                kind: GErrorKind::Other,
-                message: format!("Failed to serialize IrModule: {}", e),
-            })?;
+            let data = serde_json::to_vec(&module)
+                .map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to serialize IrModule: {}", e) })?;
 
             output.insert(Artifact::new(key.clone(), data));
         }

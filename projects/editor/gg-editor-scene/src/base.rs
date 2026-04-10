@@ -1,14 +1,12 @@
 //! 基础场景视图实现
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use gg_core::GResult;
 use gg_editor_shell::{EditorContext, EditorEvent, EditorPanel, PanelLayoutHint, PanelPosition};
 use gg_ui::UiTree;
 
-use crate::view::SceneView;
-use crate::viewport::ViewportState;
+use crate::{view::SceneView, viewport::ViewportState};
 
 /// 基础场景视图
 ///

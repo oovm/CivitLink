@@ -22,21 +22,21 @@ pub use hmr_state::{StateMigrator, StateSnapshot};
 pub use registry::{ComponentAccessor, ComponentRegistry};
 pub use scheduler::StageScheduler;
 pub use stage::{Stage, SystemDescriptor, SystemFn, SystemSet, SystemSetId};
-pub use wasm::{
-    WasmError, WasmHostFunctions, WasmInstanceId, WasmModuleId, WasmRuntime, WasmSandboxConfig,
-};
+pub use wasm::{WasmError, WasmHostFunctions, WasmInstanceId, WasmModuleId, WasmRuntime, WasmSandboxConfig};
 
-use gg_core::{GError, GErrorKind, GResult, plugin::Plugin};
-use gg_ecs::{World, Entity};
 use gg_asset::AssetServer;
-use gg_render::{Renderer, RenderContext};
-use gg_runtime_audio::{AudioEngine, AudioContext};
-use gg_script::ScriptLoader;
-use gg_bytecode::{Host, BytecodeValue, BytecodeModule};
-use gg_vm::{Vm, VmResult};
+use gg_bytecode::{BytecodeModule, BytecodeValue, Host};
+use gg_core::{GError, GErrorKind, GResult, plugin::Plugin};
+use gg_ecs::{Entity, World};
 use gg_platform_desktop::DesktopFileSystem;
-use std::sync::Arc;
-use std::time::{Duration, Instant};
+use gg_render::{RenderContext, Renderer};
+use gg_runtime_audio::{AudioContext, AudioEngine};
+use gg_script::ScriptLoader;
+use gg_vm::{Vm, VmResult};
+use std::{
+    sync::Arc,
+    time::{Duration, Instant},
+};
 
 /// 引擎宿主，实现 Host trait，将 VM 指令桥接到 ECS 世界
 ///
@@ -52,10 +52,7 @@ pub struct EngineHost {
 impl EngineHost {
     /// 创建新的引擎宿主
     pub fn new() -> Self {
-        Self {
-            world: World::new(),
-            registry: ComponentRegistry::new(),
-        }
+        Self { world: World::new(), registry: ComponentRegistry::new() }
     }
 
     /// 获取世界的不可变引用
@@ -93,22 +90,11 @@ impl Host for EngineHost {
         self.registry.add_default(&mut self.world, entity_id as Entity, component_type);
     }
 
-    fn get_component_field(
-        &mut self,
-        entity_id: u64,
-        component_type: &str,
-        field: &str,
-    ) -> Option<BytecodeValue> {
+    fn get_component_field(&mut self, entity_id: u64, component_type: &str, field: &str) -> Option<BytecodeValue> {
         self.registry.get_field(&self.world, entity_id as Entity, component_type, field)
     }
 
-    fn set_component_field(
-        &mut self,
-        entity_id: u64,
-        component_type: &str,
-        field: &str,
-        value: BytecodeValue,
-    ) {
+    fn set_component_field(&mut self, entity_id: u64, component_type: &str, field: &str, value: BytecodeValue) {
         self.registry.set_field(&mut self.world, entity_id as Entity, component_type, field, value);
     }
 
@@ -133,9 +119,7 @@ impl Host for EngineHost {
             }
             "add_component" => {
                 if args.len() >= 2 {
-                    if let (BytecodeValue::Entity(entity_id), BytecodeValue::String(component_type)) =
-                        (&args[0], &args[1])
-                    {
+                    if let (BytecodeValue::Entity(entity_id), BytecodeValue::String(component_type)) = (&args[0], &args[1]) {
                         self.add_component(*entity_id, component_type, BytecodeValue::Null);
                     }
                 }
@@ -157,8 +141,11 @@ impl Host for EngineHost {
             }
             "get_field" => {
                 if args.len() >= 3 {
-                    if let (BytecodeValue::Entity(entity_id), BytecodeValue::String(component_type), BytecodeValue::String(field)) =
-                        (&args[0], &args[1], &args[2])
+                    if let (
+                        BytecodeValue::Entity(entity_id),
+                        BytecodeValue::String(component_type),
+                        BytecodeValue::String(field),
+                    ) = (&args[0], &args[1], &args[2])
                     {
                         return self.get_component_field(*entity_id, component_type, field);
                     }
@@ -186,11 +173,7 @@ pub struct ScriptEngine {
 impl ScriptEngine {
     /// 创建新的脚本引擎
     pub fn new() -> Self {
-        Self {
-            loader: ScriptLoader::new(),
-            module: None,
-            vm: Vm::new(),
-        }
+        Self { loader: ScriptLoader::new(), module: None, vm: Vm::new() }
     }
 
     /// 加载脚本文件
@@ -211,7 +194,8 @@ impl ScriptEngine {
     pub fn call_function(&mut self, function_name: &str, host: &mut EngineHost) -> VmResult {
         if let Some(ref module) = self.module {
             self.vm.execute(module, function_name, host)
-        } else {
+        }
+        else {
             VmResult::Error("No script loaded".to_string())
         }
     }
@@ -223,9 +207,7 @@ impl ScriptEngine {
 
     /// 检查脚本中是否存在指定函数
     pub fn has_function(&self, name: &str) -> bool {
-        self.module
-            .as_ref()
-            .map_or(false, |m| m.find_function(name).is_some())
+        self.module.as_ref().map_or(false, |m| m.find_function(name).is_some())
     }
 
     /// 替换当前字节码模块（用于 HMR 热更新）
@@ -277,20 +259,10 @@ impl Runtime {
     pub fn from_builder(builder: builder::RuntimeBuilder) -> GResult<Self> {
         let renderer = builder.renderer;
         let audio_engine = builder.audio_engine;
-        let hmr_manager = if builder.hmr_enabled {
-            Some(HmrManager::new())
-        } else {
-            None
-        };
+        let hmr_manager = if builder.hmr_enabled { Some(HmrManager::new()) } else { None };
 
-        let surface_width = renderer
-            .as_ref()
-            .map(|r| r.surface_info().width)
-            .unwrap_or(800);
-        let surface_height = renderer
-            .as_ref()
-            .map(|r| r.surface_info().height)
-            .unwrap_or(600);
+        let surface_width = renderer.as_ref().map(|r| r.surface_info().width).unwrap_or(800);
+        let surface_height = renderer.as_ref().map(|r| r.surface_info().height).unwrap_or(600);
 
         let platform_services = gg_platform_desktop::DesktopPlatformServices::create();
 
@@ -402,10 +374,7 @@ impl Runtime {
             match self.script_engine.call_function("init", &mut self.host) {
                 VmResult::Ok | VmResult::Return(_) => {}
                 VmResult::Error(e) => {
-                    return Err(GError {
-                        kind: GErrorKind::Runtime,
-                        message: format!("Script init error: {}", e),
-                    });
+                    return Err(GError { kind: GErrorKind::Runtime, message: format!("Script init error: {}", e) });
                 }
             }
         }
@@ -472,7 +441,8 @@ impl Runtime {
                             return Ok(());
                         }
                     }
-                } else {
+                }
+                else {
                     hmr.confirm_script_reload(new_module);
                 }
             }

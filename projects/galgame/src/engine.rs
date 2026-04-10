@@ -3,8 +3,7 @@
 
 use crate::config::GalgameConfig;
 use gg_asset::AssetManager;
-use gg_core::plugin::Plugin;
-use gg_core::GResult;
+use gg_core::{GResult, plugin::Plugin};
 use gg_ecs::GgWorld;
 use gg_platform_desktop::DesktopFileSystem;
 use gg_plugin_dialogue::plugin::DialoguePlugin;
@@ -14,8 +13,7 @@ use gg_plugin_scene_transition::plugin::SceneTransitionPlugin;
 use gg_render::{RenderContext, Renderer, SurfaceInfo};
 use gg_render_wgpu::WgpuRenderer;
 use gg_ui::{LayoutEngine, UiRenderer, UiTree};
-use winit::event::Event;
-use winit::event_loop::EventLoop;
+use winit::{event::Event, event_loop::EventLoop};
 
 /// Galgame 引擎
 ///
@@ -86,12 +84,9 @@ impl GalgameEngine {
     ///
     /// - `event_loop` - winit 事件循环
     pub fn initialize_renderer(&mut self, event_loop: &EventLoop<()>) -> GResult<()> {
-        let surface_info = SurfaceInfo::new(
-            self.config.display.width,
-            self.config.display.height,
-            self.config.game.name.clone(),
-        )
-        .with_fullscreen(self.config.display.fullscreen);
+        let surface_info =
+            SurfaceInfo::new(self.config.display.width, self.config.display.height, self.config.game.name.clone())
+                .with_fullscreen(self.config.display.fullscreen);
 
         let renderer = WgpuRenderer::new(event_loop, surface_info)?;
         self.renderer = Some(renderer);
@@ -120,31 +115,30 @@ impl GalgameEngine {
 
         self.initialize_renderer(&event_loop)?;
 
-        event_loop.run(move |event, elwt| {
-            if let Some(renderer) = &mut self.renderer {
-                match event {
-                    Event::WindowEvent { event, .. } => {
-                        renderer.handle_window_event(&event);
-                        if renderer.should_close() {
-                            elwt.exit();
+        event_loop
+            .run(move |event, elwt| {
+                if let Some(renderer) = &mut self.renderer {
+                    match event {
+                        Event::WindowEvent { event, .. } => {
+                            renderer.handle_window_event(&event);
+                            if renderer.should_close() {
+                                elwt.exit();
+                            }
                         }
-                    }
-                    Event::AboutToWait => {
-                        if let Err(_) = self.tick() {
-                            elwt.exit();
-                        }
+                        Event::AboutToWait => {
+                            if let Err(_) = self.tick() {
+                                elwt.exit();
+                            }
 
-                        if let Err(_) = self.render_frame() {
-                            elwt.exit();
+                            if let Err(_) = self.render_frame() {
+                                elwt.exit();
+                            }
                         }
+                        _ => {}
                     }
-                    _ => {}
                 }
-            }
-        }).map_err(|e| gg_core::GError {
-            kind: gg_core::GErrorKind::Runtime,
-            message: format!("Event loop error: {}", e),
-        })
+            })
+            .map_err(|e| gg_core::GError { kind: gg_core::GErrorKind::Runtime, message: format!("Event loop error: {}", e) })
     }
 
     /// 渲染一帧
@@ -158,16 +152,9 @@ impl GalgameEngine {
 
         renderer.begin_frame()?;
 
-        let mut context = RenderContext::new(
-            renderer.surface_info().width,
-            renderer.surface_info().height,
-        );
+        let mut context = RenderContext::new(renderer.surface_info().width, renderer.surface_info().height);
 
-        LayoutEngine::compute(
-            &mut self.ui_tree,
-            renderer.surface_info().width as f32,
-            renderer.surface_info().height as f32,
-        );
+        LayoutEngine::compute(&mut self.ui_tree, renderer.surface_info().width as f32, renderer.surface_info().height as f32);
 
         UiRenderer::render(&self.ui_tree, &mut context);
 

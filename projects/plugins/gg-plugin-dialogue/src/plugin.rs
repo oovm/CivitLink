@@ -1,8 +1,10 @@
 //! 对话系统插件模块
 //! 实现 Plugin trait，负责对话系统的初始化和关闭
 
-use gg_core::plugin::{Plugin, PluginRegistrar};
-use gg_core::GResult;
+use gg_core::{
+    GResult,
+    plugin::{Plugin, PluginRegistrar},
+};
 use gg_galgame_schema::resources::{DialogueHistory, GameVariables};
 
 use crate::systems::{ChoiceSystem, DialogueSystem, TypewriterSystem, WaitSystem};
@@ -26,13 +28,8 @@ impl Plugin for DialoguePlugin {
     /// - 资源：DialogueHistory、GameVariables
     /// - 系统：DialogueSystem、ChoiceSystem、TypewriterSystem、WaitSystem
     fn build(&self, registrar: &mut PluginRegistrar) {
-        registrar.insert_resource(DialogueHistory {
-            entries: Vec::new(),
-            current_node_id: None,
-        });
-        registrar.insert_resource(GameVariables {
-            variables: std::collections::HashMap::new(),
-        });
+        registrar.insert_resource(DialogueHistory { entries: Vec::new(), current_node_id: None });
+        registrar.insert_resource(GameVariables { variables: std::collections::HashMap::new() });
         registrar.register_system(Box::new(DialogueSystem::new()));
         registrar.register_system(Box::new(ChoiceSystem::new()));
         registrar.register_system(Box::new(TypewriterSystem::new(1.0 / 60.0)));

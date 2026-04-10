@@ -40,8 +40,7 @@ fn cmd_init(args: &[String]) -> GResult<()> {
     if args.is_empty() {
         return Err(GError {
             kind: GErrorKind::Runtime,
-            message: "Missing engine name. Usage: gg-cli init <engine-name> [--type <game-type>]"
-                .to_string(),
+            message: "Missing engine name. Usage: gg-cli init <engine-name> [--type <game-type>]".to_string(),
         });
     }
     let engine_name = &args[0];
@@ -60,14 +59,10 @@ fn cmd_init(args: &[String]) -> GResult<()> {
         message: format!("Failed to create project directory '{}': {}", engine_name, e),
     })?;
 
-    let engine_toml_content = toml::to_string_pretty(&manifest).map_err(|e| GError {
-        kind: GErrorKind::Runtime,
-        message: format!("Failed to serialize Engine.toml: {}", e),
-    })?;
-    std::fs::write(project_dir.join("Engine.toml"), engine_toml_content).map_err(|e| GError {
-        kind: GErrorKind::Io,
-        message: format!("Failed to write Engine.toml: {}", e),
-    })?;
+    let engine_toml_content = toml::to_string_pretty(&manifest)
+        .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to serialize Engine.toml: {}", e) })?;
+    std::fs::write(project_dir.join("Engine.toml"), engine_toml_content)
+        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write Engine.toml: {}", e) })?;
 
     let game_toml = format!(
         r#"[game]
@@ -87,24 +82,15 @@ se_volume = 1.0
 "#,
         engine_name, manifest.display.width, manifest.display.height
     );
-    std::fs::write(project_dir.join("game.toml"), game_toml).map_err(|e| GError {
-        kind: GErrorKind::Io,
-        message: format!("Failed to write game.toml: {}", e),
-    })?;
+    std::fs::write(project_dir.join("game.toml"), game_toml)
+        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write game.toml: {}", e) })?;
 
-    std::fs::create_dir_all(project_dir.join("scripts")).map_err(|e| GError {
-        kind: GErrorKind::Io,
-        message: format!("Failed to create scripts directory: {}", e),
-    })?;
-    std::fs::create_dir_all(project_dir.join("assets")).map_err(|e| GError {
-        kind: GErrorKind::Io,
-        message: format!("Failed to create assets directory: {}", e),
-    })?;
+    std::fs::create_dir_all(project_dir.join("scripts"))
+        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to create scripts directory: {}", e) })?;
+    std::fs::create_dir_all(project_dir.join("assets"))
+        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to create assets directory: {}", e) })?;
 
-    println!(
-        "Created engine project '{}' with game type '{}'",
-        engine_name, game_type
-    );
+    println!("Created engine project '{}' with game type '{}'", engine_name, game_type);
     println!("  Engine.toml - engine manifest");
     println!("  game.toml - game configuration");
     println!("  scripts/ - script directory");
@@ -151,8 +137,7 @@ fn cmd_build(args: &[String]) -> GResult<()> {
 
     let mut cmd = std::process::Command::new("cargo");
     cmd.arg("build");
-    cmd.arg("--manifest-path")
-        .arg(generated_dir.join("Cargo.toml"));
+    cmd.arg("--manifest-path").arg(generated_dir.join("Cargo.toml"));
 
     if let Some(target) = platform {
         cmd.arg("--target").arg(target);
@@ -161,16 +146,11 @@ fn cmd_build(args: &[String]) -> GResult<()> {
         cmd.arg("--release");
     }
 
-    let status = cmd.status().map_err(|e| GError {
-        kind: GErrorKind::Runtime,
-        message: format!("Failed to run cargo build: {}", e),
-    })?;
+    let status =
+        cmd.status().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to run cargo build: {}", e) })?;
 
     if !status.success() {
-        return Err(GError {
-            kind: GErrorKind::Runtime,
-            message: "Build failed".to_string(),
-        });
+        return Err(GError { kind: GErrorKind::Runtime, message: "Build failed".to_string() });
     }
 
     println!("Build completed successfully");
@@ -213,30 +193,22 @@ se_volume = 1.0
 "#,
         game_name
     );
-    std::fs::write(game_dir.join("game.toml"), game_toml).map_err(|e| GError {
-        kind: GErrorKind::Io,
-        message: format!("Failed to write game.toml: {}", e),
-    })?;
+    std::fs::write(game_dir.join("game.toml"), game_toml)
+        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write game.toml: {}", e) })?;
 
-    std::fs::create_dir_all(game_dir.join("scripts")).map_err(|e| GError {
-        kind: GErrorKind::Io,
-        message: format!("Failed to create scripts directory: {}", e),
-    })?;
+    std::fs::create_dir_all(game_dir.join("scripts"))
+        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to create scripts directory: {}", e) })?;
 
     let start_script = r#"// Start script
 label start {
     say "Hello, World!"
 }
 "#;
-    std::fs::write(game_dir.join("scripts/start.gscript"), start_script).map_err(|e| GError {
-        kind: GErrorKind::Io,
-        message: format!("Failed to write start.gscript: {}", e),
-    })?;
+    std::fs::write(game_dir.join("scripts/start.gscript"), start_script)
+        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write start.gscript: {}", e) })?;
 
-    std::fs::create_dir_all(game_dir.join("assets")).map_err(|e| GError {
-        kind: GErrorKind::Io,
-        message: format!("Failed to create assets directory: {}", e),
-    })?;
+    std::fs::create_dir_all(game_dir.join("assets"))
+        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to create assets directory: {}", e) })?;
 
     println!("Created game project '{}'", game_name);
     Ok(())
@@ -263,9 +235,7 @@ fn print_usage() {
     println!("Commands:");
     println!("  init <name> [--type <game-type>]  Initialize a new engine project");
     println!("  generate [--manifest <path>]      Generate engine code from manifest");
-    println!(
-        "  build [--platform <target>] [--release]  Build the generated engine"
-    );
+    println!("  build [--platform <target>] [--release]  Build the generated engine");
     println!("  new-game <name>                   Create a new game project");
     println!("  help                              Show this help message");
     println!();

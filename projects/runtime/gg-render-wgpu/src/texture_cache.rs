@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use gg_core::{GError, GErrorKind, GResult};
 use gg_render::TextureId;
@@ -18,10 +17,7 @@ pub struct TextureCache {
 impl TextureCache {
     /// 创建新的纹理缓存
     pub fn new() -> Self {
-        Self {
-            textures: HashMap::new(),
-            next_id: 1,
-        }
+        Self { textures: HashMap::new(), next_id: 1 }
     }
 
     /// 从文件加载纹理资源
@@ -37,30 +33,17 @@ impl TextureCache {
     /// # 返回值
     ///
     /// 成功时返回新分配的纹理标识符
-    pub fn load_texture(
-        &mut self,
-        path: &Path,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-    ) -> GResult<TextureId> {
-        let data = std::fs::read(path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("无法读取纹理文件 {:?}: {}", path, e),
-        })?;
+    pub fn load_texture(&mut self, path: &Path, device: &wgpu::Device, queue: &wgpu::Queue) -> GResult<TextureId> {
+        let data = std::fs::read(path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("无法读取纹理文件 {:?}: {}", path, e) })?;
 
-        let img = image::load_from_memory(&data).map_err(|e| GError {
-            kind: GErrorKind::Asset,
-            message: format!("无法解码纹理图像 {:?}: {}", path, e),
-        })?;
+        let img = image::load_from_memory(&data)
+            .map_err(|e| GError { kind: GErrorKind::Asset, message: format!("无法解码纹理图像 {:?}: {}", path, e) })?;
 
         let rgba = img.to_rgba8();
         let dimensions = rgba.dimensions();
 
-        let size = wgpu::Extent3d {
-            width: dimensions.0,
-            height: dimensions.1,
-            depth_or_array_layers: 1,
-        };
+        let size = wgpu::Extent3d { width: dimensions.0, height: dimensions.1, depth_or_array_layers: 1 };
 
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(&format!("texture_{:?}", path)),
@@ -118,11 +101,7 @@ impl TextureCache {
         queue: &wgpu::Queue,
         label: &str,
     ) -> GResult<TextureId> {
-        let size = wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        };
+        let size = wgpu::Extent3d { width, height, depth_or_array_layers: 1 };
 
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some(label),
@@ -143,11 +122,7 @@ impl TextureCache {
                 aspect: wgpu::TextureAspect::All,
             },
             data,
-            wgpu::TexelCopyBufferLayout {
-                offset: 0,
-                bytes_per_row: Some(4 * width),
-                rows_per_image: Some(height),
-            },
+            wgpu::TexelCopyBufferLayout { offset: 0, bytes_per_row: Some(4 * width), rows_per_image: Some(height) },
             size,
         );
 
@@ -205,14 +180,8 @@ impl TextureCache {
             label: Some("texture_bind_group"),
             layout,
             entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&view),
-                },
+                wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::Sampler(&sampler) },
+                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&view) },
             ],
         }))
     }
@@ -254,18 +223,9 @@ impl TextureCache {
             label: Some("transition_bind_group"),
             layout,
             entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::Sampler(&sampler),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::TextureView(&old_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&new_view),
-                },
+                wgpu::BindGroupEntry { binding: 0, resource: wgpu::BindingResource::Sampler(&sampler) },
+                wgpu::BindGroupEntry { binding: 1, resource: wgpu::BindingResource::TextureView(&old_view) },
+                wgpu::BindGroupEntry { binding: 2, resource: wgpu::BindingResource::TextureView(&new_view) },
             ],
         }))
     }

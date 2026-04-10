@@ -6,8 +6,7 @@ use gg_ecs::{Entity, System, World};
 use gg_galgame_schema::components::PortraitState;
 use gg_render::{Color, DrawCommand, RenderContext, TextureId, Transform};
 
-use crate::animation::PortraitAnimationState;
-use crate::layout::PortraitLayout;
+use crate::{animation::PortraitAnimationState, layout::PortraitLayout};
 
 /// 非说话立绘的透明度
 const DIMMED_OPACITY: f32 = 0.6;
@@ -34,10 +33,7 @@ impl PortraitRenderSystem {
     /// - `screen_width` - 屏幕宽度
     /// - `screen_height` - 屏幕高度
     pub fn new(screen_width: f32, screen_height: f32) -> Self {
-        Self {
-            screen_width,
-            screen_height,
-        }
+        Self { screen_width, screen_height }
     }
 
     /// 将立绘渲染指令提交到渲染上下文
@@ -61,11 +57,7 @@ impl PortraitRenderSystem {
         let layout = PortraitLayout::new(self.screen_width, self.screen_height);
         for (_, state) in &portraits {
             let (x, y) = layout.calculate_position(&state.position);
-            let transform = Transform {
-                position: [x, y],
-                z_index: state.z_order as f32,
-                ..Transform::IDENTITY
-            };
+            let transform = Transform { position: [x, y], z_index: state.z_order as f32, ..Transform::IDENTITY };
             let tint = Color::new(1.0, 1.0, 1.0, state.opacity);
             context.draw(DrawCommand::Sprite {
                 texture_id: TextureId::INVALID,
@@ -113,11 +105,7 @@ impl System for PortraitRenderSystem {
 
             if let Some(comp) = world.get_component_mut::<PortraitState>(*entity) {
                 if has_speaker {
-                    comp.opacity = if comp.is_speaking {
-                        1.0
-                    } else {
-                        DIMMED_OPACITY
-                    };
+                    comp.opacity = if comp.is_speaking { 1.0 } else { DIMMED_OPACITY };
                 }
             }
         }

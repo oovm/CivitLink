@@ -19,12 +19,7 @@ pub struct WebInput {
 impl WebInput {
     /// 创建新的 Web 输入实例
     pub fn new() -> Self {
-        Self {
-            event_buffer: Vec::new(),
-            pressed_keys: HashSet::new(),
-            pointer_down: false,
-            pointer_position: (0.0, 0.0),
-        }
+        Self { event_buffer: Vec::new(), pressed_keys: HashSet::new(), pointer_down: false, pointer_position: (0.0, 0.0) }
     }
 
     /// 从 DOM KeyboardEvent 推送键盘事件
@@ -35,11 +30,7 @@ impl WebInput {
     /// - `pressed` - 是否为按下事件
     pub fn push_keyboard_event(&mut self, code: &str, pressed: bool) {
         if let Some(key) = Self::parse_key_code(code) {
-            let state = if pressed {
-                KeyState::Pressed
-            } else {
-                KeyState::Released
-            };
+            let state = if pressed { KeyState::Pressed } else { KeyState::Released };
             match state {
                 KeyState::Pressed => {
                     self.pressed_keys.insert(key);
@@ -60,13 +51,7 @@ impl WebInput {
     /// - `y` - 鼠标 Y 坐标
     /// - `action` - 指针动作
     /// - `button` - 鼠标按钮
-    pub fn push_mouse_event(
-        &mut self,
-        x: f32,
-        y: f32,
-        action: PointerAction,
-        button: PointerButton,
-    ) {
+    pub fn push_mouse_event(&mut self, x: f32, y: f32, action: PointerAction, button: PointerButton) {
         self.pointer_position = (x, y);
         match &action {
             PointerAction::Down => {
@@ -77,11 +62,7 @@ impl WebInput {
             }
             _ => {}
         }
-        self.event_buffer.push(InputEvent::Pointer {
-            position: (x, y),
-            action,
-            button: Some(button),
-        });
+        self.event_buffer.push(InputEvent::Pointer { position: (x, y), action, button: Some(button) });
     }
 
     /// 从 DOM TouchEvent 推送触摸事件
@@ -102,11 +83,7 @@ impl WebInput {
             }
             _ => {}
         }
-        self.event_buffer.push(InputEvent::Pointer {
-            position: (x, y),
-            action,
-            button: Some(PointerButton::Left),
-        });
+        self.event_buffer.push(InputEvent::Pointer { position: (x, y), action, button: Some(PointerButton::Left) });
     }
 
     /// 将 DOM KeyboardEvent.code 字符串解析为 KeyCode

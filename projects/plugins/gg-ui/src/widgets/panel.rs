@@ -1,6 +1,8 @@
-use crate::node::{UiNodeData, UiNodeId, UiTree};
-use crate::style::Style;
-use crate::widget::Widget;
+use crate::{
+    node::{UiNodeData, UiNodeId, UiTree},
+    style::Style,
+    widget::Widget,
+};
 
 /// 面板控件
 ///
@@ -17,11 +19,7 @@ pub struct Panel {
 impl Panel {
     /// 创建面板控件
     pub fn new() -> Self {
-        Self {
-            style: Style::new(),
-            children: Vec::new(),
-            node_id: None,
-        }
+        Self { style: Style::new(), children: Vec::new(), node_id: None }
     }
 
     /// 设置样式

@@ -25,13 +25,7 @@ pub struct PreviewPanel {
 impl PreviewPanel {
     /// 创建新的实时预览面板
     pub fn new() -> Self {
-        Self {
-            visible: true,
-            is_running: false,
-            is_paused: false,
-            start_node_id: None,
-            hmr_enabled: true,
-        }
+        Self { visible: true, is_running: false, is_paused: false, start_node_id: None, hmr_enabled: true }
     }
 
     /// 启动预览
@@ -76,11 +70,7 @@ impl PreviewPanel {
     /// 从指定节点重新开始预览
     ///
     /// 将预览起始节点设置为指定 ID，并重新启动预览。
-    pub fn restart_from_node(
-        &mut self,
-        node_id: String,
-        context: &mut EditorContext,
-    ) -> GResult<()> {
+    pub fn restart_from_node(&mut self, node_id: String, context: &mut EditorContext) -> GResult<()> {
         self.start_node_id = Some(node_id);
         self.is_paused = false;
         let _ = context;

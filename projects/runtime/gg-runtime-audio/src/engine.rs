@@ -45,9 +45,7 @@ pub struct AudioContext {
 impl AudioContext {
     /// 创建新的音频上下文
     pub fn new() -> Self {
-        Self {
-            commands: Vec::new(),
-        }
+        Self { commands: Vec::new() }
     }
 
     /// 添加音频命令

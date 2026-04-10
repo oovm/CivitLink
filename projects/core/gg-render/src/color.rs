@@ -28,50 +28,20 @@ impl Color {
     }
 
     /// 白色 `(1.0, 1.0, 1.0, 1.0)`
-    pub const WHITE: Self = Self {
-        r: 1.0,
-        g: 1.0,
-        b: 1.0,
-        a: 1.0,
-    };
+    pub const WHITE: Self = Self { r: 1.0, g: 1.0, b: 1.0, a: 1.0 };
 
     /// 黑色 `(0.0, 0.0, 0.0, 1.0)`
-    pub const BLACK: Self = Self {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        a: 1.0,
-    };
+    pub const BLACK: Self = Self { r: 0.0, g: 0.0, b: 0.0, a: 1.0 };
 
     /// 完全透明 `(0.0, 0.0, 0.0, 0.0)`
-    pub const TRANSPARENT: Self = Self {
-        r: 0.0,
-        g: 0.0,
-        b: 0.0,
-        a: 0.0,
-    };
+    pub const TRANSPARENT: Self = Self { r: 0.0, g: 0.0, b: 0.0, a: 0.0 };
 
     /// 红色 `(1.0, 0.0, 0.0, 1.0)`
-    pub const RED: Self = Self {
-        r: 1.0,
-        g: 0.0,
-        b: 0.0,
-        a: 1.0,
-    };
+    pub const RED: Self = Self { r: 1.0, g: 0.0, b: 0.0, a: 1.0 };
 
     /// 绿色 `(0.0, 1.0, 0.0, 1.0)`
-    pub const GREEN: Self = Self {
-        r: 0.0,
-        g: 1.0,
-        b: 0.0,
-        a: 1.0,
-    };
+    pub const GREEN: Self = Self { r: 0.0, g: 1.0, b: 0.0, a: 1.0 };
 
     /// 蓝色 `(0.0, 0.0, 1.0, 1.0)`
-    pub const BLUE: Self = Self {
-        r: 0.0,
-        g: 0.0,
-        b: 1.0,
-        a: 1.0,
-    };
+    pub const BLUE: Self = Self { r: 0.0, g: 0.0, b: 1.0, a: 1.0 };
 }

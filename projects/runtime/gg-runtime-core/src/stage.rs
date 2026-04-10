@@ -118,14 +118,7 @@ impl SystemDescriptor {
     /// 使用给定的名称、系统函数和阶段创建描述符，
     /// 排序约束默认为空，系统集合默认为 None。
     pub fn new(name: impl Into<String>, system: SystemFn, stage: Stage) -> Self {
-        Self {
-            name: name.into(),
-            system,
-            stage,
-            system_set: None,
-            before: Vec::new(),
-            after: Vec::new(),
-        }
+        Self { name: name.into(), system, stage, system_set: None, before: Vec::new(), after: Vec::new() }
     }
 
     /// 设置系统所属的集合

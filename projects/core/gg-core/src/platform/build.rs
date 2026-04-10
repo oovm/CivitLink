@@ -26,12 +26,7 @@ pub struct BuildConfig {
 impl BuildConfig {
     /// 创建新的构建配置
     pub fn new(target_triple: impl Into<String>, output_dir: impl Into<PathBuf>) -> Self {
-        Self {
-            target_triple: target_triple.into(),
-            release: false,
-            features: Vec::new(),
-            output_dir: output_dir.into(),
-        }
+        Self { target_triple: target_triple.into(), release: false, features: Vec::new(), output_dir: output_dir.into() }
     }
 }
 
@@ -49,15 +44,8 @@ pub struct GenerateContext {
 
 impl GenerateContext {
     /// 创建新的生成上下文
-    pub fn new(
-        manifest_path: impl Into<PathBuf>,
-        output_dir: impl Into<PathBuf>,
-    ) -> Self {
-        Self {
-            manifest_path: manifest_path.into(),
-            output_dir: output_dir.into(),
-            template_dir: None,
-        }
+    pub fn new(manifest_path: impl Into<PathBuf>, output_dir: impl Into<PathBuf>) -> Self {
+        Self { manifest_path: manifest_path.into(), output_dir: output_dir.into(), template_dir: None }
     }
 }
 
@@ -106,15 +94,8 @@ pub struct RunContext {
 
 impl RunContext {
     /// 创建新的运行上下文
-    pub fn new(
-        executable_path: impl Into<PathBuf>,
-        project_dir: impl Into<PathBuf>,
-    ) -> Self {
-        Self {
-            executable_path: executable_path.into(),
-            project_dir: project_dir.into(),
-            args: Vec::new(),
-        }
+    pub fn new(executable_path: impl Into<PathBuf>, project_dir: impl Into<PathBuf>) -> Self {
+        Self { executable_path: executable_path.into(), project_dir: project_dir.into(), args: Vec::new() }
     }
 }
 

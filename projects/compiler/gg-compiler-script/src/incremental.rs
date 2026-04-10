@@ -1,8 +1,7 @@
 //! 增量编译模块
 //! 提供基于文件哈希的增量编译功能，只重新编译发生变化的文件
 
-use std::collections::HashMap;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use gg_core::{GError, GErrorKind, GResult};
 
@@ -22,10 +21,7 @@ pub struct IncrementalCompiler {
 impl IncrementalCompiler {
     /// 创建新的增量编译器
     pub fn new() -> Self {
-        Self {
-            file_hashes: HashMap::new(),
-            compiled_sequences: HashMap::new(),
-        }
+        Self { file_hashes: HashMap::new(), compiled_sequences: HashMap::new() }
     }
 
     /// 增量编译目录
@@ -43,18 +39,12 @@ impl IncrementalCompiler {
         let mut current_files: HashMap<String, std::path::PathBuf> = HashMap::new();
 
         for entry in entries {
-            let entry = entry.map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Failed to read directory entry: {}", e),
-            })?;
+            let entry = entry
+                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
 
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) == Some("gscript") {
-                let file_name = path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("unknown")
-                    .to_string();
+                let file_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("unknown").to_string();
                 current_files.insert(file_name, path);
             }
         }
@@ -85,8 +75,7 @@ impl IncrementalCompiler {
 
             if needs_recompile {
                 let sequence = ScriptCompiler::compile_file(path)?;
-                self.compiled_sequences
-                    .insert(file_name.clone(), sequence);
+                self.compiled_sequences.insert(file_name.clone(), sequence);
                 self.file_hashes.insert(file_name.clone(), hash);
             }
         }
@@ -95,8 +84,7 @@ impl IncrementalCompiler {
             for node in &sequence.nodes {
                 db.all_node_ids.insert(node.id.clone());
             }
-            db.sequences
-                .insert(file_name.clone(), sequence.clone());
+            db.sequences.insert(file_name.clone(), sequence.clone());
         }
 
         Ok(db)

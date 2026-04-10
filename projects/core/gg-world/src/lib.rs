@@ -109,11 +109,7 @@ pub struct WorldManager {
 impl WorldManager {
     /// 创建新的世界管理器
     pub fn new() -> Self {
-        Self {
-            worlds: Vec::new(),
-            active_world: None,
-            next_id: 0,
-        }
+        Self { worlds: Vec::new(), active_world: None, next_id: 0 }
     }
 
     /// 创建新世界并返回其 ID
@@ -180,18 +176,15 @@ impl WorldManager {
         if self.get_world(id).is_some() {
             self.active_world = Some(id);
             true
-        } else {
+        }
+        else {
             false
         }
     }
 
     /// 获取所有未销毁世界的 ID 列表
     pub fn world_ids(&self) -> Vec<usize> {
-        self.worlds
-            .iter()
-            .enumerate()
-            .filter_map(|(i, slot)| slot.as_ref().map(|_| i))
-            .collect()
+        self.worlds.iter().enumerate().filter_map(|(i, slot)| slot.as_ref().map(|_| i)).collect()
     }
 
     /// 销毁所有世界

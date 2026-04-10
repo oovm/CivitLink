@@ -2,9 +2,7 @@
 //!
 //! 提供面板和插件访问编辑器核心子系统的统一入口。
 
-use crate::command::CommandManager;
-use crate::event::EventBus;
-use crate::service::ServiceRegistry;
+use crate::{command::CommandManager, event::EventBus, service::ServiceRegistry};
 
 /// 编辑器上下文
 ///
@@ -18,16 +16,8 @@ pub struct EditorContext<'a> {
 
 impl<'a> EditorContext<'a> {
     /// 创建新的编辑器上下文
-    pub fn new(
-        services: &'a mut ServiceRegistry,
-        commands: &'a mut CommandManager,
-        events: &'a mut EventBus,
-    ) -> Self {
-        Self {
-            services,
-            commands,
-            events,
-        }
+    pub fn new(services: &'a mut ServiceRegistry, commands: &'a mut CommandManager, events: &'a mut EventBus) -> Self {
+        Self { services, commands, events }
     }
 
     /// 获取服务注册表引用

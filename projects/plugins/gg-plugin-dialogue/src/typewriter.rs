@@ -24,13 +24,7 @@ impl TypewriterState {
     ///
     /// 使用指定的完整文本和显示速度初始化打字机。
     pub fn new(text: String, speed: f32) -> Self {
-        Self {
-            full_text: text,
-            current_position: 0,
-            speed,
-            elapsed: 0.0,
-            is_complete: false,
-        }
+        Self { full_text: text, current_position: 0, speed, elapsed: 0.0, is_complete: false }
     }
 
     /// 更新打字机状态

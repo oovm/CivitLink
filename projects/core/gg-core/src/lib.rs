@@ -12,8 +12,10 @@ pub mod platform;
 pub mod plugin {
     use gg_ecs::{Entity, GgWorld, Resource, System};
     use gg_error::{GError, GErrorKind, GResult};
-    use std::any::{Any, TypeId};
-    use std::collections::HashSet;
+    use std::{
+        any::{Any, TypeId},
+        collections::HashSet,
+    };
 
     /// 类型擦除的资源条目
     struct ResourceEntry {
@@ -51,12 +53,7 @@ pub mod plugin {
     impl PluginRegistrar {
         /// 创建新的插件注册器
         pub fn new() -> Self {
-            Self {
-                systems: Vec::new(),
-                resources: Vec::new(),
-                components: Vec::new(),
-                dependencies: Vec::new(),
-            }
+            Self { systems: Vec::new(), resources: Vec::new(), components: Vec::new(), dependencies: Vec::new() }
         }
 
         /// 注册系统
@@ -71,26 +68,15 @@ pub mod plugin {
         /// 将资源添加到待注册队列，在 apply 阶段插入到 World 的全局资源。
         pub fn insert_resource<T: Resource + 'static>(&mut self, resource: T) {
             let type_id = TypeId::of::<T>();
-            self.resources.push(ResourceEntry {
-                resource: Box::new(resource),
-                type_id,
-            });
+            self.resources.push(ResourceEntry { resource: Box::new(resource), type_id });
         }
 
         /// 向实体插入组件
         ///
         /// 将组件添加到待注册队列，在 apply 阶段添加到指定实体。
-        pub fn insert_component<T: gg_ecs::Component + 'static>(
-            &mut self,
-            entity: Entity,
-            component: T,
-        ) {
+        pub fn insert_component<T: gg_ecs::Component + 'static>(&mut self, entity: Entity, component: T) {
             let type_id = TypeId::of::<T>();
-            self.components.push(ComponentEntry {
-                entity,
-                component: Box::new(component),
-                type_id,
-            });
+            self.components.push(ComponentEntry { entity, component: Box::new(component), type_id });
         }
 
         /// 添加依赖
@@ -166,10 +152,7 @@ pub mod plugin {
     impl PluginManager {
         /// 创建新的插件管理器
         pub fn new() -> Self {
-            Self {
-                plugins: Vec::new(),
-                plugin_names: HashSet::new(),
-            }
+            Self { plugins: Vec::new(), plugin_names: HashSet::new() }
         }
 
         /// 注册插件
@@ -180,11 +163,7 @@ pub mod plugin {
                 if !self.plugin_names.contains(dep) {
                     return Err(GError {
                         kind: GErrorKind::Plugin,
-                        message: format!(
-                            "Plugin '{}' depends on '{}' which is not registered",
-                            plugin.name(),
-                            dep
-                        ),
+                        message: format!("Plugin '{}' depends on '{}' which is not registered", plugin.name(), dep),
                     });
                 }
             }
@@ -225,15 +204,7 @@ pub mod plugin {
     }
 }
 
-pub use platform::DirEntry;
-pub use platform::FileMetadata;
-pub use platform::FileSystem;
-pub use platform::FileType;
-pub use platform::Input;
-pub use platform::InputEvent;
-pub use platform::KeyCode;
-pub use platform::KeyState;
-pub use platform::PlatformServices;
-pub use platform::PointerAction;
-pub use platform::PointerButton;
-pub use platform::Time;
+pub use platform::{
+    DirEntry, FileMetadata, FileSystem, FileType, Input, InputEvent, KeyCode, KeyState, PlatformServices, PointerAction,
+    PointerButton, Time,
+};

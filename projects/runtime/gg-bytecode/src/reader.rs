@@ -1,8 +1,7 @@
 use gg_core::{GError, GErrorKind, GResult};
 
 use crate::format::{
-    BinaryReader, BytecodeFunction, BytecodeInstruction, BytecodeModule, BytecodeOpCode,
-    BytecodeValue, MAGIC, VERSION,
+    BinaryReader, BytecodeFunction, BytecodeInstruction, BytecodeModule, BytecodeOpCode, BytecodeValue, MAGIC, VERSION,
 };
 
 /// 字节码读取器，从二进制数据反序列化为 BytecodeModule
@@ -17,10 +16,7 @@ impl BytecodeReader {
         if magic != MAGIC {
             return Err(GError {
                 kind: GErrorKind::Runtime,
-                message: format!(
-                    "无效的字节码魔数: 期望 0x{:08X}, 实际 0x{:08X}",
-                    MAGIC, magic
-                ),
+                message: format!("无效的字节码魔数: 期望 0x{:08X}, 实际 0x{:08X}", MAGIC, magic),
             });
         }
 
@@ -28,10 +24,7 @@ impl BytecodeReader {
         if version != VERSION {
             return Err(GError {
                 kind: GErrorKind::Runtime,
-                message: format!(
-                    "不支持的字节码版本: 期望 {}, 实际 {}",
-                    VERSION, version
-                ),
+                message: format!("不支持的字节码版本: 期望 {}, 实际 {}", VERSION, version),
             });
         }
 
@@ -41,13 +34,7 @@ impl BytecodeReader {
         let string_pool = Self::read_string_pool(&mut reader)?;
         let functions = Self::read_functions(&mut reader)?;
 
-        Ok(BytecodeModule {
-            name,
-            version,
-            constants,
-            string_pool,
-            functions,
-        })
+        Ok(BytecodeModule { name, version, constants, string_pool, functions })
     }
 
     /// 读取常量池
@@ -68,10 +55,7 @@ impl BytecodeReader {
                 4 => BytecodeValue::Entity(reader.read_u64()?),
                 5 => BytecodeValue::Null,
                 _ => {
-                    return Err(GError {
-                        kind: GErrorKind::Runtime,
-                        message: format!("未知的常量类型标签: {}", tag),
-                    });
+                    return Err(GError { kind: GErrorKind::Runtime, message: format!("未知的常量类型标签: {}", tag) });
                 }
             };
             constants.push(value);
@@ -93,9 +77,7 @@ impl BytecodeReader {
     }
 
     /// 读取函数列表
-    fn read_functions(
-        reader: &mut BinaryReader,
-    ) -> GResult<Vec<BytecodeFunction>> {
+    fn read_functions(reader: &mut BinaryReader) -> GResult<Vec<BytecodeFunction>> {
         let count = reader.read_u32()?;
         let mut functions = Vec::with_capacity(count as usize);
 
@@ -111,40 +93,27 @@ impl BytecodeReader {
                 instructions.push(Self::read_instruction(reader)?);
             }
 
-            functions.push(BytecodeFunction {
-                name,
-                param_count,
-                local_count,
-                instructions,
-            });
+            functions.push(BytecodeFunction { name, param_count, local_count, instructions });
         }
 
         Ok(functions)
     }
 
     /// 读取单条指令
-    fn read_instruction(
-        reader: &mut BinaryReader,
-    ) -> GResult<BytecodeInstruction> {
+    fn read_instruction(reader: &mut BinaryReader) -> GResult<BytecodeInstruction> {
         let opcode_byte = reader.read_u8()?;
-        let opcode = BytecodeOpCode::from_byte(opcode_byte).ok_or_else(|| GError {
-            kind: GErrorKind::Runtime,
-            message: format!("未知的操作码: 0x{:02X}", opcode_byte),
-        })?;
+        let opcode = BytecodeOpCode::from_byte(opcode_byte)
+            .ok_or_else(|| GError {
+                kind: GErrorKind::Runtime, message: format!("未知的操作码: 0x{:02X}", opcode_byte)
+            })?;
 
         let instruction = match opcode {
-            BytecodeOpCode::LoadConst => BytecodeInstruction::LoadConst {
-                index: reader.read_u32()?,
-            },
+            BytecodeOpCode::LoadConst => BytecodeInstruction::LoadConst { index: reader.read_u32()? },
             BytecodeOpCode::LoadNull => BytecodeInstruction::LoadNull,
             BytecodeOpCode::LoadTrue => BytecodeInstruction::LoadTrue,
             BytecodeOpCode::LoadFalse => BytecodeInstruction::LoadFalse,
-            BytecodeOpCode::LoadLocal => BytecodeInstruction::LoadLocal {
-                index: reader.read_u32()?,
-            },
-            BytecodeOpCode::StoreLocal => BytecodeInstruction::StoreLocal {
-                index: reader.read_u32()?,
-            },
+            BytecodeOpCode::LoadLocal => BytecodeInstruction::LoadLocal { index: reader.read_u32()? },
+            BytecodeOpCode::StoreLocal => BytecodeInstruction::StoreLocal { index: reader.read_u32()? },
             BytecodeOpCode::Add => BytecodeInstruction::Add,
             BytecodeOpCode::Sub => BytecodeInstruction::Sub,
             BytecodeOpCode::Mul => BytecodeInstruction::Mul,
@@ -160,34 +129,19 @@ impl BytecodeReader {
             BytecodeOpCode::And => BytecodeInstruction::And,
             BytecodeOpCode::Or => BytecodeInstruction::Or,
             BytecodeOpCode::Not => BytecodeInstruction::Not,
-            BytecodeOpCode::Jump => BytecodeInstruction::Jump {
-                address: reader.read_u32()?,
-            },
-            BytecodeOpCode::JumpIfFalse => BytecodeInstruction::JumpIfFalse {
-                address: reader.read_u32()?,
-            },
-            BytecodeOpCode::JumpIfTrue => BytecodeInstruction::JumpIfTrue {
-                address: reader.read_u32()?,
-            },
-            BytecodeOpCode::Call => BytecodeInstruction::Call {
-                arg_count: reader.read_u32()?,
-            },
+            BytecodeOpCode::Jump => BytecodeInstruction::Jump { address: reader.read_u32()? },
+            BytecodeOpCode::JumpIfFalse => BytecodeInstruction::JumpIfFalse { address: reader.read_u32()? },
+            BytecodeOpCode::JumpIfTrue => BytecodeInstruction::JumpIfTrue { address: reader.read_u32()? },
+            BytecodeOpCode::Call => BytecodeInstruction::Call { arg_count: reader.read_u32()? },
             BytecodeOpCode::Return => BytecodeInstruction::Return,
             BytecodeOpCode::SpawnEntity => BytecodeInstruction::SpawnEntity,
             BytecodeOpCode::DespawnEntity => BytecodeInstruction::DespawnEntity,
-            BytecodeOpCode::AddComponent => BytecodeInstruction::AddComponent {
-                type_name_index: reader.read_u32()?,
-            },
-            BytecodeOpCode::GetComponent => BytecodeInstruction::GetComponent {
-                type_name_index: reader.read_u32()?,
-            },
-            BytecodeOpCode::SetComponent => BytecodeInstruction::SetComponent {
-                type_name_index: reader.read_u32()?,
-            },
-            BytecodeOpCode::HostCall => BytecodeInstruction::HostCall {
-                name_index: reader.read_u32()?,
-                arg_count: reader.read_u32()?,
-            },
+            BytecodeOpCode::AddComponent => BytecodeInstruction::AddComponent { type_name_index: reader.read_u32()? },
+            BytecodeOpCode::GetComponent => BytecodeInstruction::GetComponent { type_name_index: reader.read_u32()? },
+            BytecodeOpCode::SetComponent => BytecodeInstruction::SetComponent { type_name_index: reader.read_u32()? },
+            BytecodeOpCode::HostCall => {
+                BytecodeInstruction::HostCall { name_index: reader.read_u32()?, arg_count: reader.read_u32()? }
+            }
             BytecodeOpCode::Pop => BytecodeInstruction::Pop,
             BytecodeOpCode::Dup => BytecodeInstruction::Dup,
         };
@@ -195,5 +149,3 @@ impl BytecodeReader {
         Ok(instruction)
     }
 }
-
-

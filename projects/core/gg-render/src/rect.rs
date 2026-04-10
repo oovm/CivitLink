@@ -23,12 +23,7 @@ impl Rect {
     /// - `width` - 宽度
     /// - `height` - 高度
     pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
-        Self {
-            x,
-            y,
-            width,
-            height,
-        }
+        Self { x, y, width, height }
     }
 
     /// 判断给定点是否在矩形内部
@@ -42,9 +37,6 @@ impl Rect {
     ///
     /// 如果点在矩形内部（含边界）返回 `true`，否则返回 `false`
     pub fn contains(&self, x: f32, y: f32) -> bool {
-        x >= self.x
-            && x <= self.x + self.width
-            && y >= self.y
-            && y <= self.y + self.height
+        x >= self.x && x <= self.x + self.width && y >= self.y && y <= self.y + self.height
     }
 }

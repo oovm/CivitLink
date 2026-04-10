@@ -88,27 +88,18 @@ fn find_fold_action(constants: &[IrValue], instructions: &[OpCode], i: usize) ->
                 let op = &instructions[i + 2];
 
                 if let Some(result) = try_fold_binary(a_val, b_val, op) {
-                    return Some(FoldAction::Binary {
-                        result,
-                        consumed: 3,
-                    });
+                    return Some(FoldAction::Binary { result, consumed: 3 });
                 }
 
                 if let Some(result) = try_fold_comparison(a_val, b_val, op) {
-                    return Some(FoldAction::Binary {
-                        result,
-                        consumed: 3,
-                    });
+                    return Some(FoldAction::Binary { result, consumed: 3 });
                 }
             }
         }
 
         if i + 1 < instructions.len() {
             if let Some(result) = try_fold_unary(a_val, &instructions[i + 1]) {
-                return Some(FoldAction::Unary {
-                    result,
-                    consumed: 2,
-                });
+                return Some(FoldAction::Unary { result, consumed: 2 });
             }
         }
     }
@@ -138,14 +129,16 @@ fn try_fold_binary(a: &IrValue, b: &IrValue, op: &OpCode) -> Option<IrValue> {
             (IrValue::Int(x), IrValue::Int(y)) => {
                 if *y != 0 {
                     Some(IrValue::Int(x / y))
-                } else {
+                }
+                else {
                     None
                 }
             }
             (IrValue::Float(x), IrValue::Float(y)) => {
                 if *y != 0.0 {
                     Some(IrValue::Float(x / y))
-                } else {
+                }
+                else {
                     None
                 }
             }
@@ -155,14 +148,16 @@ fn try_fold_binary(a: &IrValue, b: &IrValue, op: &OpCode) -> Option<IrValue> {
             (IrValue::Int(x), IrValue::Int(y)) => {
                 if *y != 0 {
                     Some(IrValue::Int(x % y))
-                } else {
+                }
+                else {
                     None
                 }
             }
             (IrValue::Float(x), IrValue::Float(y)) => {
                 if *y != 0.0 {
                     Some(IrValue::Float(x % y))
-                } else {
+                }
+                else {
                     None
                 }
             }
@@ -191,22 +186,12 @@ where
     F: Fn(&IrValue, &IrValue) -> bool,
 {
     match (a, b) {
-        (IrValue::Int(x), IrValue::Int(y)) => Some(IrValue::Bool(cmp(
-            &IrValue::Int(*x),
-            &IrValue::Int(*y),
-        ))),
-        (IrValue::Float(x), IrValue::Float(y)) => Some(IrValue::Bool(cmp(
-            &IrValue::Float(*x),
-            &IrValue::Float(*y),
-        ))),
-        (IrValue::Bool(x), IrValue::Bool(y)) => Some(IrValue::Bool(cmp(
-            &IrValue::Bool(*x),
-            &IrValue::Bool(*y),
-        ))),
-        (IrValue::String(x), IrValue::String(y)) => Some(IrValue::Bool(cmp(
-            &IrValue::String(x.clone()),
-            &IrValue::String(y.clone()),
-        ))),
+        (IrValue::Int(x), IrValue::Int(y)) => Some(IrValue::Bool(cmp(&IrValue::Int(*x), &IrValue::Int(*y)))),
+        (IrValue::Float(x), IrValue::Float(y)) => Some(IrValue::Bool(cmp(&IrValue::Float(*x), &IrValue::Float(*y)))),
+        (IrValue::Bool(x), IrValue::Bool(y)) => Some(IrValue::Bool(cmp(&IrValue::Bool(*x), &IrValue::Bool(*y)))),
+        (IrValue::String(x), IrValue::String(y)) => {
+            Some(IrValue::Bool(cmp(&IrValue::String(x.clone()), &IrValue::String(y.clone()))))
+        }
         _ => None,
     }
 }
@@ -226,5 +211,3 @@ fn try_fold_unary(a: &IrValue, op: &OpCode) -> Option<IrValue> {
         _ => None,
     }
 }
-
-

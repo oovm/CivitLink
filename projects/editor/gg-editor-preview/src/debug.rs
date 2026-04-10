@@ -22,12 +22,7 @@ pub struct PreviewDebugger {
 impl PreviewDebugger {
     /// 创建新的预览调试器
     pub fn new() -> Self {
-        Self {
-            is_paused: false,
-            current_node_id: None,
-            dialogue_history: Vec::new(),
-            entity_count: 0,
-        }
+        Self { is_paused: false, current_node_id: None, dialogue_history: Vec::new(), entity_count: 0 }
     }
 
     /// 捕获当前状态

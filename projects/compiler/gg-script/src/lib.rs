@@ -7,9 +7,7 @@ pub mod compiler;
 
 use std::path::Path;
 
-use gg_bytecode::format::BytecodeModule;
-use gg_bytecode::reader::BytecodeReader;
-use gg_bytecode::writer::BytecodeWriter;
+use gg_bytecode::{format::BytecodeModule, reader::BytecodeReader, writer::BytecodeWriter};
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ir::IrModule;
 use oak_core::{Builder, SourceText};
@@ -65,10 +63,7 @@ impl ScriptCompiler {
                 let compiler = ValkyrieCompiler::new(module_name);
                 compiler.compile(&root, module_name)
             }
-            Err(e) => Err(GError {
-                kind: GErrorKind::Runtime,
-                message: format!("Valkyrie parse error: {}", e),
-            }),
+            Err(e) => Err(GError { kind: GErrorKind::Runtime, message: format!("Valkyrie parse error: {}", e) }),
         }
     }
 }
@@ -88,22 +83,15 @@ pub struct ScriptLoader {
 impl ScriptLoader {
     /// 创建新的脚本加载器
     pub fn new() -> Self {
-        Self {
-            compiler: ScriptCompiler::new(),
-        }
+        Self { compiler: ScriptCompiler::new() }
     }
 
     /// 从文件加载脚本并编译为字节码模块
     pub fn load_file(&self, path: &Path) -> GResult<BytecodeModule> {
-        let source = std::fs::read_to_string(path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read script file: {}", e),
-        })?;
+        let source = std::fs::read_to_string(path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read script file: {}", e) })?;
 
-        let module_name = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("unknown");
+        let module_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("unknown");
 
         self.compiler.compile(&source, module_name)
     }
@@ -115,15 +103,10 @@ impl ScriptLoader {
 
     /// 从文件加载脚本并编译为 IR 模块
     pub fn load_file_as_ir(&self, path: &Path) -> GResult<IrModule> {
-        let source = std::fs::read_to_string(path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read script file: {}", e),
-        })?;
+        let source = std::fs::read_to_string(path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read script file: {}", e) })?;
 
-        let module_name = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("unknown");
+        let module_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("unknown");
 
         self.compiler.compile_to_ir(&source, module_name)
     }
@@ -134,5 +117,3 @@ impl Default for ScriptLoader {
         Self::new()
     }
 }
-
-

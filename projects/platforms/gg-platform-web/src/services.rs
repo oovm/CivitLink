@@ -14,10 +14,6 @@ impl WebPlatformServices {
     ///
     /// - `base_url` - 资源文件的基础 URL 路径
     pub fn create(base_url: impl Into<String>) -> PlatformServices {
-        PlatformServices::new(
-            Box::new(WebFileSystem::new(base_url)),
-            Box::new(WebInput::new()),
-            Box::new(WebTime::new()),
-        )
+        PlatformServices::new(Box::new(WebFileSystem::new(base_url)), Box::new(WebInput::new()), Box::new(WebTime::new()))
     }
 }

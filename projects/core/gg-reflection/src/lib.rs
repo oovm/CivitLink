@@ -3,8 +3,10 @@
 //! GG 引擎反射模块
 //! 提供运行时类型信息、属性编辑和类型注册功能
 
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+};
 
 /// 反射基础 trait，为类型提供运行时自省能力
 pub trait PartialReflect {
@@ -35,16 +37,8 @@ impl TypeInfo {
     /// 为类型 `T` 创建 `TypeInfo`
     pub fn new<T: 'static>() -> Self {
         let type_name = std::any::type_name::<T>();
-        let short_name = type_name
-            .rsplit("::")
-            .next()
-            .unwrap_or(type_name)
-            .to_string();
-        Self {
-            type_id: TypeId::of::<T>(),
-            type_name,
-            short_name,
-        }
+        let short_name = type_name.rsplit("::").next().unwrap_or(type_name).to_string();
+        Self { type_id: TypeId::of::<T>(), type_name, short_name }
     }
 }
 
@@ -57,9 +51,7 @@ pub struct TypeRegistration {
 impl TypeRegistration {
     /// 为类型 `T` 创建 `TypeRegistration`
     pub fn new<T: 'static>() -> Self {
-        Self {
-            type_info: TypeInfo::new::<T>(),
-        }
+        Self { type_info: TypeInfo::new::<T>() }
     }
 
     /// 获取类型信息引用
@@ -82,9 +74,7 @@ pub struct ReflectionRegistry {
 impl ReflectionRegistry {
     /// 创建空的反射注册表
     pub fn new() -> Self {
-        Self {
-            registrations: HashMap::new(),
-        }
+        Self { registrations: HashMap::new() }
     }
 
     /// 注册类型 `T`
@@ -140,12 +130,7 @@ pub struct PropertyInfo {
 impl PropertyInfo {
     /// 创建新的属性信息
     pub fn new(name: impl Into<String>, type_name: &'static str, writable: bool) -> Self {
-        Self {
-            name: name.into(),
-            type_name,
-            writable,
-            description: None,
-        }
+        Self { name: name.into(), type_name, writable, description: None }
     }
 
     /// 设置属性描述并返回自身

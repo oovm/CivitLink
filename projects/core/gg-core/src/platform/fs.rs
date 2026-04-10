@@ -49,10 +49,7 @@ pub trait FileSystem {
     /// 读取文件内容为字符串
     fn read_to_string(&self, path: &Path) -> GResult<String> {
         let bytes = self.read(path)?;
-        String::from_utf8(bytes).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: e.to_string(),
-        })
+        String::from_utf8(bytes).map_err(|e| GError { kind: GErrorKind::Io, message: e.to_string() })
     }
 
     /// 写入字节到文件

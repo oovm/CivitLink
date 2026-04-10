@@ -18,27 +18,19 @@ impl WebTime {
     /// 创建新的 Web 时间实例
     pub fn new() -> Self {
         let now_ms = Self::current_time_ms();
-        Self {
-            start_ms: now_ms,
-            last_update_ms: now_ms,
-            delta: Duration::ZERO,
-        }
+        Self { start_ms: now_ms, last_update_ms: now_ms, delta: Duration::ZERO }
     }
 
     /// 获取当前时间戳（毫秒）
     fn current_time_ms() -> f64 {
         #[cfg(target_arch = "wasm32")]
         {
-            web_sys::window()
-                .and_then(|w| w.performance())
-                .map(|p| p.now())
-                .unwrap_or_else(js_sys::Date::now)
+            web_sys::window().and_then(|w| w.performance()).map(|p| p.now()).unwrap_or_else(js_sys::Date::now)
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            let duration = std::time::SystemTime::now()
-                .duration_since(std::time::SystemTime::UNIX_EPOCH)
-                .unwrap_or(Duration::ZERO);
+            let duration =
+                std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap_or(Duration::ZERO);
             duration.as_secs_f64() * 1000.0
         }
     }

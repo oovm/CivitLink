@@ -3,11 +3,13 @@
 //! App 封装阶段调度器和 ECS 世界，提供便捷的系统注册和插件管理接口。
 //! RuntimePlugin trait 扩展了 Plugin，允许插件通过 configure 方法注册系统到指定阶段。
 
-use std::sync::Arc;
+use crate::{
+    scheduler::StageScheduler,
+    stage::{Stage, SystemFn, SystemSetId},
+};
 use gg_core::{GError, GErrorKind, GResult, plugin::Plugin};
 use gg_ecs::World;
-use crate::scheduler::StageScheduler;
-use crate::stage::{Stage, SystemFn, SystemSetId};
+use std::sync::Arc;
 
 /// 运行时插件 trait
 ///
@@ -58,23 +60,14 @@ pub struct App {
 impl App {
     /// 创建新的应用程序
     pub fn new() -> Self {
-        Self {
-            scheduler: StageScheduler::new(),
-            world: World::new(),
-            plugins: Vec::new(),
-        }
+        Self { scheduler: StageScheduler::new(), world: World::new(), plugins: Vec::new() }
     }
 
     /// 添加系统到指定阶段
     ///
     /// 返回 `&mut Self` 以支持链式调用。
     /// 如需指定排序约束，请通过 `scheduler_mut()` 使用构建器 API。
-    pub fn add_systems(
-        &mut self,
-        name: impl Into<String>,
-        system: SystemFn,
-        stage: Stage,
-    ) -> &mut Self {
+    pub fn add_systems(&mut self, name: impl Into<String>, system: SystemFn, stage: Stage) -> &mut Self {
         self.scheduler.add_system_to_stage(name, system, stage);
         self
     }
@@ -82,68 +75,38 @@ impl App {
     /// 添加启动系统（Startup 阶段）
     ///
     /// 启动系统仅在首次 tick 时执行一次。
-    pub fn add_startup_system(
-        &mut self,
-        name: impl Into<String>,
-        system: SystemFn,
-    ) -> &mut Self {
-        self.scheduler
-            .add_system_to_stage(name, system, Stage::Startup);
+    pub fn add_startup_system(&mut self, name: impl Into<String>, system: SystemFn) -> &mut Self {
+        self.scheduler.add_system_to_stage(name, system, Stage::Startup);
         self
     }
 
     /// 添加预更新系统（PreUpdate 阶段）
-    pub fn add_pre_update_system(
-        &mut self,
-        name: impl Into<String>,
-        system: SystemFn,
-    ) -> &mut Self {
-        self.scheduler
-            .add_system_to_stage(name, system, Stage::PreUpdate);
+    pub fn add_pre_update_system(&mut self, name: impl Into<String>, system: SystemFn) -> &mut Self {
+        self.scheduler.add_system_to_stage(name, system, Stage::PreUpdate);
         self
     }
 
     /// 添加更新系统（Update 阶段）
-    pub fn add_update_system(
-        &mut self,
-        name: impl Into<String>,
-        system: SystemFn,
-    ) -> &mut Self {
-        self.scheduler
-            .add_system_to_stage(name, system, Stage::Update);
+    pub fn add_update_system(&mut self, name: impl Into<String>, system: SystemFn) -> &mut Self {
+        self.scheduler.add_system_to_stage(name, system, Stage::Update);
         self
     }
 
     /// 添加后更新系统（PostUpdate 阶段）
-    pub fn add_post_update_system(
-        &mut self,
-        name: impl Into<String>,
-        system: SystemFn,
-    ) -> &mut Self {
-        self.scheduler
-            .add_system_to_stage(name, system, Stage::PostUpdate);
+    pub fn add_post_update_system(&mut self, name: impl Into<String>, system: SystemFn) -> &mut Self {
+        self.scheduler.add_system_to_stage(name, system, Stage::PostUpdate);
         self
     }
 
     /// 添加渲染系统（Render 阶段）
-    pub fn add_render_system(
-        &mut self,
-        name: impl Into<String>,
-        system: SystemFn,
-    ) -> &mut Self {
-        self.scheduler
-            .add_system_to_stage(name, system, Stage::Render);
+    pub fn add_render_system(&mut self, name: impl Into<String>, system: SystemFn) -> &mut Self {
+        self.scheduler.add_system_to_stage(name, system, Stage::Render);
         self
     }
 
     /// 添加退出系统（Exit 阶段）
-    pub fn add_exit_system(
-        &mut self,
-        name: impl Into<String>,
-        system: SystemFn,
-    ) -> &mut Self {
-        self.scheduler
-            .add_system_to_stage(name, system, Stage::Exit);
+    pub fn add_exit_system(&mut self, name: impl Into<String>, system: SystemFn) -> &mut Self {
+        self.scheduler.add_system_to_stage(name, system, Stage::Exit);
         self
     }
 

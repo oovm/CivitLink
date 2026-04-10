@@ -5,10 +5,10 @@ use std::collections::HashMap;
 
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::World;
-use gg_galgame_schema::components::{
-    AudioControl, DialogueCommand, PortraitState, SceneBackground, SeTrigger,
+use gg_galgame_schema::{
+    components::{AudioControl, DialogueCommand, PortraitState, SceneBackground, SeTrigger},
+    resources::{GameVariables, WaitTimer},
 };
-use gg_galgame_schema::resources::{GameVariables, WaitTimer};
 use gg_render::TextureId;
 
 /// 命令处理器 trait
@@ -34,9 +34,7 @@ pub struct CommandDispatcher {
 impl CommandDispatcher {
     /// 创建新的命令分发器
     pub fn new() -> Self {
-        let mut dispatcher = Self {
-            handlers: HashMap::new(),
-        };
+        let mut dispatcher = Self { handlers: HashMap::new() };
         dispatcher.register_builtin_handlers();
         dispatcher
     }
@@ -77,22 +75,10 @@ impl CommandDispatcher {
         self.register_handler("play_bgm".to_string(), Box::new(PlayBgmHandler));
         self.register_handler("stop_bgm".to_string(), Box::new(StopBgmHandler));
         self.register_handler("play_se".to_string(), Box::new(PlaySeHandler));
-        self.register_handler(
-            "show_portrait".to_string(),
-            Box::new(ShowPortraitHandler),
-        );
-        self.register_handler(
-            "hide_portrait".to_string(),
-            Box::new(HidePortraitHandler),
-        );
-        self.register_handler(
-            "change_background".to_string(),
-            Box::new(ChangeBackgroundHandler),
-        );
-        self.register_handler(
-            "set_variable".to_string(),
-            Box::new(SetVariableHandler),
-        );
+        self.register_handler("show_portrait".to_string(), Box::new(ShowPortraitHandler));
+        self.register_handler("hide_portrait".to_string(), Box::new(HidePortraitHandler));
+        self.register_handler("change_background".to_string(), Box::new(ChangeBackgroundHandler));
+        self.register_handler("set_variable".to_string(), Box::new(SetVariableHandler));
         self.register_handler("wait".to_string(), Box::new(WaitHandler));
     }
 }
@@ -105,18 +91,10 @@ pub struct PlayBgmHandler;
 
 impl CommandHandler for PlayBgmHandler {
     fn execute(&self, command: &DialogueCommand, world: &mut World) -> GResult<()> {
-        if let DialogueCommand::PlayBgm {
-            asset_path,
-            volume,
-            fade_in_secs,
-        } = command
-        {
+        if let DialogueCommand::PlayBgm { asset_path, volume, fade_in_secs } = command {
             let audio = world
                 .get_component_mut::<AudioControl>(0)
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "AudioControl component not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "AudioControl component not found".to_string() })?;
             audio.bgm_path = Some(asset_path.clone());
             audio.bgm_volume = *volume;
             audio.bgm_fade_in_secs = *fade_in_secs;
@@ -136,10 +114,7 @@ impl CommandHandler for StopBgmHandler {
         if let DialogueCommand::StopBgm { fade_out_secs } = command {
             let audio = world
                 .get_component_mut::<AudioControl>(0)
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "AudioControl component not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "AudioControl component not found".to_string() })?;
             audio.bgm_path = None;
             audio.bgm_fade_out_secs = *fade_out_secs;
         }
@@ -158,15 +133,8 @@ impl CommandHandler for PlaySeHandler {
         if let DialogueCommand::PlaySe { asset_path, volume } = command {
             let audio = world
                 .get_component_mut::<AudioControl>(0)
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "AudioControl component not found".to_string(),
-                })?;
-            audio.pending_se.push(SeTrigger {
-                asset_path: asset_path.clone(),
-                volume: *volume,
-                timestamp: None,
-            });
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "AudioControl component not found".to_string() })?;
+            audio.pending_se.push(SeTrigger { asset_path: asset_path.clone(), volume: *volume, timestamp: None });
         }
         Ok(())
     }
@@ -180,13 +148,7 @@ pub struct ShowPortraitHandler;
 
 impl CommandHandler for ShowPortraitHandler {
     fn execute(&self, command: &DialogueCommand, world: &mut World) -> GResult<()> {
-        if let DialogueCommand::ShowPortrait {
-            character_id,
-            expression,
-            position,
-            ..
-        } = command
-        {
+        if let DialogueCommand::ShowPortrait { character_id, expression, position, .. } = command {
             let entity = world.spawn().id();
             let portrait = PortraitState {
                 character_id: character_id.clone(),
@@ -234,17 +196,10 @@ pub struct ChangeBackgroundHandler;
 
 impl CommandHandler for ChangeBackgroundHandler {
     fn execute(&self, command: &DialogueCommand, world: &mut World) -> GResult<()> {
-        if let DialogueCommand::ChangeBackground {
-            asset_path,
-            transition,
-        } = command
-        {
+        if let DialogueCommand::ChangeBackground { asset_path, transition } = command {
             let background = world
                 .get_component_mut::<SceneBackground>(0)
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "SceneBackground component not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "SceneBackground component not found".to_string() })?;
             background.asset_path = Some(asset_path.clone());
             background.transition = transition.clone();
         }
@@ -263,10 +218,7 @@ impl CommandHandler for SetVariableHandler {
         if let DialogueCommand::SetVariable { name, value } = command {
             let variables = world
                 .get_resource_mut::<GameVariables>()
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "GameVariables resource not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "GameVariables resource not found".to_string() })?;
             variables.set_variable(name.clone(), value.clone());
         }
         Ok(())
@@ -282,9 +234,7 @@ pub struct WaitHandler;
 impl CommandHandler for WaitHandler {
     fn execute(&self, command: &DialogueCommand, world: &mut World) -> GResult<()> {
         if let DialogueCommand::Wait { duration_secs } = command {
-            world.insert_resource(WaitTimer {
-                remaining_secs: *duration_secs,
-            });
+            world.insert_resource(WaitTimer { remaining_secs: *duration_secs });
         }
         Ok(())
     }

@@ -3,11 +3,12 @@
 
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::{System, World};
-use gg_galgame_schema::components::{ChoiceState, DialogueNode};
-use gg_galgame_schema::resources::{DialogueHistory, GameVariables, HistoryEntry, WaitTimer};
+use gg_galgame_schema::{
+    components::{ChoiceState, DialogueNode},
+    resources::{DialogueHistory, GameVariables, HistoryEntry, WaitTimer},
+};
 
-use crate::commands::CommandDispatcher;
-use crate::typewriter::TypewriterState;
+use crate::{commands::CommandDispatcher, typewriter::TypewriterState};
 
 /// 默认打字机显示速度（字符/秒）
 const DEFAULT_TYPEWRITER_SPEED: f32 = 30.0;
@@ -29,9 +30,7 @@ pub struct DialogueSystem {
 impl DialogueSystem {
     /// 创建新的对话系统
     pub fn new() -> Self {
-        Self {
-            dispatcher: CommandDispatcher::new(),
-        }
+        Self { dispatcher: CommandDispatcher::new() }
     }
 }
 
@@ -68,10 +67,7 @@ impl System for DialogueSystem {
         let current_node_id = {
             let history = world
                 .get_resource::<DialogueHistory>()
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "DialogueHistory resource not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "DialogueHistory resource not found".to_string() })?;
             history.current_node_id.clone()
         };
 
@@ -90,17 +86,9 @@ impl System for DialogueSystem {
                     }
                 }
             }
-            let node = found_node.ok_or_else(|| GError {
-                kind: GErrorKind::Ecs,
-                message: format!("DialogueNode '{}' not found", current_id),
-            })?;
-            (
-                node.speaker_id.clone(),
-                node.text.clone(),
-                node.commands.clone(),
-                node.choices.clone(),
-                node.next_node_id.clone(),
-            )
+            let node = found_node
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: format!("DialogueNode '{}' not found", current_id) })?;
+            (node.speaker_id.clone(), node.text.clone(), node.commands.clone(), node.choices.clone(), node.next_node_id.clone())
         };
 
         for command in &commands {
@@ -114,35 +102,23 @@ impl System for DialogueSystem {
         if !choices.is_empty() {
             let choice_state = world
                 .get_component_mut::<ChoiceState>(0)
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "ChoiceState component not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "ChoiceState component not found".to_string() })?;
             choice_state.choices = choices;
             choice_state.selected_index = None;
             choice_state.is_active = true;
-        } else if let Some(next_id) = next_node_id {
+        }
+        else if let Some(next_id) = next_node_id {
             let history = world
                 .get_resource_mut::<DialogueHistory>()
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "DialogueHistory resource not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "DialogueHistory resource not found".to_string() })?;
             history.current_node_id = Some(next_id);
         }
 
         let history = world
             .get_resource_mut::<DialogueHistory>()
-            .ok_or_else(|| GError {
-                kind: GErrorKind::Ecs,
-                message: "DialogueHistory resource not found".to_string(),
-            })?;
+            .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "DialogueHistory resource not found".to_string() })?;
         let speaker_name = speaker_id;
-        history.entries.push(HistoryEntry {
-            speaker_name,
-            text,
-            timestamp: 0.0,
-        });
+        history.entries.push(HistoryEntry { speaker_name, text, timestamp: 0.0 });
 
         Ok(())
     }
@@ -196,11 +172,7 @@ impl System for ChoiceSystem {
         if selected_index >= choices.len() {
             return Err(GError {
                 kind: GErrorKind::Ecs,
-                message: format!(
-                    "Choice index {} out of bounds (len: {})",
-                    selected_index,
-                    choices.len()
-                ),
+                message: format!("Choice index {} out of bounds (len: {})", selected_index, choices.len()),
             });
         }
 
@@ -209,15 +181,9 @@ impl System for ChoiceSystem {
         if let Some(ref condition) = choice.condition {
             let variables = world
                 .get_resource::<GameVariables>()
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "GameVariables resource not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "GameVariables resource not found".to_string() })?;
             if !variables.evaluate_condition(condition) {
-                return Err(GError {
-                    kind: GErrorKind::Plugin,
-                    message: format!("Condition '{}' not satisfied", condition),
-                });
+                return Err(GError { kind: GErrorKind::Plugin, message: format!("Condition '{}' not satisfied", condition) });
             }
         }
 
@@ -225,10 +191,7 @@ impl System for ChoiceSystem {
         {
             let choice_state = world
                 .get_component_mut::<ChoiceState>(0)
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "ChoiceState component not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "ChoiceState component not found".to_string() })?;
             choice_state.is_active = false;
             choice_state.selected_index = None;
             choice_state.choices.clear();
@@ -236,10 +199,7 @@ impl System for ChoiceSystem {
 
         let history = world
             .get_resource_mut::<DialogueHistory>()
-            .ok_or_else(|| GError {
-                kind: GErrorKind::Ecs,
-                message: "DialogueHistory resource not found".to_string(),
-            })?;
+            .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "DialogueHistory resource not found".to_string() })?;
         history.current_node_id = Some(next_node_id);
 
         Ok(())
@@ -315,7 +275,8 @@ impl System for WaitSystem {
         let should_remove = if let Some(timer) = world.get_resource_mut::<WaitTimer>() {
             timer.remaining_secs -= self.delta_secs;
             timer.remaining_secs <= 0.0
-        } else {
+        }
+        else {
             false
         };
 

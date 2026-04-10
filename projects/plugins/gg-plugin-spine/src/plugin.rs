@@ -1,7 +1,9 @@
 //! Spine 动画插件模块
 
-use gg_core::plugin::{Plugin, PluginRegistrar};
-use gg_core::GResult;
+use gg_core::{
+    GResult,
+    plugin::{Plugin, PluginRegistrar},
+};
 
 use crate::systems::{SpineAnimationSystem, SpineRenderSystem};
 

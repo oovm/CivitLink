@@ -43,22 +43,10 @@ pub struct TransitionUniforms {
 
 /// 单位四边形的顶点数据
 const QUAD_VERTICES: [Vertex; 4] = [
-    Vertex {
-        position: [0.0, 0.0],
-        uv: [0.0, 0.0],
-    },
-    Vertex {
-        position: [1.0, 0.0],
-        uv: [1.0, 0.0],
-    },
-    Vertex {
-        position: [1.0, 1.0],
-        uv: [1.0, 1.0],
-    },
-    Vertex {
-        position: [0.0, 1.0],
-        uv: [0.0, 1.0],
-    },
+    Vertex { position: [0.0, 0.0], uv: [0.0, 0.0] },
+    Vertex { position: [1.0, 0.0], uv: [1.0, 0.0] },
+    Vertex { position: [1.0, 1.0], uv: [1.0, 1.0] },
+    Vertex { position: [0.0, 1.0], uv: [0.0, 1.0] },
 ];
 
 /// 单位四边形的索引数据
@@ -167,13 +155,7 @@ impl SpritePipeline {
             usage: wgpu::BufferUsages::INDEX,
         });
 
-        Self {
-            pipeline,
-            uniform_layout,
-            texture_layout,
-            vertex_buffer,
-            index_buffer,
-        }
+        Self { pipeline, uniform_layout, texture_layout, vertex_buffer, index_buffer }
     }
 
     /// 获取渲染管线的引用
@@ -207,18 +189,11 @@ impl SpritePipeline {
     ///
     /// - `device` - wgpu 设备
     /// - `buffer` - uniform 缓冲区
-    pub fn create_uniform_bind_group(
-        &self,
-        device: &wgpu::Device,
-        buffer: &wgpu::Buffer,
-    ) -> wgpu::BindGroup {
+    pub fn create_uniform_bind_group(&self, device: &wgpu::Device, buffer: &wgpu::Buffer) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("sprite_uniform_bind_group"),
             layout: &self.uniform_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: buffer.as_entire_binding(),
-            }],
+            entries: &[wgpu::BindGroupEntry { binding: 0, resource: buffer.as_entire_binding() }],
         })
     }
 }
@@ -320,11 +295,7 @@ impl TransitionPipeline {
             },
         );
 
-        Self {
-            pipeline,
-            uniform_layout,
-            texture_layout,
-        }
+        Self { pipeline, uniform_layout, texture_layout }
     }
 
     /// 获取渲染管线的引用
@@ -348,18 +319,11 @@ impl TransitionPipeline {
     ///
     /// - `device` - wgpu 设备
     /// - `buffer` - uniform 缓冲区
-    pub fn create_uniform_bind_group(
-        &self,
-        device: &wgpu::Device,
-        buffer: &wgpu::Buffer,
-    ) -> wgpu::BindGroup {
+    pub fn create_uniform_bind_group(&self, device: &wgpu::Device, buffer: &wgpu::Buffer) -> wgpu::BindGroup {
         device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("transition_uniform_bind_group"),
             layout: &self.uniform_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: buffer.as_entire_binding(),
-            }],
+            entries: &[wgpu::BindGroupEntry { binding: 0, resource: buffer.as_entire_binding() }],
         })
     }
 }
@@ -440,11 +404,7 @@ fn create_render_pipeline(
             conservative: false,
         },
         depth_stencil: None,
-        multisample: wgpu::MultisampleState {
-            count: 1,
-            mask: !0,
-            alpha_to_coverage_enabled: false,
-        },
+        multisample: wgpu::MultisampleState { count: 1, mask: !0, alpha_to_coverage_enabled: false },
         multiview: None,
         cache: None,
     })

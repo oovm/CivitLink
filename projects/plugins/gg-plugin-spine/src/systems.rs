@@ -40,10 +40,7 @@ impl System for SpineAnimationSystem {
 
     /// 执行 Spine 动画更新系统逻辑
     fn execute(&mut self, world: &mut GgWorld) -> GResult<()> {
-        let anim_entities: Vec<Entity> = world
-            .query::<SpineAnimationState>()
-            .map(|(e, _)| e)
-            .collect();
+        let anim_entities: Vec<Entity> = world.query::<SpineAnimationState>().map(|(e, _)| e).collect();
 
         for entity in anim_entities {
             if let Some(anim_state) = world.get_component_mut::<SpineAnimationState>(entity) {
@@ -52,7 +49,8 @@ impl System for SpineAnimationSystem {
                     if track.time >= track.duration {
                         if track.looping {
                             track.time %= track.duration;
-                        } else {
+                        }
+                        else {
                             track.time = track.duration;
                         }
                     }
@@ -60,10 +58,7 @@ impl System for SpineAnimationSystem {
             }
         }
 
-        let skeleton_entities: Vec<Entity> = world
-            .query::<SpineSkeleton>()
-            .map(|(e, _)| e)
-            .collect();
+        let skeleton_entities: Vec<Entity> = world.query::<SpineSkeleton>().map(|(e, _)| e).collect();
 
         for entity in skeleton_entities {
             if let Some(skeleton) = world.get_component_mut::<SpineSkeleton>(entity) {

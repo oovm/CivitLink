@@ -1,7 +1,9 @@
 use std::path::Path;
 
-use gg_core::platform::{DirEntry, FileMetadata, FileType, FileSystem};
-use gg_core::{GError, GErrorKind, GResult};
+use gg_core::{
+    GError, GErrorKind, GResult,
+    platform::{DirEntry, FileMetadata, FileSystem, FileType},
+};
 
 /// 桌面平台文件系统实现
 ///
@@ -21,24 +23,18 @@ impl FileSystem for DesktopFileSystem {
     }
 
     fn read(&self, path: &Path) -> GResult<Vec<u8>> {
-        std::fs::read(path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read file '{}': {}", path.display(), e),
-        })
+        std::fs::read(path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read file '{}': {}", path.display(), e) })
     }
 
     fn read_to_string(&self, path: &Path) -> GResult<String> {
-        std::fs::read_to_string(path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read file '{}': {}", path.display(), e),
-        })
+        std::fs::read_to_string(path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read file '{}': {}", path.display(), e) })
     }
 
     fn write(&self, path: &Path, content: &[u8]) -> GResult<()> {
-        std::fs::write(path, content).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to write file '{}': {}", path.display(), e),
-        })
+        std::fs::write(path, content)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write file '{}': {}", path.display(), e) })
     }
 
     fn create_dir_all(&self, path: &Path) -> GResult<()> {
@@ -56,29 +52,22 @@ impl FileSystem for DesktopFileSystem {
 
         let mut result = Vec::new();
         for entry in entries {
-            let entry = entry.map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Failed to read directory entry: {}", e),
-            })?;
+            let entry = entry
+                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
 
             let file_name = entry.file_name().to_string_lossy().to_string();
             let file_type = if entry
                 .file_type()
-                .map_err(|e| GError {
-                    kind: GErrorKind::Io,
-                    message: format!("Failed to get file type: {}", e),
-                })?
+                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to get file type: {}", e) })?
                 .is_dir()
             {
                 FileType::Directory
-            } else {
+            }
+            else {
                 FileType::File
             };
 
-            result.push(DirEntry {
-                name: file_name,
-                file_type,
-            });
+            result.push(DirEntry { name: file_name, file_type });
         }
 
         Ok(result)
@@ -92,23 +81,19 @@ impl FileSystem for DesktopFileSystem {
 
         let file_type = if meta.is_dir() {
             FileType::Directory
-        } else if meta.is_file() {
+        }
+        else if meta.is_file() {
             FileType::File
-        } else {
+        }
+        else {
             FileType::Symlink
         };
 
-        Ok(FileMetadata {
-            file_type,
-            len: meta.len(),
-            modified: meta.modified().ok(),
-        })
+        Ok(FileMetadata { file_type, len: meta.len(), modified: meta.modified().ok() })
     }
 
     fn remove_file(&self, path: &Path) -> GResult<()> {
-        std::fs::remove_file(path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to remove file '{}': {}", path.display(), e),
-        })
+        std::fs::remove_file(path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to remove file '{}': {}", path.display(), e) })
     }
 }

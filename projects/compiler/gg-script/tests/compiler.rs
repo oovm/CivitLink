@@ -16,10 +16,7 @@ fn compile_source(source: &str) -> GResult<IrModule> {
             let compiler = ValkyrieCompiler::new("test");
             compiler.compile(&root, "test")
         }
-        Err(e) => Err(GError {
-            kind: GErrorKind::Runtime,
-            message: format!("Parse error: {}", e),
-        }),
+        Err(e) => Err(GError { kind: GErrorKind::Runtime, message: format!("Parse error: {}", e) }),
     }
 }
 

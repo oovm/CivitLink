@@ -1,5 +1,5 @@
-use gg_core::GResult;
 use gg_bytecode::BytecodeValue;
+use gg_core::GResult;
 use std::path::Path;
 
 /// WASM 模块标识符
@@ -29,11 +29,7 @@ pub struct WasmSandboxConfig {
 
 impl Default for WasmSandboxConfig {
     fn default() -> Self {
-        Self {
-            max_memory_pages: 256,
-            execution_time_limit_ms: 0,
-            allowed_imports: Vec::new(),
-        }
+        Self { max_memory_pages: 256, execution_time_limit_ms: 0, allowed_imports: Vec::new() }
     }
 }
 
@@ -74,11 +70,7 @@ pub trait WasmRuntime {
     fn load_module_from_bytes(&mut self, bytes: &[u8], name: &str) -> GResult<WasmModuleId>;
 
     /// 实例化 WASM 模块
-    fn instantiate(
-        &mut self,
-        module_id: WasmModuleId,
-        config: &WasmSandboxConfig,
-    ) -> GResult<WasmInstanceId>;
+    fn instantiate(&mut self, module_id: WasmModuleId, config: &WasmSandboxConfig) -> GResult<WasmInstanceId>;
 
     /// 调用 WASM 函数
     fn call_function(
@@ -113,21 +105,10 @@ pub trait WasmHostFunctions {
     fn add_component(&mut self, entity_id: u64, component_type: &str, value: BytecodeValue);
 
     /// 获取组件字段
-    fn get_component_field(
-        &mut self,
-        entity_id: u64,
-        component_type: &str,
-        field: &str,
-    ) -> Option<BytecodeValue>;
+    fn get_component_field(&mut self, entity_id: u64, component_type: &str, field: &str) -> Option<BytecodeValue>;
 
     /// 设置组件字段
-    fn set_component_field(
-        &mut self,
-        entity_id: u64,
-        component_type: &str,
-        field: &str,
-        value: BytecodeValue,
-    );
+    fn set_component_field(&mut self, entity_id: u64, component_type: &str, field: &str, value: BytecodeValue);
 
     /// 调用宿主函数
     fn call_host_function(&mut self, name: &str, args: Vec<BytecodeValue>) -> Option<BytecodeValue>;

@@ -4,8 +4,10 @@ use gg_core::GResult;
 use gg_ecs::{GgWorld, System};
 use gg_render::Transform;
 
-use crate::components::{Tile, TileType};
-use crate::resources::{CollisionInfo, TileCollisionState, Tileset};
+use crate::{
+    components::{Tile, TileType},
+    resources::{CollisionInfo, TileCollisionState, Tileset},
+};
 
 /// 瓦片地图渲染系统
 ///
@@ -43,12 +45,7 @@ impl System for TilemapRenderSystem {
             let x = tile.col as f32 * tile_width;
             let y = tile.row as f32 * tile_height;
 
-            let _transform = Transform {
-                position: [x, y],
-                scale: [1.0, 1.0],
-                rotation: 0.0,
-                z_index: tile.layer_index as f32,
-            };
+            let _transform = Transform { position: [x, y], scale: [1.0, 1.0], rotation: 0.0, z_index: tile.layer_index as f32 };
         }
 
         Ok(())
@@ -79,11 +76,7 @@ impl System for TileCollisionSystem {
 
         for (entity, tile) in world.query::<Tile>() {
             if matches!(tile.tile_type, TileType::Solid) {
-                new_collisions.push(CollisionInfo {
-                    tile_entity: entity,
-                    tile_col: tile.col,
-                    tile_row: tile.row,
-                });
+                new_collisions.push(CollisionInfo { tile_entity: entity, tile_col: tile.col, tile_row: tile.row });
             }
         }
 

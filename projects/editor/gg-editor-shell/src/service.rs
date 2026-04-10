@@ -1,7 +1,9 @@
 //! 服务注册表
 
-use std::any::{Any, TypeId};
-use std::collections::HashMap;
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+};
 
 /// 类型擦除的服务容器
 ///
@@ -14,9 +16,7 @@ pub struct ServiceRegistry {
 impl ServiceRegistry {
     /// 创建空的服务注册表
     pub fn new() -> Self {
-        Self {
-            services: HashMap::new(),
-        }
+        Self { services: HashMap::new() }
     }
 
     /// 注册服务
@@ -28,16 +28,12 @@ impl ServiceRegistry {
 
     /// 获取服务引用
     pub fn get<T: Any>(&self) -> Option<&T> {
-        self.services
-            .get(&TypeId::of::<T>())
-            .and_then(|s| s.downcast_ref::<T>())
+        self.services.get(&TypeId::of::<T>()).and_then(|s| s.downcast_ref::<T>())
     }
 
     /// 获取服务可变引用
     pub fn get_mut<T: Any>(&mut self) -> Option<&mut T> {
-        self.services
-            .get_mut(&TypeId::of::<T>())
-            .and_then(|s| s.downcast_mut::<T>())
+        self.services.get_mut(&TypeId::of::<T>()).and_then(|s| s.downcast_mut::<T>())
     }
 }
 

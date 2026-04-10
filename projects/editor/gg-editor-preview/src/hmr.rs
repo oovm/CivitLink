@@ -20,11 +20,7 @@ pub struct HmrWatcher {
 impl HmrWatcher {
     /// 创建新的 HMR 文件监视器
     pub fn new() -> Self {
-        Self {
-            watched_paths: Vec::new(),
-            file_hashes: HashMap::new(),
-            changed_files: Vec::new(),
-        }
+        Self { watched_paths: Vec::new(), file_hashes: HashMap::new(), changed_files: Vec::new() }
     }
 
     /// 添加监视路径

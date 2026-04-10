@@ -67,10 +67,6 @@ impl TextureDescriptor {
     /// - `height` - 纹理高度（像素）
     /// - `format` - 像素格式
     pub fn new(width: u32, height: u32, format: PixelFormat) -> Self {
-        Self {
-            width,
-            height,
-            format,
-        }
+        Self { width, height, format }
     }
 }

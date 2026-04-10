@@ -8,10 +8,5 @@ pub mod manifest;
 /// 引擎清单模板
 pub mod template;
 
-pub use manifest::{
-    DisplaySection, EngineManifest, EngineSection, GameType, ModulesSection, PlatformEntry,
-    ToolchainSection,
-};
+pub use manifest::{DisplaySection, EngineManifest, EngineSection, GameType, ModulesSection, PlatformEntry, ToolchainSection};
 pub use template::{arpg_template, custom_template, visual_novel_template};
-
-

@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-use std::io::Cursor;
-use std::path::Path;
+use std::{collections::HashMap, io::Cursor, path::Path};
 
 use gg_core::{GError, GErrorKind, GResult};
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
@@ -64,12 +62,8 @@ impl CpalAudioEngine {
         match format {
             SoundFormat::Wav => {
                 if data.len() > 28 {
-                    let sample_rate = u32::from_le_bytes([
-                        data[24], data[25], data[26], data[27],
-                    ]);
-                    let byte_rate = u32::from_le_bytes([
-                        data[28], data[29], data[30], data[31],
-                    ]);
+                    let sample_rate = u32::from_le_bytes([data[24], data[25], data[26], data[27]]);
+                    let byte_rate = u32::from_le_bytes([data[28], data[29], data[30], data[31]]);
                     if byte_rate > 0 {
                         return (data.len() as f64 - 44.0) / byte_rate as f64;
                     }
@@ -86,10 +80,8 @@ impl CpalAudioEngine {
 
 impl AudioEngine for CpalAudioEngine {
     fn load_sound(&mut self, path: &Path) -> GResult<SoundId> {
-        let data = std::fs::read(path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read audio file {:?}: {}", path, e),
-        })?;
+        let data = std::fs::read(path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read audio file {:?}: {}", path, e) })?;
 
         let format = Self::guess_format(path).ok_or_else(|| GError {
             kind: GErrorKind::Asset,
@@ -108,12 +100,7 @@ impl AudioEngine for CpalAudioEngine {
 
         let sound_id = self.allocate_sound_id();
 
-        let descriptor = SoundDescriptor {
-            format,
-            duration_secs,
-            channels,
-            sample_rate,
-        };
+        let descriptor = SoundDescriptor { format, duration_secs, channels, sample_rate };
 
         self.sounds.insert(sound_id, data);
         self.descriptors.insert(sound_id, descriptor);
@@ -122,27 +109,24 @@ impl AudioEngine for CpalAudioEngine {
     }
 
     fn play(&mut self, sound_id: SoundId, volume: f32, looped: bool) -> GResult<()> {
-        let data = self.sounds.get(&sound_id).ok_or_else(|| GError {
-            kind: GErrorKind::Asset,
-            message: format!("Sound not found: {:?}", sound_id),
-        })?;
+        let data = self
+            .sounds
+            .get(&sound_id)
+            .ok_or_else(|| GError { kind: GErrorKind::Asset, message: format!("Sound not found: {:?}", sound_id) })?;
 
-        let sink = Sink::try_new(&self.stream_handle).map_err(|e| GError {
-            kind: GErrorKind::Platform,
-            message: format!("Failed to create audio sink: {}", e),
-        })?;
+        let sink = Sink::try_new(&self.stream_handle)
+            .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("Failed to create audio sink: {}", e) })?;
 
         sink.set_volume(volume);
 
         let cursor = Cursor::new(data.clone());
-        let source = Decoder::new(cursor).map_err(|e| GError {
-            kind: GErrorKind::Asset,
-            message: format!("Failed to decode audio for playback: {}", e),
-        })?;
+        let source = Decoder::new(cursor)
+            .map_err(|e| GError { kind: GErrorKind::Asset, message: format!("Failed to decode audio for playback: {}", e) })?;
 
         if looped {
             sink.append(source.repeat_infinite());
-        } else {
+        }
+        else {
             sink.append(source);
         }
 
@@ -162,11 +146,9 @@ impl AudioEngine for CpalAudioEngine {
         if let Some(sink) = self.active_sinks.get(&sound_id) {
             sink.set_volume(volume);
             Ok(())
-        } else {
-            Err(GError {
-                kind: GErrorKind::Asset,
-                message: format!("Active sound not found: {:?}", sound_id),
-            })
+        }
+        else {
+            Err(GError { kind: GErrorKind::Asset, message: format!("Active sound not found: {:?}", sound_id) })
         }
     }
 
@@ -174,11 +156,9 @@ impl AudioEngine for CpalAudioEngine {
         if let Some(sink) = self.active_sinks.get(&sound_id) {
             sink.pause();
             Ok(())
-        } else {
-            Err(GError {
-                kind: GErrorKind::Asset,
-                message: format!("Active sound not found: {:?}", sound_id),
-            })
+        }
+        else {
+            Err(GError { kind: GErrorKind::Asset, message: format!("Active sound not found: {:?}", sound_id) })
         }
     }
 
@@ -186,22 +166,16 @@ impl AudioEngine for CpalAudioEngine {
         if let Some(sink) = self.active_sinks.get(&sound_id) {
             sink.play();
             Ok(())
-        } else {
-            Err(GError {
-                kind: GErrorKind::Asset,
-                message: format!("Active sound not found: {:?}", sound_id),
-            })
+        }
+        else {
+            Err(GError { kind: GErrorKind::Asset, message: format!("Active sound not found: {:?}", sound_id) })
         }
     }
 
     fn update(&mut self, context: &AudioContext) -> GResult<()> {
         for command in context.commands() {
             match command.clone() {
-                AudioCommand::Play {
-                    sound_id,
-                    volume,
-                    looped,
-                } => {
+                AudioCommand::Play { sound_id, volume, looped } => {
                     self.play(sound_id, volume, looped)?;
                 }
                 AudioCommand::Stop { sound_id } => {

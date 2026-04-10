@@ -31,15 +31,9 @@ pub fn generate_daily_conversation() -> Vec<DialogueNode> {
             commands: Vec::new(),
             choices: vec![
                 Choice {
-                    text: "是啊，要不要一起散步？".to_string(),
-                    next_node_id: "daily_walk".to_string(),
-                    condition: None,
+                    text: "是啊，要不要一起散步？".to_string(), next_node_id: "daily_walk".to_string(), condition: None
                 },
-                Choice {
-                    text: "嗯...我还有点事".to_string(),
-                    next_node_id: "daily_busy".to_string(),
-                    condition: None,
-                },
+                Choice { text: "嗯...我还有点事".to_string(), next_node_id: "daily_busy".to_string(), condition: None },
             ],
             next_node_id: None,
         },
@@ -80,14 +74,10 @@ pub fn generate_confession_scene() -> Vec<DialogueNode> {
             commands: Vec::new(),
             choices: vec![
                 Choice {
-                    text: "鼓起勇气告白".to_string(),
-                    next_node_id: "confession_accept".to_string(),
-                    condition: None,
+                    text: "鼓起勇气告白".to_string(), next_node_id: "confession_accept".to_string(), condition: None
                 },
                 Choice {
-                    text: "还是算了吧...".to_string(),
-                    next_node_id: "confession_retreat".to_string(),
-                    condition: None,
+                    text: "还是算了吧...".to_string(), next_node_id: "confession_retreat".to_string(), condition: None
                 },
             ],
             next_node_id: None,
@@ -128,16 +118,8 @@ pub fn generate_battle_narration() -> Vec<DialogueNode> {
             text: "必须做出决断！".to_string(),
             commands: Vec::new(),
             choices: vec![
-                Choice {
-                    text: "全力进攻".to_string(),
-                    next_node_id: "battle_attack".to_string(),
-                    condition: None,
-                },
-                Choice {
-                    text: "防守反击".to_string(),
-                    next_node_id: "battle_defend".to_string(),
-                    condition: None,
-                },
+                Choice { text: "全力进攻".to_string(), next_node_id: "battle_attack".to_string(), condition: None },
+                Choice { text: "防守反击".to_string(), next_node_id: "battle_defend".to_string(), condition: None },
             ],
             next_node_id: None,
         },

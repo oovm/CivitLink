@@ -11,9 +11,7 @@ pub struct DiagnosticCollector {
 impl DiagnosticCollector {
     /// 创建新的诊断信息收集器
     pub fn new() -> Self {
-        Self {
-            diagnostics: HashMap::new(),
-        }
+        Self { diagnostics: HashMap::new() }
     }
 
     /// 添加诊断信息，替换指定 URI 的所有诊断
@@ -40,10 +38,7 @@ impl DiagnosticCollector {
     /// # 参数
     /// - `uri`: 文档 URI
     pub fn get_diagnostics(&self, uri: &str) -> &[Diagnostic] {
-        self.diagnostics
-            .get(uri)
-            .map(|v| v.as_slice())
-            .unwrap_or(&[])
+        self.diagnostics.get(uri).map(|v| v.as_slice()).unwrap_or(&[])
     }
 
     /// 获取所有诊断信息
@@ -53,20 +48,12 @@ impl DiagnosticCollector {
 
     /// 统计所有错误级别的诊断数量
     pub fn error_count(&self) -> usize {
-        self.diagnostics
-            .values()
-            .flat_map(|v| v.iter())
-            .filter(|d| d.severity == Some(DiagnosticSeverity::Error))
-            .count()
+        self.diagnostics.values().flat_map(|v| v.iter()).filter(|d| d.severity == Some(DiagnosticSeverity::Error)).count()
     }
 
     /// 统计所有警告级别的诊断数量
     pub fn warning_count(&self) -> usize {
-        self.diagnostics
-            .values()
-            .flat_map(|v| v.iter())
-            .filter(|d| d.severity == Some(DiagnosticSeverity::Warning))
-            .count()
+        self.diagnostics.values().flat_map(|v| v.iter()).filter(|d| d.severity == Some(DiagnosticSeverity::Warning)).count()
     }
 }
 

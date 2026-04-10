@@ -55,9 +55,7 @@ pub struct EventSystem {
 impl EventSystem {
     /// 创建新的事件系统
     pub fn new() -> Self {
-        Self {
-            handlers: HashMap::new(),
-        }
+        Self { handlers: HashMap::new() }
     }
 
     /// 为指定节点注册事件处理器
@@ -112,11 +110,7 @@ impl EventSystem {
         }
 
         if let Some(ref layout) = node.layout_result {
-            if x >= layout.x
-                && x <= layout.x + layout.width
-                && y >= layout.y
-                && y <= layout.y + layout.height
-            {
+            if x >= layout.x && x <= layout.x + layout.width && y >= layout.y && y <= layout.y + layout.height {
                 *hit = Some(node_id);
             }
         }

@@ -1,8 +1,10 @@
 //! 剧本编译转换器模块
 //! 提供剧本编译、验证和数据库构建功能
 
-use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::{
+    collections::{HashMap, HashSet},
+    path::Path,
+};
 
 use gg_core::{GError, GErrorKind, GResult};
 use gg_galgame_schema::components::DialogueNode;
@@ -22,9 +24,7 @@ pub struct StorySequence {
 impl StorySequence {
     /// 根据节点 ID 查找对话节点
     pub fn get_node(&self, id: &str) -> Option<&DialogueNode> {
-        self.node_index
-            .get(id)
-            .map(|&idx| &self.nodes[idx])
+        self.node_index.get(id).map(|&idx| &self.nodes[idx])
     }
 
     /// 获取节点数量
@@ -50,10 +50,7 @@ pub struct DialogueDB {
 impl DialogueDB {
     /// 创建空的对话数据库
     pub fn new() -> Self {
-        Self {
-            sequences: HashMap::new(),
-            all_node_ids: HashSet::new(),
-        }
+        Self { sequences: HashMap::new(), all_node_ids: HashSet::new() }
     }
 
     /// 根据文件名查找剧本序列
@@ -133,20 +130,14 @@ impl ScriptCompiler {
         })?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Failed to read directory entry: {}", e),
-            })?;
+            let entry = entry
+                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
 
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) == Some("gscript") {
                 let sequence = Self::compile_file(&path)?;
 
-                let file_name = path
-                    .file_stem()
-                    .and_then(|s| s.to_str())
-                    .unwrap_or("unknown")
-                    .to_string();
+                let file_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("unknown").to_string();
 
                 for node in &sequence.nodes {
                     db.all_node_ids.insert(node.id.clone());
@@ -168,36 +159,24 @@ impl ScriptCompiler {
 
         for node in &sequence.nodes {
             if seen_ids.contains(&node.id) {
-                errors.push(ValidationError::DuplicateNodeId {
-                    id: node.id.clone(),
-                });
-            } else {
+                errors.push(ValidationError::DuplicateNodeId { id: node.id.clone() });
+            }
+            else {
                 seen_ids.insert(node.id.clone());
             }
 
-            if node.text.is_empty()
-                && node.commands.is_empty()
-                && node.choices.is_empty()
-                && node.next_node_id.is_none()
-            {
-                errors.push(ValidationError::EmptyNode {
-                    id: node.id.clone(),
-                });
+            if node.text.is_empty() && node.commands.is_empty() && node.choices.is_empty() && node.next_node_id.is_none() {
+                errors.push(ValidationError::EmptyNode { id: node.id.clone() });
             }
 
             if let Some(ref target) = node.next_node_id {
                 if !seen_ids.contains(target) && !sequence.node_index.contains_key(target) {
-                    errors.push(ValidationError::MissingNode {
-                        source_node: node.id.clone(),
-                        target_node: target.clone(),
-                    });
+                    errors.push(ValidationError::MissingNode { source_node: node.id.clone(), target_node: target.clone() });
                 }
             }
 
             for choice in &node.choices {
-                if !seen_ids.contains(&choice.next_node_id)
-                    && !sequence.node_index.contains_key(&choice.next_node_id)
-                {
+                if !seen_ids.contains(&choice.next_node_id) && !sequence.node_index.contains_key(&choice.next_node_id) {
                     errors.push(ValidationError::MissingNode {
                         source_node: node.id.clone(),
                         target_node: choice.next_node_id.clone(),
@@ -224,10 +203,7 @@ impl ScriptCompiler {
             for node in &sequence.nodes {
                 if let Some(ref target) = node.next_node_id {
                     if !db.all_node_ids.contains(target) {
-                        errors.push(ValidationError::MissingNode {
-                            source_node: node.id.clone(),
-                            target_node: target.clone(),
-                        });
+                        errors.push(ValidationError::MissingNode { source_node: node.id.clone(), target_node: target.clone() });
                     }
                 }
 

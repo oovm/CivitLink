@@ -11,9 +11,11 @@
 //! - [`SystemWrapper`] - 系统包装器，将函数系统包装为可调度单元
 //! - [`Schedule`] - 调度器，管理一组系统的执行顺序
 
-use std::collections::{HashMap, VecDeque};
-use std::fmt::Debug;
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::{HashMap, VecDeque},
+    fmt::Debug,
+    hash::{Hash, Hasher},
+};
 
 /// 调度标签 trait，用于标识不同的调度阶段
 ///
@@ -250,13 +252,7 @@ impl SystemWrapper {
         name: impl Into<String>,
         func: impl FnMut(&mut gg_ecs::GgWorld) -> gg_error::GResult<()> + Send + Sync + 'static,
     ) -> Self {
-        Self {
-            name: name.into(),
-            func: Box::new(func),
-            set: None,
-            before: Vec::new(),
-            after: Vec::new(),
-        }
+        Self { name: name.into(), func: Box::new(func), set: None, before: Vec::new(), after: Vec::new() }
     }
 
     /// 设置系统所属的核心集合
@@ -296,10 +292,7 @@ impl Schedule {
     ///
     /// - `label` - 调度标签，用于标识此调度器
     pub fn new(label: impl ScheduleLabel) -> Self {
-        Self {
-            label: label.clone_box(),
-            systems: Vec::new(),
-        }
+        Self { label: label.clone_box(), systems: Vec::new() }
     }
 
     /// 添加系统到调度器

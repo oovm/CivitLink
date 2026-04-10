@@ -7,19 +7,13 @@ use std::collections::HashMap;
 
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ir::{IrFunction, IrModule, IrValue, OpCode};
-use oak_valkyrie::ast::{
-    Block, Expr, Item, MicroDefinition, Statement, ValkyrieRoot,
+use oak_valkyrie::{
+    ast::{Block, Expr, Item, MicroDefinition, Statement, ValkyrieRoot},
+    lexer::token_type::ValkyrieTokenType,
 };
-use oak_valkyrie::lexer::token_type::ValkyrieTokenType;
 
 /// 内置宿主函数列表，编译为 HostCall 指令
-const BUILTIN_FUNCTIONS: &[&str] = &[
-    "spawn_entity",
-    "add_component",
-    "set_field",
-    "get_field",
-    "print",
-];
+const BUILTIN_FUNCTIONS: &[&str] = &["spawn_entity", "add_component", "set_field", "get_field", "print"];
 
 /// 循环上下文，用于 break/continue 的跳转地址回填
 struct LoopContext {
@@ -55,12 +49,7 @@ pub struct ValkyrieCompiler {
 impl ValkyrieCompiler {
     /// 创建新的编译器
     pub fn new(module_name: &str) -> Self {
-        Self {
-            module: IrModule::new(module_name),
-            locals: HashMap::new(),
-            next_local: 0,
-            loop_stack: Vec::new(),
-        }
+        Self { module: IrModule::new(module_name), locals: HashMap::new(), next_local: 0, loop_stack: Vec::new() }
     }
 
     /// 编译 ValkyrieRoot AST 为 IrModule
@@ -116,12 +105,7 @@ impl ValkyrieCompiler {
         instructions.push(OpCode::LoadNull);
         instructions.push(OpCode::Return);
 
-        Ok(IrFunction {
-            name: micro.name.name.clone(),
-            param_count,
-            local_count: self.next_local,
-            instructions,
-        })
+        Ok(IrFunction { name: micro.name.name.clone(), param_count, local_count: self.next_local, instructions })
     }
 
     /// 编译语句块
@@ -135,9 +119,7 @@ impl ValkyrieCompiler {
     /// 编译语句
     fn compile_statement(&mut self, stmt: &Statement, instructions: &mut Vec<OpCode>) -> GResult<()> {
         match stmt {
-            Statement::Let {
-                pattern, expr, ..
-            } => {
+            Statement::Let { pattern, expr, .. } => {
                 self.compile_expr(expr, instructions)?;
                 let var_name = match pattern {
                     oak_valkyrie::ast::Pattern::Variable { name, .. } => name.name.clone(),
@@ -146,10 +128,7 @@ impl ValkyrieCompiler {
                         return Ok(());
                     }
                     _ => {
-                        return Err(GError {
-                            kind: GErrorKind::Runtime,
-                            message: format!("Unsupported let pattern type"),
-                        });
+                        return Err(GError { kind: GErrorKind::Runtime, message: format!("Unsupported let pattern type") });
                     }
                 };
                 let idx = self.next_local;
@@ -170,16 +149,14 @@ impl ValkyrieCompiler {
     /// 编译表达式
     fn compile_expr(&mut self, expr: &Expr, instructions: &mut Vec<OpCode>) -> GResult<()> {
         match expr {
-            Expr::Ident(ident) => {
-                match self.locals.get(&ident.name) {
-                    Some(&idx) => {
-                        instructions.push(OpCode::LoadLocal(idx));
-                    }
-                    None => {
-                        instructions.push(OpCode::LoadNull);
-                    }
+            Expr::Ident(ident) => match self.locals.get(&ident.name) {
+                Some(&idx) => {
+                    instructions.push(OpCode::LoadLocal(idx));
                 }
-            }
+                None => {
+                    instructions.push(OpCode::LoadNull);
+                }
+            },
 
             Expr::Path(name_path) => {
                 if let Some(first) = name_path.parts.first() {
@@ -191,7 +168,8 @@ impl ValkyrieCompiler {
                             instructions.push(OpCode::LoadNull);
                         }
                     }
-                } else {
+                }
+                else {
                     instructions.push(OpCode::LoadNull);
                 }
             }
@@ -199,7 +177,8 @@ impl ValkyrieCompiler {
             Expr::Bool { value, .. } => {
                 if *value {
                     instructions.push(OpCode::LoadTrue);
-                } else {
+                }
+                else {
                     instructions.push(OpCode::LoadFalse);
                 }
             }
@@ -217,19 +196,19 @@ impl ValkyrieCompiler {
                     let value = content.parse::<i64>().unwrap();
                     let idx = self.module.add_constant(IrValue::Int(value));
                     instructions.push(OpCode::LoadConst(idx));
-                } else if content.parse::<f64>().is_ok() {
+                }
+                else if content.parse::<f64>().is_ok() {
                     let value = content.parse::<f64>().unwrap();
                     let idx = self.module.add_constant(IrValue::Float(value));
                     instructions.push(OpCode::LoadConst(idx));
-                } else {
+                }
+                else {
                     let idx = self.module.add_constant(IrValue::String(content));
                     instructions.push(OpCode::LoadConst(idx));
                 }
             }
 
-            Expr::Binary {
-                left, op, right, ..
-            } => {
+            Expr::Binary { left, op, right, .. } => {
                 self.compile_expr(left, instructions)?;
                 self.compile_expr(right, instructions)?;
                 let opcode = self.binary_op_to_opcode(op)?;
@@ -261,7 +240,8 @@ impl ValkyrieCompiler {
                 if let Expr::Ident(ident) = callee.as_ref() {
                     let string_idx = self.module.add_constant(IrValue::String(ident.name.clone()));
                     instructions.push(OpCode::LoadConst(string_idx));
-                } else {
+                }
+                else {
                     self.compile_expr(callee, instructions)?;
                     instructions.push(OpCode::LoadNull);
                 }
@@ -273,12 +253,7 @@ impl ValkyrieCompiler {
                 self.compile_expr(expr, instructions)?;
             }
 
-            Expr::If {
-                condition,
-                then_branch,
-                else_branch,
-                ..
-            } => {
+            Expr::If { condition, then_branch, else_branch, .. } => {
                 self.compile_expr(condition, instructions)?;
 
                 let then_jump = instructions.len();
@@ -295,7 +270,8 @@ impl ValkyrieCompiler {
                     self.compile_block(else_branch, instructions)?;
 
                     instructions[else_jump] = OpCode::Jump(instructions.len());
-                } else {
+                }
+                else {
                     instructions[then_jump] = OpCode::JumpIfFalse(instructions.len());
                 }
             }
@@ -303,23 +279,17 @@ impl ValkyrieCompiler {
             Expr::Return { expr, .. } => {
                 if let Some(return_expr) = expr {
                     self.compile_expr(return_expr, instructions)?;
-                } else {
+                }
+                else {
                     instructions.push(OpCode::LoadNull);
                 }
                 instructions.push(OpCode::Return);
             }
 
-            Expr::Loop {
-                condition,
-                body,
-                ..
-            } => {
+            Expr::Loop { condition, body, .. } => {
                 let loop_start = instructions.len();
 
-                let loop_ctx = LoopContext {
-                    loop_start,
-                    break_jumps: Vec::new(),
-                };
+                let loop_ctx = LoopContext { loop_start, break_jumps: Vec::new() };
                 self.loop_stack.push(loop_ctx);
 
                 if let Some(cond) = condition {
@@ -338,7 +308,8 @@ impl ValkyrieCompiler {
                             instructions[jump_addr] = OpCode::Jump(loop_end);
                         }
                     }
-                } else {
+                }
+                else {
                     self.compile_block(body, instructions)?;
                     instructions.push(OpCode::Jump(loop_start));
 
@@ -356,22 +327,18 @@ impl ValkyrieCompiler {
                     let jump_addr = instructions.len();
                     instructions.push(OpCode::Jump(0));
                     ctx.break_jumps.push(jump_addr);
-                } else {
-                    return Err(GError {
-                        kind: GErrorKind::Runtime,
-                        message: "Break outside of loop".to_string(),
-                    });
+                }
+                else {
+                    return Err(GError { kind: GErrorKind::Runtime, message: "Break outside of loop".to_string() });
                 }
             }
 
             Expr::Continue { .. } => {
                 if let Some(ctx) = self.loop_stack.last() {
                     instructions.push(OpCode::Jump(ctx.loop_start));
-                } else {
-                    return Err(GError {
-                        kind: GErrorKind::Runtime,
-                        message: "Continue outside of loop".to_string(),
-                    });
+                }
+                else {
+                    return Err(GError { kind: GErrorKind::Runtime, message: "Continue outside of loop".to_string() });
                 }
             }
 
@@ -402,10 +369,7 @@ impl ValkyrieCompiler {
             ValkyrieTokenType::GreaterEq => Ok(OpCode::Ge),
             ValkyrieTokenType::AndAnd => Ok(OpCode::And),
             ValkyrieTokenType::OrOr => Ok(OpCode::Or),
-            _ => Err(GError {
-                kind: GErrorKind::Runtime,
-                message: format!("Unsupported binary operator: {:?}", op),
-            }),
+            _ => Err(GError { kind: GErrorKind::Runtime, message: format!("Unsupported binary operator: {:?}", op) }),
         }
     }
 
@@ -414,12 +378,7 @@ impl ValkyrieCompiler {
         match op {
             ValkyrieTokenType::Minus => Ok(OpCode::Neg),
             ValkyrieTokenType::Bang => Ok(OpCode::Not),
-            _ => Err(GError {
-                kind: GErrorKind::Runtime,
-                message: format!("Unsupported unary operator: {:?}", op),
-            }),
+            _ => Err(GError { kind: GErrorKind::Runtime, message: format!("Unsupported unary operator: {:?}", op) }),
         }
     }
 }
-
-

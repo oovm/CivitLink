@@ -5,8 +5,7 @@ use gg_core::GResult;
 use gg_ecs::World;
 use gg_galgame_schema::components::{AmbientFilter, SceneBackground, TransitionType};
 
-use crate::filter::FilterManager;
-use crate::transition::TransitionManager;
+use crate::{filter::FilterManager, transition::TransitionManager};
 
 /// 场景管理器
 ///
@@ -48,11 +47,7 @@ impl SceneManager {
     /// 设置氛围滤镜
     ///
     /// 通过 FilterManager 应用新的氛围滤镜，指定过渡时长。
-    pub fn set_ambient_filter(
-        world: &mut World,
-        filter: AmbientFilter,
-        duration_secs: f32,
-    ) -> GResult<()> {
+    pub fn set_ambient_filter(world: &mut World, filter: AmbientFilter, duration_secs: f32) -> GResult<()> {
         FilterManager::apply_filter(world, filter, duration_secs)
     }
 }

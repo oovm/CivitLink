@@ -1,5 +1,7 @@
-use crate::node::{UiNodeId, UiTree};
-use crate::style::{FlexAlign, FlexDirection, SizeValue};
+use crate::{
+    node::{UiNodeId, UiTree},
+    style::{FlexAlign, FlexDirection, SizeValue},
+};
 
 /// 布局计算结果
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -17,12 +19,7 @@ pub struct LayoutResult {
 impl LayoutResult {
     /// 创建布局结果
     pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
-        Self {
-            x,
-            y,
-            width,
-            height,
-        }
+        Self { x, y, width, height }
     }
 }
 
@@ -42,14 +39,7 @@ impl LayoutEngine {
     }
 
     /// 计算单个节点的布局（递归）
-    fn compute_node(
-        tree: &mut UiTree,
-        node_id: UiNodeId,
-        x: f32,
-        y: f32,
-        available_width: f32,
-        available_height: f32,
-    ) {
+    fn compute_node(tree: &mut UiTree, node_id: UiNodeId, x: f32, y: f32, available_width: f32, available_height: f32) {
         let (style, children, data) = {
             let node = tree.get(node_id);
             match node {
@@ -160,27 +150,11 @@ impl LayoutEngine {
                 line_children_count = 0;
             }
 
-            let child_x = if is_row {
-                content_x + cursor_main
-            } else {
-                content_x
-            };
-            let child_y = if is_row {
-                content_y + cursor_cross
-            } else {
-                content_y + cursor_main
-            };
+            let child_x = if is_row { content_x + cursor_main } else { content_x };
+            let child_y = if is_row { content_y + cursor_cross } else { content_y + cursor_main };
 
-            let child_available_w = if is_row {
-                child_main
-            } else {
-                inner_w
-            };
-            let child_available_h = if is_row {
-                inner_h
-            } else {
-                child_main
-            };
+            let child_available_w = if is_row { child_main } else { inner_w };
+            let child_available_h = if is_row { inner_h } else { child_main };
 
             Self::compute_node(tree, child_id, child_x, child_y, child_available_w, child_available_h);
 
@@ -212,14 +186,16 @@ impl LayoutEngine {
         let computed_w = if auto_w {
             let content_size = Self::measure_content_width(tree, &children, is_row, gap);
             content_size + 2.0 * padding
-        } else {
+        }
+        else {
             final_w
         };
 
         let computed_h = if auto_h {
             let content_size = Self::measure_content_height(tree, &children, is_row, gap);
             content_size + 2.0 * padding
-        } else {
+        }
+        else {
             final_h
         };
 
@@ -248,7 +224,8 @@ impl LayoutEngine {
             FlexAlign::SpaceBetween => {
                 if count <= 1 {
                     0.0
-                } else {
+                }
+                else {
                     0.0
                 }
             }
@@ -286,7 +263,8 @@ impl LayoutEngine {
                     if let Some(ref mut lr) = node.layout_result {
                         if is_row {
                             lr.y += line_cross_offset + cross_offset;
-                        } else {
+                        }
+                        else {
                             lr.x += line_cross_offset + cross_offset;
                         }
                     }
@@ -301,18 +279,15 @@ impl LayoutEngine {
         if is_row {
             let mut total = 0.0f32;
             for (i, &child_id) in children.iter().enumerate() {
-                let w = tree
-                    .get(child_id)
-                    .and_then(|n| n.layout_result)
-                    .map(|r| r.width)
-                    .unwrap_or(0.0);
+                let w = tree.get(child_id).and_then(|n| n.layout_result).map(|r| r.width).unwrap_or(0.0);
                 total += w;
                 if i > 0 {
                     total += gap;
                 }
             }
             total
-        } else {
+        }
+        else {
             children
                 .iter()
                 .filter_map(|&child_id| tree.get(child_id).and_then(|n| n.layout_result).map(|r| r.width))
@@ -325,18 +300,15 @@ impl LayoutEngine {
         if !is_row {
             let mut total = 0.0f32;
             for (i, &child_id) in children.iter().enumerate() {
-                let h = tree
-                    .get(child_id)
-                    .and_then(|n| n.layout_result)
-                    .map(|r| r.height)
-                    .unwrap_or(0.0);
+                let h = tree.get(child_id).and_then(|n| n.layout_result).map(|r| r.height).unwrap_or(0.0);
                 total += h;
                 if i > 0 {
                     total += gap;
                 }
             }
             total
-        } else {
+        }
+        else {
             children
                 .iter()
                 .filter_map(|&child_id| tree.get(child_id).and_then(|n| n.layout_result).map(|r| r.height))
@@ -353,7 +325,8 @@ impl LayoutEngine {
             let w = text.len() as f32 * char_width;
             let h = lines as f32 * font_size * line_height;
             (w.min(max_w), h)
-        } else {
+        }
+        else {
             let w = text.len() as f32 * char_width;
             let h = font_size * line_height;
             (w, h)

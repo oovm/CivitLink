@@ -1,7 +1,6 @@
+use gg_bytecode::{format::BytecodeValue, host::Host};
 use gg_script::{ScriptCompiler, ScriptLoader};
 use gg_vm::{Vm, VmResult};
-use gg_bytecode::host::Host;
-use gg_bytecode::format::BytecodeValue;
 
 #[test]
 fn test_script_compiler_basic() {
@@ -153,10 +152,14 @@ fn test_end_to_end_pipeline_arithmetic() {
     }
 
     impl Host for TestHost {
-        fn spawn_entity(&mut self) -> u64 { 0 }
+        fn spawn_entity(&mut self) -> u64 {
+            0
+        }
         fn despawn_entity(&mut self, _entity_id: u64) {}
         fn add_component(&mut self, _entity_id: u64, _component_type: &str, _value: BytecodeValue) {}
-        fn get_component_field(&mut self, _entity_id: u64, _component_type: &str, _field: &str) -> Option<BytecodeValue> { None }
+        fn get_component_field(&mut self, _entity_id: u64, _component_type: &str, _field: &str) -> Option<BytecodeValue> {
+            None
+        }
         fn set_component_field(&mut self, _entity_id: u64, _component_type: &str, _field: &str, _value: BytecodeValue) {}
         fn call_host_function(&mut self, name: &str, args: Vec<BytecodeValue>) -> Option<BytecodeValue> {
             self.log.push(format!("call_host_function({}, {:?})", name, args));

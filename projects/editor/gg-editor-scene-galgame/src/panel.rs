@@ -24,22 +24,13 @@ pub struct GalgameSceneEditorPanel {
 impl GalgameSceneEditorPanel {
     /// 创建新的场景编辑器面板
     pub fn new() -> Self {
-        Self {
-            visible: true,
-            canvas_size: (1280.0, 720.0),
-            dragging_portrait: None,
-            drag_offset: (0.0, 0.0),
-        }
+        Self { visible: true, canvas_size: (1280.0, 720.0), dragging_portrait: None, drag_offset: (0.0, 0.0) }
     }
 
     /// 设置场景背景
     ///
     /// 将指定资源路径设置为当前场景的背景图。
-    pub fn set_background(
-        &mut self,
-        asset_path: String,
-        context: &mut EditorContext,
-    ) -> GResult<()> {
+    pub fn set_background(&mut self, asset_path: String, context: &mut EditorContext) -> GResult<()> {
         let _ = (asset_path, context);
         Ok(())
     }
@@ -60,11 +51,7 @@ impl GalgameSceneEditorPanel {
     /// 从场景移除立绘
     ///
     /// 将指定角色的立绘从当前场景中移除。
-    pub fn remove_portrait_from_scene(
-        &mut self,
-        character_id: &str,
-        context: &mut EditorContext,
-    ) -> GResult<()> {
+    pub fn remove_portrait_from_scene(&mut self, character_id: &str, context: &mut EditorContext) -> GResult<()> {
         let _ = (character_id, context);
         Ok(())
     }
@@ -72,13 +59,7 @@ impl GalgameSceneEditorPanel {
     /// 设置场景 BGM
     ///
     /// 配置当前场景的背景音乐，包括资源路径、音量和淡入时长。
-    pub fn set_scene_bgm(
-        &mut self,
-        asset_path: String,
-        volume: f32,
-        fade_in: f32,
-        context: &mut EditorContext,
-    ) -> GResult<()> {
+    pub fn set_scene_bgm(&mut self, asset_path: String, volume: f32, fade_in: f32, context: &mut EditorContext) -> GResult<()> {
         let _ = (asset_path, volume, fade_in, context);
         Ok(())
     }

@@ -53,9 +53,7 @@ fn elim_redundant(instructions: &mut Vec<OpCode>) {
     let mut i = 0;
     while i < instructions.len() {
         if i + 1 < instructions.len() {
-            if let (OpCode::LoadLocal(a), OpCode::StoreLocal(b)) =
-                (&instructions[i], &instructions[i + 1])
-            {
+            if let (OpCode::LoadLocal(a), OpCode::StoreLocal(b)) = (&instructions[i], &instructions[i + 1]) {
                 if a == b {
                     instructions.remove(i);
                     instructions.remove(i);
@@ -108,7 +106,8 @@ fn build_index_map(instructions: &[OpCode], reachable: &HashSet<usize>) -> Vec<u
         if reachable.contains(&old_idx) {
             map[old_idx] = new_idx;
             new_idx += 1;
-        } else {
+        }
+        else {
             map[old_idx] = usize::MAX;
         }
     }
@@ -143,5 +142,3 @@ fn fixup_jumps(instructions: &mut [OpCode], index_map: &[usize]) {
         }
     }
 }
-
-

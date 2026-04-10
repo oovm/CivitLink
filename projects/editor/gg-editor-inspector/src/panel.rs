@@ -5,16 +5,18 @@
 //! 使用命令管理器实现撤销/重做功能。
 
 use gg_core::GResult;
-use gg_editor_shell::panel::{PanelLayoutHint, PanelPosition};
-use gg_editor_shell::{EditorContext, EditorPanel};
+use gg_editor_shell::{
+    EditorContext, EditorPanel,
+    panel::{PanelLayoutHint, PanelPosition},
+};
 use gg_ui::UiTree;
 
-use crate::descriptor::{
-    ComponentDescriptor, DescriptorRegistry, PropertyConstraints, PropertyDescriptor, PropertyType,
-};
-use crate::editor::{
-    AssetPathEditorFactory, BoolEditorFactory, ColorEditorFactory, EnumEditorFactory,
-    NumericEditorFactory, PropertyEditorRegistry, StringEditorFactory,
+use crate::{
+    descriptor::{ComponentDescriptor, DescriptorRegistry, PropertyConstraints, PropertyDescriptor, PropertyType},
+    editor::{
+        AssetPathEditorFactory, BoolEditorFactory, ColorEditorFactory, EnumEditorFactory, NumericEditorFactory,
+        PropertyEditorRegistry, StringEditorFactory,
+    },
 };
 
 /// 属性检查器面板
@@ -45,12 +47,8 @@ impl InspectorPanel {
         editor_registry.register_factory(Box::new(ColorEditorFactory));
         editor_registry.register_factory(Box::new(AssetPathEditorFactory));
 
-        let mut panel = Self {
-            visible: true,
-            descriptor_registry: DescriptorRegistry::new(),
-            editor_registry,
-            selected_entity: None,
-        };
+        let mut panel =
+            Self { visible: true, descriptor_registry: DescriptorRegistry::new(), editor_registry, selected_entity: None };
         panel.register_default_descriptors();
         panel
     }
@@ -90,217 +88,198 @@ impl InspectorPanel {
     /// 为 DialogueNode、PortraitState、AudioControl 和 SceneBackground
     /// 组件注册属性描述符。
     pub fn register_default_descriptors(&mut self) {
-        self.descriptor_registry
-            .register_component(ComponentDescriptor {
-                type_name: "DialogueNode".to_string(),
-                display_name: "对话节点".to_string(),
-                properties: vec![
-                    PropertyDescriptor {
-                        name: "id".to_string(),
-                        display_name: "节点 ID".to_string(),
-                        property_type: PropertyType::String,
-                        default_value: None,
-                        constraints: None,
-                    },
-                    PropertyDescriptor {
-                        name: "speaker_id".to_string(),
-                        display_name: "说话角色 ID".to_string(),
-                        property_type: PropertyType::String,
-                        default_value: Some("None".to_string()),
-                        constraints: None,
-                    },
-                    PropertyDescriptor {
-                        name: "text".to_string(),
-                        display_name: "对话文本".to_string(),
-                        property_type: PropertyType::String,
-                        default_value: Some(String::new()),
-                        constraints: Some(PropertyConstraints {
-                            max_length: Some(4096),
-                            ..Default::default()
-                        }),
-                    },
-                    PropertyDescriptor {
-                        name: "commands".to_string(),
-                        display_name: "内联命令".to_string(),
-                        property_type: PropertyType::Custom("DialogueCommandList".to_string()),
-                        default_value: None,
-                        constraints: None,
-                    },
-                    PropertyDescriptor {
-                        name: "choices".to_string(),
-                        display_name: "选项列表".to_string(),
-                        property_type: PropertyType::Custom("ChoiceList".to_string()),
-                        default_value: None,
-                        constraints: None,
-                    },
-                    PropertyDescriptor {
-                        name: "next_node_id".to_string(),
-                        display_name: "下一节点 ID".to_string(),
-                        property_type: PropertyType::String,
-                        default_value: Some("None".to_string()),
-                        constraints: None,
-                    },
-                ],
-            });
+        self.descriptor_registry.register_component(ComponentDescriptor {
+            type_name: "DialogueNode".to_string(),
+            display_name: "对话节点".to_string(),
+            properties: vec![
+                PropertyDescriptor {
+                    name: "id".to_string(),
+                    display_name: "节点 ID".to_string(),
+                    property_type: PropertyType::String,
+                    default_value: None,
+                    constraints: None,
+                },
+                PropertyDescriptor {
+                    name: "speaker_id".to_string(),
+                    display_name: "说话角色 ID".to_string(),
+                    property_type: PropertyType::String,
+                    default_value: Some("None".to_string()),
+                    constraints: None,
+                },
+                PropertyDescriptor {
+                    name: "text".to_string(),
+                    display_name: "对话文本".to_string(),
+                    property_type: PropertyType::String,
+                    default_value: Some(String::new()),
+                    constraints: Some(PropertyConstraints { max_length: Some(4096), ..Default::default() }),
+                },
+                PropertyDescriptor {
+                    name: "commands".to_string(),
+                    display_name: "内联命令".to_string(),
+                    property_type: PropertyType::Custom("DialogueCommandList".to_string()),
+                    default_value: None,
+                    constraints: None,
+                },
+                PropertyDescriptor {
+                    name: "choices".to_string(),
+                    display_name: "选项列表".to_string(),
+                    property_type: PropertyType::Custom("ChoiceList".to_string()),
+                    default_value: None,
+                    constraints: None,
+                },
+                PropertyDescriptor {
+                    name: "next_node_id".to_string(),
+                    display_name: "下一节点 ID".to_string(),
+                    property_type: PropertyType::String,
+                    default_value: Some("None".to_string()),
+                    constraints: None,
+                },
+            ],
+        });
 
-        self.descriptor_registry
-            .register_component(ComponentDescriptor {
-                type_name: "PortraitState".to_string(),
-                display_name: "立绘状态".to_string(),
-                properties: vec![
-                    PropertyDescriptor {
-                        name: "character_id".to_string(),
-                        display_name: "角色 ID".to_string(),
-                        property_type: PropertyType::String,
-                        default_value: None,
-                        constraints: None,
-                    },
-                    PropertyDescriptor {
-                        name: "position".to_string(),
-                        display_name: "位置".to_string(),
-                        property_type: PropertyType::Enum(vec![
-                            "Left".to_string(),
-                            "Center".to_string(),
-                            "Right".to_string(),
-                            "Custom".to_string(),
-                        ]),
-                        default_value: Some("Center".to_string()),
-                        constraints: None,
-                    },
-                    PropertyDescriptor {
-                        name: "expression".to_string(),
-                        display_name: "表情".to_string(),
-                        property_type: PropertyType::String,
-                        default_value: Some("default".to_string()),
-                        constraints: None,
-                    },
-                    PropertyDescriptor {
-                        name: "scale".to_string(),
-                        display_name: "缩放".to_string(),
-                        property_type: PropertyType::Float,
-                        default_value: Some("1.0".to_string()),
-                        constraints: Some(PropertyConstraints {
-                            min_value: Some(0.0),
-                            max_value: Some(10.0),
-                            step: Some(0.1),
-                            ..Default::default()
-                        }),
-                    },
-                    PropertyDescriptor {
-                        name: "opacity".to_string(),
-                        display_name: "透明度".to_string(),
-                        property_type: PropertyType::Float,
-                        default_value: Some("1.0".to_string()),
-                        constraints: Some(PropertyConstraints {
-                            min_value: Some(0.0),
-                            max_value: Some(1.0),
-                            step: Some(0.01),
-                            ..Default::default()
-                        }),
-                    },
-                ],
-            });
+        self.descriptor_registry.register_component(ComponentDescriptor {
+            type_name: "PortraitState".to_string(),
+            display_name: "立绘状态".to_string(),
+            properties: vec![
+                PropertyDescriptor {
+                    name: "character_id".to_string(),
+                    display_name: "角色 ID".to_string(),
+                    property_type: PropertyType::String,
+                    default_value: None,
+                    constraints: None,
+                },
+                PropertyDescriptor {
+                    name: "position".to_string(),
+                    display_name: "位置".to_string(),
+                    property_type: PropertyType::Enum(vec![
+                        "Left".to_string(),
+                        "Center".to_string(),
+                        "Right".to_string(),
+                        "Custom".to_string(),
+                    ]),
+                    default_value: Some("Center".to_string()),
+                    constraints: None,
+                },
+                PropertyDescriptor {
+                    name: "expression".to_string(),
+                    display_name: "表情".to_string(),
+                    property_type: PropertyType::String,
+                    default_value: Some("default".to_string()),
+                    constraints: None,
+                },
+                PropertyDescriptor {
+                    name: "scale".to_string(),
+                    display_name: "缩放".to_string(),
+                    property_type: PropertyType::Float,
+                    default_value: Some("1.0".to_string()),
+                    constraints: Some(PropertyConstraints {
+                        min_value: Some(0.0),
+                        max_value: Some(10.0),
+                        step: Some(0.1),
+                        ..Default::default()
+                    }),
+                },
+                PropertyDescriptor {
+                    name: "opacity".to_string(),
+                    display_name: "透明度".to_string(),
+                    property_type: PropertyType::Float,
+                    default_value: Some("1.0".to_string()),
+                    constraints: Some(PropertyConstraints {
+                        min_value: Some(0.0),
+                        max_value: Some(1.0),
+                        step: Some(0.01),
+                        ..Default::default()
+                    }),
+                },
+            ],
+        });
 
-        self.descriptor_registry
-            .register_component(ComponentDescriptor {
-                type_name: "AudioControl".to_string(),
-                display_name: "音频控制".to_string(),
-                properties: vec![
-                    PropertyDescriptor {
-                        name: "bgm_path".to_string(),
-                        display_name: "BGM 路径".to_string(),
-                        property_type: PropertyType::AssetPath("ogg,wav,mp3".to_string()),
-                        default_value: Some("None".to_string()),
-                        constraints: None,
-                    },
-                    PropertyDescriptor {
-                        name: "volume".to_string(),
-                        display_name: "音量".to_string(),
-                        property_type: PropertyType::Float,
-                        default_value: Some("1.0".to_string()),
-                        constraints: Some(PropertyConstraints {
-                            min_value: Some(0.0),
-                            max_value: Some(1.0),
-                            step: Some(0.01),
-                            ..Default::default()
-                        }),
-                    },
-                    PropertyDescriptor {
-                        name: "fade_in".to_string(),
-                        display_name: "淡入时长".to_string(),
-                        property_type: PropertyType::Float,
-                        default_value: Some("0.0".to_string()),
-                        constraints: Some(PropertyConstraints {
-                            min_value: Some(0.0),
-                            step: Some(0.1),
-                            ..Default::default()
-                        }),
-                    },
-                    PropertyDescriptor {
-                        name: "fade_out".to_string(),
-                        display_name: "淡出时长".to_string(),
-                        property_type: PropertyType::Float,
-                        default_value: Some("0.0".to_string()),
-                        constraints: Some(PropertyConstraints {
-                            min_value: Some(0.0),
-                            step: Some(0.1),
-                            ..Default::default()
-                        }),
-                    },
-                    PropertyDescriptor {
-                        name: "is_playing".to_string(),
-                        display_name: "是否播放".to_string(),
-                        property_type: PropertyType::Bool,
-                        default_value: Some("false".to_string()),
-                        constraints: None,
-                    },
-                ],
-            });
+        self.descriptor_registry.register_component(ComponentDescriptor {
+            type_name: "AudioControl".to_string(),
+            display_name: "音频控制".to_string(),
+            properties: vec![
+                PropertyDescriptor {
+                    name: "bgm_path".to_string(),
+                    display_name: "BGM 路径".to_string(),
+                    property_type: PropertyType::AssetPath("ogg,wav,mp3".to_string()),
+                    default_value: Some("None".to_string()),
+                    constraints: None,
+                },
+                PropertyDescriptor {
+                    name: "volume".to_string(),
+                    display_name: "音量".to_string(),
+                    property_type: PropertyType::Float,
+                    default_value: Some("1.0".to_string()),
+                    constraints: Some(PropertyConstraints {
+                        min_value: Some(0.0),
+                        max_value: Some(1.0),
+                        step: Some(0.01),
+                        ..Default::default()
+                    }),
+                },
+                PropertyDescriptor {
+                    name: "fade_in".to_string(),
+                    display_name: "淡入时长".to_string(),
+                    property_type: PropertyType::Float,
+                    default_value: Some("0.0".to_string()),
+                    constraints: Some(PropertyConstraints { min_value: Some(0.0), step: Some(0.1), ..Default::default() }),
+                },
+                PropertyDescriptor {
+                    name: "fade_out".to_string(),
+                    display_name: "淡出时长".to_string(),
+                    property_type: PropertyType::Float,
+                    default_value: Some("0.0".to_string()),
+                    constraints: Some(PropertyConstraints { min_value: Some(0.0), step: Some(0.1), ..Default::default() }),
+                },
+                PropertyDescriptor {
+                    name: "is_playing".to_string(),
+                    display_name: "是否播放".to_string(),
+                    property_type: PropertyType::Bool,
+                    default_value: Some("false".to_string()),
+                    constraints: None,
+                },
+            ],
+        });
 
-        self.descriptor_registry
-            .register_component(ComponentDescriptor {
-                type_name: "SceneBackground".to_string(),
-                display_name: "场景背景".to_string(),
-                properties: vec![
-                    PropertyDescriptor {
-                        name: "asset_path".to_string(),
-                        display_name: "资源路径".to_string(),
-                        property_type: PropertyType::AssetPath("png,jpg,webp".to_string()),
-                        default_value: Some("None".to_string()),
-                        constraints: None,
-                    },
-                    PropertyDescriptor {
-                        name: "transition_type".to_string(),
-                        display_name: "转场类型".to_string(),
-                        property_type: PropertyType::Enum(vec![
-                            "None".to_string(),
-                            "Fade".to_string(),
-                            "CrossDissolve".to_string(),
-                            "Slide".to_string(),
-                        ]),
-                        default_value: Some("None".to_string()),
-                        constraints: None,
-                    },
-                    PropertyDescriptor {
-                        name: "duration".to_string(),
-                        display_name: "持续时间".to_string(),
-                        property_type: PropertyType::Float,
-                        default_value: Some("0.5".to_string()),
-                        constraints: Some(PropertyConstraints {
-                            min_value: Some(0.0),
-                            step: Some(0.1),
-                            ..Default::default()
-                        }),
-                    },
-                    PropertyDescriptor {
-                        name: "filter".to_string(),
-                        display_name: "氛围滤镜".to_string(),
-                        property_type: PropertyType::Custom("AmbientFilter".to_string()),
-                        default_value: Some("None".to_string()),
-                        constraints: None,
-                    },
-                ],
-            });
+        self.descriptor_registry.register_component(ComponentDescriptor {
+            type_name: "SceneBackground".to_string(),
+            display_name: "场景背景".to_string(),
+            properties: vec![
+                PropertyDescriptor {
+                    name: "asset_path".to_string(),
+                    display_name: "资源路径".to_string(),
+                    property_type: PropertyType::AssetPath("png,jpg,webp".to_string()),
+                    default_value: Some("None".to_string()),
+                    constraints: None,
+                },
+                PropertyDescriptor {
+                    name: "transition_type".to_string(),
+                    display_name: "转场类型".to_string(),
+                    property_type: PropertyType::Enum(vec![
+                        "None".to_string(),
+                        "Fade".to_string(),
+                        "CrossDissolve".to_string(),
+                        "Slide".to_string(),
+                    ]),
+                    default_value: Some("None".to_string()),
+                    constraints: None,
+                },
+                PropertyDescriptor {
+                    name: "duration".to_string(),
+                    display_name: "持续时间".to_string(),
+                    property_type: PropertyType::Float,
+                    default_value: Some("0.5".to_string()),
+                    constraints: Some(PropertyConstraints { min_value: Some(0.0), step: Some(0.1), ..Default::default() }),
+                },
+                PropertyDescriptor {
+                    name: "filter".to_string(),
+                    display_name: "氛围滤镜".to_string(),
+                    property_type: PropertyType::Custom("AmbientFilter".to_string()),
+                    default_value: Some("None".to_string()),
+                    constraints: None,
+                },
+            ],
+        });
     }
 }
 
@@ -338,10 +317,6 @@ impl EditorPanel for InspectorPanel {
     }
 
     fn layout_hint(&self) -> PanelLayoutHint {
-        PanelLayoutHint {
-            position: PanelPosition::Right,
-            preferred_size: Some((300.0, 600.0)),
-            min_size: Some((200.0, 300.0)),
-        }
+        PanelLayoutHint { position: PanelPosition::Right, preferred_size: Some((300.0, 600.0)), min_size: Some((200.0, 300.0)) }
     }
 }

@@ -37,14 +37,7 @@ impl TransitionState {
             TransitionType::CrossDissolve { duration_secs } => *duration_secs,
             TransitionType::Slide { duration_secs, .. } => *duration_secs,
         };
-        Self {
-            transition_type,
-            progress: 0.0,
-            duration_secs,
-            elapsed_secs: 0.0,
-            is_complete: false,
-            new_background_path,
-        }
+        Self { transition_type, progress: 0.0, duration_secs, elapsed_secs: 0.0, is_complete: false, new_background_path }
     }
 
     /// 更新转场进度

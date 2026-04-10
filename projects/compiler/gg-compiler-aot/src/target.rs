@@ -55,24 +55,12 @@ impl TargetPlatform {
     /// 从字符串名称解析目标平台
     pub fn from_name(name: &str) -> Option<TargetPlatform> {
         match name {
-            "WindowsX64" | "windows-x64" | "x86_64-pc-windows-msvc" => {
-                Some(TargetPlatform::WindowsX64)
-            }
-            "MacOSArm64" | "macos-arm64" | "aarch64-apple-darwin" => {
-                Some(TargetPlatform::MacOSArm64)
-            }
-            "LinuxX64" | "linux-x64" | "x86_64-unknown-linux-gnu" => {
-                Some(TargetPlatform::LinuxX64)
-            }
-            "WebWasm32" | "web-wasm32" | "wasm32-unknown-unknown" => {
-                Some(TargetPlatform::WebWasm32)
-            }
-            "AndroidArm64" | "android-arm64" | "aarch64-linux-android" => {
-                Some(TargetPlatform::AndroidArm64)
-            }
-            "IOSArm64" | "ios-arm64" | "aarch64-apple-ios" => {
-                Some(TargetPlatform::IOSArm64)
-            }
+            "WindowsX64" | "windows-x64" | "x86_64-pc-windows-msvc" => Some(TargetPlatform::WindowsX64),
+            "MacOSArm64" | "macos-arm64" | "aarch64-apple-darwin" => Some(TargetPlatform::MacOSArm64),
+            "LinuxX64" | "linux-x64" | "x86_64-unknown-linux-gnu" => Some(TargetPlatform::LinuxX64),
+            "WebWasm32" | "web-wasm32" | "wasm32-unknown-unknown" => Some(TargetPlatform::WebWasm32),
+            "AndroidArm64" | "android-arm64" | "aarch64-linux-android" => Some(TargetPlatform::AndroidArm64),
+            "IOSArm64" | "ios-arm64" | "aarch64-apple-ios" => Some(TargetPlatform::IOSArm64),
             _ => None,
         }
     }

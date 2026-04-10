@@ -119,11 +119,7 @@ impl AssetBrowserPanel {
     /// 查找资源引用
     ///
     /// 在当前项目的所有实体和组件中查找引用了指定资源的条目。
-    pub fn find_references(
-        &self,
-        asset_path: &str,
-        context: &mut EditorContext,
-    ) -> GResult<Vec<AssetReference>> {
+    pub fn find_references(&self, asset_path: &str, context: &mut EditorContext) -> GResult<Vec<AssetReference>> {
         let _ = (asset_path, context);
         Ok(Vec::new())
     }

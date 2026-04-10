@@ -38,19 +38,8 @@ pub struct SetPropertyCommand {
 
 impl SetPropertyCommand {
     /// 创建新的设置属性命令
-    pub fn new(
-        binding: Box<dyn PropertyBinding>,
-        entity: u64,
-        new_value: String,
-        description: String,
-    ) -> Self {
-        Self {
-            binding,
-            entity,
-            old_value: None,
-            new_value,
-            description,
-        }
+    pub fn new(binding: Box<dyn PropertyBinding>, entity: u64, new_value: String, description: String) -> Self {
+        Self { binding, entity, old_value: None, new_value, description }
     }
 }
 

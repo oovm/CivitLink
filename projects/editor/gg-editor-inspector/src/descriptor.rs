@@ -88,22 +88,17 @@ pub struct DescriptorRegistry {
 impl DescriptorRegistry {
     /// 创建空的描述符注册表
     pub fn new() -> Self {
-        Self {
-            descriptors: Vec::new(),
-        }
+        Self { descriptors: Vec::new() }
     }
 
     /// 注册组件描述符
     ///
     /// 将组件描述符添加到注册表中，若同名描述符已存在则替换。
     pub fn register_component(&mut self, descriptor: ComponentDescriptor) {
-        if let Some(existing) = self
-            .descriptors
-            .iter_mut()
-            .find(|d| d.type_name == descriptor.type_name)
-        {
+        if let Some(existing) = self.descriptors.iter_mut().find(|d| d.type_name == descriptor.type_name) {
             *existing = descriptor;
-        } else {
+        }
+        else {
             self.descriptors.push(descriptor);
         }
     }

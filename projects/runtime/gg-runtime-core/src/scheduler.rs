@@ -3,10 +3,10 @@
 //! 实现按阶段顺序执行系统的调度器，支持系统排序约束、
 //! 系统集合配置和拓扑排序。
 
-use std::collections::{HashMap, HashSet};
+use crate::stage::{Stage, SystemDescriptor, SystemFn, SystemSetId};
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::World;
-use crate::stage::{Stage, SystemDescriptor, SystemFn, SystemSetId};
+use std::collections::{HashMap, HashSet};
 
 /// 系统构建器，用于配置系统排序约束
 ///
@@ -92,10 +92,7 @@ impl<'a> SetConfigBuilder<'a> {
 
 impl<'a> Drop for SetConfigBuilder<'a> {
     fn drop(&mut self) {
-        let config = SetConfig {
-            before: std::mem::take(&mut self.before),
-            after: std::mem::take(&mut self.after),
-        };
+        let config = SetConfig { before: std::mem::take(&mut self.before), after: std::mem::take(&mut self.after) };
         self.scheduler.set_configs.insert(self.set_id.clone(), config);
     }
 }
@@ -116,22 +113,14 @@ pub struct StageScheduler {
 impl StageScheduler {
     /// 创建新的阶段调度器
     pub fn new() -> Self {
-        Self {
-            systems: HashMap::new(),
-            set_configs: HashMap::new(),
-            startup_executed: false,
-        }
+        Self { systems: HashMap::new(), set_configs: HashMap::new(), startup_executed: false }
     }
 
     /// 添加系统到默认阶段（Update）
     ///
     /// 返回系统构建器，可链式调用 `before`/`after` 指定排序约束。
     /// 构建器被丢弃时系统自动插入。
-    pub fn add_system(
-        &mut self,
-        name: impl Into<String>,
-        system: SystemFn,
-    ) -> SystemBuilder<'_> {
+    pub fn add_system(&mut self, name: impl Into<String>, system: SystemFn) -> SystemBuilder<'_> {
         self.add_system_to_stage(name, system, Stage::Update)
     }
 
@@ -139,17 +128,9 @@ impl StageScheduler {
     ///
     /// 返回系统构建器，可链式调用 `before`/`after` 指定排序约束。
     /// 构建器被丢弃时系统自动插入。
-    pub fn add_system_to_stage(
-        &mut self,
-        name: impl Into<String>,
-        system: SystemFn,
-        stage: Stage,
-    ) -> SystemBuilder<'_> {
+    pub fn add_system_to_stage(&mut self, name: impl Into<String>, system: SystemFn, stage: Stage) -> SystemBuilder<'_> {
         let descriptor = SystemDescriptor::new(name, system, stage);
-        SystemBuilder {
-            scheduler: self,
-            descriptor: Some(descriptor),
-        }
+        SystemBuilder { scheduler: self, descriptor: Some(descriptor) }
     }
 
     /// 配置系统集合的排序约束
@@ -157,12 +138,7 @@ impl StageScheduler {
     /// 返回集合配置构建器，可链式调用 `before`/`after` 指定集合级别的排序约束。
     /// 构建器被丢弃时配置自动保存。
     pub fn configure_set(&mut self, set: SystemSetId) -> SetConfigBuilder<'_> {
-        SetConfigBuilder {
-            scheduler: self,
-            set_id: set,
-            before: Vec::new(),
-            after: Vec::new(),
-        }
+        SetConfigBuilder { scheduler: self, set_id: set, before: Vec::new(), after: Vec::new() }
     }
 
     /// 执行一帧，按阶段顺序运行系统
@@ -172,20 +148,10 @@ impl StageScheduler {
     pub fn tick(&mut self, world: &mut World) -> GResult<()> {
         let stages: Vec<Stage> = if !self.startup_executed {
             self.startup_executed = true;
-            vec![
-                Stage::Startup,
-                Stage::PreUpdate,
-                Stage::Update,
-                Stage::PostUpdate,
-                Stage::Render,
-            ]
-        } else {
-            vec![
-                Stage::PreUpdate,
-                Stage::Update,
-                Stage::PostUpdate,
-                Stage::Render,
-            ]
+            vec![Stage::Startup, Stage::PreUpdate, Stage::Update, Stage::PostUpdate, Stage::Render]
+        }
+        else {
+            vec![Stage::PreUpdate, Stage::Update, Stage::PostUpdate, Stage::Render]
         };
 
         for stage in stages {
@@ -244,11 +210,7 @@ impl StageScheduler {
             return Ok(Vec::new());
         }
 
-        let name_to_idx: HashMap<&str, usize> = systems
-            .iter()
-            .enumerate()
-            .map(|(i, s)| (s.name.as_str(), i))
-            .collect();
+        let name_to_idx: HashMap<&str, usize> = systems.iter().enumerate().map(|(i, s)| (s.name.as_str(), i)).collect();
 
         let mut adj: Vec<HashSet<usize>> = vec![HashSet::new(); n];
         let mut in_degree = vec![0usize; n];

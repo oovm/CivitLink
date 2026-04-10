@@ -35,28 +35,20 @@ impl EngineFactory {
         let config_rs_content = Self::generate_config_rs(manifest);
         let engine_rs_content = Self::generate_engine_rs(manifest);
 
-        std::fs::write(&cargo_toml_path, cargo_toml_content).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to write Cargo.toml: {}", e),
-        })?;
+        std::fs::write(&cargo_toml_path, cargo_toml_content)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write Cargo.toml: {}", e) })?;
         generated.push(cargo_toml_path);
 
-        std::fs::write(&main_rs_path, main_rs_content).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to write main.rs: {}", e),
-        })?;
+        std::fs::write(&main_rs_path, main_rs_content)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write main.rs: {}", e) })?;
         generated.push(main_rs_path);
 
-        std::fs::write(&config_rs_path, config_rs_content).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to write config.rs: {}", e),
-        })?;
+        std::fs::write(&config_rs_path, config_rs_content)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write config.rs: {}", e) })?;
         generated.push(config_rs_path);
 
-        std::fs::write(&engine_rs_path, engine_rs_content).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to write engine.rs: {}", e),
-        })?;
+        std::fs::write(&engine_rs_path, engine_rs_content)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write engine.rs: {}", e) })?;
         generated.push(engine_rs_path);
 
         Ok(generated)
@@ -94,10 +86,7 @@ impl EngineFactory {
                 }
                 _ => {
                     let crate_name = format!("gg-plugin-{}", plugin);
-                    deps.push_str(&format!(
-                        "{} = {{ path = \"../../plugins/{}\" }}\n",
-                        crate_name, crate_name
-                    ));
+                    deps.push_str(&format!("{} = {{ path = \"../../plugins/{}\" }}\n", crate_name, crate_name));
                 }
             }
         }
@@ -110,18 +99,12 @@ impl EngineFactory {
                 _ => {
                     let gom_lower = manifest.modules.gom.to_lowercase();
                     let schema_name = format!("gg-{}-schema", gom_lower);
-                    deps.push_str(&format!(
-                        "{} = {{ path = \"../../plugins/{}\" }}\n",
-                        schema_name, schema_name
-                    ));
+                    deps.push_str(&format!("{} = {{ path = \"../../plugins/{}\" }}\n", schema_name, schema_name));
                 }
             }
         }
 
-        format!(
-            "[package]\nname = \"{}\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\n{}",
-            package_name, deps
-        )
+        format!("[package]\nname = \"{}\"\nversion = \"0.1.0\"\nedition = \"2024\"\n\n[dependencies]\n{}", package_name, deps)
     }
 
     /// 生成 main.rs 内容
@@ -284,29 +267,19 @@ pub struct GameConfig {{
         for plugin in &manifest.modules.plugins {
             match plugin.as_str() {
                 "dialogue" => {
-                    plugin_imports.push_str(
-                        "use gg_plugin_dialogue::plugin::DialoguePlugin;\n",
-                    );
+                    plugin_imports.push_str("use gg_plugin_dialogue::plugin::DialoguePlugin;\n");
                     plugin_init_lines.push("            Box::new(DialoguePlugin)".to_string());
                 }
                 "portrait" => {
-                    plugin_imports.push_str(
-                        "use gg_plugin_portrait::plugin::PortraitPlugin;\n",
-                    );
+                    plugin_imports.push_str("use gg_plugin_portrait::plugin::PortraitPlugin;\n");
                     plugin_init_lines.push("            Box::new(PortraitPlugin)".to_string());
                 }
                 "scene-transition" => {
-                    plugin_imports.push_str(
-                        "use gg_plugin_scene_transition::plugin::SceneTransitionPlugin;\n",
-                    );
-                    plugin_init_lines.push(
-                        "            Box::new(SceneTransitionPlugin)".to_string(),
-                    );
+                    plugin_imports.push_str("use gg_plugin_scene_transition::plugin::SceneTransitionPlugin;\n");
+                    plugin_init_lines.push("            Box::new(SceneTransitionPlugin)".to_string());
                 }
                 "save" => {
-                    plugin_imports.push_str(
-                        "use gg_plugin_save::plugin::SavePlugin;\n",
-                    );
+                    plugin_imports.push_str("use gg_plugin_save::plugin::SavePlugin;\n");
                     plugin_init_lines.push("            Box::new(SavePlugin)".to_string());
                 }
                 _ => {
@@ -318,11 +291,7 @@ pub struct GameConfig {{
             }
         }
 
-        let plugin_init_block = if plugin_init_lines.is_empty() {
-            String::new()
-        } else {
-            plugin_init_lines.join(",\n")
-        };
+        let plugin_init_block = if plugin_init_lines.is_empty() { String::new() } else { plugin_init_lines.join(",\n") };
 
         format!(
             r#"#![warn(missing_docs)]
@@ -413,11 +382,5 @@ fn name_to_struct_name(name: &str) -> String {
 ///
 /// 例如 "My Galgame" → "my-galgame"
 fn name_to_package_name(name: &str) -> String {
-    name.to_lowercase()
-        .split(|c: char| c.is_whitespace())
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join("-")
+    name.to_lowercase().split(|c: char| c.is_whitespace()).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("-")
 }
-
-

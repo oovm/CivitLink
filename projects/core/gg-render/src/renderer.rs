@@ -26,11 +26,7 @@ impl RenderContext {
     /// - `width` - 渲染表面宽度（像素）
     /// - `height` - 渲染表面高度（像素）
     pub fn new(width: u32, height: u32) -> Self {
-        Self {
-            commands: Vec::new(),
-            surface_width: width,
-            surface_height: height,
-        }
+        Self { commands: Vec::new(), surface_width: width, surface_height: height }
     }
 
     /// 添加一条绘制命令

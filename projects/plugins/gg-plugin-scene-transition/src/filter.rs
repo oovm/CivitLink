@@ -30,11 +30,7 @@ impl FilterState {
     /// 创建新的滤镜过渡状态
     ///
     /// 指定源滤镜、目标滤镜和过渡时长。
-    pub fn new(
-        source: Option<AmbientFilter>,
-        target: Option<AmbientFilter>,
-        duration_secs: f32,
-    ) -> Self {
+    pub fn new(source: Option<AmbientFilter>, target: Option<AmbientFilter>, duration_secs: f32) -> Self {
         Self {
             source_filter: source,
             target_filter: target,
@@ -79,21 +75,24 @@ impl FilterState {
             (Some(source), None) => {
                 if t >= 1.0 {
                     None
-                } else {
+                }
+                else {
                     Some(Self::interpolate_towards_none(source, t))
                 }
             }
             (None, Some(target)) => {
                 if t >= 1.0 {
                     Some(target.clone())
-                } else {
+                }
+                else {
                     Some(Self::interpolate_from_none(target, t))
                 }
             }
             (Some(source), Some(target)) => {
                 if t >= 1.0 {
                     Some(target.clone())
-                } else {
+                }
+                else {
                     Some(Self::interpolate_filters(source, target, t))
                 }
             }
@@ -104,52 +103,26 @@ impl FilterState {
     fn interpolate_towards_none(filter: &AmbientFilter, t: f32) -> AmbientFilter {
         let fade = 1.0 - t;
         match filter {
-            AmbientFilter::Darken { intensity } => AmbientFilter::Darken {
-                intensity: *intensity * fade,
-            },
-            AmbientFilter::Warm { intensity } => AmbientFilter::Warm {
-                intensity: *intensity * fade,
-            },
-            AmbientFilter::Cool { intensity } => AmbientFilter::Cool {
-                intensity: *intensity * fade,
-            },
-            AmbientFilter::Blur { radius } => AmbientFilter::Blur {
-                radius: *radius * fade,
-            },
-            AmbientFilter::Tint { color } => AmbientFilter::Tint {
-                color: [
-                    color[0] * fade,
-                    color[1] * fade,
-                    color[2] * fade,
-                    color[3] * fade,
-                ],
-            },
+            AmbientFilter::Darken { intensity } => AmbientFilter::Darken { intensity: *intensity * fade },
+            AmbientFilter::Warm { intensity } => AmbientFilter::Warm { intensity: *intensity * fade },
+            AmbientFilter::Cool { intensity } => AmbientFilter::Cool { intensity: *intensity * fade },
+            AmbientFilter::Blur { radius } => AmbientFilter::Blur { radius: *radius * fade },
+            AmbientFilter::Tint { color } => {
+                AmbientFilter::Tint { color: [color[0] * fade, color[1] * fade, color[2] * fade, color[3] * fade] }
+            }
         }
     }
 
     /// 在 None 和滤镜之间插值（滤镜淡入）
     fn interpolate_from_none(filter: &AmbientFilter, t: f32) -> AmbientFilter {
         match filter {
-            AmbientFilter::Darken { intensity } => AmbientFilter::Darken {
-                intensity: *intensity * t,
-            },
-            AmbientFilter::Warm { intensity } => AmbientFilter::Warm {
-                intensity: *intensity * t,
-            },
-            AmbientFilter::Cool { intensity } => AmbientFilter::Cool {
-                intensity: *intensity * t,
-            },
-            AmbientFilter::Blur { radius } => AmbientFilter::Blur {
-                radius: *radius * t,
-            },
-            AmbientFilter::Tint { color } => AmbientFilter::Tint {
-                color: [
-                    color[0] * t,
-                    color[1] * t,
-                    color[2] * t,
-                    color[3] * t,
-                ],
-            },
+            AmbientFilter::Darken { intensity } => AmbientFilter::Darken { intensity: *intensity * t },
+            AmbientFilter::Warm { intensity } => AmbientFilter::Warm { intensity: *intensity * t },
+            AmbientFilter::Cool { intensity } => AmbientFilter::Cool { intensity: *intensity * t },
+            AmbientFilter::Blur { radius } => AmbientFilter::Blur { radius: *radius * t },
+            AmbientFilter::Tint { color } => {
+                AmbientFilter::Tint { color: [color[0] * t, color[1] * t, color[2] * t, color[3] * t] }
+            }
         }
     }
 
@@ -157,39 +130,25 @@ impl FilterState {
     fn interpolate_filters(source: &AmbientFilter, target: &AmbientFilter, t: f32) -> AmbientFilter {
         match (source, target) {
             (AmbientFilter::Darken { intensity: s }, AmbientFilter::Darken { intensity: e }) => {
-                AmbientFilter::Darken {
-                    intensity: s + (e - s) * t,
-                }
+                AmbientFilter::Darken { intensity: s + (e - s) * t }
             }
             (AmbientFilter::Warm { intensity: s }, AmbientFilter::Warm { intensity: e }) => {
-                AmbientFilter::Warm {
-                    intensity: s + (e - s) * t,
-                }
+                AmbientFilter::Warm { intensity: s + (e - s) * t }
             }
             (AmbientFilter::Cool { intensity: s }, AmbientFilter::Cool { intensity: e }) => {
-                AmbientFilter::Cool {
-                    intensity: s + (e - s) * t,
-                }
+                AmbientFilter::Cool { intensity: s + (e - s) * t }
             }
             (AmbientFilter::Blur { radius: s }, AmbientFilter::Blur { radius: e }) => {
-                AmbientFilter::Blur {
-                    radius: s + (e - s) * t,
-                }
+                AmbientFilter::Blur { radius: s + (e - s) * t }
             }
-            (AmbientFilter::Tint { color: s }, AmbientFilter::Tint { color: e }) => {
-                AmbientFilter::Tint {
-                    color: [
-                        s[0] + (e[0] - s[0]) * t,
-                        s[1] + (e[1] - s[1]) * t,
-                        s[2] + (e[2] - s[2]) * t,
-                        s[3] + (e[3] - s[3]) * t,
-                    ],
-                }
-            }
+            (AmbientFilter::Tint { color: s }, AmbientFilter::Tint { color: e }) => AmbientFilter::Tint {
+                color: [s[0] + (e[0] - s[0]) * t, s[1] + (e[1] - s[1]) * t, s[2] + (e[2] - s[2]) * t, s[3] + (e[3] - s[3]) * t],
+            },
             _ => {
                 if t >= 0.5 {
                     target.clone()
-                } else {
+                }
+                else {
                     source.clone()
                 }
             }

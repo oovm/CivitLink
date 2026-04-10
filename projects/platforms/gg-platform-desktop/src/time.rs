@@ -18,11 +18,7 @@ impl DesktopTime {
     /// 创建新的桌面时间实例
     pub fn new() -> Self {
         let now = Instant::now();
-        Self {
-            start: now,
-            last_update: now,
-            delta: Duration::ZERO,
-        }
+        Self { start: now, last_update: now, delta: Duration::ZERO }
     }
 }
 

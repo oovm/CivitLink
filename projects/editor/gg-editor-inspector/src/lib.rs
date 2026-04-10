@@ -9,13 +9,10 @@ pub mod editor;
 pub mod panel;
 
 pub use binding::{PropertyBinding, SetPropertyCommand};
-pub use descriptor::{
-    ComponentDescriptor, DescriptorRegistry, PropertyConstraints, PropertyDescriptor, PropertyType,
-};
+pub use descriptor::{ComponentDescriptor, DescriptorRegistry, PropertyConstraints, PropertyDescriptor, PropertyType};
 pub use editor::{
-    AssetPathEditorFactory, AssetPathEditorWidget, BoolEditorFactory, BoolEditorWidget,
-    ColorEditorFactory, ColorEditorWidget, EnumEditorFactory, EnumEditorWidget,
-    NumericEditorFactory, NumericEditorWidget, PropertyEditorFactory, PropertyEditorRegistry,
-    PropertyEditorWidget, StringEditorFactory, StringEditorWidget,
+    AssetPathEditorFactory, AssetPathEditorWidget, BoolEditorFactory, BoolEditorWidget, ColorEditorFactory, ColorEditorWidget,
+    EnumEditorFactory, EnumEditorWidget, NumericEditorFactory, NumericEditorWidget, PropertyEditorFactory,
+    PropertyEditorRegistry, PropertyEditorWidget, StringEditorFactory, StringEditorWidget,
 };
 pub use panel::InspectorPanel;

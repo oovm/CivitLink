@@ -3,11 +3,12 @@
 
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::{Entity, World};
-use gg_galgame_schema::components::{AudioControl, PortraitState, SceneBackground};
-use gg_galgame_schema::resources::{DialogueHistory, GameVariables, SaveData};
+use gg_galgame_schema::{
+    components::{AudioControl, PortraitState, SceneBackground},
+    resources::{DialogueHistory, GameVariables, SaveData},
+};
 use serde::{Deserialize, Serialize};
-use std::fs;
-use std::path::Path;
+use std::{fs, path::Path};
 
 /// 存档槽位信息
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,20 +44,14 @@ impl SaveManager {
         let current_node_id = {
             let history = world
                 .get_resource::<DialogueHistory>()
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "DialogueHistory resource not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "DialogueHistory resource not found".to_string() })?;
             history.current_node_id.clone().unwrap_or_default()
         };
 
         let variables = {
             let game_vars = world
                 .get_resource::<GameVariables>()
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "GameVariables resource not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "GameVariables resource not found".to_string() })?;
             game_vars.variables.clone()
         };
 
@@ -71,31 +66,16 @@ impl SaveManager {
             states
         };
 
-        let background_path = world
-            .get_component::<SceneBackground>(0)
-            .and_then(|bg| bg.asset_path.clone());
+        let background_path = world.get_component::<SceneBackground>(0).and_then(|bg| bg.asset_path.clone());
 
-        let bgm_path = world
-            .get_component::<AudioControl>(0)
-            .and_then(|audio| audio.bgm_path.clone());
+        let bgm_path = world.get_component::<AudioControl>(0).and_then(|audio| audio.bgm_path.clone());
 
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map_err(|e| GError {
-                kind: GErrorKind::Runtime,
-                message: format!("Failed to get timestamp: {}", e),
-            })?
+            .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to get timestamp: {}", e) })?
             .as_secs_f64();
 
-        Ok(SaveData {
-            current_node_id,
-            variables,
-            portrait_states,
-            background_path,
-            bgm_path,
-            screenshot,
-            timestamp,
-        })
+        Ok(SaveData { current_node_id, variables, portrait_states, background_path, bgm_path, screenshot, timestamp })
     }
 
     /// 加载存档
@@ -110,29 +90,21 @@ impl SaveManager {
         {
             let history = world
                 .get_resource_mut::<DialogueHistory>()
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "DialogueHistory resource not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "DialogueHistory resource not found".to_string() })?;
             history.current_node_id = Some(save_data.current_node_id.clone());
         }
 
         {
             let game_vars = world
                 .get_resource_mut::<GameVariables>()
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Ecs,
-                    message: "GameVariables resource not found".to_string(),
-                })?;
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "GameVariables resource not found".to_string() })?;
             game_vars.variables = save_data.variables.clone();
         }
 
         {
             let all_entities: Vec<Entity> = world.entities().iter().copied().collect();
-            let portrait_entities: Vec<Entity> = all_entities
-                .into_iter()
-                .filter(|&entity| world.get_component::<PortraitState>(entity).is_some())
-                .collect();
+            let portrait_entities: Vec<Entity> =
+                all_entities.into_iter().filter(|&entity| world.get_component::<PortraitState>(entity).is_some()).collect();
             for entity in portrait_entities {
                 world.despawn(entity)?;
             }
@@ -163,22 +135,15 @@ impl SaveManager {
     /// - `data` - 存档数据
     /// - `path` - 文件路径
     pub fn save_to_file(data: &SaveData, path: &Path) -> GResult<()> {
-        let json = serde_json::to_string_pretty(data).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to serialize save data: {}", e),
-        })?;
+        let json = serde_json::to_string_pretty(data)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to serialize save data: {}", e) })?;
 
         if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Failed to create save directory: {}", e),
-            })?;
+            fs::create_dir_all(parent)
+                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to create save directory: {}", e) })?;
         }
 
-        fs::write(path, json).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to write save file: {}", e),
-        })
+        fs::write(path, json).map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write save file: {}", e) })
     }
 
     /// 从文件加载存档
@@ -189,15 +154,11 @@ impl SaveManager {
     ///
     /// - `path` - 文件路径
     pub fn load_from_file(path: &Path) -> GResult<SaveData> {
-        let json = fs::read_to_string(path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read save file: {}", e),
-        })?;
+        let json = fs::read_to_string(path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read save file: {}", e) })?;
 
-        serde_json::from_str(&json).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to deserialize save data: {}", e),
-        })
+        serde_json::from_str(&json)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to deserialize save data: {}", e) })
     }
 
     /// 列出存档目录中的所有存档
@@ -215,16 +176,12 @@ impl SaveManager {
 
         let mut saves = Vec::new();
 
-        let entries = fs::read_dir(dir).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read save directory: {}", e),
-        })?;
+        let entries = fs::read_dir(dir)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read save directory: {}", e) })?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Failed to read directory entry: {}", e),
-            })?;
+            let entry = entry
+                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
 
             let path = entry.path();
 
@@ -240,7 +197,8 @@ impl SaveManager {
                     Ok(s) => s,
                     Err(_) => continue,
                 }
-            } else {
+            }
+            else {
                 continue;
             };
 

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
-use crate::layout::LayoutResult;
-use crate::style::Style;
+use crate::{layout::LayoutResult, style::Style};
 
 /// UI 节点 ID
 pub type UiNodeId = u64;
@@ -58,11 +57,7 @@ pub struct UiTree {
 impl UiTree {
     /// 创建空的 UI 树
     pub fn new() -> Self {
-        Self {
-            nodes: HashMap::new(),
-            root: None,
-            next_id: 1,
-        }
+        Self { nodes: HashMap::new(), root: None, next_id: 1 }
     }
 
     /// 创建新节点并插入树中
@@ -110,11 +105,7 @@ impl UiTree {
         if !self.nodes.contains_key(&node_id) {
             return false;
         }
-        let children: Vec<UiNodeId> = self
-            .nodes
-            .get(&node_id)
-            .map(|n| n.children.clone())
-            .unwrap_or_default();
+        let children: Vec<UiNodeId> = self.nodes.get(&node_id).map(|n| n.children.clone()).unwrap_or_default();
         for child_id in children {
             self.remove_node(child_id);
         }

@@ -182,11 +182,7 @@ pub struct FontStyle {
 
 impl Default for FontStyle {
     fn default() -> Self {
-        Self {
-            size: 16.0,
-            color: Color::WHITE,
-            line_height: 1.2,
-        }
+        Self { size: 16.0, color: Color::WHITE, line_height: 1.2 }
     }
 }
 

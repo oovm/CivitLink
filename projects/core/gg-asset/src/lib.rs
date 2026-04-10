@@ -3,11 +3,7 @@
 //! GG 引擎资源管理模块
 //! 提供资源加载、缓存和类型安全的资源句柄功能
 
-use std::any::Any;
-use std::collections::HashMap;
-use std::marker::PhantomData;
-use std::path::Path;
-use std::sync::Arc;
+use std::{any::Any, collections::HashMap, marker::PhantomData, path::Path, sync::Arc};
 
 /// 资源错误类型
 #[derive(Debug)]
@@ -48,11 +44,7 @@ pub struct Handle<T> {
 impl<T> Handle<T> {
     /// 创建新的资源句柄
     pub fn new(id: u64, path: Arc<str>) -> Self {
-        Self {
-            id,
-            path,
-            _marker: PhantomData,
-        }
+        Self { id, path, _marker: PhantomData }
     }
 
     /// 获取资源唯一标识
@@ -68,20 +60,13 @@ impl<T> Handle<T> {
 
 impl<T> Clone for Handle<T> {
     fn clone(&self) -> Self {
-        Self {
-            id: self.id,
-            path: self.path.clone(),
-            _marker: PhantomData,
-        }
+        Self { id: self.id, path: self.path.clone(), _marker: PhantomData }
     }
 }
 
 impl<T> std::fmt::Debug for Handle<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Handle")
-            .field("id", &self.id)
-            .field("path", &self.path.as_ref())
-            .finish()
+        f.debug_struct("Handle").field("id", &self.id).field("path", &self.path.as_ref()).finish()
     }
 }
 
@@ -115,11 +100,7 @@ pub struct AssetCache {
 impl AssetCache {
     /// 创建空的资源缓存
     pub fn new() -> Self {
-        Self {
-            assets: HashMap::new(),
-            handles: HashMap::new(),
-            next_id: 0,
-        }
+        Self { assets: HashMap::new(), handles: HashMap::new(), next_id: 0 }
     }
 
     /// 插入资源并返回类型安全的句柄
@@ -146,18 +127,14 @@ impl AssetCache {
     ///
     /// 如果句柄对应的资源不存在或类型不匹配，返回 `None`。
     pub fn get<T: Send + Sync + 'static>(&self, handle: &Handle<T>) -> Option<Arc<T>> {
-        self.assets
-            .get(&handle.id)
-            .and_then(|asset| asset.clone().downcast::<T>().ok())
+        self.assets.get(&handle.id).and_then(|asset| asset.clone().downcast::<T>().ok())
     }
 
     /// 根据路径获取类型安全的句柄
     ///
     /// 如果路径不存在于缓存中，返回 `None`。
     pub fn get_handle<T: Send + Sync + 'static>(&self, path: &str) -> Option<Handle<T>> {
-        self.handles
-            .get_key_value(path)
-            .map(|(path_arc, &id)| Handle::new(id, path_arc.clone()))
+        self.handles.get_key_value(path).map(|(path_arc, &id)| Handle::new(id, path_arc.clone()))
     }
 
     /// 检查指定路径的资源是否存在于缓存中
@@ -172,7 +149,8 @@ impl AssetCache {
         if let Some((_, id)) = self.handles.remove_entry(path) {
             self.assets.remove(&id);
             true
-        } else {
+        }
+        else {
             false
         }
     }
@@ -195,9 +173,7 @@ pub struct AssetServer {
 impl AssetServer {
     /// 创建新的资源服务器
     pub fn new() -> Self {
-        Self {
-            cache: AssetCache::new(),
-        }
+        Self { cache: AssetCache::new() }
     }
 
     /// 添加资源到服务器
@@ -244,10 +220,7 @@ pub struct TextAsset {
 impl TextAsset {
     /// 创建新的文本资源
     pub fn new(name: &str, content: String) -> Self {
-        Self {
-            content,
-            name: name.to_string(),
-        }
+        Self { content, name: name.to_string() }
     }
 
     /// 获取文本内容
@@ -277,12 +250,9 @@ pub struct TextLoader;
 
 impl AssetLoader<TextAsset> for TextLoader {
     async fn load(&self, path: &Path) -> Result<TextAsset, AssetError> {
-        let content = std::fs::read_to_string(path)
-            .map_err(|e| AssetError::LoadError(format!("Failed to read text file: {}", e)))?;
-        let name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown");
+        let content =
+            std::fs::read_to_string(path).map_err(|e| AssetError::LoadError(format!("Failed to read text file: {}", e)))?;
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
         Ok(TextAsset::new(name, content))
     }
 }
@@ -300,10 +270,7 @@ pub struct BinaryAsset {
 impl BinaryAsset {
     /// 创建新的二进制资源
     pub fn new(name: &str, data: Vec<u8>) -> Self {
-        Self {
-            data,
-            name: name.to_string(),
-        }
+        Self { data, name: name.to_string() }
     }
 
     /// 获取二进制数据
@@ -333,12 +300,8 @@ pub struct BinaryLoader;
 
 impl AssetLoader<BinaryAsset> for BinaryLoader {
     async fn load(&self, path: &Path) -> Result<BinaryAsset, AssetError> {
-        let data = std::fs::read(path)
-            .map_err(|e| AssetError::LoadError(format!("Failed to read binary file: {}", e)))?;
-        let name = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown");
+        let data = std::fs::read(path).map_err(|e| AssetError::LoadError(format!("Failed to read binary file: {}", e)))?;
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown");
         Ok(BinaryAsset::new(name, data))
     }
 }

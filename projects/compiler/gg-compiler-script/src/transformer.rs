@@ -19,71 +19,46 @@ impl ScriptTransformer {
     /// 读取 input_path 指向的 .gscript 文件或目录，
     /// 编译为 StorySequence，序列化为 JSON 写入 output_dir，
     /// 返回所有输出文件路径列表。
-    pub fn transform(
-        input_path: &Path,
-        output_dir: &Path,
-    ) -> GResult<Vec<PathBuf>> {
+    pub fn transform(input_path: &Path, output_dir: &Path) -> GResult<Vec<PathBuf>> {
         if input_path.is_dir() {
             Self::transform_directory(input_path, output_dir)
-        } else {
+        }
+        else {
             Self::transform_file(input_path, output_dir)
         }
     }
 
     /// 转换单个 .gscript 文件
-    fn transform_file(
-        input_path: &Path,
-        output_dir: &Path,
-    ) -> GResult<Vec<PathBuf>> {
+    fn transform_file(input_path: &Path, output_dir: &Path) -> GResult<Vec<PathBuf>> {
         let sequence = ScriptCompiler::compile_file(input_path)?;
 
         std::fs::create_dir_all(output_dir).map_err(|e| GError {
             kind: GErrorKind::Io,
-            message: format!(
-                "Failed to create output directory '{}': {}",
-                output_dir.display(),
-                e
-            ),
+            message: format!("Failed to create output directory '{}': {}", output_dir.display(), e),
         })?;
 
-        let stem = input_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("output");
+        let stem = input_path.file_stem().and_then(|s| s.to_str()).unwrap_or("output");
 
         let output_path = output_dir.join(format!("{}.json", stem));
 
-        let json = serde_json::to_string_pretty(&sequence).map_err(|e| GError {
-            kind: GErrorKind::Other,
-            message: format!("Failed to serialize sequence to JSON: {}", e),
-        })?;
+        let json = serde_json::to_string_pretty(&sequence)
+            .map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to serialize sequence to JSON: {}", e) })?;
 
         std::fs::write(&output_path, json).map_err(|e| GError {
             kind: GErrorKind::Io,
-            message: format!(
-                "Failed to write output file '{}': {}",
-                output_path.display(),
-                e
-            ),
+            message: format!("Failed to write output file '{}': {}", output_path.display(), e),
         })?;
 
         Ok(vec![output_path])
     }
 
     /// 转换目录下所有 .gscript 文件
-    fn transform_directory(
-        input_dir: &Path,
-        output_dir: &Path,
-    ) -> GResult<Vec<PathBuf>> {
+    fn transform_directory(input_dir: &Path, output_dir: &Path) -> GResult<Vec<PathBuf>> {
         let db = ScriptCompiler::compile_directory(input_dir)?;
 
         std::fs::create_dir_all(output_dir).map_err(|e| GError {
             kind: GErrorKind::Io,
-            message: format!(
-                "Failed to create output directory '{}': {}",
-                output_dir.display(),
-                e
-            ),
+            message: format!("Failed to create output directory '{}': {}", output_dir.display(), e),
         })?;
 
         let mut output_paths = Vec::new();
@@ -98,11 +73,7 @@ impl ScriptTransformer {
 
             std::fs::write(&output_path, json).map_err(|e| GError {
                 kind: GErrorKind::Io,
-                message: format!(
-                    "Failed to write output file '{}': {}",
-                    output_path.display(),
-                    e
-                ),
+                message: format!("Failed to write output file '{}': {}", output_path.display(), e),
             })?;
 
             output_paths.push(output_path);

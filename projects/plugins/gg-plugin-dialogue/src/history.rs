@@ -12,17 +12,8 @@ impl DialogueHistoryManager {
     /// 添加历史条目
     ///
     /// 将一条对话记录添加到历史中，包含说话者名称、对话文本和时间戳。
-    pub fn add_entry(
-        history: &mut DialogueHistory,
-        speaker_name: Option<String>,
-        text: String,
-        timestamp: f64,
-    ) {
-        history.entries.push(HistoryEntry {
-            speaker_name,
-            text,
-            timestamp,
-        });
+    pub fn add_entry(history: &mut DialogueHistory, speaker_name: Option<String>, text: String, timestamp: f64) {
+        history.entries.push(HistoryEntry { speaker_name, text, timestamp });
     }
 
     /// 获取所有历史条目

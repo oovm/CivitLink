@@ -35,13 +35,7 @@ impl PortraitAnimationState {
             TransitionType::Slide { duration_secs, .. } => *duration_secs,
         };
         let is_complete = matches!(animation_type, TransitionType::None);
-        Self {
-            animation_type,
-            progress: 0.0,
-            duration_secs,
-            elapsed_secs: 0.0,
-            is_complete,
-        }
+        Self { animation_type, progress: 0.0, duration_secs, elapsed_secs: 0.0, is_complete }
     }
 
     /// 更新动画进度
@@ -160,11 +154,7 @@ impl PortraitManager {
     /// - `world` - ECS 世界
     /// - `character_id` - 角色 ID
     /// - `transition` - 过渡动画类型
-    pub fn hide_portrait(
-        world: &mut World,
-        character_id: String,
-        transition: TransitionType,
-    ) -> GResult<()> {
+    pub fn hide_portrait(world: &mut World, character_id: String, transition: TransitionType) -> GResult<()> {
         let entities: Vec<Entity> = world.entities().iter().copied().collect();
         let mut found = None;
         for entity in entities {
@@ -179,11 +169,9 @@ impl PortraitManager {
             let animation = PortraitAnimationState::new(transition);
             world.add_component(entity, animation)?;
             Ok(())
-        } else {
-            Err(GError {
-                kind: GErrorKind::Plugin,
-                message: format!("Portrait not found for character: {}", character_id),
-            })
+        }
+        else {
+            Err(GError { kind: GErrorKind::Plugin, message: format!("Portrait not found for character: {}", character_id) })
         }
     }
 
@@ -221,11 +209,9 @@ impl PortraitManager {
             let animation = PortraitAnimationState::new(transition);
             world.add_component(entity, animation)?;
             Ok(())
-        } else {
-            Err(GError {
-                kind: GErrorKind::Plugin,
-                message: format!("Portrait not found for character: {}", character_id),
-            })
+        }
+        else {
+            Err(GError { kind: GErrorKind::Plugin, message: format!("Portrait not found for character: {}", character_id) })
         }
     }
 

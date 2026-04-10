@@ -22,12 +22,7 @@ impl SurfaceInfo {
     /// - `height` - 表面高度（像素）
     /// - `title` - 窗口标题
     pub fn new(width: u32, height: u32, title: impl Into<String>) -> Self {
-        Self {
-            width,
-            height,
-            title: title.into(),
-            fullscreen: false,
-        }
+        Self { width, height, title: title.into(), fullscreen: false }
     }
 
     /// 设置是否全屏

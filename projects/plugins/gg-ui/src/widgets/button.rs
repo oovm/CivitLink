@@ -1,7 +1,9 @@
-use crate::event::EventSystem;
-use crate::node::{UiNodeData, UiTree};
-use crate::style::{FlexDirection, FontStyle, LayoutStyle, Style};
-use crate::widget::Widget;
+use crate::{
+    event::EventSystem,
+    node::{UiNodeData, UiTree},
+    style::{FlexDirection, FontStyle, LayoutStyle, Style},
+    widget::Widget,
+};
 
 /// 按钮交互状态
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,31 +46,19 @@ impl Button {
         let style = Style::new()
             .with_background_color(gg_render::Color::new(0.2, 0.2, 0.2, 1.0))
             .with_corner_radius(4.0)
-            .with_layout(
-                LayoutStyle::new()
-                    .with_direction(FlexDirection::Column)
-                    .with_padding(8.0),
-            )
+            .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column).with_padding(8.0))
             .with_font(FontStyle::new());
 
         let hover_style = Style::new()
             .with_background_color(gg_render::Color::new(0.3, 0.3, 0.3, 1.0))
             .with_corner_radius(4.0)
-            .with_layout(
-                LayoutStyle::new()
-                    .with_direction(FlexDirection::Column)
-                    .with_padding(8.0),
-            )
+            .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column).with_padding(8.0))
             .with_font(FontStyle::new());
 
         let pressed_style = Style::new()
             .with_background_color(gg_render::Color::new(0.15, 0.15, 0.15, 1.0))
             .with_corner_radius(4.0)
-            .with_layout(
-                LayoutStyle::new()
-                    .with_direction(FlexDirection::Column)
-                    .with_padding(8.0),
-            )
+            .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column).with_padding(8.0))
             .with_font(FontStyle::new());
 
         Self {
@@ -119,16 +109,14 @@ impl Button {
             let mut on_click = on_click;
             event_system.register(
                 id,
-                Box::new(move |event| {
-                    match event {
-                        crate::event::UiEvent::Click { .. } => {
-                            if let Some(ref mut cb) = on_click {
-                                cb();
-                            }
-                            true
+                Box::new(move |event| match event {
+                    crate::event::UiEvent::Click { .. } => {
+                        if let Some(ref mut cb) = on_click {
+                            cb();
                         }
-                        _ => false,
+                        true
                     }
+                    _ => false,
                 }),
             );
             let _ = label;
@@ -139,23 +127,12 @@ impl Button {
 
 impl Widget for Button {
     fn build(&self, tree: &mut UiTree) -> crate::node::UiNodeId {
-        let root_id = tree.create_node(
-            format!("Button({})", self.label),
-            self.style.clone(),
-            UiNodeData::Container,
-        );
+        let root_id = tree.create_node(format!("Button({})", self.label), self.style.clone(), UiNodeData::Container);
 
         let text_id = tree.create_node(
             format!("Button_Text({})", self.label),
-            Style::new().with_font(
-                self.style
-                    .font
-                    .clone()
-                    .unwrap_or_default(),
-            ),
-            UiNodeData::Text {
-                content: self.label.clone(),
-            },
+            Style::new().with_font(self.style.font.clone().unwrap_or_default()),
+            UiNodeData::Text { content: self.label.clone() },
         );
 
         tree.add_child(root_id, text_id);

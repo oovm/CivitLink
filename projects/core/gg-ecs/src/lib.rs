@@ -4,9 +4,11 @@
 //! 提供实体-组件-系统架构，包含实体管理、组件存储、资源管理和查询功能
 
 use gg_error::{GError, GErrorKind, GResult};
-use std::any::{Any, TypeId};
-use std::collections::{HashMap, HashSet};
-use std::marker::PhantomData;
+use std::{
+    any::{Any, TypeId},
+    collections::{HashMap, HashSet},
+    marker::PhantomData,
+};
 
 /// 实体 ID 类型
 pub type Entity = u64;
@@ -77,9 +79,7 @@ struct ComponentStore {
 impl ComponentStore {
     /// 创建新的组件存储
     fn new() -> Self {
-        Self {
-            components: HashMap::new(),
-        }
+        Self { components: HashMap::new() }
     }
 
     /// 添加组件到指定实体
@@ -89,16 +89,12 @@ impl ComponentStore {
 
     /// 获取指定实体的组件引用
     fn get<T: Component>(&self, entity: Entity) -> Option<&T> {
-        self.components
-            .get(&entity)
-            .and_then(|c| c.downcast_ref::<T>())
+        self.components.get(&entity).and_then(|c| c.downcast_ref::<T>())
     }
 
     /// 获取指定实体的组件可变引用
     fn get_mut<T: Component>(&mut self, entity: Entity) -> Option<&mut T> {
-        self.components
-            .get_mut(&entity)
-            .and_then(|c| c.downcast_mut::<T>())
+        self.components.get_mut(&entity).and_then(|c| c.downcast_mut::<T>())
     }
 
     /// 移除指定实体的组件
@@ -124,11 +120,7 @@ impl<'a> EntityBuilder<'a> {
     /// 向实体插入组件，返回自身以支持链式调用
     pub fn insert<T: Component>(self, component: T) -> Self {
         let type_id = TypeId::of::<T>();
-        let store = self
-            .world
-            .component_stores
-            .entry(type_id)
-            .or_insert_with(ComponentStore::new);
+        let store = self.world.component_stores.entry(type_id).or_insert_with(ComponentStore::new);
         store.add(self.entity, Box::new(component));
         self
     }
@@ -170,19 +162,13 @@ impl GgWorld {
         let entity = self.next_entity;
         self.next_entity += 1;
         self.entities.insert(entity);
-        EntityBuilder {
-            world: self,
-            entity,
-        }
+        EntityBuilder { world: self, entity }
     }
 
     /// 销毁指定实体及其所有组件
     pub fn despawn(&mut self, entity: Entity) -> GResult<()> {
         if !self.entities.contains(&entity) {
-            return Err(GError {
-                kind: GErrorKind::Ecs,
-                message: format!("Entity {} does not exist", entity),
-            });
+            return Err(GError { kind: GErrorKind::Ecs, message: format!("Entity {} does not exist", entity) });
         }
 
         for store in self.component_stores.values_mut() {
@@ -196,17 +182,11 @@ impl GgWorld {
     /// 向指定实体添加组件
     pub fn add_component<T: Component>(&mut self, entity: Entity, component: T) -> GResult<()> {
         if !self.entities.contains(&entity) {
-            return Err(GError {
-                kind: GErrorKind::Ecs,
-                message: format!("Entity {} does not exist", entity),
-            });
+            return Err(GError { kind: GErrorKind::Ecs, message: format!("Entity {} does not exist", entity) });
         }
 
         let type_id = TypeId::of::<T>();
-        let store = self
-            .component_stores
-            .entry(type_id)
-            .or_insert_with(ComponentStore::new);
+        let store = self.component_stores.entry(type_id).or_insert_with(ComponentStore::new);
         store.add(entity, Box::new(component));
         Ok(())
     }
@@ -215,22 +195,11 @@ impl GgWorld {
     ///
     /// 与 add_component 类似，但接受已装箱的类型擦除组件。
     /// 主要用于 PluginRegistrar 在 apply 阶段插入资源。
-    pub fn add_component_raw(
-        &mut self,
-        entity: Entity,
-        component: Box<dyn Any + Send + Sync>,
-        type_id: TypeId,
-    ) -> GResult<()> {
+    pub fn add_component_raw(&mut self, entity: Entity, component: Box<dyn Any + Send + Sync>, type_id: TypeId) -> GResult<()> {
         if !self.entities.contains(&entity) {
-            return Err(GError {
-                kind: GErrorKind::Ecs,
-                message: format!("Entity {} does not exist", entity),
-            });
+            return Err(GError { kind: GErrorKind::Ecs, message: format!("Entity {} does not exist", entity) });
         }
-        let store = self
-            .component_stores
-            .entry(type_id)
-            .or_insert_with(ComponentStore::new);
+        let store = self.component_stores.entry(type_id).or_insert_with(ComponentStore::new);
         store.add(entity, component);
         Ok(())
     }
@@ -238,26 +207,19 @@ impl GgWorld {
     /// 获取指定实体的组件不可变引用
     pub fn get_component<T: Component>(&self, entity: Entity) -> Option<&T> {
         let type_id = TypeId::of::<T>();
-        self.component_stores
-            .get(&type_id)
-            .and_then(|store| store.get::<T>(entity))
+        self.component_stores.get(&type_id).and_then(|store| store.get::<T>(entity))
     }
 
     /// 获取指定实体的组件可变引用
     pub fn get_component_mut<T: Component>(&mut self, entity: Entity) -> Option<&mut T> {
         let type_id = TypeId::of::<T>();
-        self.component_stores
-            .get_mut(&type_id)
-            .and_then(|store| store.get_mut::<T>(entity))
+        self.component_stores.get_mut(&type_id).and_then(|store| store.get_mut::<T>(entity))
     }
 
     /// 移除指定实体的组件并返回被移除的组件
     pub fn remove_component<T: Component>(&mut self, entity: Entity) -> Option<Box<T>> {
         let type_id = TypeId::of::<T>();
-        self.component_stores
-            .get_mut(&type_id)
-            .and_then(|store| store.remove(entity))
-            .and_then(|c| c.downcast::<T>().ok())
+        self.component_stores.get_mut(&type_id).and_then(|store| store.remove(entity)).and_then(|c| c.downcast::<T>().ok())
     }
 
     /// 插入全局资源，若已存在则覆盖
@@ -270,28 +232,20 @@ impl GgWorld {
     ///
     /// 与 insert_resource 类似，但接受已装箱的类型擦除资源。
     /// 主要用于 PluginRegistrar 在 apply 阶段插入资源。
-    pub fn insert_resource_raw(
-        &mut self,
-        resource: Box<dyn Any + Send + Sync>,
-        type_id: TypeId,
-    ) {
+    pub fn insert_resource_raw(&mut self, resource: Box<dyn Any + Send + Sync>, type_id: TypeId) {
         self.resources.insert(type_id, resource);
     }
 
     /// 获取全局资源的不可变引用
     pub fn get_resource<T: Resource>(&self) -> Option<&T> {
         let type_id = TypeId::of::<T>();
-        self.resources
-            .get(&type_id)
-            .and_then(|r| r.downcast_ref::<T>())
+        self.resources.get(&type_id).and_then(|r| r.downcast_ref::<T>())
     }
 
     /// 获取全局资源的可变引用
     pub fn get_resource_mut<T: Resource>(&mut self) -> Option<&mut T> {
         let type_id = TypeId::of::<T>();
-        self.resources
-            .get_mut(&type_id)
-            .and_then(|r| r.downcast_mut::<T>())
+        self.resources.get_mut(&type_id).and_then(|r| r.downcast_mut::<T>())
     }
 
     /// 移除全局资源并返回被移除的资源
@@ -304,10 +258,7 @@ impl GgWorld {
     pub fn query<T: Component>(&self) -> Query<'_, T> {
         let type_id = TypeId::of::<T>();
         let inner = self.component_stores.get(&type_id).map(|store| store.iter());
-        Query {
-            inner,
-            _marker: PhantomData,
-        }
+        Query { inner, _marker: PhantomData }
     }
 
     /// 注册系统到世界

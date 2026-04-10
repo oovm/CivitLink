@@ -130,11 +130,7 @@ pub struct IrModule {
 impl IrModule {
     /// 创建新的 IR 模块
     pub fn new(name: &str) -> Self {
-        Self {
-            name: name.to_string(),
-            constants: Vec::new(),
-            functions: Vec::new(),
-        }
+        Self { name: name.to_string(), constants: Vec::new(), functions: Vec::new() }
     }
 
     /// 添加常量到常量池，返回索引
@@ -173,12 +169,12 @@ impl IrModule {
     }
 }
 
-/// IR 优化 Pass 基础设施
-pub mod pass;
 /// 常量折叠优化 Pass
 pub mod constant_fold;
 /// 死代码消除优化 Pass
 pub mod dead_code;
+/// IR 优化 Pass 基础设施
+pub mod pass;
 /// IR 优化转换器适配器
 pub mod transformer_adapter;
 

@@ -32,11 +32,7 @@ pub struct PanelLayoutHint {
 
 impl Default for PanelLayoutHint {
     fn default() -> Self {
-        Self {
-            position: PanelPosition::Center,
-            preferred_size: None,
-            min_size: None,
-        }
+        Self { position: PanelPosition::Center, preferred_size: None, min_size: None }
     }
 }
 

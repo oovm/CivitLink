@@ -65,11 +65,7 @@ pub struct EventBus {
 impl EventBus {
     /// 创建空的事件总线
     pub fn new() -> Self {
-        Self {
-            handlers: Vec::new(),
-            pending: Vec::new(),
-            next_id: 0,
-        }
+        Self { handlers: Vec::new(), pending: Vec::new(), next_id: 0 }
     }
 
     /// 订阅事件

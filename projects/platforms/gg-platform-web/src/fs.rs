@@ -1,7 +1,9 @@
 use std::path::Path;
 
-use gg_core::platform::{DirEntry, FileMetadata, FileSystem};
-use gg_core::{GError, GErrorKind, GResult};
+use gg_core::{
+    GError, GErrorKind, GResult,
+    platform::{DirEntry, FileMetadata, FileSystem},
+};
 
 /// Web 平台文件系统实现
 ///
@@ -20,9 +22,7 @@ impl WebFileSystem {
     ///
     /// - `base_url` - 资源文件的基础 URL 路径
     pub fn new(base_url: impl Into<String>) -> Self {
-        Self {
-            base_url: base_url.into(),
-        }
+        Self { base_url: base_url.into() }
     }
 }
 
@@ -70,20 +70,15 @@ impl FileSystem for WebFileSystem {
         {
             Err(GError {
                 kind: GErrorKind::Platform,
-                message: format!(
-                    "WebFileSystem is only available on wasm32 target, cannot read '{}'",
-                    path.display()
-                ),
+                message: format!("WebFileSystem is only available on wasm32 target, cannot read '{}'", path.display()),
             })
         }
     }
 
     fn read_to_string(&self, path: &Path) -> GResult<String> {
         let bytes = self.read(path)?;
-        String::from_utf8(bytes).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to convert file to UTF-8: {}", e),
-        })
+        String::from_utf8(bytes)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to convert file to UTF-8: {}", e) })
     }
 
     fn write(&self, _path: &Path, _content: &[u8]) -> GResult<()> {
@@ -92,45 +87,28 @@ impl FileSystem for WebFileSystem {
             let key = path.to_string_lossy().to_string();
             let value = js_sys::Uint8Array::from(content).to_vec();
             let value_str =
-                js_sys::JSON::stringify(&js_sys::Array::from_iter(
-                    value.iter().map(|&b| js_sys::Number::from(b)),
-                ))
-                .map_err(|_| GError {
-                    kind: GErrorKind::Platform,
-                    message: "Failed to serialize data for localStorage".to_string(),
-                })?;
+                js_sys::JSON::stringify(&js_sys::Array::from_iter(value.iter().map(|&b| js_sys::Number::from(b)))).map_err(
+                    |_| GError { kind: GErrorKind::Platform, message: "Failed to serialize data for localStorage".to_string() },
+                )?;
 
-            let window = web_sys::window().ok_or_else(|| GError {
-                kind: GErrorKind::Platform,
-                message: "No window object available".to_string(),
-            })?;
+            let window = web_sys::window()
+                .ok_or_else(|| GError { kind: GErrorKind::Platform, message: "No window object available".to_string() })?;
 
             let storage = window
                 .local_storage()
-                .map_err(|_| GError {
-                    kind: GErrorKind::Platform,
-                    message: "Failed to access localStorage".to_string(),
-                })?
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Platform,
-                    message: "localStorage not available".to_string(),
-                })?;
+                .map_err(|_| GError { kind: GErrorKind::Platform, message: "Failed to access localStorage".to_string() })?
+                .ok_or_else(|| GError { kind: GErrorKind::Platform, message: "localStorage not available".to_string() })?;
 
-            storage
-                .set_item(&key, &value_str.into_string().unwrap_or_default())
-                .map_err(|_| GError {
-                    kind: GErrorKind::Platform,
-                    message: format!("Failed to write to localStorage: '{}'", key),
-                })?;
+            storage.set_item(&key, &value_str.into_string().unwrap_or_default()).map_err(|_| GError {
+                kind: GErrorKind::Platform,
+                message: format!("Failed to write to localStorage: '{}'", key),
+            })?;
 
             Ok(())
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            Err(GError {
-                kind: GErrorKind::Platform,
-                message: "WebFileSystem is only available on wasm32 target".to_string(),
-            })
+            Err(GError { kind: GErrorKind::Platform, message: "WebFileSystem is only available on wasm32 target".to_string() })
         }
     }
 
@@ -139,38 +117,24 @@ impl FileSystem for WebFileSystem {
     }
 
     fn read_dir(&self, _path: &Path) -> GResult<Vec<DirEntry>> {
-        Err(GError {
-            kind: GErrorKind::Platform,
-            message: "Directory listing is not supported in Web environment".to_string(),
-        })
+        Err(GError { kind: GErrorKind::Platform, message: "Directory listing is not supported in Web environment".to_string() })
     }
 
     fn metadata(&self, _path: &Path) -> GResult<FileMetadata> {
-        Err(GError {
-            kind: GErrorKind::Platform,
-            message: "File metadata is not supported in Web environment".to_string(),
-        })
+        Err(GError { kind: GErrorKind::Platform, message: "File metadata is not supported in Web environment".to_string() })
     }
 
     fn remove_file(&self, _path: &Path) -> GResult<()> {
         #[cfg(target_arch = "wasm32")]
         {
             let key = path.to_string_lossy().to_string();
-            let window = web_sys::window().ok_or_else(|| GError {
-                kind: GErrorKind::Platform,
-                message: "No window object available".to_string(),
-            })?;
+            let window = web_sys::window()
+                .ok_or_else(|| GError { kind: GErrorKind::Platform, message: "No window object available".to_string() })?;
 
             let storage = window
                 .local_storage()
-                .map_err(|_| GError {
-                    kind: GErrorKind::Platform,
-                    message: "Failed to access localStorage".to_string(),
-                })?
-                .ok_or_else(|| GError {
-                    kind: GErrorKind::Platform,
-                    message: "localStorage not available".to_string(),
-                })?;
+                .map_err(|_| GError { kind: GErrorKind::Platform, message: "Failed to access localStorage".to_string() })?
+                .ok_or_else(|| GError { kind: GErrorKind::Platform, message: "localStorage not available".to_string() })?;
 
             storage.remove_item(&key).map_err(|_| GError {
                 kind: GErrorKind::Platform,
@@ -181,10 +145,7 @@ impl FileSystem for WebFileSystem {
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            Err(GError {
-                kind: GErrorKind::Platform,
-                message: "WebFileSystem is only available on wasm32 target".to_string(),
-            })
+            Err(GError { kind: GErrorKind::Platform, message: "WebFileSystem is only available on wasm32 target".to_string() })
         }
     }
 }

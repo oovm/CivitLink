@@ -21,10 +21,7 @@ impl PortraitLayout {
     /// - `screen_width` - 屏幕宽度
     /// - `screen_height` - 屏幕高度
     pub fn new(screen_width: f32, screen_height: f32) -> Self {
-        Self {
-            screen_width,
-            screen_height,
-        }
+        Self { screen_width, screen_height }
     }
 
     /// 根据位置枚举计算立绘坐标

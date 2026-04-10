@@ -38,11 +38,7 @@ fn default_height() -> u32 {
 
 impl Default for DisplaySection {
     fn default() -> Self {
-        Self {
-            width: 1280,
-            height: 720,
-            fullscreen: false,
-        }
+        Self { width: 1280, height: 720, fullscreen: false }
     }
 }
 
@@ -74,11 +70,7 @@ fn default_se_volume() -> f32 {
 
 impl Default for AudioSection {
     fn default() -> Self {
-        Self {
-            master_volume: 1.0,
-            bgm_volume: 0.8,
-            se_volume: 1.0,
-        }
+        Self { master_volume: 1.0, bgm_volume: 0.8, se_volume: 1.0 }
     }
 }
 

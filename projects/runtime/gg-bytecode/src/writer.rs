@@ -1,10 +1,7 @@
 use gg_core::GResult;
 use gg_ir::{IrModule, IrValue, OpCode};
 
-use crate::format::{
-    BinaryWriter, BytecodeFunction, BytecodeInstruction, BytecodeModule, BytecodeValue, MAGIC,
-    VERSION,
-};
+use crate::format::{BinaryWriter, BytecodeFunction, BytecodeInstruction, BytecodeModule, BytecodeValue, MAGIC, VERSION};
 
 /// 字节码写入器，将 IrModule 序列化为二进制格式
 pub struct BytecodeWriter;
@@ -21,21 +18,13 @@ impl BytecodeWriter {
 
         Self::write_constants(&mut bytecode_module, &mut writer, &module.constants)?;
         Self::write_string_pool(&mut writer, &bytecode_module.string_pool)?;
-        Self::write_functions(
-            &mut bytecode_module,
-            &mut writer,
-            &module.functions,
-        )?;
+        Self::write_functions(&mut bytecode_module, &mut writer, &module.functions)?;
 
         Ok(writer.into_vec())
     }
 
     /// 写入常量池
-    fn write_constants(
-        bytecode_module: &mut BytecodeModule,
-        writer: &mut BinaryWriter,
-        constants: &[IrValue],
-    ) -> GResult<()> {
+    fn write_constants(bytecode_module: &mut BytecodeModule, writer: &mut BinaryWriter, constants: &[IrValue]) -> GResult<()> {
         writer.write_u32(constants.len() as u32);
 
         for value in constants {
@@ -73,10 +62,7 @@ impl BytecodeWriter {
     }
 
     /// 写入字符串池
-    fn write_string_pool(
-        writer: &mut BinaryWriter,
-        string_pool: &[String],
-    ) -> GResult<()> {
+    fn write_string_pool(writer: &mut BinaryWriter, string_pool: &[String]) -> GResult<()> {
         writer.write_u32(string_pool.len() as u32);
         for s in string_pool {
             writer.write_string(s);
@@ -99,8 +85,7 @@ impl BytecodeWriter {
 
             let mut instructions = Vec::new();
             for op in &func.instructions {
-                let bc_inst =
-                    Self::ir_op_to_instruction(bytecode_module, op)?;
+                let bc_inst = Self::ir_op_to_instruction(bytecode_module, op)?;
                 instructions.push(bc_inst);
             }
 
@@ -155,10 +140,7 @@ impl BytecodeWriter {
             BytecodeInstruction::SetComponent { type_name_index } => {
                 writer.write_u32(*type_name_index);
             }
-            BytecodeInstruction::HostCall {
-                name_index,
-                arg_count,
-            } => {
+            BytecodeInstruction::HostCall { name_index, arg_count } => {
                 writer.write_u32(*name_index);
                 writer.write_u32(*arg_count);
             }
@@ -203,23 +185,14 @@ impl BytecodeWriter {
     }
 
     /// 将 IR 操作码转换为字节码指令
-    fn ir_op_to_instruction(
-        bytecode_module: &mut BytecodeModule,
-        op: &OpCode,
-    ) -> GResult<BytecodeInstruction> {
+    fn ir_op_to_instruction(bytecode_module: &mut BytecodeModule, op: &OpCode) -> GResult<BytecodeInstruction> {
         match op {
-            OpCode::LoadConst(idx) => Ok(BytecodeInstruction::LoadConst {
-                index: *idx as u32,
-            }),
+            OpCode::LoadConst(idx) => Ok(BytecodeInstruction::LoadConst { index: *idx as u32 }),
             OpCode::LoadNull => Ok(BytecodeInstruction::LoadNull),
             OpCode::LoadTrue => Ok(BytecodeInstruction::LoadTrue),
             OpCode::LoadFalse => Ok(BytecodeInstruction::LoadFalse),
-            OpCode::LoadLocal(idx) => Ok(BytecodeInstruction::LoadLocal {
-                index: *idx as u32,
-            }),
-            OpCode::StoreLocal(idx) => Ok(BytecodeInstruction::StoreLocal {
-                index: *idx as u32,
-            }),
+            OpCode::LoadLocal(idx) => Ok(BytecodeInstruction::LoadLocal { index: *idx as u32 }),
+            OpCode::StoreLocal(idx) => Ok(BytecodeInstruction::StoreLocal { index: *idx as u32 }),
             OpCode::Add => Ok(BytecodeInstruction::Add),
             OpCode::Sub => Ok(BytecodeInstruction::Sub),
             OpCode::Mul => Ok(BytecodeInstruction::Mul),
@@ -235,50 +208,31 @@ impl BytecodeWriter {
             OpCode::And => Ok(BytecodeInstruction::And),
             OpCode::Or => Ok(BytecodeInstruction::Or),
             OpCode::Not => Ok(BytecodeInstruction::Not),
-            OpCode::Jump(addr) => Ok(BytecodeInstruction::Jump {
-                address: *addr as u32,
-            }),
-            OpCode::JumpIfFalse(addr) => Ok(BytecodeInstruction::JumpIfFalse {
-                address: *addr as u32,
-            }),
-            OpCode::JumpIfTrue(addr) => Ok(BytecodeInstruction::JumpIfTrue {
-                address: *addr as u32,
-            }),
-            OpCode::Call(arg_count) => Ok(BytecodeInstruction::Call {
-                arg_count: *arg_count as u32,
-            }),
+            OpCode::Jump(addr) => Ok(BytecodeInstruction::Jump { address: *addr as u32 }),
+            OpCode::JumpIfFalse(addr) => Ok(BytecodeInstruction::JumpIfFalse { address: *addr as u32 }),
+            OpCode::JumpIfTrue(addr) => Ok(BytecodeInstruction::JumpIfTrue { address: *addr as u32 }),
+            OpCode::Call(arg_count) => Ok(BytecodeInstruction::Call { arg_count: *arg_count as u32 }),
             OpCode::Return => Ok(BytecodeInstruction::Return),
             OpCode::SpawnEntity => Ok(BytecodeInstruction::SpawnEntity),
             OpCode::DespawnEntity => Ok(BytecodeInstruction::DespawnEntity),
             OpCode::AddComponent(type_name) => {
                 let idx = bytecode_module.add_string(type_name);
-                Ok(BytecodeInstruction::AddComponent {
-                    type_name_index: idx,
-                })
+                Ok(BytecodeInstruction::AddComponent { type_name_index: idx })
             }
             OpCode::GetComponent(type_name) => {
                 let idx = bytecode_module.add_string(type_name);
-                Ok(BytecodeInstruction::GetComponent {
-                    type_name_index: idx,
-                })
+                Ok(BytecodeInstruction::GetComponent { type_name_index: idx })
             }
             OpCode::SetComponent(type_name) => {
                 let idx = bytecode_module.add_string(type_name);
-                Ok(BytecodeInstruction::SetComponent {
-                    type_name_index: idx,
-                })
+                Ok(BytecodeInstruction::SetComponent { type_name_index: idx })
             }
             OpCode::HostCall(name, arg_count) => {
                 let idx = bytecode_module.add_string(name);
-                Ok(BytecodeInstruction::HostCall {
-                    name_index: idx,
-                    arg_count: *arg_count as u32,
-                })
+                Ok(BytecodeInstruction::HostCall { name_index: idx, arg_count: *arg_count as u32 })
             }
             OpCode::Pop => Ok(BytecodeInstruction::Pop),
             OpCode::Dup => Ok(BytecodeInstruction::Dup),
         }
     }
 }
-
-

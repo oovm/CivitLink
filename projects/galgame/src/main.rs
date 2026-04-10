@@ -44,10 +44,8 @@ fn main() -> GResult<()> {
         message: format!("Failed to read config file {:?}: {}", config_path, e),
     })?;
 
-    let config: GalgameConfig = toml::from_str(&config_content).map_err(|e| GError {
-        kind: GErrorKind::Runtime,
-        message: format!("Failed to parse config file: {}", e),
-    })?;
+    let config: GalgameConfig = toml::from_str(&config_content)
+        .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to parse config file: {}", e) })?;
 
     let mut engine = GalgameEngine::new(config, is_editor_mode);
     engine.initialize()?;

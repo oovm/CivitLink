@@ -2,9 +2,7 @@
 //! 将 .gscript 源码解析为 DialogueNode 列表
 
 use gg_core::{GError, GErrorKind, GResult};
-use gg_galgame_schema::components::{
-    Choice, DialogueCommand, DialogueNode, PortraitPosition, TransitionType, VariableValue,
-};
+use gg_galgame_schema::components::{Choice, DialogueCommand, DialogueNode, PortraitPosition, TransitionType, VariableValue};
 
 /// .gscript 剧本脚本解析器
 ///
@@ -50,10 +48,7 @@ impl GscriptParser {
                 None => {
                     return Err(GError {
                         kind: GErrorKind::Other,
-                        message: format!(
-                            "Line {}: content appears before any @node directive",
-                            line_num
-                        ),
+                        message: format!("Line {}: content appears before any @node directive", line_num),
                     });
                 }
             };
@@ -80,7 +75,8 @@ impl GscriptParser {
 
             if node.text.is_empty() {
                 node.text = line.to_string();
-            } else {
+            }
+            else {
                 node.text.push('\n');
                 node.text.push_str(line);
             }
@@ -148,20 +144,18 @@ impl GscriptParser {
                 let before_brace = &content[..brace_start];
                 let (t, target) = Self::split_choice_arrow(before_brace)?;
                 (t, target, Some(cond))
-            } else {
+            }
+            else {
                 let (t, target) = Self::split_choice_arrow(content)?;
                 (t, target, None)
             }
-        } else {
+        }
+        else {
             let (t, target) = Self::split_choice_arrow(content)?;
             (t, target, None)
         };
 
-        Some(Choice {
-            text: text.to_string(),
-            next_node_id: next_node_id.to_string(),
-            condition,
-        })
+        Some(Choice { text: text.to_string(), next_node_id: next_node_id.to_string(), condition })
     }
 
     /// 在选项内容中按 "->" 分割文本和目标节点
@@ -206,11 +200,7 @@ impl GscriptParser {
         if asset_path.is_empty() {
             return None;
         }
-        Some(DialogueCommand::PlayBgm {
-            asset_path,
-            volume: 1.0,
-            fade_in_secs: 0.5,
-        })
+        Some(DialogueCommand::PlayBgm { asset_path, volume: 1.0, fade_in_secs: 0.5 })
     }
 
     /// 解析 show_portrait 命令参数
@@ -229,9 +219,7 @@ impl GscriptParser {
             character_id,
             expression,
             position,
-            transition: TransitionType::Fade {
-                duration_secs: 0.3,
-            },
+            transition: TransitionType::Fade { duration_secs: 0.3 },
         })
     }
 
@@ -241,12 +229,7 @@ impl GscriptParser {
         if character_id.is_empty() {
             return None;
         }
-        Some(DialogueCommand::HidePortrait {
-            character_id,
-            transition: TransitionType::Fade {
-                duration_secs: 0.3,
-            },
-        })
+        Some(DialogueCommand::HidePortrait { character_id, transition: TransitionType::Fade { duration_secs: 0.3 } })
     }
 
     /// 解析 change_background 命令参数
@@ -255,12 +238,7 @@ impl GscriptParser {
         if asset_path.is_empty() {
             return None;
         }
-        Some(DialogueCommand::ChangeBackground {
-            asset_path,
-            transition: TransitionType::CrossDissolve {
-                duration_secs: 0.5,
-            },
-        })
+        Some(DialogueCommand::ChangeBackground { asset_path, transition: TransitionType::CrossDissolve { duration_secs: 0.5 } })
     }
 
     /// 解析 set 命令参数
@@ -292,7 +270,8 @@ impl GscriptParser {
                     let x = coords[0].trim().parse::<f32>().ok()?;
                     let y = coords[1].trim().parse::<f32>().ok()?;
                     Some(PortraitPosition::Custom { x, y })
-                } else {
+                }
+                else {
                     None
                 }
             }

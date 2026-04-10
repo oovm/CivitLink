@@ -20,13 +20,7 @@ pub struct BoneTransform {
 
 impl Default for BoneTransform {
     fn default() -> Self {
-        Self {
-            x: 0.0,
-            y: 0.0,
-            rotation: 0.0,
-            scale_x: 1.0,
-            scale_y: 1.0,
-        }
+        Self { x: 0.0, y: 0.0, rotation: 0.0, scale_x: 1.0, scale_y: 1.0 }
     }
 }
 

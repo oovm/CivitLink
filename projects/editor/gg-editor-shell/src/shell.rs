@@ -1,11 +1,9 @@
 //! 编辑器壳程序
 
-use crate::command::CommandManager;
-use crate::context::EditorContext;
-use crate::event::EventBus;
-use crate::panel::EditorPanel;
-use crate::plugin::EditorPlugin;
-use crate::service::ServiceRegistry;
+use crate::{
+    command::CommandManager, context::EditorContext, event::EventBus, panel::EditorPanel, plugin::EditorPlugin,
+    service::ServiceRegistry,
+};
 use gg_core::GResult;
 use gg_ui::{LayoutEngine, UiTree};
 
@@ -49,8 +47,7 @@ impl EditorShell {
     /// 将面板添加到面板列表，并调用其 `on_register` 方法。
     pub fn register_panel(&mut self, panel: Box<dyn EditorPanel>) {
         self.panels.push(panel);
-        let mut context =
-            EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
+        let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
         if let Some(panel) = self.panels.last_mut() {
             panel.on_register(&mut context);
         }
@@ -97,8 +94,7 @@ impl EditorShell {
     /// 然后计算布局，最后渲染。
     pub fn tick(&mut self) -> GResult<()> {
         self.events.process_pending();
-        let mut context =
-            EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
+        let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
         for panel in &mut self.panels {
             if panel.is_visible() {
                 panel.build_ui(&mut context, &mut self.ui_tree)?;
@@ -115,8 +111,7 @@ impl EditorShell {
     pub fn run(&mut self) -> GResult<()> {
         self.is_running = true;
         {
-            let mut context =
-                EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
+            let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
             for plugin in &mut self.plugins {
                 plugin.initialize(&mut context);
             }
@@ -125,8 +120,7 @@ impl EditorShell {
             self.tick()?;
         }
         {
-            let mut context =
-                EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
+            let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
             for plugin in &mut self.plugins {
                 plugin.shutdown(&mut context);
             }
