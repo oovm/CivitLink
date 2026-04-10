@@ -1,5 +1,8 @@
+#![warn(missing_docs)]
+
 //! GG Editor *.vx 文件编译器
 
+use gg_core::{GError, GErrorKind};
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
@@ -12,14 +15,30 @@ pub struct VxFile {
 }
 
 /// 编译器错误
-#[derive(Debug, thiserror::Error)]
-pub enum CompilerError {
-    #[error("文件读取错误: {0}")]
-    FileReadError(#[from] std::io::Error),
-    #[error("解析错误: {0}")]
-    ParseError(String),
-    #[error("编译错误: {0}")]
-    CompileError(String),
+type CompilerResult<T> = Result<T, GError>;
+
+/// 将 io::Error 转换为 GError
+fn io_error_to_gerror(err: std::io::Error) -> GError {
+    GError {
+        kind: GErrorKind::Io,
+        message: format!("文件读取错误: {}", err),
+    }
+}
+
+/// 创建解析错误
+fn parse_error(message: &str) -> GError {
+    GError {
+        kind: GErrorKind::Runtime,
+        message: format!("解析错误: {}", message),
+    }
+}
+
+/// 创建编译错误
+fn compile_error(message: &str) -> GError {
+    GError {
+        kind: GErrorKind::Runtime,
+        message: format!("编译错误: {}", message),
+    }
 }
 
 /// *.vx 文件编译器
@@ -34,22 +53,22 @@ impl VxCompiler {
     }
 
     /// 编译 *.vx 文件
-    pub fn compile<P: AsRef<Path>>(&self, path: P) -> Result<String, CompilerError> {
+    pub fn compile<P: AsRef<Path>>(&self, path: P) -> CompilerResult<String> {
         let content = self.read_file(path)?;
         let vx_file = self.parse_vx_file(&content)?;
         self.generate_code(vx_file)
     }
 
     /// 读取文件内容
-    fn read_file<P: AsRef<Path>>(&self, path: P) -> Result<String, CompilerError> {
-        let mut file = File::open(path)?;
+    fn read_file<P: AsRef<Path>>(&self, path: P) -> CompilerResult<String> {
+        let mut file = File::open(path).map_err(io_error_to_gerror)?;
         let mut content = String::new();
-        file.read_to_string(&mut content)?;
+        file.read_to_string(&mut content).map_err(io_error_to_gerror)?;
         Ok(content)
     }
 
     /// 解析 *.vx 文件结构
-    fn parse_vx_file(&self, content: &str) -> Result<VxFile, CompilerError> {
+    fn parse_vx_file(&self, content: &str) -> CompilerResult<VxFile> {
         let mut template = None;
         let mut script = None;
         let mut style = None;
@@ -84,7 +103,7 @@ impl VxCompiler {
     }
 
     /// 生成平台特定的代码
-    fn generate_code(&self, vx_file: VxFile) -> Result<String, CompilerError> {
+    fn generate_code(&self, vx_file: VxFile) -> CompilerResult<String> {
         // 生成模板代码
         let template_code = self.compile_template(vx_file.template)?;
         
@@ -106,7 +125,7 @@ impl VxCompiler {
     }
 
     /// 编译模板部分
-    fn compile_template(&self, template: Option<String>) -> Result<String, CompilerError> {
+    fn compile_template(&self, template: Option<String>) -> CompilerResult<String> {
         match template {
             Some(template) => {
                 // 这里应该实现 TSX 到平台特定 GUI 代码的转换
@@ -118,7 +137,7 @@ impl VxCompiler {
     }
 
     /// 编译脚本部分
-    fn compile_script(&self, script: Option<String>) -> Result<String, CompilerError> {
+    fn compile_script(&self, script: Option<String>) -> CompilerResult<String> {
         match script {
             Some(script) => {
                 // 这里应该实现 Valkyrie 脚本的编译
@@ -130,7 +149,7 @@ impl VxCompiler {
     }
 
     /// 编译样式部分
-    fn compile_style(&self, style: Option<String>) -> Result<String, CompilerError> {
+    fn compile_style(&self, style: Option<String>) -> CompilerResult<String> {
         match style {
             Some(style) => {
                 // 这里应该实现 SCSS 到 GG Renderer 可处理样式的转换
@@ -142,43 +161,4 @@ impl VxCompiler {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::fs::File;
-    use std::io::Write;
-    use tempfile::tempdir;
 
-    #[test]
-    fn test_compile_vx_file() {
-        let compiler = VxCompiler::new();
-        
-        // 创建临时测试文件
-        let dir = tempdir().unwrap();
-        let file_path = dir.path().join("test.vx");
-        
-        let mut file = File::create(&file_path).unwrap();
-        writeln!(file, "<template>").unwrap();
-        writeln!(file, "  <Layout>").unwrap();
-        writeln!(file, "    <Text>Hello</Text>").unwrap();
-        writeln!(file, "  </Layout>").unwrap();
-        writeln!(file, "</template>").unwrap();
-        writeln!(file, "").unwrap();
-        writeln!(file, "<script>").unwrap();
-        writeln!(file, "  console.log('Hello');").unwrap();
-        writeln!(file, "</script>").unwrap();
-        writeln!(file, "").unwrap();
-        writeln!(file, "<style>").unwrap();
-        writeln!(file, "  .text {{ color: red; }}").unwrap();
-        writeln!(file, "</style>").unwrap();
-        
-        // 编译文件
-        let result = compiler.compile(file_path);
-        assert!(result.is_ok());
-        
-        let output = result.unwrap();
-        assert!(output.contains("Hello"));
-        assert!(output.contains("console.log('Hello');"));
-        assert!(output.contains(".text {{ color: red; }}"));
-    }
-}

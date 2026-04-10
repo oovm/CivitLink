@@ -8,62 +8,20 @@
 
 一个完整的 *.vx 文件结构如下：
 
-```vue
+```vx
 <template>
-    <Layout style="flex: 1; padding: 16px; background-color: #f0f0f0;">
-        <Stack orientation="vertical" style="gap: 12px;">
-            <Text style="font-size: 24px; font-weight: bold;">Hello GG Editor</Text>
-            <Button text="Click Me" onClick={() => console.log("Button clicked!")} />
-            <Input value={inputValue} onChange={(e) => setInputValue(e.target.value)} />
-            <Image src="assets/logo.png" style="width: 200px; height: 200px;" />
-            <ScrollView direction="vertical" style="flex: 1; border: 1px solid #ccc;">
-                <Stack orientation="vertical" style="padding: 16px; gap: 8px;">
-                    {items.map((item, index) => (
-                        <Panel key={index} style="padding: 8px; background-color: #fff; border-radius: 4px;">
-                            <Text>{item}</Text>
-                        </Panel>
-                    ))}
-                </Stack>
-            </ScrollView>
-        </Stack>
+    <Layout style="flex-1">
+        <Text class="title" style="text-xl font-bold">Hello GG Editor</Text>
     </Layout>
 </template>
 
 <script>
-    using gg_editor::ui::{Layout, Stack, Button, Text, Input, Image, Panel, ScrollView};
+    using gg_editor::ui::widgets::{Layout, Text};
 </script>
 
 <style>
-    .container {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        padding: 16px;
-        background-color: #f0f0f0;
-
-        .title {
-            font-size: 24px;
-            font-weight: bold;
-            color: $primary-color;
-        }
-
-        .button {
-            background-color: $secondary-color;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-
-            &:hover {
-                background-color: darken($secondary-color, 10%);
-            }
-        }
-
-        .input {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
+    .title {
+        color: $primary-color;
     }
 </style>
 ```
@@ -72,11 +30,11 @@
 
 ### 1. `<template>` 部分
 
-`<template>` 部分使用 TSX 语法，用于定义 GUI 界面的结构。
+`<template>` 部分使用 ValkyrieX 语法，用于定义 GUI 界面的结构。
 
 #### 语法规则
 
-- 使用 TSX 语法，支持 JSX 表达式
+- 使用 ValkyrieX 语法，支持 XML 表达式
 - 支持基础组件和自定义组件
 - 支持属性传递和事件绑定
 - 支持条件渲染和列表渲染
@@ -96,21 +54,21 @@
 
 #### 示例
 
-```vue
+```vx
 <template>
-    <Layout style="flex: 1; padding: 16px; background-color: #f0f0f0;">
-        <Stack orientation="vertical" style="gap: 12px;">
-            <Text style="font-size: 24px; font-weight: bold;">Hello GG Editor</Text>
+    <Layout style="flex-1 bg-[#f0f0f0]">
+        <Stack orientation="vertical" style="gap-12">
+            <Text style="text-xl font-bold">Hello GG Editor</Text>
             <Button text="Click Me" onClick={() => console.log("Button clicked!")} />
             <Input value={inputValue} onChange={(e) => setInputValue(e.target.value)} />
-            <Image src="assets/logo.png" style="width: 200px; height: 200px;" />
-            <ScrollView direction="vertical" style="flex: 1; border: 1px solid #ccc;">
-                <Stack orientation="vertical" style="padding: 16px; gap: 8px;">
-                    {items.map((item, index) => (
-                        <Panel key={index} style="padding: 8px; background-color: #fff; border-radius: 4px;">
+            <Image src="assets/logo.png" style="width-[200px] height-[200px]" />
+            <ScrollView direction="vertical" style="flex-1 border-[1px solid #ccc]">
+                <Stack orientation="vertical" style="padding-16 gap-8">
+                    <loop (item, index) in items>
+                        <Panel key={index} style="padding-8 bg-[#fff] border-r-4">
                             <Text>{item}</Text>
                         </Panel>
-                    ))}
+                    </loop>
                 </Stack>
             </ScrollView>
         </Stack>
@@ -118,7 +76,7 @@
 </template>
 
 <script>
-    using gg_editor::ui::{Layout, Stack, Button, Text, Input, Image, Panel, ScrollView};
+    using gg_editor::ui::widgets::{Layout, Stack, Button, Text, Input, Image, Panel, ScrollView};
 </script>
 ```
 
@@ -154,21 +112,21 @@ let inputValue = signal("");
 
 #### 示例
 
-```vue
+```vx
 <template>
-    <Layout style="flex: 1; padding: 16px; background-color: #f0f0f0;">
-        <Stack orientation="vertical" style="gap: 12px;">
-            <Text style="font-size: 24px; font-weight: bold;">Counter: {counter()}</Text>
+    <Layout style="flex-1 padding-16 bg-[#f0f0f0]">
+        <Stack orientation="vertical" style="gap-12">
+            <Text style="font-24 font-bold">Counter: {counter()}</Text>
             <Button text="Increment" onClick={handleClick} />
             <Input value={inputValue()} onChange={(e) => inputValue(e.target.value)} />
             <Text>You entered: {inputValue()}</Text>
-            <ScrollView direction="vertical" style="flex: 1; border: 1px solid #ccc;">
-                <Stack orientation="vertical" style="padding: 16px; gap: 8px;">
-                    {items().map((item, index) => (
-                        <Panel key={index} style="padding: 8px; background-color: #fff; border-radius: 4px;">
+            <ScrollView direction="vertical" style="flex-1 border-[1px solid #ccc]">
+                <Stack orientation="vertical" style="padding-16 gap-8">
+                    <loop (item, index) in items>
+                        <Panel key={index} style="padding-8 bg-[#fff] border-r-4">
                             <Text>{item}</Text>
                         </Panel>
-                    ))}
+                    </loop>
                 </Stack>
             </ScrollView>
         </Stack>
@@ -176,28 +134,28 @@ let inputValue = signal("");
 </template>
 
 <script>
-    using gg_editor::ui::{Layout, Stack, Button, Text, Input, Panel, ScrollView};
+    using gg_editor::ui::widgets::{Layout, Stack, Button, Text, Input, Panel, ScrollView};
     using gg_editor::ui::signal;
-    using gg_editor::ui::{onMount, onCleanup, onUpdate};
+    using gg_editor::ui::{on_mount, on_cleanup, on_update};
 
     let counter = signal(0);
     let inputValue = signal("");
     let items = signal(["Item 1", "Item 2", "Item 3"]);
 
-    let handleClick = () -> void {
+    let handleClick = micro() {
         counter(counter() + 1);
-        items([...items(), `Item ${items().length + 1}`]);
+        items([...items(), "Item " + (items().length + 1)]);
     };
 
-    onMount(() -> void {
+    on_mount(micro() {
         console.log("Component mounted");
     });
 
-    onUpdate(() -> void {
+    on_update(micro() {
         console.log("Component updated");
     });
 
-    onCleanup(() -> void {
+    on_cleanup(micro() {
         console.log("Component unmounted");
     });
 </script>
@@ -277,7 +235,7 @@ let inputValue = signal("");
 </template>
 
 <script>
-    using gg_editor::ui::{Layout, Button};
+    using gg_editor::ui::widgets::{Layout, Button};
     using package::widgets::CustomComponent;
 </script>
 ```
@@ -292,13 +250,11 @@ let inputValue = signal("");
 </template>
 
 <script>
-    using gg_editor::ui::{Panel, Text};
-
+    using gg_editor::ui::widgets::{Panel, Text};
+    @property("props")
     class CustomComponentProps {
         message: string
     }
-
-    let props: CustomComponentProps;
 </script>
 ```
 
@@ -309,16 +265,16 @@ let inputValue = signal("");
 ```vue
 <template>
     <Layout>
-        {count() > 5 ? (
+        <if (count > 5)>
             <Text>Count is greater than 5</Text>
-        ) : (
+        <else/>
             <Text>Count is less than or equal to 5</Text>
-        )}
+        </if>
     </Layout>
 </template>
 
 <script>
-    using gg_editor::ui::{Layout, Text};
+    using gg_editor::ui::widgets::{Layout, Text};
     using gg_editor::ui::signal;
 
     let count = signal(0);
@@ -330,14 +286,14 @@ let inputValue = signal("");
 ```vue
 <template>
     <Layout>
-        {items().map((item, index) => (
+        <loop (item, index) in items>
             <Text key={index}>{item}</Text>
-        ))}
+        </loop>
     </Layout>
 </template>
 
 <script>
-    using gg_editor::ui::{Layout, Text};
+    using gg_editor::ui::widgets::{Layout, Text};
     using gg_editor::ui::signal;
 
     let items = signal(["Item 1", "Item 2", "Item 3"]);
@@ -355,13 +311,13 @@ let inputValue = signal("");
 </template>
 
 <script>
-    using gg_editor::ui::{Layout, Button, Input};
+    using gg_editor::ui::widgets::{Layout, Button, Input};
     using gg_editor::ui::signal;
 
     let inputValue = signal("");
 
-    let handleClick = () -> void {
-        console.log("Button clicked!");
+    let handleClick = micro() {
+        console::log("Button clicked!");
     };
 </script>
 ```
@@ -378,20 +334,20 @@ let inputValue = signal("");
 
 ```vue
 <template>
-    <Layout style="flex: 1; padding: 16px; background-color: #f0f0f0;">
-        <Stack orientation="vertical" style="gap: 12px;">
-            <Text class="title">Counter: {count()}</Text>
+    <Layout style="flex-1 p-16 bg-[#f0f0f0]">
+        <Stack orientation="vertical" style="gap-12">
+            <Text class="title">Counter: {count}</Text>
             <Button class="button" text="Increment" onClick={handleIncrement} />
             <Button class="button" text="Decrement" onClick={handleDecrement} />
             <Input class="input" value={inputValue()} onChange={handleInputChange} placeholder="Enter text" />
-            <Text>You entered: {inputValue()}</Text>
-            <ScrollView direction="vertical" style="flex: 1; border: 1px solid #ccc;">
-                <Stack orientation="vertical" style="padding: 16px; gap: 8px;">
-                    {items().map((item, index) => (
+            <Text>You entered: {inputValue}</Text>
+            <ScrollView direction="vertical" style="flex-1 border-[1px solid #ccc]">
+                <Stack orientation="vertical" style="padding-16 gap-8">
+                    <loop (item, index) in items>
                         <Panel key={index} class="item-panel">
                             <Text>{item}</Text>
                         </Panel>
-                    ))}
+                    </loop>
                 </Stack>
             </ScrollView>
         </Stack>
@@ -399,7 +355,7 @@ let inputValue = signal("");
 </template>
 
 <script>
-    using gg_editor::ui::{Layout, Stack, Button, Text, Input, Panel, ScrollView};
+    using gg_editor::ui::widgets::{Layout, Stack, Button, Text, Input, Panel, ScrollView};
     using gg_editor::ui::signal;
     using gg_editor::ui::onMount;
 
@@ -407,20 +363,20 @@ let inputValue = signal("");
     let inputValue = signal("");
     let items = signal(["Item 1", "Item 2", "Item 3"]);
 
-    let handleIncrement = () -> void {
-        count(count() + 1);
+    let handleIncrement = micro() {
+        count(count.value + 1);
     };
 
-    let handleDecrement = () -> void {
-        count(count() - 1);
+    let handleDecrement = micro() {
+        count(count.value - 1);
     };
 
-    let handleInputChange = (e) -> void {
+    let handleInputChange = micro() {
         inputValue(e.target.value);
     };
 
-    onMount(() -> void {
-        console.log("Component mounted");
+    on_mount(micro() {
+        console::log("Component mounted");
     });
 </script>
 
