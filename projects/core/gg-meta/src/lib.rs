@@ -1,15 +1,11 @@
 #![feature(new_range_api)]
 #![warn(missing_docs)]
 
-use oak_core::{
-    source::{SourceBuffer, ToSource},
-};
-use oak_von::{
-    VonValue,
-    parse,
-};
+//! GG Meta 库
+//! 
+//! 用于处理游戏资源的元数据文件
+
 use serde::{Deserialize, Serialize};
-use serde_json::{from_value, to_value};
 use std::path::Path;
 use uuid::Uuid;
 
@@ -78,7 +74,6 @@ pub struct Reference {
 impl MetaFile {
     /// 创建新的元数据文件
     pub fn new(asset_type: &str, asset_path: &str, asset_name: &str, size: u64) -> Self {
-        use uuid::Timestamp;
         let timestamp = chrono::Utc::now();
         let guid = Uuid::now_v7().to_string();
         let timestamp_str = timestamp.to_rfc3339();

@@ -8,3 +8,11 @@ license = { workspace = true }
 [dependencies]
 gg-core = { workspace = true }
 gg-manifest = { workspace = true }
+gg-lsp = { workspace = true }
+oak-vfs = { workspace = true }
+oak-mcp = { workspace = true, features = ["io-std"] }
+tokio = { workspace = true }
+
+[features]
+default = []
+lsp = ["gg-lsp/lsp"]

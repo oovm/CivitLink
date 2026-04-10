@@ -1,18 +1,22 @@
 # gg-compiler-script
 
-**GG Game Engine 的脚本编译器，负责编译游戏脚本。**
+**GG Game Engine 统一脚本编译器，负责编译 .v、.vx、.shader 三种脚本类型。**
 
 ## 📋 模块简介
 
-gg-compiler-script 是 GG Game Engine 的脚本编译器，负责编译游戏脚本（如 Valkyrie 脚本），将脚本代码转换为可执行的字节码或中间表示。
+gg-compiler-script 是 GG Game Engine 的统一脚本编译器，负责编译三种脚本类型：
+- **.v**（Valkyrie 脚本）— 通用游戏逻辑脚本
+- **.vx**（ValkyrieX 单文件组件）— GUI 界面组件
+- **.shader**（GG Shader）— 着色器脚本
+
+三种脚本共享同一套核心编译管线（源码 → AST → IR → 字节码），借助 VM 互通。
 
 ## ✨ 核心功能
 
-- **脚本解析**：解析脚本代码，生成抽象语法树
-- **语义分析**：分析脚本的语义，检查类型和作用域
-- **代码生成**：生成字节码或中间表示
-- **增量编译**：支持增量编译，提高编译速度
-- **错误处理**：提供详细的编译错误信息
+- **Valkyrie 脚本编译**：将 .v 文件编译为字节码模块
+- **VX 组件编译**：解析 .vx 单文件组件，编译脚本部分为字节码，保留模板和样式
+- **Shader 编译**：解析 .shader 文件，提取 Valkyrie 兼容代码编译为字节码，保留 GPU 着色器描述
+- **Transformer 集成**：所有编译器均实现 `gg-compiler-core::Transformer` trait，可接入编译流水线
 
 ## 🚀 使用方法
 
@@ -20,38 +24,36 @@ gg-compiler-script 是 GG Game Engine 的脚本编译器，负责编译游戏脚
 
 ```toml
 [dependencies]
-gg-compiler-script = { path = "projects/compiler/gg-compiler-script" }
+gg-compiler-script = { workspace = true }
 ```
 
-### 基础示例
+### Valkyrie 脚本编译
 
 ```rust
 use gg_compiler_script::prelude::*;
 
-fn main() {
-    // 创建脚本编译器
-    let mut compiler = ScriptCompiler::new();
-    
-    // 编译脚本
-    let script = r#"
-        function main() {
-            print("Hello, GG Game Engine!");
-        }
-    "#;
-    
-    match compiler.compile(script) {
-        Ok(bytecode) => println!("Script compiled successfully: {:?}", bytecode),
-        Err(error) => println!("Script compilation error: {:?}", error),
-    }
-}
+let transformer = ValkyrieScriptTransformer::new();
+```
+
+### VX 组件编译
+
+```rust
+use gg_compiler_script::prelude::*;
+
+let transformer = VxTransformer::new();
+```
+
+### Shader 编译
+
+```rust
+use gg_compiler_script::prelude::*;
+
+let transformer = ShaderTransformer::new();
 ```
 
 ## 📦 依赖关系
 
-- **gg-compiler-core**：编译器核心功能
-- **gg-core**：核心功能和平台抽象
-- **gg-error**：错误处理系统
-
-## 📖 相关文档
-
-- [脚本系统设计](../../../design/architecture/overview.md) - 了解脚本系统的设计理念
+- **gg-compiler-core**：编译器核心功能（Transformer trait、Pipeline、ArtifactSet）
+- **gg-core**：核心错误类型
+- **gg-script**：Valkyrie 脚本编译器（源码 → IR → 字节码）
+- **gg-bytecode**：字节码写入器
