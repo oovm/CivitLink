@@ -171,7 +171,7 @@ jobs:
               run: cargo build --package gg-galgame --target ${{ matrix.target }} --release
 
             - name: Upload artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: gwg-engine-${{ matrix.artifact-name }}
                   path: target/${{ matrix.target }}/release/
@@ -211,7 +211,7 @@ jobs:
               run: wasm-bindgen target/wasm32-unknown-unknown/release/gg_galgame.wasm --out-dir ./web-h5 --target web
 
             - name: Upload H5 artifacts
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: gwg-engine-h5
                   path: ./web-h5/
