@@ -173,7 +173,7 @@ fn process_files_in_directory_regenerate(path: &Path) -> GResult<()> {
 
 /// 获取相对路径
 fn get_relative_path(file_path: &Path) -> GResult<String> {
-    let project_root = Path::new("e:\灵之镜有限公司\gg-game-engine");
+    let project_root = Path::new(r"e:\灵之镜有限公司\gg-game-engine");
     let relative_path = file_path.strip_prefix(project_root).map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to get relative path: {}", e) })?;
     Ok(relative_path.to_string_lossy().replace('\\', "/"))
 }

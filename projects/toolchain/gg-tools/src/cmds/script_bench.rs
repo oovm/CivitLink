@@ -96,8 +96,8 @@ fn test_execution_performance() {
                 VmResult::Ok | VmResult::Return(_) => {
                     println!("迭代 {}: {:?}", i + 1, iter_elapsed);
                 }
-                VmResult::Error(e) => {
-                    println!("迭代 {} 错误: {}", i + 1, e);
+                VmResult::Error { message, source_location: _ } => {
+                    println!("迭代 {} 错误: {}", i + 1, message);
                 }
             }
         }

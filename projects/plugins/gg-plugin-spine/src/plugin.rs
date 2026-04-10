@@ -10,15 +10,12 @@ use crate::systems::{SpineAnimationSystem, SpineRenderSystem};
 /// Spine 动画插件
 ///
 /// 提供 Spine 骨骼动画的播放、更新和渲染功能。
-pub struct SpinePlugin {
-    /// 默认帧间隔时间（秒）
-    pub delta_secs: f32,
-}
+pub struct SpinePlugin;
 
 impl SpinePlugin {
     /// 创建新的 Spine 动画插件
-    pub fn new(delta_secs: f32) -> Self {
-        Self { delta_secs }
+    pub fn new() -> Self {
+        Self
     }
 }
 
@@ -32,8 +29,13 @@ impl Plugin for SpinePlugin {
     ///
     /// 注册 Spine 动画更新系统和渲染系统。
     fn build(&self, registrar: &mut PluginRegistrar) {
-        registrar.register_system(Box::new(SpineAnimationSystem::new(self.delta_secs)));
+        registrar.register_system(Box::new(SpineAnimationSystem::new()));
         registrar.register_system(Box::new(SpineRenderSystem::new()));
+    }
+
+    /// 返回插件依赖列表
+    fn dependencies(&self) -> Vec<&str> {
+        vec!["render"]
     }
 
     /// 初始化 Spine 动画插件

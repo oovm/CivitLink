@@ -4,7 +4,7 @@ use gg_ecs::Resource;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::components::BoneTransform;
+use crate::{components::BoneTransform, skin::Skin};
 
 /// 骨骼定义
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,6 +52,8 @@ pub struct SpineData {
     pub animations: Vec<AnimationDef>,
     /// 插槽附件映射（插槽名 → 附件列表）
     pub attachments: HashMap<String, Vec<SlotAttachment>>,
+    /// 可用皮肤列表
+    pub skins: Vec<Skin>,
 }
 
 impl Resource for SpineData {}

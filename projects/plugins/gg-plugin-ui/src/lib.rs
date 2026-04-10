@@ -3,12 +3,19 @@
 //! GG 引擎 UI 插件
 //! 提供声明式 UI 系统与 ECS 的集成
 
+pub mod binding;
+pub mod focus;
+
 use gg_core::{
     GResult,
     plugin::{Plugin, PluginRegistrar},
 };
 use gg_ecs::{Resource, System, World};
+use gg_render::{Color, DrawCommand, RenderContext, Transform};
 use gg_ui::{EventSystem, LayoutEngine, UiRenderer, UiTree};
+
+use crate::binding::{BindingRegistry, BindingSystem};
+use crate::focus::FocusManager;
 
 /// UI 树资源
 ///
@@ -55,7 +62,7 @@ impl Default for EventSystemResource {
 /// UI 插件
 ///
 /// 将 gg-ui 组件库与 ECS 世界集成，
-/// 注册 UI 树资源、事件系统资源和 UI 更新/渲染系统。
+/// 注册 UI 树资源、事件系统资源、焦点管理器和 UI 更新/渲染/绑定系统。
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
@@ -67,13 +74,16 @@ impl Plugin for UiPlugin {
     /// 构建 UI 插件
     ///
     /// 注册以下资源和系统：
-    /// - 资源：UiTreeResource、EventSystemResource
-    /// - 系统：UiUpdateSystem、UiRenderSystem
+    /// - 资源：UiTreeResource、EventSystemResource、FocusManager、BindingRegistry
+    /// - 系统：UiUpdateSystem、UiRenderSystem、BindingSystem
     fn build(&self, registrar: &mut PluginRegistrar) {
         registrar.insert_resource(UiTreeResource::new());
         registrar.insert_resource(EventSystemResource::new());
+        registrar.insert_resource(FocusManager::new());
+        registrar.insert_resource(BindingRegistry::new());
         registrar.register_system(Box::new(UiUpdateSystem));
         registrar.register_system(Box::new(UiRenderSystem));
+        registrar.register_system(Box::new(BindingSystem::new()));
     }
 
     /// 返回插件依赖列表
@@ -127,7 +137,6 @@ impl System for UiUpdateSystem {
 /// UI 渲染系统
 ///
 /// 每帧将 UI 树转换为 DrawCommand 渲染指令。
-/// 当前阶段暂不执行实际渲染，待 RenderContext 成为 Resource 后完善。
 pub struct UiRenderSystem;
 
 impl System for UiRenderSystem {
@@ -138,9 +147,68 @@ impl System for UiRenderSystem {
 
     /// 执行 UI 渲染系统逻辑
     ///
-    /// 从 World 获取 UiTreeResource，调用 UiRenderer 生成 DrawCommand。
-    /// 当前阶段暂不执行实际渲染，待 RenderContext 成为 Resource 后完善。
-    fn execute(&mut self, _world: &mut World) -> GResult<()> {
+    /// 从 World 获取 UiTreeResource，遍历 UI 节点，
+    /// 为每个可见节点提交 DrawCommand::Rect 渲染指令。
+    fn execute(&mut self, world: &mut World) -> GResult<()> {
+        let tree_opt = world.get_resource::<UiTreeResource>().map(|r| r.0.clone());
+        let tree = match tree_opt {
+            Some(t) => t,
+            None => return Ok(()),
+        };
+
+        let render_ctx = world.get_resource_mut::<RenderContext>();
+        if render_ctx.is_none() {
+            return Ok(());
+        }
+
+        let mut commands = Vec::new();
+
+        if let Some(root_id) = tree.root() {
+            Self::render_node(&tree, root_id, &mut commands);
+        }
+
+        if let Some(ctx) = world.get_resource_mut::<RenderContext>() {
+            for cmd in commands {
+                ctx.draw(cmd);
+            }
+        }
+
         Ok(())
+    }
+}
+
+impl UiRenderSystem {
+    /// 递归渲染 UI 节点
+    fn render_node(tree: &UiTree, node_id: gg_ui::UiNodeId, commands: &mut Vec<DrawCommand>) {
+        let node = match tree.get(node_id) {
+            Some(n) => n,
+            None => return,
+        };
+
+        if !node.visible {
+            return;
+        }
+
+        if let Some(ref layout) = node.layout_result {
+            commands.push(DrawCommand::Rect {
+                rect: gg_render::Rect::new(layout.x, layout.y, layout.width, layout.height),
+                color: Color::TRANSPARENT,
+                corner_radius: 0.0,
+            });
+
+            if let gg_ui::UiNodeData::Text { ref content } = node.data {
+                commands.push(DrawCommand::Text {
+                    text: content.clone(),
+                    position: [layout.x, layout.y],
+                    font_size: 16.0,
+                    color: Color::WHITE,
+                    max_width: Some(layout.width),
+                });
+            }
+        }
+
+        for &child_id in &node.children {
+            Self::render_node(tree, child_id, commands);
+        }
     }
 }

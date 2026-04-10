@@ -9,6 +9,7 @@ use gg_core::{GError, GErrorKind, GResult};
 use crate::{
     components::BoneTransform,
     resources::{AnimationDef, BoneDef, SlotAttachment, SpineData},
+    skin::Skin,
 };
 
 /// Spine JSON 根数据
@@ -193,11 +194,13 @@ impl SpineParser {
             .unwrap_or_default();
 
         let mut attachments: HashMap<String, Vec<SlotAttachment>> = HashMap::new();
-        if let Some(skins) = &json_data.skins {
-            for skin in skins {
-                if let Some(skin_attachments) = &skin.attachments {
-                    for (slot_name, slot_attachments) in skin_attachments {
-                        let entry = attachments.entry(slot_name.clone()).or_default();
+        let mut skins: Vec<Skin> = Vec::new();
+        if let Some(json_skins) = &json_data.skins {
+            for json_skin in json_skins {
+                let mut skin_attachments: HashMap<String, Vec<SlotAttachment>> = HashMap::new();
+                if let Some(skin_attach_data) = &json_skin.attachments {
+                    for (slot_name, slot_attachments) in skin_attach_data {
+                        let entry = skin_attachments.entry(slot_name.clone()).or_default();
                         for (_attach_name, attach_data) in slot_attachments {
                             let attachment = SlotAttachment {
                                 name: attach_data.name.clone().unwrap_or_default(),
@@ -211,10 +214,19 @@ impl SpineParser {
                         }
                     }
                 }
+
+                if json_skin.name == "default" {
+                    attachments = skin_attachments.clone();
+                }
+
+                skins.push(Skin {
+                    name: json_skin.name.clone(),
+                    attachments: skin_attachments,
+                });
             }
         }
 
-        Ok(SpineData { bones, animations, attachments })
+        Ok(SpineData { bones, animations, attachments, skins })
     }
 
     /// 计算动画时长
