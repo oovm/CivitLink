@@ -1,13 +1,9 @@
 [package]
-name = "galgame-cli-demo"
+name = "my-first-rpg"
 version = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }
 license = { workspace = true }
-
-[[bin]]
-name = "galgame-cli-demo"
-path = "src/main.rs"
 
 [dependencies]
 gg-core = { workspace = true }

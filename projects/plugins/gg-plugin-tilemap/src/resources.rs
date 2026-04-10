@@ -1,6 +1,6 @@
 //! 瓦片地图资源类型模块
 
-use gg_ecs::{Entity, Resource};
+use gg_ecs::Entity;
 use gg_render::TextureId;
 
 /// 瓦片图集资源
@@ -17,8 +17,6 @@ pub struct Tileset {
     /// 图集行数
     pub rows: u32,
 }
-
-impl Resource for Tileset {}
 
 /// 碰撞信息
 #[derive(Debug, Clone)]
@@ -37,5 +35,3 @@ pub struct TileCollisionState {
     /// 当前帧的碰撞信息列表
     pub collisions: Vec<CollisionInfo>,
 }
-
-impl Resource for TileCollisionState {}

@@ -45,8 +45,8 @@ label start {
     say "Hello, World!"
 }
 "#;
-    std::fs::write(game_dir.join("scripts/start.gscript"), start_script)
-        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write start.gscript: {}", e) })?;
+    std::fs::write(game_dir.join("scripts/start.mdx"), start_script)
+        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write start.mdx: {}", e) })?;
 
     std::fs::create_dir_all(game_dir.join("assets"))
         .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to create assets directory: {}", e) })?;

@@ -59,32 +59,38 @@ gg-core = { path = "projects/core/gg-core" }
 gg-error = { path = "projects/core/gg-error" }
 gg-ecs = { path = "projects/core/gg-ecs" }
 gg-asset = { path = "projects/core/gg-asset" }
-gg-reflection = { path = "projects/core/gg-reflection" }
 gg-macros = { path = "projects/core/gg-macros" }
 gg-meta = { path = "projects/core/gg-meta" }
 gg-schedule = { path = "projects/core/gg-schedule" }
+gg-reflection = { path = "projects/core/gg-reflection" }
 gg-world = { path = "projects/core/gg-world" }
-
-gg-ir = { path = "projects/runtime/gg-ir" }
-gg-bytecode = { path = "projects/runtime/gg-bytecode" }
-gg-vm = { path = "projects/runtime/gg-vm" }
-gg-script = { path = "projects/compiler/gg-script" }
 gg-sheet = { path = "projects/compiler/gg-sheet" }
+gg-script = { path = "projects/compiler/gg-script" }
+gg-bytecode = { path = "projects/runtime/gg-bytecode" }
+gg-ir = { path = "projects/runtime/gg-ir" }
+gg-vm = { path = "projects/runtime/gg-vm" }
 gg-ui = { path = "projects/plugins/gg-ui" }
+
+# gnostic gamer toolchain
 gg-manifest = { path = "projects/toolchain/gg-manifest" }
 gg-factory = { path = "projects/toolchain/gg-factory" }
 gg-tools = { path = "projects/toolchain/gg-tools" }
+gg-mcp = { path = "projects/toolchain/gg-mcp" }
+gg-lsp = { path = "projects/toolchain/gg-lsp" }
 
+# gnostic gamer compilers
 gg-compiler-core = { path = "projects/compiler/gg-compiler-core" }
 gg-compiler-aot = { path = "projects/compiler/gg-compiler-aot" }
 
-gg-render = { path = "projects/core/gg-render" }
-gg-render-wgpu = { path = "projects/runtime/gg-render-wgpu" }
-gg-render-native = { path = "projects/runtime/gg-render-native" }
-
+# gnostic gamer runtimes
 gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
 gg-runtime-gui = { path = "projects/runtime/gg-runtime-gui" }
 gg-runtime-audio = { path = "projects/runtime/gg-runtime-audio" }
+
+# gnostic gamer renderers
+gg-render = { path = "projects/core/gg-render" }
+gg-render-wgpu = { path = "projects/runtime/gg-render-wgpu" }
+gg-render-native = { path = "projects/runtime/gg-render-native" }
 
 # gnostic gamer editors
 gg-editor-scene = { path = "projects/editor/gg-editor-scene" }
@@ -96,7 +102,6 @@ gg-editor-preview = { path = "projects/editor/gg-editor-preview" }
 gg-editor-scene-galgame = { path = "projects/editor/gg-editor-scene-galgame" }
 gg-editor-script = { path = "projects/editor/gg-editor-script" }
 gg-editor-lsp = { path = "projects/editor/gg-editor-lsp" }
-gg-lsp = { path = "projects/editor/gg-editor-lsp" }
 
 # gnostic gamer platforms
 gg-platform-mobile = { path = "projects/platforms/gg-platform-mobile" }
@@ -112,9 +117,9 @@ gg-plugin-tilemap = { path = "projects/plugins/gg-plugin-tilemap" }
 gg-plugin-spine = { path = "projects/plugins/gg-plugin-spine" }
 
 # gnostic gamer engines
-gg-galgame-schema = { path = "projects/engines/gg-galgame-schema" }
-gg-galgame-compiler = { path = "projects/engines/gg-galgame-compiler" }
-gg-galgame-editor-scene = { path = "projects/engines/gg-galgame-editor-scene" }
+gg-galgame-schema = { path = "projects/engines/galgame-schema" }
+gg-galgame-compiler = { path = "projects/engines/galgame-compiler" }
+gg-galgame-editor-scene = { path = "projects/engines/galgame-editor" }
 
 # oak parsers
 oak-core = { path = "../oaks/projects/oak-core" }

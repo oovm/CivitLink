@@ -26,5 +26,7 @@ fn main() -> gg_tools::GResult<()> {
             let args = gg_tools::cmds::meta::MetaArgs { target, recursive };
             gg_tools::cmds::meta::execute(&args, &platform)
         }
+        gg_tools::Commands::Lsp { workspace } => gg_tools::cmds::lsp::cmd_lsp(&workspace),
+        gg_tools::Commands::Mcp { workspace } => gg_tools::cmds::mcp::cmd_mcp(&workspace),
     }
 }

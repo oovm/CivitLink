@@ -1,7 +1,7 @@
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
-use crate::shader;
+use crate::{shader, sprite_batch::BatchedSpriteInstance};
 
 /// 顶点格式
 ///
