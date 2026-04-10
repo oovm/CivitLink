@@ -26,58 +26,58 @@
 GG Game Engine 采用模块化的 Crate 设计，每个模块可独立使用：
 
 ### 核心模块 (core)
-- **gg-core**: 核心功能和平台抽象
-- **gg-ecs**: 实体组件系统
-- **gg-asset**: 资源管理系统
-- **gg-reflection**: 运行时反射系统
-- **gg-render**: 渲染系统抽象
-- **gg-schedule**: 任务调度系统
-- **gg-world**: 游戏世界管理
-- **gg-error**: 错误处理系统
+- **[gg-core](projects/core/gg-core/)**: 核心功能和平台抽象
+- **[gg-ecs](projects/core/gg-ecs/)**: 实体组件系统
+- **[gg-asset](projects/core/gg-asset/)**: 资源管理系统
+- **[gg-reflection](projects/core/gg-reflection/)**: 运行时反射系统
+- **[gg-render](projects/core/gg-render/)**: 渲染系统抽象
+- **[gg-schedule](projects/core/gg-schedule/)**: 任务调度系统
+- **[gg-world](projects/core/gg-world/)**: 游戏世界管理
+- **[gg-error](projects/core/gg-error/)**: 错误处理系统
 
 ### 编译器模块 (compiler)
-- **gg-compiler-core**: 编译器核心功能
-- **gg-compiler-script**: 脚本编译器
-- **gg-compiler-aot**: AOT 编译器
-- **gg-script**: 脚本解析和执行
+- **[gg-compiler-core](projects/compiler/gg-compiler-core/)**: 编译器核心功能
+- **[gg-compiler-script](projects/compiler/gg-compiler-script/)**: 脚本编译器
+- **[gg-compiler-aot](projects/compiler/gg-compiler-aot/)**: AOT 编译器
+- **[gg-script](projects/compiler/gg-script/)**: 脚本解析和执行
 
 ### 编辑器模块 (editor)
-- **gg-editor-shell**: 编辑器外壳和基础框架
-- **gg-editor-asset-browser**: 资源浏览器
-- **gg-editor-inspector**: 属性检查器
-- **gg-editor-scene**: 场景编辑器
-- **gg-editor-script**: 脚本编辑器
-- **gg-editor-preview**: 游戏预览
-- **gg-editor-character**: 角色编辑器
-- **gg-editor-lsp**: 语言服务器协议支持
+- **[gg-editor-shell](projects/editor/gg-editor-shell/)**: 编辑器外壳和基础框架
+- **[gg-editor-asset-browser](projects/editor/gg-editor-asset-browser/)**: 资源浏览器
+- **[gg-editor-inspector](projects/editor/gg-editor-inspector/)**: 属性检查器
+- **[gg-editor-scene](projects/editor/gg-editor-scene/)**: 场景编辑器
+- **[gg-editor-script](projects/editor/gg-editor-script/)**: 脚本编辑器
+- **[gg-editor-preview](projects/editor/gg-editor-preview/)**: 游戏预览
+- **[gg-editor-character](projects/editor/gg-editor-character/)**: 角色编辑器
+- **[gg-editor-lsp](projects/editor/gg-editor-lsp/)**: 语言服务器协议支持
 
 ### 平台模块 (platforms)
-- **gg-platform-desktop**: 桌面平台实现
-- **gg-platform-web**: Web 平台实现
-- **gg-platform-mobile**: 移动平台实现
+- **[gg-platform-desktop](projects/platforms/gg-platform-desktop/)**: 桌面平台实现
+- **[gg-platform-web](projects/platforms/gg-platform-web/)**: Web 平台实现
+- **[gg-platform-mobile](projects/platforms/gg-platform-mobile/)**: 移动平台实现
 
 ### 插件模块 (plugins)
-- **gg-plugin-dialogue**: 对话系统插件
-- **gg-plugin-portrait**: 角色立绘插件
-- **gg-plugin-save**: 存档系统插件
-- **gg-plugin-scene-transition**: 场景过渡插件
-- **gg-plugin-spine**: Spine 动画插件
-- **gg-plugin-tilemap**: 瓦片地图插件
-- **gg-ui**: UI 系统
-- **gg-galgame-schema**: GAL 游戏数据 schema
+- **[gg-plugin-dialogue](projects/plugins/gg-plugin-dialogue/)**: 对话系统插件
+- **[gg-plugin-portrait](projects/plugins/gg-plugin-portrait/)**: 角色立绘插件
+- **[gg-plugin-save](projects/plugins/gg-plugin-save/)**: 存档系统插件
+- **[gg-plugin-scene-transition](projects/plugins/gg-plugin-scene-transition/)**: 场景过渡插件
+- **[gg-plugin-spine](projects/plugins/gg-plugin-spine/)**: Spine 动画插件
+- **[gg-plugin-tilemap](projects/plugins/gg-plugin-tilemap/)**: 瓦片地图插件
+- **[gg-ui](projects/plugins/gg-ui/)**: UI 系统
+- **[gg-galgame-schema](projects/plugins/gg-galgame-schema/)**: GAL 游戏数据 schema
 
 ### 运行时模块 (runtime)
-- **gg-runtime-core**: 运行时核心
-- **gg-runtime-audio**: 音频系统
-- **gg-render-wgpu**: WGPU 渲染实现
-- **gg-bytecode**: 字节码执行
-- **gg-ir**: 中间表示
-- **gg-vm**: 虚拟机
+- **[gg-runtime-core](projects/runtime/gg-runtime-core/)**: 运行时核心
+- **[gg-runtime-audio](projects/runtime/gg-runtime-audio/)**: 音频系统
+- **[gg-render-wgpu](projects/runtime/gg-render-wgpu/)**: WGPU 渲染实现
+- **[gg-bytecode](projects/runtime/gg-bytecode/)**: 字节码执行
+- **[gg-ir](projects/runtime/gg-ir/)**: 中间表示
+- **[gg-vm](projects/runtime/gg-vm/)**: 虚拟机
 
 ### 工具链模块 (toolchain)
-- **gg-cli**: 命令行工具
-- **gg-factory**: 项目生成器
-- **gg-manifest**: 项目配置管理
+- **[gg-cli](projects/toolchain/gg-cli/)**: 命令行工具
+- **[gg-factory](projects/toolchain/gg-factory/)**: 项目生成器
+- **[gg-manifest](projects/toolchain/gg-manifest/)**: 项目配置管理
 
 ---
 

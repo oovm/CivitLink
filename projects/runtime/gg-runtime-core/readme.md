@@ -1,42 +1,55 @@
-# GG Runtime Core
+# gg-runtime-core
 
-GG 引擎运行时核心模块，提供基本的运行时系统和游戏循环。
+**GG Game Engine 的运行时核心，负责游戏的初始化、运行和管理。**
 
-## 功能
+## 📋 模块简介
 
-- 运行时系统管理
-- 游戏循环实现
-- 插件系统集成
-- 示例系统和组件
+gg-runtime-core 是 GG Game Engine 的运行时核心，负责游戏的初始化、运行和管理，提供应用程序的生命周期管理和插件系统。
 
-## 使用示例
+## ✨ 核心功能
+
+- **应用程序管理**：管理游戏应用程序的生命周期
+- **插件系统**：支持通过插件扩展游戏功能
+- **热重载**：支持代码和资源的热重载
+- **调度器**：管理游戏系统的执行顺序
+- **注册表**：管理游戏中的各种资源和服务
+- **阶段管理**：将游戏逻辑划分为不同的执行阶段
+
+## 🚀 使用方法
+
+### 依赖添加
+
+```toml
+[dependencies]
+gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
+```
+
+### 基础示例
 
 ```rust
-use gg_runtime_core::{Runtime, EntityCountSystem, MovementSystem, Position, Velocity};
-use gg_render::RenderComponent;
+use gg_runtime_core::prelude::*;
 
-// 创建运行时
-let mut runtime = Runtime::new().unwrap();
-
-// 获取世界
-let world = runtime.scheduler().world();
-
-// 注册系统
-world.register_system(Box::new(EntityCountSystem::new()));
-world.register_system(Box::new(MovementSystem::new()));
-
-// 创建实体
-let entity = world.spawn();
-
-// 添加组件
-world.add_component(entity, Position { x: 0.0, y: 0.0 }).unwrap();
-world.add_component(entity, Velocity { dx: 1.0, dy: 1.0 }).unwrap();
-world.add_component(entity, RenderComponent {
-    width: 50.0,
-    height: 50.0,
-    color: [1.0, 0.0, 0.0, 1.0],
-}).unwrap();
-
-// 启动运行时
-runtime.start().unwrap();
+fn main() -> Result<()> {
+    // 创建应用程序
+    let app = App::builder()
+        .with_plugins([
+            gg_plugin_dialogue::DialoguePlugin::default(),
+            gg_plugin_portrait::PortraitPlugin::default(),
+        ])
+        .build();
+    
+    // 运行应用程序
+    app.run()
+}
 ```
+
+## 📦 依赖关系
+
+- **gg-core**：核心功能和平台抽象
+- **gg-world**：游戏世界管理
+- **gg-schedule**：任务调度系统
+- **gg-error**：错误处理系统
+
+## 📖 相关文档
+
+- [运行时设计](../../../design/architecture/overview.md) - 了解运行时系统的设计理念

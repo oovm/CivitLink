@@ -1,40 +1,60 @@
-# GG IR
+# gg-ir
 
-GG 引擎 IR 模块，提供中间表示和指令集定义。
+**GG Game Engine 的中间表示系统，负责代码的优化和转换。**
 
-## 功能
+## 📋 模块简介
 
-- IR 值类型定义
-- IR 操作码定义
-- IR 函数和模块管理
+gg-ir 是 GG Game Engine 的中间表示系统，负责代码的优化和转换，为编译器和解释器提供中间代码表示。
 
-## 使用示例
+## ✨ 核心功能
+
+- **中间表示**：定义和管理中间代码表示
+- **优化 passes**：提供各种代码优化 passes
+- **常量折叠**：优化常量表达式
+- **死代码消除**：移除未使用的代码
+- **代码转换**：支持代码的转换和重构
+- **适配器**：适配不同的代码格式
+
+## 🚀 使用方法
+
+### 依赖添加
+
+```toml
+[dependencies]
+gg-ir = { path = "projects/runtime/gg-ir" }
+```
+
+### 基础示例
 
 ```rust
-use gg_ir::{IrModule, IrFunction, OpCode, IrValue};
+use gg_ir::prelude::*;
 
-// 创建 IR 模块
-let mut module = IrModule::new("test");
-
-// 添加常量
-let str_index = module.add_constant(IrValue::String(0));
-
-// 创建函数
-let mut function = IrFunction {
-    name: "main".to_string(),
-    param_count: 0,
-    local_count: 0,
-    instructions: vec![
-        OpCode::LoadConst(str_index),
-        OpCode::Return,
-    ],
-};
-
-// 添加函数到模块
-module.add_function(function);
-
-// 查找函数
-if let Some(func) = module.find_function("main") {
-    println!("Found function: {}", func.name);
+fn main() {
+    // 创建中间表示模块
+    let mut module = Module::new();
+    
+    // 添加函数
+    let function = Function::new("main");
+    module.add_function(function);
+    
+    // 应用优化 passes
+    let mut optimizer = Optimizer::new();
+    optimizer.add_pass(Box::new(ConstantFoldPass));
+    optimizer.add_pass(Box::new(DeadCodeEliminationPass));
+    
+    // 优化模块
+    optimizer.optimize(&mut module);
+    
+    // 打印优化后的模块
+    println!("{:?}", module);
 }
 ```
+
+## 📦 依赖关系
+
+- **gg-core**：核心功能和平台抽象
+- **gg-error**：错误处理系统
+
+## 📖 相关文档
+
+- [中间表示系统设计](../../../design/architecture/overview.md) - 了解中间表示系统的设计理念

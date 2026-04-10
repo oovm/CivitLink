@@ -36,10 +36,31 @@ pub trait System {
     fn execute(&mut self, world: &mut GgWorld) -> GResult<()>;
 }
 
+/// 查询过滤器 trait，用于在查询时过滤实体
+pub trait QueryFilter {
+    /// 检查实体是否满足过滤条件
+    fn matches(world: &GgWorld, entity: Entity) -> bool;
+}
+
+/// 无过滤器的查询，匹配所有实体
+pub struct NoneFilter;
+
+impl QueryFilter for NoneFilter {
+    fn matches(_world: &GgWorld, _entity: Entity) -> bool {
+        true
+    }
+}
+
 /// 查询过滤器：仅匹配包含指定组件的实体
 pub struct With<T: Component> {
     /// 类型标记
     _marker: PhantomData<T>,
+}
+
+impl<T: Component> QueryFilter for With<T> {
+    fn matches(world: &GgWorld, entity: Entity) -> bool {
+        world.get_component::<T>(entity).is_some()
+    }
 }
 
 /// 查询过滤器：仅匹配不包含指定组件的实体
@@ -48,15 +69,25 @@ pub struct Without<T: Component> {
     _marker: PhantomData<T>,
 }
 
-/// 组件查询迭代器，用于遍历拥有特定组件类型的所有实体
-pub struct Query<'a, T: Component> {
+impl<T: Component> QueryFilter for Without<T> {
+    fn matches(world: &GgWorld, entity: Entity) -> bool {
+        world.get_component::<T>(entity).is_none()
+    }
+}
+
+/// 组件查询迭代器，用于遍历拥有指定组件类型且满足过滤条件的所有实体
+pub struct Query<'a, T: Component, F: QueryFilter = NoneFilter> {
     /// 底层组件存储迭代器
     inner: Option<std::collections::hash_map::Iter<'a, Entity, Box<dyn Any + Send + Sync>>>,
+    /// 世界引用，用于过滤检查
+    world: &'a GgWorld,
+    /// 过滤器类型标记
+    _filter: PhantomData<F>,
     /// 组件类型标记
     _marker: PhantomData<&'a T>,
 }
 
-impl<'a, T: Component> Iterator for Query<'a, T> {
+impl<'a, T: Component, F: QueryFilter> Iterator for Query<'a, T, F> {
     type Item = (Entity, &'a T);
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -64,7 +95,9 @@ impl<'a, T: Component> Iterator for Query<'a, T> {
         loop {
             let (entity, component) = iter.next()?;
             if let Some(typed) = component.downcast_ref::<T>() {
-                return Some((*entity, typed));
+                if F::matches(self.world, *entity) {
+                    return Some((*entity, typed));
+                }
             }
         }
     }
@@ -255,10 +288,17 @@ impl GgWorld {
     }
 
     /// 查询拥有指定组件类型的所有实体，返回查询迭代器
-    pub fn query<T: Component>(&self) -> Query<'_, T> {
+    pub fn query<T: Component>(&self) -> Query<'_, T, NoneFilter> {
         let type_id = TypeId::of::<T>();
         let inner = self.component_stores.get(&type_id).map(|store| store.iter());
-        Query { inner, _marker: PhantomData }
+        Query { inner, world: self, _filter: PhantomData, _marker: PhantomData }
+    }
+
+    /// 查询拥有指定组件类型且满足过滤条件的所有实体
+    pub fn query_filtered<T: Component, F: QueryFilter>(&self) -> Query<'_, T, F> {
+        let type_id = TypeId::of::<T>();
+        let inner = self.component_stores.get(&type_id).map(|store| store.iter());
+        Query { inner, world: self, _filter: PhantomData, _marker: PhantomData }
     }
 
     /// 注册系统到世界
