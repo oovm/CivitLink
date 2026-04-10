@@ -2,9 +2,9 @@
 layout: home
 
 hero:
-    name: GWG
-    text: Meta Game Engine
-    tagline: 基于 Rust 的元游戏引擎框架，ECS 核心、多平台支持、插件化架构，一次编写引擎，到处运行游戏
+    name: GG
+    text: Game Engine
+    tagline: 基于 Rust 的游戏引擎框架，ECS 核心、多平台支持、插件化架构，一次编写，到处运行
     actions:
         - theme: brand
           text: 开始使用

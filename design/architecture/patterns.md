@@ -1,6 +1,6 @@
 # 设计模式
 
-GWG 元游戏引擎采用多种成熟的设计模式，以确保系统的可扩展性、可维护性和跨平台兼容性。在诺斯替（Gnostic）宇宙观的隐喻下，这些设计模式对应着不同的宇宙法则：**ECS 模式**是万物生成的基始，**插件模式**是流溢的通道，**平台抽象模式**是太一的遍在性，**数据驱动设计**是普累若麻的显现，**沙箱模式**是异端知识的安全边界。本文档详细介绍引擎核心使用的设计模式及其实现方式。
+GG 元游戏引擎采用多种成熟的设计模式，以确保系统的可扩展性、可维护性和跨平台兼容性。在诺斯替（Gnostic）宇宙观的隐喻下，这些设计模式对应着不同的宇宙法则：**ECS 模式**是万物生成的基始，**插件模式**是流溢的通道，**平台抽象模式**是太一的遍在性，**数据驱动设计**是普累若麻的显现，**沙箱模式**是异端知识的安全边界。本文档详细介绍引擎核心使用的设计模式及其实现方式。
 
 ## 1. ECS 模式（Entity-Component-System）
 
@@ -264,7 +264,7 @@ impl Plugin for AudioPlugin {
 #### 引擎构建示例
 
 ```rust
-use gwg_engine::prelude::*;
+use gg_engine::prelude::*;
 use galgame_plugin::GalgamePlugin;
 
 fn main() {
@@ -679,7 +679,7 @@ impl Default for WindowConfig {
             width: 1280,
             height: 720,
             fullscreen: false,
-            title: "GWG Game".to_string(),
+            title: "GG Game".to_string(),
         }
     }
 }
@@ -833,252 +833,298 @@ impl GameDataLoader {
 1. **安全性**：防止恶意脚本破坏系统
 2. **可控性**：精确控制脚本可访问的 API
 3. **稳定性**：脚本崩溃不影响引擎主进程
-4. **跨平台**：WASM 沙箱天然跨平台
+4. **跨平台**：Valkyrie 脚本天然跨平台
 
 ### 代码示例
 
 #### 虚拟机核心接口
 
 ```rust
-use anyhow::{anyhow, Result};
-use wasmtime::*;
-use std::sync::{Arc, Mutex};
+use gg_bytecode::{BytecodeModule, BytecodeValue, Host};
+use gg_vm::Vm;
+use gg_core::{GError, GResult};
+use gg_ecs::{Entity, World};
 
-/// 虚拟机上下文
-pub struct VmContext {
-    /// ECS 世界访问器
-    world: Arc<Mutex<WorldAccessor>>,
-    /// 资源管理器
-    asset_manager: Arc<Mutex<AssetManager>>,
-    /// 事件队列
-    event_queue: Arc<Mutex<EventQueue>>,
+/// 引擎宿主，实现 Host trait，将 VM 指令桥接到 ECS 世界
+pub struct EngineHost {
+    /// ECS 世界
+    world: World,
+    /// 组件注册表
+    registry: ComponentRegistry,
 }
 
-impl VmContext {
-    /// 创建新的虚拟机上下文
-    pub fn new(
-        world: WorldAccessor,
-        asset_manager: AssetManager,
-        event_queue: EventQueue,
-    ) -> Self {
-        VmContext {
-            world: Arc::new(Mutex::new(world)),
-            asset_manager: Arc::new(Mutex::new(asset_manager)),
-            event_queue: Arc::new(Mutex::new(event_queue)),
+impl EngineHost {
+    /// 创建新的引擎宿主
+    pub fn new() -> Self {
+        Self { world: World::new(), registry: ComponentRegistry::new() }
+    }
+    
+    /// 获取世界的不可变引用
+    pub fn world(&self) -> &World {
+        &self.world
+    }
+    
+    /// 获取世界的可变引用
+    pub fn world_mut(&mut self) -> &mut World {
+        &mut self.world
+    }
+}
+
+impl Host for EngineHost {
+    fn spawn_entity(&mut self) -> u64 {
+        let entity = self.world.spawn();
+        entity.id()
+    }
+
+    fn despawn_entity(&mut self, entity_id: u64) {
+        self.world.despawn(entity_id as Entity).ok();
+    }
+
+    fn add_component(&mut self, entity_id: u64, component_type: &str, _value: BytecodeValue) {
+        self.registry.add_default(&mut self.world, entity_id as Entity, component_type);
+    }
+
+    fn get_component_field(&mut self, entity_id: u64, component_type: &str, field: &str) -> Option<BytecodeValue> {
+        self.registry.get_field(&self.world, entity_id as Entity, component_type, field)
+    }
+
+    fn set_component_field(&mut self, entity_id: u64, component_type: &str, field: &str, value: BytecodeValue) {
+        self.registry.set_field(&mut self.world, entity_id as Entity, component_type, field, value);
+    }
+
+    fn call_host_function(&mut self, name: &str, args: Vec<BytecodeValue>) -> Option<BytecodeValue> {
+        match name {
+            "print" => {
+                for arg in &args {
+                    match arg {
+                        BytecodeValue::String(s) => println!("{}", s),
+                        BytecodeValue::Int(i) => println!("{}", i),
+                        BytecodeValue::Float(f) => println!("{}", f),
+                        BytecodeValue::Bool(b) => println!("{}", b),
+                        BytecodeValue::Entity(e) => println!("Entity({})", e),
+                        BytecodeValue::Null => println!("null"),
+                    }
+                }
+                None
+            }
+            "spawn_entity" => {
+                let entity_id = self.spawn_entity();
+                Some(BytecodeValue::Entity(entity_id))
+            }
+            "add_component" => {
+                if args.len() >= 2 {
+                    if let (BytecodeValue::Entity(entity_id), BytecodeValue::String(component_type)) = (&args[0], &args[1]) {
+                        self.add_component(*entity_id, component_type, BytecodeValue::Null);
+                    }
+                }
+                None
+            }
+            "set_field" => {
+                if args.len() >= 4 {
+                    if let (
+                        BytecodeValue::Entity(entity_id),
+                        BytecodeValue::String(component_type),
+                        BytecodeValue::String(field),
+                        value,
+                    ) = (&args[0], &args[1], &args[2], args[3].clone())
+                    {
+                        self.set_component_field(*entity_id, component_type, field, value);
+                    }
+                }
+                None
+            }
+            "get_field" => {
+                if args.len() >= 3 {
+                    if let (
+                        BytecodeValue::Entity(entity_id),
+                        BytecodeValue::String(component_type),
+                        BytecodeValue::String(field),
+                    ) = (&args[0], &args[1], &args[2])
+                    {
+                        return self.get_component_field(*entity_id, component_type, field);
+                    }
+                }
+                None
+            }
+            _ => {
+                eprintln!("Warning: Unknown host function: {}", name);
+                None
+            }
         }
-    }
-}
-
-/// 虚拟机实例
-pub struct VmInstance {
-    /// WASM 模块实例
-    instance: Instance,
-    /// 内存
-    memory: Memory,
-    /// 上下文
-    context: VmContext,
-}
-
-impl VmInstance {
-    /// 创建新的虚拟机实例
-    pub fn new(wasm_bytes: &[u8], context: VmContext) -> Result<Self> {
-        let engine = Engine::default();
-        let module = Module::from_binary(&engine, wasm_bytes)?;
-        
-        let mut linker = Linker::new(&engine);
-        let mut store = Store::new(&engine, context.clone());
-        
-        Self::register_host_functions(&mut linker, &mut store)?;
-        
-        let instance = linker.instantiate(&mut store, &module)?;
-        let memory = instance.get_memory(&mut store, "memory")
-            .ok_or_else(|| anyhow!("No memory export"))?;
-        
-        Ok(VmInstance {
-            instance,
-            memory,
-            context,
-        })
-    }
-    
-    /// 注册宿主函数
-    fn register_host_functions(
-        linker: &mut Linker<VmContext>,
-        store: &mut Store<VmContext>,
-    ) -> Result<()> {
-        linker.func_wrap(
-            "env",
-            "print",
-            |mut caller: Caller<'_, VmContext>, ptr: i32, len: i32| {
-                let memory = caller.get_export("memory")
-                    .and_then(|e| e.into_memory())
-                    .ok_or_else(|| anyhow!("No memory"))?;
-                
-                let data = memory.data(&caller);
-                let text = std::str::from_utf8(&data[ptr as usize..(ptr + len) as usize])?;
-                println!("[Script] {}", text);
-                Ok(())
-            },
-        )?;
-        
-        linker.func_wrap(
-            "env",
-            "create_entity",
-            |mut caller: Caller<'_, VmContext>| -> Result<i32> {
-                let ctx = caller.data_mut();
-                let mut world = ctx.world.lock().unwrap();
-                let entity = world.spawn_empty().id();
-                Ok(entity.index() as i32)
-            },
-        )?;
-        
-        Ok(())
-    }
-    
-    /// 调用脚本初始化函数
-    pub fn init(&mut self) -> Result<()> {
-        let init = self.instance.get_typed_func::<(), ()>(&mut self.store, "init")?;
-        init.call(&mut self.store, ())?;
-        Ok(())
-    }
-    
-    /// 调用脚本更新函数
-    pub fn update(&mut self, delta_time: f32) -> Result<()> {
-        let update = self.instance.get_typed_func::<f32, ()>(&mut self.store, "update")?;
-        update.call(&mut self.store, delta_time)?;
-        Ok(())
     }
 }
 ```
 
-#### ECS API 封装
+#### 脚本引擎
 
 ```rust
-use bevy_ecs::prelude::*;
-use std::sync::{Arc, Mutex};
+use gg_script::ScriptLoader;
+use gg_vm::Vm;
 
-/// 世界访问器，提供受控的 ECS 访问
-pub struct WorldAccessor {
-    world: Arc<Mutex<World>>,
-    allowed_components: Vec<String>,
+/// 脚本引擎，管理脚本编译和执行
+pub struct ScriptEngine {
+    /// 脚本加载器
+    loader: ScriptLoader,
+    /// 已编译的字节码模块
+    module: Option<BytecodeModule>,
+    /// 虚拟机
+    vm: Vm,
 }
 
-impl WorldAccessor {
-    /// 创建新的世界访问器
-    pub fn new(world: World) -> Self {
-        WorldAccessor {
-            world: Arc::new(Mutex::new(world)),
-            allowed_components: vec![
-                "Position".to_string(),
-                "Velocity".to_string(),
-            ],
-        }
+impl ScriptEngine {
+    /// 创建新的脚本引擎
+    pub fn new() -> Self {
+        Self { loader: ScriptLoader::new(), module: None, vm: Vm::new() }
     }
-    
-    /// 创建空实体
-    pub fn spawn_empty(&mut self) -> EntityMut {
-        let mut world = self.world.lock().unwrap();
-        world.spawn_empty()
-    }
-    
-    /// 添加组件（受限）
-    pub fn add_component<C: Component>(&mut self, entity: Entity, component: C) -> Result<()> {
-        let component_name = std::any::type_name::<C>();
-        if !self.allowed_components.iter().any(|c| component_name.contains(c)) {
-            return Err(anyhow!("Component {} not allowed", component_name));
-        }
-        
-        let mut world = self.world.lock().unwrap();
-        let mut entity = world.entity_mut(entity);
-        entity.insert(component);
+
+    /// 加载脚本文件
+    pub fn load_script(&mut self, path: &std::path::Path) -> GResult<()> {
+        let module = self.loader.load_file(path)?;
+        self.module = Some(module);
         Ok(())
     }
-    
-    /// 获取组件（受限）
-    pub fn get_component<C: Component>(&self, entity: Entity) -> Result<Option<&C>> {
-        let component_name = std::any::type_name::<C>();
-        if !self.allowed_components.iter().any(|c| component_name.contains(c)) {
-            return Err(anyhow!("Component {} not allowed", component_name));
+
+    /// 从字符串加载脚本
+    pub fn load_script_string(&mut self, source: &str, module_name: &str) -> GResult<()> {
+        let module = self.loader.load_string(source, module_name)?;
+        self.module = Some(module);
+        Ok(())
+    }
+
+    /// 执行脚本中的指定函数
+    pub fn call_function(&mut self, function_name: &str, host: &mut EngineHost) -> VmResult {
+        if let Some(ref module) = self.module {
+            self.vm.execute(module, function_name, host)
         }
-        
-        let world = self.world.lock().unwrap();
-        Ok(world.entity(entity).get::<C>())
+        else {
+            VmResult::Error("No script loaded".to_string())
+        }
+    }
+
+    /// 检查是否已加载脚本
+    pub fn has_script(&self) -> bool {
+        self.module.is_some()
+    }
+
+    /// 检查脚本中是否存在指定函数
+    pub fn has_function(&self, name: &str) -> bool {
+        self.module.as_ref().map_or(false, |m| m.find_function(name).is_some())
     }
 }
 ```
 
-#### 脚本示例（WAT 格式）
+#### 脚本示例（Valkyrie 语法）
 
-```wat
-(module
-    (import "env" "print" (func $print (param i32 i32)))
-    (import "env" "create_entity" (func $create_entity (result i32)))
-    
-    (memory 1)
-    
-    (data (i32.const 0) "Hello from script!")
-    
-    (func (export "init")
-        (call $print (i32.const 0) (i32.const 18))
-        (call $create_entity)
-        drop
-    )
-    
-    (func (export "update") (param $delta f32)
-    )
-)
+```javascript
+// 初始化函数
+function init() {
+    print("Hello from script!");
+    spawn_entity();
+}
+
+// 更新函数
+function update(delta: float) {
+    // 空函数
+}
+
+// 示例：创建实体并添加组件
+function create_player() {
+    let entity = spawn_entity();
+    add_component(entity, "Position");
+    set_field(entity, "Position", "x", 0.0);
+    set_field(entity, "Position", "y", 0.0);
+    return entity;
+}
 ```
 
-#### 虚拟机管理器
+#### 插件管理器
 
 ```rust
-use crate::vm::*;
-use std::collections::HashMap;
+use gg_script::ScriptLoader;
+use gg_bytecode::BytecodeModule;
 use std::path::Path;
 
-/// 虚拟机管理器
-pub struct VmManager {
-    /// 已加载的脚本
-    scripts: HashMap<String, VmInstance>,
-    /// 上下文
-    context: VmContext,
+/// 插件标识符
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct PluginId(
+    /// 插件唯一标识
+    pub u64,
+);
+
+/// 插件配置
+#[derive(Debug, Clone)]
+pub struct PluginConfig {
+    /// 插件名称
+    pub name: String,
+    /// 插件版本
+    pub version: String,
+    /// 插件描述
+    pub description: String,
+    /// 依赖插件列表
+    pub dependencies: Vec<String>,
+    /// 脚本入口函数
+    pub entry_function: String,
 }
 
-impl VmManager {
-    /// 创建新的虚拟机管理器
-    pub fn new(context: VmContext) -> Self {
-        VmManager {
-            scripts: HashMap::new(),
-            context,
+/// 插件模块
+#[derive(Debug, Clone)]
+pub struct PluginModule {
+    /// 插件配置
+    pub config: PluginConfig,
+    /// 字节码模块
+    pub bytecode: BytecodeModule,
+}
+
+/// 插件管理器
+pub struct PluginManager {
+    /// 插件加载器
+    loader: ScriptLoader,
+    /// 已加载的插件
+    plugins: Vec<PluginModule>,
+    /// 插件名称到索引的映射
+    plugin_map: std::collections::HashMap<String, usize>,
+}
+
+impl PluginManager {
+    /// 创建新的插件管理器
+    pub fn new() -> Self {
+        Self {
+            loader: ScriptLoader::new(),
+            plugins: Vec::new(),
+            plugin_map: std::collections::HashMap::new(),
         }
     }
-    
-    /// 加载脚本
-    pub async fn load_script(&mut self, name: &str, path: &Path, fs: &dyn FileSystem) -> Result<()> {
-        let wasm_bytes = fs.read(path).await?;
-        let instance = VmInstance::new(&wasm_bytes, self.context.clone())?;
-        self.scripts.insert(name.to_string(), instance);
-        Ok(())
+
+    /// 加载插件
+    pub fn load_plugin(&mut self, path: &Path, config: PluginConfig) -> GResult<PluginId> {
+        let bytecode = self.loader.load_file(path)?;
+        
+        let plugin = PluginModule {
+            config,
+            bytecode,
+        };
+
+        let plugin_id = PluginId(self.plugins.len() as u64);
+        self.plugin_map.insert(plugin.config.name.clone(), self.plugins.len());
+        self.plugins.push(plugin);
+
+        Ok(plugin_id)
     }
-    
-    /// 初始化所有脚本
-    pub fn init_all(&mut self) -> Result<()> {
-        for (name, instance) in &mut self.scripts {
-            if let Err(e) = instance.init() {
-                eprintln!("Script {} init failed: {}", name, e);
-            }
-        }
-        Ok(())
-    }
-    
-    /// 更新所有脚本
-    pub fn update_all(&mut self, delta_time: f32) -> Result<()> {
-        for (name, instance) in &mut self.scripts {
-            if let Err(e) = instance.update(delta_time) {
-                eprintln!("Script {} update failed: {}", name, e);
-            }
-        }
-        Ok(())
+
+    /// 从字符串加载插件
+    pub fn load_plugin_from_string(&mut self, source: &str, config: PluginConfig) -> GResult<PluginId> {
+        let bytecode = self.loader.load_string(source, &config.name)?;
+        
+        let plugin = PluginModule {
+            config,
+            bytecode,
+        };
+
+        let plugin_id = PluginId(self.plugins.len() as u64);
+        self.plugin_map.insert(plugin.config.name.clone(), self.plugins.len());
+        self.plugins.push(plugin);
+
+        Ok(plugin_id)
     }
 }
 ```
@@ -1087,7 +1133,7 @@ impl VmManager {
 
 ## 模式组合应用
 
-在诺斯替神话框架下，这些设计模式在 GWG 引擎中相互配合，共同构建完整的游戏创造宇宙：
+在诺斯替神话框架下，这些设计模式在 GG 引擎中相互配合，共同构建完整的游戏创造宇宙：
 
 ### 神话视角下的模式协作
 
@@ -1110,4 +1156,4 @@ impl VmManager {
 3. **沙箱 + ECS**：脚本通过沙箱 API 安全地访问 ECS 世界
 4. **插件 + 平台抽象**：插件可通过平台抽象提供跨平台功能
 
-通过这些模式的组合，GWG 引擎实现了高性能、可扩展、跨平台的元游戏引擎架构，同时在神话层面展现出深层的象征意义：太一作为超越源头，德穆革作为有限造物主，执权者作为世界管理者，玩家作为灵性寻求者，共同构成一个完整的游戏创造宇宙。
+通过这些模式的组合，GG 引擎实现了高性能、可扩展、跨平台的元游戏引擎架构，同时在神话层面展现出深层的象征意义：太一作为超越源头，德穆革作为有限造物主，执权者作为世界管理者，玩家作为灵性寻求者，共同构成一个完整的游戏创造宇宙。

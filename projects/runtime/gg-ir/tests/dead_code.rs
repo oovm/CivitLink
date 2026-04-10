@@ -1,4 +1,4 @@
-use gg_ir::{IrFunction, IrModule, IrValue, OpCode, dead_code::DeadCodeElimPass};
+use gg_ir::{IrFunction, IrModule, IrValue, OpCode, dead_code::DeadCodeElimPass, pass::IrPass};
 
 /// 测试无条件 Jump 之后的代码被移除
 #[test]

@@ -1,0 +1,13 @@
+[package]
+name = "gg-plugin-ui"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+gg-core = { path = "../../core/gg-core" }
+gg-ecs = { path = "../../core/gg-ecs" }
+gg-runtime-gui = { path = "../../runtime/gg-runtime-gui" }
+
+[dev-dependencies]

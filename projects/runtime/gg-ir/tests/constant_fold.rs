@@ -1,4 +1,4 @@
-use gg_ir::{IrFunction, IrModule, IrValue, OpCode, constant_fold::ConstantFoldPass};
+use gg_ir::{IrFunction, IrModule, IrValue, OpCode, constant_fold::ConstantFoldPass, pass::IrPass};
 
 /// 测试 LoadConst(1) + LoadConst(2) 折叠为 LoadConst(3)
 #[test]

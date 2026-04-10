@@ -85,7 +85,7 @@ pub struct StructPropertyEditor<T: Struct> {
 ### 注册可反射类型
 
 ```rust
-use gwg_reflection::prelude::*;
+use gg_reflection::prelude::*;
 
 #[derive(Reflect, Default)]
 struct Player {
@@ -109,7 +109,7 @@ fn main() {
 ### 属性编辑器
 
 ```rust
-use gwg_reflection::prelude::*;
+use gg_reflection::prelude::*;
 
 #[derive(Reflect, Default)]
 struct Transform {
@@ -146,8 +146,8 @@ fn main() {
 ### 与 GameWorld 集成
 
 ```rust
-use gwg_world::prelude::*;
-use gwg_reflection::prelude::*;
+use gg_world::prelude::*;
+use gg_reflection::prelude::*;
 
 #[derive(Component, Reflect)]
 struct Character {

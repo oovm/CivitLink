@@ -1,6 +1,6 @@
 # API 概览
 
-GWG 元游戏引擎提供一套完整的 Rust API，支持从资深玩家开发引擎插件，到普通玩家创作游戏内容的完整链路。本文档概述了引擎的核心 API 概念、使用示例、模块分类和命名约定。
+GG 元游戏引擎提供一套完整的 Rust API，支持从资深玩家开发引擎插件，到普通玩家创作游戏内容的完整链路。本文档概述了引擎的核心 API 概念、使用示例、模块分类和命名约定。
 
 ## 核心 API 概念
 
@@ -202,7 +202,7 @@ struct Time {
 ### 创建引擎
 
 ```rust
-use gwg_engine::prelude::*;
+use gg_engine::prelude::*;
 
 fn main() {
     EngineBuilder::new()
@@ -219,7 +219,7 @@ fn main() {
 ### 定义组件
 
 ```rust
-use gwg_engine::prelude::*;
+use gg_engine::prelude::*;
 
 /// 位置组件
 #[derive(Component, Debug, Clone, Copy)]
@@ -259,7 +259,7 @@ pub struct Sprite {
 ### 编写系统
 
 ```rust
-use gwg_engine::prelude::*;
+use gg_engine::prelude::*;
 
 /// 移动系统
 pub fn move_system(
@@ -320,7 +320,7 @@ pub fn render_sprite_system(
 ### 注册插件
 
 ```rust
-use gwg_engine::prelude::*;
+use gg_engine::prelude::*;
 
 /// 简单游戏插件
 pub struct SimpleGamePlugin;
@@ -375,72 +375,72 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 | 模块 | 说明 |
 |------|------|
-| `gwg_core::ecs` | ECS 核心（基于 bevy_ecs） |
-| `gwg_core::asset` | 资源管理系统（加载、缓存、句柄） |
-| `gwg_core::schedule` | 系统调度器扩展 |
-| `gwg_core::world` | 世界管理 |
-| `gwg_core::reflection` | 反射系统 |
+| `gg_core::ecs` | ECS 核心（基于 bevy_ecs） |
+| `gg_core::asset` | 资源管理系统（加载、缓存、句柄） |
+| `gg_core::schedule` | 系统调度器扩展 |
+| `gg_core::world` | 世界管理 |
+| `gg_core::reflection` | 反射系统 |
 
 ### 平台抽象层 (Platform Abstraction)
 
 | 模块 | 说明 |
 |------|------|
-| `gwg_platform::window` | 窗口管理（winit 封装） |
-| `gwg_platform::input` | 输入抽象（键盘、鼠标、触摸、手柄） |
-| `gwg_platform::graphics` | 图形抽象（wgpu 封装） |
-| `gwg_platform::audio` | 音频抽象 |
-| `gwg_platform::filesystem` | 文件系统抽象（AssetIo trait） |
-| `gwg_platform::time` | 时间抽象 |
+| `gg_platform::window` | 窗口管理（winit 封装） |
+| `gg_platform::input` | 输入抽象（键盘、鼠标、触摸、手柄） |
+| `gg_platform::graphics` | 图形抽象（wgpu 封装） |
+| `gg_platform::audio` | 音频抽象 |
+| `gg_platform::filesystem` | 文件系统抽象（AssetIo trait） |
+| `gg_platform::time` | 时间抽象 |
 
 ### 运行时层 (Runtime)
 
 | 模块 | 说明 |
 |------|------|
-| `gwg_runtime::app` | 应用生命周期管理 |
-| `gwg_runtime::scene` | 场景管理 |
-| `gwg_runtime::prefab` | 预制体系统 |
-| `gwg_runtime::serialization` | 序列化 |
+| `gg_runtime::app` | 应用生命周期管理 |
+| `gg_runtime::scene` | 场景管理 |
+| `gg_runtime::prefab` | 预制体系统 |
+| `gg_runtime::serialization` | 序列化 |
 
 ### 虚拟机层 (VM)
 
 | 模块 | 说明 |
 |------|------|
-| `gwg_vm::core` | 虚拟机核心接口 |
-| `gwg_vm::wasmtime` | Wasmtime 后端（桌面） |
-| `gwg_vm::wasmi` | 轻量级解释器后端（嵌入式） |
-| `gwg_vm::api` | 暴露给脚本的 Rust API |
-| `gwg_vm::bindings` | 语言绑定生成 |
+| `gg_vm::core` | 虚拟机核心接口 |
+| `gg_vm::wasmtime` | Wasmtime 后端（桌面） |
+| `gg_vm::wasmi` | 轻量级解释器后端（嵌入式） |
+| `gg_vm::api` | 暴露给脚本的 Rust API |
+| `gg_vm::bindings` | 语言绑定生成 |
 
 ### 引擎插件框架 (Engine)
 
 | 模块 | 说明 |
 |------|------|
-| `gwg_engine::plugin` | 插件 trait 定义 |
-| `gwg_engine::registry` | 插件注册表 |
-| `gwg_engine::builder` | 引擎构建器 |
-| `gwg_engine::manifest` | 引擎清单处理 |
+| `gg_engine::plugin` | 插件 trait 定义 |
+| `gg_engine::registry` | 插件注册表 |
+| `gg_engine::builder` | 引擎构建器 |
+| `gg_engine::manifest` | 引擎清单处理 |
 
 ### 编辑器框架 (Editor)
 
 | 模块 | 说明 |
 |------|------|
-| `gwg_editor::ui` | 编辑器 UI 组件（egui） |
-| `gwg_editor::inspector` | 属性编辑器 |
-| `gwg_editor::scene_view` | 场景视图 |
-| `gwg_editor::asset_browser` | 资源浏览器 |
-| `gwg_editor::plugin` | 编辑器插件系统 |
+| `gg_editor::ui` | 编辑器 UI 组件（egui） |
+| `gg_editor::inspector` | 属性编辑器 |
+| `gg_editor::scene_view` | 场景视图 |
+| `gg_editor::asset_browser` | 资源浏览器 |
+| `gg_editor::plugin` | 编辑器插件系统 |
 
 ### 内置功能模块 (Modules)
 
 | 模块 | 说明 |
 |------|------|
-| `gwg_modules::rendering` | 渲染模块（2D/3D、精灵、文本、相机） |
-| `gwg_modules::physics` | 物理模块（2D/3D、碰撞检测、Rapier） |
-| `gwg_modules::animation` | 动画模块（精灵动画、变换动画、状态机） |
-| `gwg_modules::audio` | 音频模块（播放器、混音器、空间音频） |
-| `gwg_modules::ui` | UI 模块（核心、控件、布局、交互） |
-| `gwg_modules::input` | 输入模块（键盘、鼠标、触摸、手柄、映射） |
-| `gwg_modules::network` | 网络模块（核心、客户端、服务器、同步） |
+| `gg_modules::rendering` | 渲染模块（2D/3D、精灵、文本、相机） |
+| `gg_modules::physics` | 物理模块（2D/3D、碰撞检测、Rapier） |
+| `gg_modules::animation` | 动画模块（精灵动画、变换动画、状态机） |
+| `gg_modules::audio` | 音频模块（播放器、混音器、空间音频） |
+| `gg_modules::ui` | UI 模块（核心、控件、布局、交互） |
+| `gg_modules::input` | 输入模块（键盘、鼠标、触摸、手柄、映射） |
+| `gg_modules::network` | 网络模块（核心、客户端、服务器、同步） |
 
 ## 命名约定
 
@@ -461,7 +461,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 
 ### 模块命名
 
-- 小写单词，用下划线分隔：`gwg_core`, `gwg_platform`, `gwg_modules::rendering`
+- 小写单词，用下划线分隔：`gg_core`, `gg_platform`, `gg_modules::rendering`
 - 避免缩写，除非是广泛认可的（如 `ecs`, `vm`）
 
 ### 函数命名

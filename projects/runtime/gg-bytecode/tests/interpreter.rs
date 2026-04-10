@@ -1,6 +1,7 @@
 use gg_bytecode::{
     format::{BytecodeFunction, BytecodeInstruction, BytecodeModule, BytecodeValue},
-    interpreter::{BytecodeInterpreter, Host, InterpretResult},
+    interpreter::{BytecodeInterpreter, InterpretResult},
+    host::Host,
 };
 
 /// 测试用宿主实现
@@ -131,9 +132,9 @@ fn test_conditional_execution() {
             local_count: 0,
             instructions: vec![
                 BytecodeInstruction::LoadTrue,
-                BytecodeInstruction::JumpIfFalse { address: 5 },
+                BytecodeInstruction::JumpIfFalse { address: 4 },
                 BytecodeInstruction::LoadConst { index: 0 },
-                BytecodeInstruction::Jump { address: 6 },
+                BytecodeInstruction::Jump { address: 5 },
                 BytecodeInstruction::LoadConst { index: 1 },
                 BytecodeInstruction::Return,
             ],

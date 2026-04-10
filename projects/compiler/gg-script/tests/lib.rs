@@ -185,6 +185,10 @@ fn test_end_to_end_pipeline_arithmetic() {
     let mut host = TestHost::new();
     let result = vm.execute_ir(&module, "calc", &mut host);
 
+    match &result {
+        VmResult::Error(msg) => panic!("VM execution error: {}", msg),
+        _ => {}
+    }
     assert!(matches!(result, VmResult::Ok | VmResult::Return(_)));
     assert!(host.log.iter().any(|l| l.contains("call_host_function(print")));
 }

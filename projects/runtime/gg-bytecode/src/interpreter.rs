@@ -59,18 +59,23 @@ impl BytecodeInterpreter {
         }
 
         let stack_base = self.stack.len();
+        let initial_depth = self.call_stack.len();
 
         self.call_stack.push(InterpreterFrame { function_name: function.name, ip: 0, locals, stack_base });
 
         self.running = true;
-        let result = self.execute_instructions(module, host);
+        let result = self.execute_instructions(module, host, initial_depth);
         self.running = false;
         result
     }
 
     /// 执行当前栈帧的指令序列
-    fn execute_instructions<H: Host>(&mut self, module: &BytecodeModule, host: &mut H) -> InterpretResult {
+    fn execute_instructions<H: Host>(&mut self, module: &BytecodeModule, host: &mut H, initial_depth: usize) -> InterpretResult {
         while self.running {
+            if self.call_stack.len() <= initial_depth {
+                return InterpretResult::Ok;
+            }
+
             let (function_name, ip) = match self.call_stack.last() {
                 Some(f) => (f.function_name.clone(), f.ip),
                 None => return InterpretResult::Ok,
@@ -86,9 +91,6 @@ impl BytecodeInterpreter {
             let instructions = &function.instructions;
             if ip >= instructions.len() {
                 self.call_stack.pop();
-                if self.call_stack.is_empty() {
-                    return InterpretResult::Ok;
-                }
                 continue;
             }
 
@@ -110,11 +112,11 @@ impl BytecodeInterpreter {
                 }
                 Ok(ControlFlow::Return(value)) => {
                     self.call_stack.pop();
+                    if self.call_stack.len() <= initial_depth {
+                        return InterpretResult::Return(value.unwrap_or(BytecodeValue::Null));
+                    }
                     if let Some(value) = value {
                         self.stack.push(value);
-                    }
-                    if self.call_stack.is_empty() {
-                        return InterpretResult::Ok;
                     }
                 }
                 Err(result) => return result,
@@ -400,26 +402,29 @@ impl BytecodeInterpreter {
                     }
                 };
 
-                let mut args = Vec::with_capacity(arg_count as usize);
-                for _ in 0..arg_count {
-                    match self.stack.pop() {
-                        Some(v) => args.push(v),
-                        None => {
-                            return Err(InterpretResult::Error("栈下溢: Call 参数不足".to_string()));
-                        }
+                let function = match module.find_function(&func_name) {
+                    Some(f) => f.clone(),
+                    None => {
+                        return Err(InterpretResult::Error(format!("函数未找到: {}", func_name)));
+                    }
+                };
+
+                let mut locals = vec![BytecodeValue::Null; function.local_count as usize];
+                for i in 0..arg_count.min(function.local_count) as usize {
+                    if let Some(val) = self.stack.pop() {
+                        locals[i] = val;
                     }
                 }
-                args.reverse();
 
-                for arg in args {
-                    self.stack.push(arg);
-                }
+                let stack_base = self.stack.len();
+                self.call_stack.push(InterpreterFrame {
+                    function_name: function.name,
+                    ip: 0,
+                    locals,
+                    stack_base,
+                });
 
-                match self.execute(module, &func_name, host) {
-                    InterpretResult::Ok => Ok(ControlFlow::Continue),
-                    InterpretResult::Return(_) => Ok(ControlFlow::Continue),
-                    InterpretResult::Error(msg) => Err(InterpretResult::Error(msg)),
-                }
+                Ok(ControlFlow::Continue)
             }
 
             BytecodeInstruction::Return => {

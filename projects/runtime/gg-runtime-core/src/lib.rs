@@ -9,20 +9,19 @@ pub mod app;
 pub mod builder;
 pub mod hmr;
 pub mod hmr_state;
+pub mod plugin;
 pub mod registry;
 pub mod scheduler;
 pub mod stage;
-/// WASM 沙箱运行时模块
-pub mod wasm;
 
 pub use app::{App, RuntimePlugin};
 pub use builder::RuntimeBuilder;
 pub use hmr::{HmrEvent, HmrManager, HmrMigrationResult};
 pub use hmr_state::{StateMigrator, StateSnapshot};
+pub use plugin::{PluginConfig, PluginId, PluginManager};
 pub use registry::{ComponentAccessor, ComponentRegistry};
 pub use scheduler::StageScheduler;
 pub use stage::{Stage, SystemDescriptor, SystemFn, SystemSet, SystemSetId};
-pub use wasm::{WasmError, WasmHostFunctions, WasmInstanceId, WasmModuleId, WasmRuntime, WasmSandboxConfig};
 
 use gg_asset::AssetServer;
 use gg_bytecode::{BytecodeModule, BytecodeValue, Host};
@@ -248,6 +247,8 @@ pub struct Runtime {
     hmr_manager: Option<HmrManager>,
     /// 插件列表
     plugins: Vec<Arc<dyn Plugin>>,
+    /// 脚本插件管理器
+    plugin_manager: plugin::PluginManager,
     /// 运行状态
     running: bool,
     /// 上一帧时间
@@ -280,6 +281,7 @@ impl Runtime {
             platform_services,
             hmr_manager,
             plugins: Vec::new(),
+            plugin_manager: plugin::PluginManager::new(),
             running: false,
             last_frame_time: Instant::now(),
         })
@@ -340,6 +342,16 @@ impl Runtime {
         self.hmr_manager.as_mut()
     }
 
+    /// 获取插件管理器的可变引用
+    pub fn plugin_manager_mut(&mut self) -> &mut plugin::PluginManager {
+        &mut self.plugin_manager
+    }
+
+    /// 获取插件管理器的不可变引用
+    pub fn plugin_manager(&self) -> &plugin::PluginManager {
+        &self.plugin_manager
+    }
+
     /// 注册插件
     pub fn register_plugin(&mut self, plugin: Arc<dyn Plugin>) -> GResult<()> {
         plugin.initialize()?;
@@ -379,12 +391,42 @@ impl Runtime {
             }
         }
 
+        // 初始化所有脚本插件
+        for plugin in self.plugin_manager.plugins() {
+            if let Some(entry_fn) = plugin.bytecode.find_function(&plugin.config.entry_function) {
+                let mut vm = Vm::new();
+                match vm.execute(&plugin.bytecode, &plugin.config.entry_function, &mut self.host) {
+                    VmResult::Ok | VmResult::Return(_) => {
+                        eprintln!("Plugin initialized: {}", plugin.config.name);
+                    }
+                    VmResult::Error(e) => {
+                        eprintln!("Plugin initialization error ({}): {}", plugin.config.name, e);
+                    }
+                }
+            }
+        }
+
         self.running = true;
         self.run()
     }
 
     /// 停止运行时
     pub fn stop(&mut self) {
+        // 执行所有插件的 shutdown 函数
+        for plugin in self.plugin_manager.plugins() {
+            if plugin.bytecode.find_function("shutdown").is_some() {
+                let mut vm = Vm::new();
+                match vm.execute(&plugin.bytecode, "shutdown", &mut self.host) {
+                    VmResult::Ok | VmResult::Return(_) => {
+                        eprintln!("Plugin shutdown: {}", plugin.config.name);
+                    }
+                    VmResult::Error(e) => {
+                        eprintln!("Plugin shutdown error ({}): {}", plugin.config.name, e);
+                    }
+                }
+            }
+        }
+        
         self.running = false;
     }
 
@@ -464,6 +506,19 @@ impl Runtime {
                 VmResult::Ok | VmResult::Return(_) => {}
                 VmResult::Error(e) => {
                     eprintln!("Script update error: {}", e);
+                }
+            }
+        }
+
+        // 执行所有插件的 update 函数
+        for plugin in self.plugin_manager.plugins() {
+            if plugin.bytecode.find_function("update").is_some() {
+                let mut vm = Vm::new();
+                match vm.execute(&plugin.bytecode, "update", &mut self.host) {
+                    VmResult::Ok | VmResult::Return(_) => {}
+                    VmResult::Error(e) => {
+                        eprintln!("Plugin update error ({}): {}", plugin.config.name, e);
+                    }
                 }
             }
         }

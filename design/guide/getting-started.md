@@ -1,12 +1,12 @@
 # 快速开始
 
-本节将帮助你在 10 分钟内创建第一个基于 gwg 元引擎框架的游戏引擎项目。
+本节将帮助你在 10 分钟内创建第一个基于 gg 元引擎框架的游戏引擎项目。
 
 ## 环境搭建
 
 ### 1. 安装 Rust
 
-首先，你需要安装 Rust 编程语言。gwg 元引擎基于 Rust 开发，利用其强大的性能和安全性特性。
+首先，你需要安装 Rust 编程语言。gg 元引擎基于 Rust 开发，利用其强大的性能和安全性特性。
 
 访问 [Rust 官网](https://www.rust-lang.org/tools/install) 下载并安装最新版本的 Rust：
 
@@ -26,7 +26,7 @@ cargo --version
 
 ### 2. 配置工具链
 
-gwg 元引擎需要稳定版 Rust 工具链：
+gg 元引擎需要稳定版 Rust 工具链：
 
 ```bash
 # 安装稳定版工具链（如果尚未安装）
@@ -76,7 +76,7 @@ cd my-game-engine
 
 ### 2. 配置 Cargo.toml
 
-编辑 `Cargo.toml`，添加 gwg 元引擎框架的依赖：
+编辑 `Cargo.toml`，添加 gg 元引擎框架的依赖：
 
 ```toml
 [package]
@@ -86,15 +86,15 @@ edition = "2021"
 
 [dependencies]
 # 核心框架
-gwg-ecs = { path = "../../crates/frameworks/gwg-ecs" }
-gwg-asset = { path = "../../crates/frameworks/gwg-asset" }
-gwg-world = { path = "../../crates/frameworks/gwg-world" }
-gwg-schedule = { path = "../../crates/frameworks/gwg-schedule" }
-gwg-reflection = { path = "../../crates/frameworks/gwg-reflection" }
+gg-ecs = { path = "../../crates/frameworks/gg-ecs" }
+gg-asset = { path = "../../crates/frameworks/gg-asset" }
+gg-world = { path = "../../crates/frameworks/gg-world" }
+gg-schedule = { path = "../../crates/frameworks/gg-schedule" }
+gg-reflection = { path = "../../crates/frameworks/gg-reflection" }
 
 # 运行时
-gwg-vm = { path = "../../crates/runtime/gwg-vm" }
-gwg-ir = { path = "../../crates/runtime/gwg-ir" }
+gg-vm = { path = "../../crates/runtime/gg-vm" }
+gg-ir = { path = "../../crates/runtime/gg-ir" }
 
 # 工具库
 tokio = { version = "1", features = ["full"] }
@@ -105,7 +105,7 @@ tracing-subscriber = "0.3"
 [features]
 default = ["desktop"]
 desktop = []
-editor = ["gwg-engine/editor"]
+editor = ["gg-engine/editor"]
 ```
 
 ### 3. 编写 main.rs
@@ -113,11 +113,11 @@ editor = ["gwg-engine/editor"]
 创建 `src/main.rs` 文件，实现一个简单的游戏引擎入口：
 
 ```rust
-use gwg_engine::prelude::*;
-use gwg_modules_rendering::RenderPlugin;
-use gwg_modules_audio::AudioPlugin;
-use gwg_modules_ui::UIPlugin;
-use gwg_modules_input::InputPlugin;
+use gg_engine::prelude::*;
+use gg_modules_rendering::RenderPlugin;
+use gg_modules_audio::AudioPlugin;
+use gg_modules_ui::UIPlugin;
+use gg_modules_input::InputPlugin;
 
 /// 主函数
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -154,8 +154,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! 
 //! 提供基本的游戏功能和系统
 
-use gwg_core::prelude::*;
-use gwg_engine::prelude::*;
+use gg_core::prelude::*;
+use gg_engine::prelude::*;
 
 /// 游戏配置资源
 #[derive(Resource, Debug, Clone)]
@@ -259,11 +259,11 @@ impl Plugin for MyGamePlugin {
 修改 `src/main.rs` 以包含你的自定义插件：
 
 ```rust
-use gwg_engine::prelude::*;
-use gwg_modules_rendering::RenderPlugin;
-use gwg_modules_audio::AudioPlugin;
-use gwg_modules_ui::UIPlugin;
-use gwg_modules_input::InputPlugin;
+use gg_engine::prelude::*;
+use gg_modules_rendering::RenderPlugin;
+use gg_modules_audio::AudioPlugin;
+use gg_modules_ui::UIPlugin;
+use gg_modules_input::InputPlugin;
 
 // 导入自定义插件
 mod plugins;
@@ -418,7 +418,7 @@ se_volume = 1.0
 
 ## 下一步
 
-- [核心优势](/guide/advantages) - 了解 gwg 元引擎的设计理念
-- [架构设计](/architecture/overview) - 深入了解 gwg 的架构
+- [核心优势](/guide/advantages) - 了解 gg 元引擎的设计理念
+- [架构设计](/architecture/overview) - 深入了解 gg 的架构
 - [模块文档](/modules/rendering) - 了解各个功能模块的使用
 

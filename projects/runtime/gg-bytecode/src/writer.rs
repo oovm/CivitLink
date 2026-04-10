@@ -17,8 +17,11 @@ impl BytecodeWriter {
         writer.write_string(&module.name);
 
         Self::write_constants(&mut bytecode_module, &mut writer, &module.constants)?;
+
+        let compiled_functions = Self::compile_functions(&mut bytecode_module, &module.functions)?;
+
         Self::write_string_pool(&mut writer, &bytecode_module.string_pool)?;
-        Self::write_functions(&mut bytecode_module, &mut writer, &module.functions)?;
+        Self::write_compiled_functions(&mut writer, &compiled_functions)?;
 
         Ok(writer.into_vec())
     }
@@ -70,36 +73,47 @@ impl BytecodeWriter {
         Ok(())
     }
 
-    /// 写入函数列表
-    fn write_functions(
+    /// 将 IR 函数列表编译为字节码函数列表（同时填充字符串池）
+    fn compile_functions(
         bytecode_module: &mut BytecodeModule,
-        writer: &mut BinaryWriter,
         functions: &[gg_ir::IrFunction],
-    ) -> GResult<()> {
-        writer.write_u32(functions.len() as u32);
+    ) -> GResult<Vec<BytecodeFunction>> {
+        let mut compiled = Vec::new();
 
         for func in functions {
-            writer.write_string(&func.name);
-            writer.write_u32(func.param_count as u32);
-            writer.write_u32(func.local_count as u32);
-
             let mut instructions = Vec::new();
             for op in &func.instructions {
                 let bc_inst = Self::ir_op_to_instruction(bytecode_module, op)?;
                 instructions.push(bc_inst);
             }
 
-            writer.write_u32(instructions.len() as u32);
-            for inst in &instructions {
-                Self::write_instruction(writer, inst)?;
-            }
-
-            bytecode_module.add_function(BytecodeFunction {
+            compiled.push(BytecodeFunction {
                 name: func.name.clone(),
                 param_count: func.param_count as u32,
                 local_count: func.local_count as u32,
                 instructions,
             });
+        }
+
+        Ok(compiled)
+    }
+
+    /// 写入已编译的字节码函数列表
+    fn write_compiled_functions(
+        writer: &mut BinaryWriter,
+        functions: &[BytecodeFunction],
+    ) -> GResult<()> {
+        writer.write_u32(functions.len() as u32);
+
+        for func in functions {
+            writer.write_string(&func.name);
+            writer.write_u32(func.param_count);
+            writer.write_u32(func.local_count);
+
+            writer.write_u32(func.instructions.len() as u32);
+            for inst in &func.instructions {
+                Self::write_instruction(writer, inst)?;
+            }
         }
 
         Ok(())

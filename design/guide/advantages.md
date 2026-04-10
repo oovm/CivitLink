@@ -157,19 +157,19 @@ Mod 脚本可以：
 ### 目录结构设计
 
 ```
-gwg-engine/
+gg-engine/
 ├── crates/                    # 第一层：功能领域
 │   ├── frameworks/            # 核心框架层
-│   │   ├── gwg-ecs/          # ECS 核心封装
-│   │   ├── gwg-asset/        # 资源管理
-│   │   ├── gwg-schedule/     # 系统调度器扩展
-│   │   ├── gwg-world/        # 世界管理
-│   │   ├── gwg-reflection/   # 反射系统
-│   │   ├── gwg-types/        # 类型定义
-│   │   └── gwg-macros/       # 宏定义
+│   │   ├── gg-ecs/          # ECS 核心封装
+│   │   ├── gg-asset/        # 资源管理
+│   │   ├── gg-schedule/     # 系统调度器扩展
+│   │   ├── gg-world/        # 世界管理
+│   │   ├── gg-reflection/   # 反射系统
+│   │   ├── gg-types/        # 类型定义
+│   │   └── gg-macros/       # 宏定义
 │   ├── runtime/               # 运行时层
-│   │   ├── gwg-ir/           # 中间表示
-│   │   └── gwg-vm/           # 虚拟机
+│   │   ├── gg-ir/           # 中间表示
+│   │   └── gg-vm/           # 虚拟机
 └── tools/                     # 构建工具
 ```
 

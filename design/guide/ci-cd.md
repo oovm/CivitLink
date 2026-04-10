@@ -1,6 +1,6 @@
 # CI/CD 流水线与多平台构建指南
 
-本指南基于 gwg 元引擎框架架构（whitebook2.md 和 whitebook3.md），提供完整的 CI/CD 流水线配置、多平台构建流程以及分发打包方案。
+本指南基于 gg 元引擎框架架构（whitebook2.md 和 whitebook3.md），提供完整的 CI/CD 流水线配置、多平台构建流程以及分发打包方案。
 
 ## 目录
 
@@ -14,7 +14,7 @@
 
 ## 多平台构建流程
 
-gwg 引擎支持 Windows、macOS、Linux、iOS、Android、WebAssembly（H5）以及微信小游戏等主要平台。以下是各平台的构建流程：
+gg 引擎支持 Windows、macOS、Linux、iOS、Android、WebAssembly（H5）以及微信小游戏等主要平台。以下是各平台的构建流程：
 
 ### 1.1 桌面平台（Windows / macOS / Linux）
 
@@ -81,10 +81,10 @@ wasm-bindgen target/wasm32-unknown-unknown/release/galgame.wasm --out-dir ./wech
 
 ### GitHub Actions 完整配置
 
-以下是适用于 gwg 引擎的 GitHub Actions CI/CD 配置示例：
+以下是适用于 gg 引擎的 GitHub Actions CI/CD 配置示例：
 
 ```yaml
-name: gwg Engine CI/CD
+name: gg Engine CI/CD
 
 on:
     push:
@@ -213,7 +213,7 @@ jobs:
             - name: Upload artifact
               uses: actions/upload-artifact@v4
               with:
-                  name: gwg-engine-${{ matrix.artifact-name }}
+                  name: gg-engine-${{ matrix.artifact-name }}
                   path: target/${{ matrix.target }}/release/
 
     # 构建 WebAssembly
@@ -260,13 +260,13 @@ jobs:
             - name: Upload H5 artifacts
               uses: actions/upload-artifact@v4
               with:
-                  name: gwg-engine-h5
+                  name: gg-engine-h5
                   path: ./web-h5/
 
             - name: Upload WeChat Mini Game artifacts
               uses: actions/upload-artifact@v4
               with:
-                  name: gwg-engine-wechat-game
+                  name: gg-engine-wechat-game
                   path: ./wechat-game/
 
     # 构建 Android
@@ -308,7 +308,7 @@ jobs:
             - name: Upload Android artifacts
               uses: actions/upload-artifact@v4
               with:
-                  name: gwg-engine-android
+                  name: gg-engine-android
                   path: android/app/build/outputs/apk/release/
 ```
 
@@ -322,7 +322,7 @@ jobs:
 ```bash
 # 使用 NSIS 或 Inno Setup 创建安装程序
 # 示例：创建便携版 ZIP
-powershell Compress-Archive -Path target/x86_64-pc-windows-msvc/release/*.exe -DestinationPath gwg-engine-windows.zip
+powershell Compress-Archive -Path target/x86_64-pc-windows-msvc/release/*.exe -DestinationPath gg-engine-windows.zip
 ```
 
 #### macOS .app 和 .dmg
@@ -382,7 +382,7 @@ cp -r web-h5/* deploy-h5/
 cp index.html deploy-h5/
 
 # 压缩
-cd deploy-h5 && zip -r ../gwg-engine-h5.zip .
+cd deploy-h5 && zip -r ../gg-engine-h5.zip .
 ```
 
 #### 微信小游戏
@@ -402,10 +402,10 @@ cp project.config.json wechat-game-deploy/
 
 ### 4.1 插件开发结构
 
-gwg 引擎插件采用 Rust crate 形式开发，典型结构如下：
+gg 引擎插件采用 Rust crate 形式开发，典型结构如下：
 
 ```
-gwg-plugin-example/
+gg-plugin-example/
 ├── Cargo.toml
 ├── src/
 │   ├── lib.rs
@@ -515,6 +515,6 @@ zip -r my-galgame-game.zip my_galgame/
 - 引擎自动合并 DLC 内容
 
 #### Mod 分发
-- 独立 `.gwg` 脚本文件
+- 独立 `.gg` 脚本文件
 - 玩家放置到 `mods/` 目录
 - 虚拟机自动加载并执行

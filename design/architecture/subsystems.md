@@ -16,7 +16,7 @@
 
 转换器可以是内置的（纹理压缩、着色器编译），也可以是引擎清单中指定的插件。例如：
 
-- `gal_script_compiler`：读取`.gscript`视觉小说脚本，产出`StorySequence`资产和`DialogueDB`。
+- `script_compiler`：读取`.v` Valkyrie 脚本，产出`StorySequence`资产和`DialogueDB`。
 - `rpg_map_compiler`：读取`.tilemap`与事件定义，产出碰撞网格、寻路数据与序列化的事件触发器。
 - `platform_aot_backend`：将**引擎通用字节码**（见下文）转换为目标平台原生代码。
 
