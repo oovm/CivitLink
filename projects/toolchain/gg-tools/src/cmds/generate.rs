@@ -2,7 +2,7 @@
 //!
 //! 读取 Engine.toml，解析并验证清单，调用工厂生成引擎代码。
 
-use gg_core::GResult;
+use crate::GResult;
 use gg_factory::EngineFactory;
 use gg_manifest::EngineManifest;
 use std::path::PathBuf;

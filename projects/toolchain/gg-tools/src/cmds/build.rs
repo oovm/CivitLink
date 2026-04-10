@@ -2,7 +2,9 @@
 //!
 //! 若 `generated/` 不存在则先自动生成，然后调用 cargo build 构建生成的项目。
 
-use gg_core::{GError, GErrorKind, GResult};
+use crate::GError;
+use crate::GErrorKind;
+use crate::GResult;
 use std::path::PathBuf;
 
 use super::generate::cmd_generate;
@@ -29,7 +31,7 @@ pub fn cmd_build(manifest_path: &str, platform: Option<&str>, release: bool) -> 
         cmd.arg("--release");
     }
 
-    let status = 
+    let status =
         cmd.status().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to run cargo build: {}", e) })?;
 
     if !status.success() {

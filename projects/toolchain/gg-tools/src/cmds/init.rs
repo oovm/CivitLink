@@ -2,7 +2,9 @@
 //!
 //! 创建新的引擎项目目录，生成 Engine.toml、game.toml 和子目录。
 
-use gg_core::{GError, GErrorKind, GResult};
+use crate::GError;
+use crate::GErrorKind;
+use crate::GResult;
 use gg_manifest::EngineManifest;
 use std::path::PathBuf;
 

@@ -9,6 +9,10 @@ license = { workspace = true }
 name = "gg"
 path = "bin/gg.rs"
 
+[lib]
+name = "gg_tools"
+path = "src/lib.rs"
+
 [dependencies]
 gg-core = { workspace = true }
 gg-manifest = { workspace = true }

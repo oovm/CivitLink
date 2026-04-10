@@ -39,7 +39,7 @@ impl AotBackendRegistry {
 
     /// 查找支持指定目标平台的可变编译后端
     pub fn find_backend_mut(&mut self, target: &TargetPlatform) -> Option<&mut (dyn AotBackend + '_)> {
-        self.backends.iter_mut().find(|b| b.supported_targets().contains(target)).map(move |b| b.as_mut())
+        self.backends.iter_mut().find(|b| b.supported_targets().contains(target)).map(|b| b.as_mut())
     }
 
     /// 获取所有已注册后端支持的目标平台列表

@@ -1,7 +1,12 @@
 [workspace]
 members = [
     "projects/core/*",
-    "projects/compiler/*",
+    "projects/compiler/gg-script",
+    "projects/compiler/gg-compiler-script",
+    "projects/compiler/gg-compiler-core",
+    "projects/compiler/gg-compiler-aot",
+    "projects/compiler/gg-compiler-vx",
+    "projects/compiler/gg-sheet",
     "projects/editor/*",
     "projects/plugins/*",
     "projects/runtime/*",
