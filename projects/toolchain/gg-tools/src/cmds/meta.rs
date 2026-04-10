@@ -6,6 +6,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use clap::{Args, Command};
 
+use gg_meta::{MetaFile, generate_guid};
 use crate::platform::Platform;
 
 /// Meta 命令参数
@@ -77,37 +78,27 @@ fn process_files_in_directory(path: &Path) -> anyhow::Result<()> {
 /// 生成 meta 文件
 fn generate_meta_file(file_path: &Path) -> anyhow::Result<()> {
     let stats = fs::metadata(file_path)?;
-    let size = stats.len();
+    let size = stats.len() as u64;
     let name = file_path.file_name().unwrap().to_string_lossy().to_string();
     let relative_path = get_relative_path(file_path)?;
     let asset_type = get_asset_type(&name);
     
-    // 生成 UUID v7 格式的 GUID
-    let guid = generate_uuid_v7();
-    let timestamp = chrono::Utc::now().to_rfc3339();
-    
-    // 构建 meta 内容
-    let meta_content = format!(
-        r#"MetaFile({{
-    version: "1.0",
-    asset: Asset({{
-        type: "{asset_type}",
-        path: "{relative_path}",
-        guid: "{guid}",
-        name: "{name}",
-        size: {size},
-        modified: "{timestamp}",
-    }}),
-    import_settings: None,
-    dependencies: [],
-    references: [],
-    timestamp: "{timestamp}",
-    hash: None,
-}})"#
+    // 使用 gg-meta 库创建 MetaFile
+    let mut meta = MetaFile::new(
+        &asset_type,
+        &relative_path,
+        &name,
+        size,
     );
     
+    // 更新时间戳
+    meta.update_timestamp();
+    
+    // 生成 meta 文件路径
     let meta_path = file_path.with_extension(format!("{}.meta", file_path.extension().unwrap_or_default().to_string_lossy()));
-    fs::write(&meta_path, meta_content)?;
+    
+    // 写入文件
+    meta.to_file(&meta_path)?;
     println!("Generated meta file for {}", file_path.display());
     
     Ok(())
@@ -141,10 +132,4 @@ fn get_asset_type(filename: &str) -> String {
         "material" => "material".to_string(),
         _ => "unknown".to_string(),
     }
-}
-
-/// 生成 UUID v7
-fn generate_uuid_v7() -> String {
-    use uuid::Uuid;
-    Uuid::now_v7().to_string()
 }

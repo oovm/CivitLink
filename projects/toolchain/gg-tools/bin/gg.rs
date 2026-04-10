@@ -21,5 +21,10 @@ fn main() -> gg_tools::GResult<()> {
         gg_tools::Commands::NewGame { name } => gg_tools::cmds::new_game::cmd_new_game(&name),
         gg_tools::Commands::ModConverter { path } => gg_tools::cmds::mod_converter::cmd_mod_converter(path.as_deref()),
         gg_tools::Commands::ScriptBench => gg_tools::cmds::script_bench::cmd_script_bench(),
+        gg_tools::Commands::Meta { target, recursive } => {
+            let platform = gg_tools::platform::Platform::new()?;
+            let args = gg_tools::cmds::meta::MetaArgs { target, recursive };
+            gg_tools::cmds::meta::execute(&args, &platform)
+        }
     }
 }

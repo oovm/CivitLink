@@ -51,7 +51,8 @@ proc-macro2 = "1"
 uuid = { version = "1.6", features = ["serde"] }
 chrono = "0.4"
 tempfile = "3.9"
-oak-von = { path = "../oaks/projects/oak-von" }
+oak-von = { path = "../oaks/examples/oak-von" }
+oak-core = { path = "../oaks/projects/oak-core" }
 # gnostic gamer modules
 gg-core = { path = "projects/core/gg-core" }
 gg-error = { path = "projects/core/gg-error" }
@@ -59,11 +60,12 @@ gg-ecs = { path = "projects/core/gg-ecs" }
 gg-asset = { path = "projects/core/gg-asset" }
 gg-reflection = { path = "projects/core/gg-reflection" }
 gg-macros = { path = "projects/core/gg-macros" }
+gg-meta = { path = "projects/core/gg-meta" }
 gg-schedule = { path = "projects/core/gg-schedule" }
 gg-world = { path = "projects/core/gg-world" }
 gg-render = { path = "projects/core/gg-render" }
-gg-render-wgpu = { path = "projects/runtime/gg-render-wgpu" }
 gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
+gg-render-wgpu = { path = "projects/runtime/gg-render-wgpu" }
 gg-runtime-gui = { path = "projects/runtime/gg-runtime-gui" }
 gg-runtime-audio = { path = "projects/runtime/gg-runtime-audio" }
 gg-ir = { path = "projects/runtime/gg-ir" }

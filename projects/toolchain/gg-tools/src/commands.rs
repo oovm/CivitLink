@@ -101,4 +101,12 @@ pub enum Commands {
     },
     /// 脚本性能测试工具
     ScriptBench,
+    /// 生成和管理资源的 meta 文件
+    Meta {
+        /// 目标目录或文件路径
+        target: String,
+        /// 递归处理目录
+        #[arg(short, long, default_value_t = true)]
+        recursive: bool,
+    },
 }
