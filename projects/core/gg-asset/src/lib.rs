@@ -457,11 +457,75 @@ impl AssetLoader<BinaryAsset> for BinaryLoader {
     }
 }
 
+/// 图像资源
+///
+/// 封装图像的 RGBA 像素数据及其尺寸信息。
+pub struct ImageAsset {
+    /// 图像宽度（像素）
+    width: u32,
+    /// 图像高度（像素）
+    height: u32,
+    /// RGBA 像素数据
+    data: Vec<u8>,
+}
+
+impl ImageAsset {
+    /// 创建新的图像资源
+    pub fn new(width: u32, height: u32, data: Vec<u8>) -> Self {
+        Self { width, height, data }
+    }
+
+    /// 获取图像宽度
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+
+    /// 获取图像高度
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    /// 获取 RGBA 像素数据
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+}
+
+impl Asset for ImageAsset {
+    fn type_name() -> &'static str
+    where
+        Self: Sized,
+    {
+        "ImageAsset"
+    }
+}
+
+/// 图像资源加载器
+///
+/// 从文件系统异步加载 PNG/JPG 图像文件为 `ImageAsset`。
+pub struct ImageLoader;
+
+impl AssetLoader<ImageAsset> for ImageLoader {
+    async fn load(&self, path: &Path) -> Result<ImageAsset, AssetError> {
+        let data = tokio::fs::read(path)
+            .await
+            .map_err(|e| AssetError::LoadError(format!("Failed to read image file: {}", e)))?;
+
+        let img = image::load_from_memory(&data)
+            .map_err(|e| AssetError::LoadError(format!("Failed to decode image: {}", e)))?;
+
+        let rgba = img.to_rgba8();
+        let dimensions = rgba.dimensions();
+
+        Ok(ImageAsset::new(dimensions.0, dimensions.1, rgba.into_raw()))
+    }
+}
+
 /// 预导入模块
 pub mod prelude {
     /// 重新导出 gg-asset 核心类型
     pub use crate::{
-        Asset, AssetCache, AssetError, AssetLoader, AssetServer, BinaryAsset, BinaryLoader, Handle, LoadState, TextAsset,
-        TextLoader,
+        Asset, AssetCache, AssetError, AssetLoader, AssetServer, BinaryAsset, BinaryLoader, Handle, ImageAsset,
+        ImageLoader, LoadState, TextAsset, TextLoader,
     };
 }

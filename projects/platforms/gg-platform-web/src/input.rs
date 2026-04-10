@@ -5,6 +5,9 @@ use gg_core::platform::{Input, InputEvent, KeyCode, KeyState, PointerAction, Poi
 /// Web 平台输入实现
 ///
 /// 通过 JavaScript 互操作接收 DOM 事件，转换为统一的输入事件。
+/// 提供两种事件推送方式：
+/// - 直接推送已转换的 `InputEvent`（通过 `push_event`）
+/// - 推送原始 DOM 事件参数（通过 `push_keyboard_event`、`push_raw_mouse_event`、`push_raw_touch_event`）
 pub struct WebInput {
     /// 待处理的事件缓冲
     event_buffer: Vec<InputEvent>,
@@ -20,6 +23,34 @@ impl WebInput {
     /// 创建新的 Web 输入实例
     pub fn new() -> Self {
         Self { event_buffer: Vec::new(), pressed_keys: HashSet::new(), pointer_down: false, pointer_position: (0.0, 0.0) }
+    }
+
+    /// 推送一个输入事件到缓冲区
+    pub fn push_event(&mut self, event: InputEvent) {
+        match &event {
+            InputEvent::Keyboard { key, state } => match state {
+                KeyState::Pressed => {
+                    self.pressed_keys.insert(*key);
+                }
+                KeyState::Released => {
+                    self.pressed_keys.remove(key);
+                }
+            },
+            InputEvent::Pointer { position, action, .. } => {
+                self.pointer_position = *position;
+                match action {
+                    PointerAction::Down => {
+                        self.pointer_down = true;
+                    }
+                    PointerAction::Up => {
+                        self.pointer_down = false;
+                    }
+                    _ => {}
+                }
+            }
+            InputEvent::Gamepad { .. } => {}
+        }
+        self.event_buffer.push(event);
     }
 
     /// 从 DOM KeyboardEvent 推送键盘事件
@@ -65,6 +96,21 @@ impl WebInput {
         self.event_buffer.push(InputEvent::Pointer { position: (x, y), action, button: Some(button) });
     }
 
+    /// 从原始 DOM MouseEvent 参数推送鼠标事件
+    ///
+    /// # 参数
+    ///
+    /// - `x` - 鼠标 X 坐标
+    /// - `y` - 鼠标 Y 坐标
+    /// - `event_type` - DOM 事件类型字符串（"mousedown", "mouseup", "mousemove", "wheel"）
+    /// - `button` - DOM MouseEvent.button 数值（0=左键, 1=中键, 2=右键）
+    /// - `scroll_delta` - 滚轮滚动量（仅 "wheel" 事件时使用）
+    pub fn push_raw_mouse_event(&mut self, x: f32, y: f32, event_type: &str, button: u16, scroll_delta: f32) {
+        let action = Self::parse_pointer_action(event_type, scroll_delta);
+        let pointer_button = Self::parse_mouse_button(button);
+        self.push_mouse_event(x, y, action, pointer_button);
+    }
+
     /// 从 DOM TouchEvent 推送触摸事件
     ///
     /// # 参数
@@ -84,6 +130,39 @@ impl WebInput {
             _ => {}
         }
         self.event_buffer.push(InputEvent::Pointer { position: (x, y), action, button: Some(PointerButton::Left) });
+    }
+
+    /// 从原始 DOM TouchEvent 参数推送触摸事件
+    ///
+    /// # 参数
+    ///
+    /// - `x` - 触摸 X 坐标
+    /// - `y` - 触摸 Y 坐标
+    /// - `event_type` - DOM 事件类型字符串（"touchstart", "touchend", "touchmove"）
+    pub fn push_raw_touch_event(&mut self, x: f32, y: f32, event_type: &str) {
+        let action = Self::parse_pointer_action(event_type, 0.0);
+        self.push_touch_event(x, y, action);
+    }
+
+    /// 将 DOM 事件类型字符串解析为 PointerAction
+    fn parse_pointer_action(event_type: &str, scroll_delta: f32) -> PointerAction {
+        match event_type {
+            "mousedown" | "touchstart" => PointerAction::Down,
+            "mouseup" | "touchend" => PointerAction::Up,
+            "mousemove" | "touchmove" => PointerAction::Move,
+            "wheel" => PointerAction::Scroll(scroll_delta),
+            _ => PointerAction::Move,
+        }
+    }
+
+    /// 将 DOM MouseEvent.button 数值解析为 PointerButton
+    fn parse_mouse_button(button: u16) -> PointerButton {
+        match button {
+            0 => PointerButton::Left,
+            1 => PointerButton::Middle,
+            2 => PointerButton::Right,
+            n => PointerButton::Other(n as u8),
+        }
     }
 
     /// 将 DOM KeyboardEvent.code 字符串解析为 KeyCode

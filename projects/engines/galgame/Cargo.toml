@@ -9,12 +9,12 @@ license = { workspace = true }
 gg-core = { workspace = true }
 gg-ecs = { workspace = true }
 gg-asset = { workspace = true }
-gg-platform-desktop = { workspace = true }
 gg-galgame-schema = { workspace = true }
 gg-plugin-dialogue = { workspace = true }
 gg-plugin-portrait = { workspace = true }
 gg-plugin-scene-transition = { workspace = true }
 gg-plugin-save = { workspace = true }
+gg-plugin-ui = { workspace = true }
 gg-render = { workspace = true }
 gg-render-wgpu = { workspace = true }
 gg-ui = { workspace = true }

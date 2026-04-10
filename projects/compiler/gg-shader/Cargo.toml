@@ -7,4 +7,4 @@ license = { workspace = true }
 
 [dependencies]
 gg-core = { workspace = true }
-naga = { workspace = true }
+naga = { workspace = true, features = ["wgsl-in", "wgsl-out", "validate"] }

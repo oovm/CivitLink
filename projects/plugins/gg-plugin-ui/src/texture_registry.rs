@@ -4,8 +4,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use gg_core::{GError, GErrorKind, GResult};
-use gg_ecs::Resource;
+use gg_core::GResult;
 use gg_render::{Renderer, TextureId};
 
 /// 纹理注册表
@@ -60,5 +59,3 @@ impl TextureRegistry {
         self.path_to_id.clear();
     }
 }
-
-impl Resource for TextureRegistry {}

@@ -1,19 +1,23 @@
 //! Galgame 引擎核心模块
 //! 提供引擎初始化、主循环和插件管理功能
 
+use std::time::Instant;
+
 use crate::config::GalgameConfig;
-use gg_asset::AssetManager;
-use gg_core::{GResult, plugin::Plugin};
-use gg_ecs::World;
-use gg_platform_desktop::DesktopFileSystem;
-use gg_plugin_dialogue::plugin::DialoguePlugin;
+use gg_asset::AssetServer;
+use gg_core::plugin::PluginManager;
+use gg_ecs::{Entity, World};
+use gg_plugin_dialogue::schema::ChoiceState;
+use gg_plugin_dialogue::typewriter::TypewriterState;
 use gg_plugin_portrait::plugin::PortraitPlugin;
 use gg_plugin_save::plugin::SavePlugin;
 use gg_plugin_scene_transition::plugin::SceneTransitionPlugin;
+use gg_plugin_ui::{EventSystemResource, UiPlugin, UiTreeResource};
 use gg_render::{RenderContext, Renderer, SurfaceInfo};
 use gg_render_wgpu::WgpuRenderer;
-use gg_ui::{LayoutEngine, UiRenderer, UiTree};
-use winit::{event::Event, event_loop::EventLoop};
+use gg_ui::{LayoutEngine, UiEvent, UiRenderer, UiTree};
+use winit::event::{ElementState, Event, MouseButton};
+use winit::event_loop::EventLoop;
 
 /// Galgame 引擎
 ///
@@ -27,14 +31,18 @@ pub struct GalgameEngine {
     pub config: GalgameConfig,
     /// ECS 世界
     pub world: World,
-    /// 资源管理器
-    pub asset_manager: AssetManager,
+    /// 资源服务器
+    pub asset_server: AssetServer,
     /// 是否编辑器模式
     pub is_editor_mode: bool,
     /// WGPU 渲染器
     renderer: Option<WgpuRenderer>,
     /// UI 节点树
     ui_tree: UiTree,
+    /// 插件管理器
+    plugin_manager: PluginManager,
+    /// 上一帧的时间戳
+    last_frame_time: Option<Instant>,
 }
 
 impl GalgameEngine {
@@ -47,31 +55,31 @@ impl GalgameEngine {
     pub fn new(config: GalgameConfig, is_editor_mode: bool) -> Self {
         Self {
             config,
-            world: GgWorld::new(),
-            asset_manager: AssetManager::new(Box::new(DesktopFileSystem::new())),
+            world: World::new(),
+            asset_server: AssetServer::new(),
             is_editor_mode,
             renderer: None,
             ui_tree: UiTree::new(),
+            plugin_manager: PluginManager::new(),
+            last_frame_time: None,
         }
     }
 
     /// 初始化引擎
     ///
-    /// 创建渲染器、窗口，注册所有插件并加载游戏资源。
+    /// 注册所有插件，构建插件系统并初始化。
     pub fn initialize(&mut self) -> GResult<()> {
         let screen_width = self.config.display.width as f32;
         let screen_height = self.config.display.height as f32;
 
-        let plugins: Vec<Box<dyn Plugin>> = vec![
-            Box::new(DialoguePlugin),
-            Box::new(PortraitPlugin::new(screen_width, screen_height)),
-            Box::new(SceneTransitionPlugin),
-            Box::new(SavePlugin),
-        ];
+        self.plugin_manager.register(Box::new(DialoguePlugin))?;
+        self.plugin_manager.register(Box::new(PortraitPlugin::new(screen_width, screen_height)))?;
+        self.plugin_manager.register(Box::new(SceneTransitionPlugin))?;
+        self.plugin_manager.register(Box::new(SavePlugin))?;
+        self.plugin_manager.register(Box::new(UiPlugin))?;
 
-        for plugin in plugins {
-            plugin.initialize()?;
-        }
+        self.plugin_manager.build_all(&mut self.world)?;
+        self.plugin_manager.initialize_all()?;
 
         Ok(())
     }
@@ -95,8 +103,19 @@ impl GalgameEngine {
 
     /// 执行一帧
     ///
-    /// 执行所有已注册的 ECS 系统。
+    /// 计算帧间隔时间并更新 DeltaTime 资源，然后执行所有已注册的 ECS 系统。
     pub fn tick(&mut self) -> GResult<()> {
+        let now = Instant::now();
+        let delta = match self.last_frame_time {
+            Some(last) => now.duration_since(last).as_secs_f32(),
+            None => 1.0 / 60.0,
+        };
+        self.last_frame_time = Some(now);
+
+        if let Some(dt) = self.world.get_resource_mut::<DeltaTime>() {
+            dt.secs = delta;
+        }
+
         self.world.run_systems()
     }
 

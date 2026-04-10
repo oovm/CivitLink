@@ -1,9 +1,10 @@
 #![warn(missing_docs)]
 
 use std::path::PathBuf;
+use std::process::Command;
 
 use gg_core::{
-    GResult,
+    GError, GErrorKind, GResult,
     platform::{BuildConfig, GenerateContext, PackageContext, Platform, PlatformId, RunContext},
 };
 
@@ -55,6 +56,24 @@ impl DesktopPlatform {
             DesktopTargetOs::Linux => "x86_64-unknown-linux-gnu",
         }
     }
+
+    /// 获取可执行文件名称
+    fn exe_name(&self) -> &'static str {
+        match self.target_os {
+            DesktopTargetOs::Windows => "game.exe",
+            DesktopTargetOs::Macos => "game",
+            DesktopTargetOs::Linux => "game",
+        }
+    }
+
+    /// 获取打包目录名称
+    fn package_dir_name(&self) -> &'static str {
+        match self.target_os {
+            DesktopTargetOs::Windows => "game-windows",
+            DesktopTargetOs::Macos => "game-macos",
+            DesktopTargetOs::Linux => "game-linux",
+        }
+    }
 }
 
 impl Platform for DesktopPlatform {
@@ -79,15 +98,88 @@ impl Platform for DesktopPlatform {
     }
 
     fn package(&self, ctx: &PackageContext) -> GResult<Vec<PathBuf>> {
-        let exe_name = match self.target_os {
-            DesktopTargetOs::Windows => "game.exe",
-            DesktopTargetOs::Macos => "game",
-            DesktopTargetOs::Linux => "game",
-        };
-        Ok(vec![ctx.build_output_dir.join(exe_name)])
+        let package_dir = ctx.package_output_dir.join(self.package_dir_name());
+        std::fs::create_dir_all(&package_dir).map_err(|e| GError {
+            kind: GErrorKind::Io,
+            message: format!("Failed to create package directory '{}': {}", package_dir.display(), e),
+        })?;
+
+        let exe_src = ctx.build_output_dir.join(self.exe_name());
+        if !exe_src.exists() {
+            return Err(GError {
+                kind: GErrorKind::Io,
+                message: format!("Executable not found at '{}'", exe_src.display()),
+            });
+        }
+
+        let exe_dst = package_dir.join(self.exe_name());
+        std::fs::copy(&exe_src, &exe_dst).map_err(|e| GError {
+            kind: GErrorKind::Io,
+            message: format!("Failed to copy executable to '{}': {}", exe_dst.display(), e),
+        })?;
+
+        if ctx.assets_dir.exists() {
+            let assets_dst = package_dir.join("assets");
+            copy_dir_recursive(&ctx.assets_dir, &assets_dst)?;
+        }
+
+        Ok(vec![package_dir])
     }
 
-    fn run(&self, _ctx: &RunContext) -> GResult<()> {
+    fn run(&self, ctx: &RunContext) -> GResult<()> {
+        if !ctx.executable_path.exists() {
+            return Err(GError {
+                kind: GErrorKind::Io,
+                message: format!("Executable not found at '{}'", ctx.executable_path.display()),
+            });
+        }
+
+        let mut command = Command::new(&ctx.executable_path);
+        command.args(&ctx.args).current_dir(&ctx.project_dir);
+
+        let status = command.status().map_err(|e| GError {
+            kind: GErrorKind::Io,
+            message: format!("Failed to run executable '{}': {}", ctx.executable_path.display(), e),
+        })?;
+
+        if !status.success() {
+            return Err(GError {
+                kind: GErrorKind::Runtime,
+                message: format!("Executable exited with status: {}", status),
+            });
+        }
+
         Ok(())
     }
+}
+
+/// 递归复制目录
+fn copy_dir_recursive(src: &PathBuf, dst: &PathBuf) -> GResult<()> {
+    std::fs::create_dir_all(dst).map_err(|e| GError {
+        kind: GErrorKind::Io,
+        message: format!("Failed to create directory '{}': {}", dst.display(), e),
+    })?;
+
+    for entry in std::fs::read_dir(src).map_err(|e| GError {
+        kind: GErrorKind::Io,
+        message: format!("Failed to read directory '{}': {}", src.display(), e),
+    })? {
+        let entry = entry.map_err(|e| GError {
+            kind: GErrorKind::Io,
+            message: format!("Failed to read directory entry: {}", e),
+        })?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if src_path.is_dir() {
+            copy_dir_recursive(&src_path, &dst_path)?;
+        } else {
+            std::fs::copy(&src_path, &dst_path).map_err(|e| GError {
+                kind: GErrorKind::Io,
+                message: format!("Failed to copy file '{}': {}", src_path.display(), e),
+            })?;
+        }
+    }
+
+    Ok(())
 }

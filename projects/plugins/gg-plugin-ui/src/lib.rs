@@ -12,13 +12,14 @@ use gg_core::{
     GResult,
     plugin::{Plugin, PluginRegistrar},
 };
-use gg_ecs::{Resource, System, World};
-use gg_render::{Color, DrawCommand, RenderContext, Transform};
-use gg_ui::{EventSystem, LayoutEngine, UiRenderer, UiTree};
+use gg_ecs::{System, World};
+use gg_render::{Color, DrawCommand, RenderContext};
+use gg_ui::{EventSystem, LayoutEngine, UiTree};
 
 use crate::{
     binding::{BindingRegistry, BindingSystem},
     focus::FocusManager,
+    input_bridge::{InputBridgeSystem, InputState},
     texture_registry::TextureRegistry,
 };
 
@@ -27,8 +28,6 @@ use crate::{
 /// 将 gg-ui 的 UiTree 包装为 ECS 全局资源，
 /// 以便通过 World 的资源系统进行存取。
 pub struct UiTreeResource(pub UiTree);
-
-impl Resource for UiTreeResource {}
 
 impl UiTreeResource {
     /// 创建新的 UI 树资源
@@ -48,8 +47,6 @@ impl Default for UiTreeResource {
 /// 将 gg-ui 的 EventSystem 包装为 ECS 全局资源，
 /// 以便通过 World 的资源系统进行存取。
 pub struct EventSystemResource(pub EventSystem);
-
-impl Resource for EventSystemResource {}
 
 impl EventSystemResource {
     /// 创建新的事件系统资源
@@ -79,17 +76,19 @@ impl Plugin for UiPlugin {
     /// 构建 UI 插件
     ///
     /// 注册以下资源和系统：
-    /// - 资源：UiTreeResource、EventSystemResource、FocusManager、BindingRegistry
-    /// - 系统：UiUpdateSystem、UiRenderSystem、BindingSystem
+    /// - 资源：UiTreeResource、EventSystemResource、FocusManager、BindingRegistry、InputState
+    /// - 系统：UiUpdateSystem、UiRenderSystem、BindingSystem、InputBridgeSystem
     fn build(&self, registrar: &mut PluginRegistrar) {
         registrar.insert_resource(UiTreeResource::new());
         registrar.insert_resource(EventSystemResource::new());
         registrar.insert_resource(FocusManager::new());
         registrar.insert_resource(BindingRegistry::new());
         registrar.insert_resource(TextureRegistry::new());
+        registrar.insert_resource(InputState::new());
         registrar.register_system(Box::new(UiUpdateSystem));
         registrar.register_system(Box::new(UiRenderSystem));
         registrar.register_system(Box::new(BindingSystem::new()));
+        registrar.register_system(Box::new(InputBridgeSystem));
     }
 
     /// 返回插件依赖列表

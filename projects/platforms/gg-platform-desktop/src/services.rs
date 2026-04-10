@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use gg_core::platform::PlatformServices;
 
 use crate::{DesktopFileSystem, DesktopInput, DesktopThread, DesktopTime, DesktopWindow};
@@ -21,6 +23,20 @@ impl DesktopPlatformServices {
             Box::new(DesktopInput::new()),
             Box::new(DesktopTime::new()),
             Box::new(DesktopWindow::new(window_config)),
+            Box::new(DesktopThread::new()),
+        )
+    }
+
+    /// 使用 winit 窗口创建桌面平台的平台服务
+    pub fn create_with_winit_window(
+        window: Arc<winit::window::Window>,
+        window_config: WindowConfig,
+    ) -> PlatformServices {
+        PlatformServices::new(
+            Box::new(DesktopFileSystem::new()),
+            Box::new(DesktopInput::new()),
+            Box::new(DesktopTime::new()),
+            Box::new(DesktopWindow::from_winit_window(window, window_config)),
             Box::new(DesktopThread::new()),
         )
     }

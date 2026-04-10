@@ -3,7 +3,7 @@
 
 use gg_core::GResult;
 use gg_ecs::{Resource, System};
-use gg_ui::{UiEvent, UiTree};
+use gg_ui::UiEvent;
 
 use crate::{EventSystemResource, FocusManager, UiTreeResource};
 
@@ -27,8 +27,6 @@ pub struct InputState {
     /// 本帧键盘事件列表
     pub key_events: Vec<String>,
 }
-
-impl Resource for InputState {}
 
 impl InputState {
     /// 创建新的输入状态

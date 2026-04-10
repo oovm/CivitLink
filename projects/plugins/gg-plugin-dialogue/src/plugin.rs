@@ -1,7 +1,7 @@
 //! 对话系统插件模块
 //! 实现 Plugin trait，负责对话系统的初始化和关闭
 
-use crate::schema::{DeltaTime, DialogueHistory, GameVariables};
+use crate::schema::{ChoiceState, DeltaTime, DialogueHistory, GameVariables};
 use gg_core::{
     GResult,
     plugin::{Plugin, PluginRegistrar},
@@ -25,12 +25,13 @@ impl Plugin for DialoguePlugin {
     /// 构建对话系统插件
     ///
     /// 注册对话系统所需的全局资源和系统：
-    /// - 资源：DialogueHistory、GameVariables、DeltaTime
+    /// - 资源：DialogueHistory、GameVariables、DeltaTime、ChoiceState
     /// - 系统：DialogueSystem、ChoiceSystem、TypewriterSystem、WaitSystem
     fn build(&self, registrar: &mut PluginRegistrar) {
         registrar.insert_resource(DialogueHistory { entries: Vec::new(), current_node_id: None });
         registrar.insert_resource(GameVariables { variables: std::collections::HashMap::new() });
         registrar.insert_resource(DeltaTime::default());
+        registrar.insert_resource(ChoiceState { choices: Vec::new(), selected_index: None, is_active: false });
         registrar.register_system(Box::new(DialogueSystem::new()));
         registrar.register_system(Box::new(ChoiceSystem::new()));
         registrar.register_system(Box::new(TypewriterSystem::new()));

@@ -59,7 +59,7 @@ tempfile = "3.27.0"
 futures = "0.3.0"
 softbuffer = "0.4.0"
 tiny-skia = "0.12.0"
-naga = "29.0.1"
+naga = { version = "29.0.1", features = ["wgsl-in", "wgsl-out", "validate"] }
 piet-common = "0.7"
 kurbo = "0.11"
 

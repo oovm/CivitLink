@@ -5,7 +5,6 @@ use std::collections::HashMap;
 
 use gg_core::GResult;
 use gg_ecs::System;
-use gg_ui::UiTree;
 
 use crate::UiTreeResource;
 

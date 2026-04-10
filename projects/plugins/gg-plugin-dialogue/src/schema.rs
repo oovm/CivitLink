@@ -1,6 +1,7 @@
 //! GG 对话系统插件核心类型模块
 //! 定义对话系统所需的所有 ECS 组件和资源类型
 
+use gg_ecs::Resource;
 use gg_render::TextureId;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -276,6 +277,8 @@ pub struct AudioControl {
 }
 
 /// 选项状态
+///
+/// 作为全局资源存储当前选项列表、选中索引和激活状态。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChoiceState {
     /// 可用选项列表
@@ -285,6 +288,8 @@ pub struct ChoiceState {
     /// 选项是否激活
     pub is_active: bool,
 }
+
+impl Resource for ChoiceState {}
 
 /// 历史条目
 #[derive(Debug, Clone, Serialize, Deserialize)]
