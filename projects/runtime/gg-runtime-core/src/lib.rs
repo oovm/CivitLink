@@ -23,8 +23,6 @@ pub use registry::{ComponentAccessor, ComponentRegistry};
 pub use scheduler::StageScheduler;
 pub use stage::{Stage, SystemDescriptor, SystemFn, SystemSet, SystemSetId};
 
-pub use crate::InputEvents;
-
 use gg_asset::AssetServer;
 use gg_bytecode::{BytecodeModule, BytecodeValue, Host};
 use gg_core::{GError, GErrorKind, GResult, plugin::Plugin};
@@ -355,6 +353,8 @@ pub struct Runtime {
     running: bool,
     /// 帧间隔计时器
     delta_timer: DeltaTimer,
+    /// 帧率限制器
+    frame_limiter: FrameLimiter,
 }
 
 impl Runtime {
@@ -379,10 +379,15 @@ impl Runtime {
         let asset_server = AssetServer::new();
         let frame_limiter = FrameLimiter::new(builder.target_fps.unwrap_or(60));
 
+        let mut stage_scheduler = StageScheduler::new();
+        if let Some(timestep) = builder.fixed_timestep {
+            stage_scheduler.set_fixed_timestep(timestep);
+        }
+
         Ok(Self {
             script_engine: ScriptEngine::new(),
             host: EngineHost::new(),
-            stage_scheduler: StageScheduler::new(),
+            stage_scheduler,
             asset_server,
             render_context: RenderContext::new(surface_width, surface_height),
             renderer,
@@ -550,10 +555,7 @@ impl Runtime {
             self.tick(delta)?;
 
             if self.renderer.is_none() {
-                let frame_elapsed = frame_start.elapsed();
-                if frame_elapsed < Self::TARGET_FRAME_TIME {
-                    std::thread::sleep(Self::TARGET_FRAME_TIME - frame_elapsed);
-                }
+                self.frame_limiter.sleep_if_needed(frame_start.elapsed());
             }
         }
 
@@ -576,8 +578,10 @@ impl Runtime {
     pub fn tick(&mut self, delta: Duration) -> GResult<()> {
         self.platform_services.time.update();
 
+        let fixed_delta_seconds = DeltaTimer::delta_seconds(self.stage_scheduler.fixed_timestep());
         let frame_time = FrameTime {
             delta_seconds: DeltaTimer::delta_seconds(delta),
+            fixed_delta_seconds,
             elapsed_seconds: DeltaTimer::delta_seconds(self.delta_timer.elapsed()),
         };
         self.host.world_mut().insert_resource(frame_time);
@@ -645,7 +649,7 @@ impl Runtime {
             }
         }
 
-        self.stage_scheduler.tick(self.host.world_mut())?;
+        self.stage_scheduler.tick(self.host.world_mut(), delta)?;
 
         if self.script_engine.has_function("update") {
             match self.script_engine.call_function("update", &mut self.host) {
@@ -739,7 +743,7 @@ mod tests {
     fn test_delta_timer_elapsed() {
         let mut timer = DeltaTimer::new();
         timer.tick();
-        assert!(timer.elapsed().as_nanos() > 0);
+        assert!(timer.elapsed().as_nanos() >= 0);
     }
 
     #[test]

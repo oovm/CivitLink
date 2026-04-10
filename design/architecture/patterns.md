@@ -11,18 +11,31 @@ ECS 是一种数据驱动的架构模式，将游戏对象分解为三个核心�
 - **Component（组件）**：纯数据结构，不包含逻辑
 - **System（系统）**：纯逻辑，处理具有特定组件组合的实体
 
+### 核心概念扩展
+
+除了上述核心概念外，GG 引擎的 ECS 系统还包含以下重要概念：
+- **World（世界）**：ECS 系统的核心容器，管理所有实体、组件和资源
+- **Resource（资源）**：全局共享数据，如配置、系统状态等
+- **Schedule（调度器）**：管理系统的执行顺序和依赖关系
+- **Query（查询）**：用于系统中检索具有特定组件组合的实体
+
 ### 核心优势
 
 1. **性能优化**：数据局部性好，缓存友好，支持并行处理
 2. **组合优于继承**：通过组件组合实现灵活的对象行为
 3. **数据与逻辑分离**：清晰的职责划分，易于测试和维护
+4. **可扩展性**：World 概念使得 ECS 系统可以轻松扩展和模块化
+
+### 自研 ECS 说明
+
+GG 引擎的 ECS 系统是完全自研的，与 bevy_ecs 或其他第三方 ECS 库无关。自研 ECS 系统为 GG 引擎提供了更好的定制性和性能优化，完全适配引擎的需求。
 
 ### 代码示例
 
 #### 组件定义
 
 ```rust
-use bevy_ecs::prelude::*;
+use gg_ecs::prelude::*;
 use serde::{Deserialize, Serialize};
 
 /// 位置组件，存储实体在2D空间中的坐标
@@ -58,7 +71,7 @@ pub struct Sprite {
 #### 系统实现
 
 ```rust
-use bevy_ecs::prelude::*;
+use gg_ecs::prelude::*;
 
 /// 移动系统：根据速度更新位置
 pub fn move_system(
@@ -92,7 +105,7 @@ pub fn render_system(
 #### 实体创建与系统调度
 
 ```rust
-use bevy_ecs::prelude::*;
+use gg_ecs::prelude::*;
 
 fn main() {
     let mut world = World::new();
@@ -129,7 +142,7 @@ fn main() {
 
 ### 模式概述
 
-插件模式允许将引擎功能模块化，通过统一的接口注册和组合不同功能模块。每个插件独立开发和编译，引擎构建时静态链接。
+插件模式允许将引擎功能模块化，通过统一的接口注册和组合不同功能模块。GG 引擎的插件系统通过 Valkyrie script -> gg-ir -> gg-vm 实现，支持内容热更新和 HMR 调试。
 
 ### 核心优势
 
@@ -137,6 +150,27 @@ fn main() {
 2. **可组合性**：根据需求选择所需插件，构建定制化引擎
 3. **依赖管理**：清晰的插件依赖关系声明
 4. **生命周期管理**：统一的插件初始化和清理流程
+5. **热更新支持**：通过 Valkyrie script 实现内容热更新
+6. **跨平台兼容**：Valkyrie script 天然跨平台
+
+### 插件系统实现原理
+
+GG 引擎的插件系统实现流程如下：
+1. **Valkyrie script**：插件开发者使用 Valkyrie 脚本语言编写插件代码
+2. **gg-ir**：Valkyrie 脚本被编译为中间表示 (IR)
+3. **gg-vm**：IR 被虚拟机执行，实现插件功能
+
+### 内容热更新与 HMR 调试
+
+#### 内容热更新原理
+1. **监控文件变化**：引擎监控插件脚本文件的变化
+2. **重新编译**：当文件变化时，重新编译 Valkyrie 脚本为 IR
+3. **热替换**：在运行时替换旧的插件实现，无需重启引擎
+
+#### HMR 调试原理
+1. **断点设置**：支持在 Valkyrie 脚本中设置断点
+2. **单步执行**：支持脚本的单步执行和变量查看
+3. **实时修改**：修改脚本后立即生效，无需重新启动调试会话
 
 ### 代码示例
 
@@ -217,47 +251,22 @@ impl App {
 }
 ```
 
-#### 具体插件实现
+#### 具体插件实现（Valkyrie 脚本）
 
-```rust
-use crate::prelude::*;
-
-/// 渲染插件，提供2D渲染功能
-pub struct RenderPlugin;
-
-impl Plugin for RenderPlugin {
-    fn name(&self) -> &'static str {
-        "render"
-    }
-    
-    fn dependencies(&self) -> Vec<&'static str> {
-        vec!["core"]
-    }
-    
-    fn build(&self, app: &mut App) {
-        app.register_component::<Sprite>()
-           .register_component::<Camera>()
-           .insert_resource(RenderConfig::default())
-           .add_systems((
-               sprite_render_system,
-               camera_update_system,
-           ).chain());
-    }
+```javascript
+// 渲染插件，提供2D渲染功能
+function init(app) {
+    app.registerComponent("Sprite");
+    app.registerComponent("Camera");
+    app.insertResource("RenderConfig", { /* 配置 */ });
+    app.addSystems(["sprite_render_system", "camera_update_system"]);
 }
 
-/// 音频插件，提供音频播放功能
-pub struct AudioPlugin;
-
-impl Plugin for AudioPlugin {
-    fn name(&self) -> &'static str {
-        "audio"
-    }
-    
-    fn build(&self, app: &mut App) {
-        app.register_component::<AudioSource>()
-           .insert_resource(AudioContext::new())
-           .add_systems(audio_play_system);
-    }
+// 音频插件，提供音频播放功能
+function init(app) {
+    app.registerComponent("AudioSource");
+    app.insertResource("AudioContext", { /* 配置 */ });
+    app.addSystems(["audio_play_system"]);
 }
 ```
 

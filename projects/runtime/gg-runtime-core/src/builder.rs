@@ -7,6 +7,7 @@ use crate::Runtime;
 use gg_core::{GResult, platform::PlatformServices};
 use gg_render::Renderer;
 use gg_runtime_audio::AudioEngine;
+use std::time::Duration;
 
 /// 运行时构建器
 ///
@@ -21,12 +22,16 @@ pub struct RuntimeBuilder {
     pub(crate) platform_services: Option<PlatformServices>,
     /// 是否启用 HMR
     pub(crate) hmr_enabled: bool,
+    /// 固定更新时间步长
+    pub(crate) fixed_timestep: Option<Duration>,
+    /// 目标帧率
+    pub(crate) target_fps: Option<u32>,
 }
 
 impl RuntimeBuilder {
     /// 创建新的运行时构建器
     pub fn new() -> Self {
-        Self { renderer: None, audio_engine: None, platform_services: None, hmr_enabled: false }
+        Self { renderer: None, audio_engine: None, platform_services: None, hmr_enabled: false, fixed_timestep: None, target_fps: None }
     }
 
     /// 设置渲染后端
@@ -64,6 +69,18 @@ impl RuntimeBuilder {
     /// 启用 HMR 热更新支持
     pub fn hmr_enabled(mut self) -> Self {
         self.hmr_enabled = true;
+        self
+    }
+
+    /// 设置固定更新时间步长
+    pub fn fixed_timestep(mut self, timestep: Duration) -> Self {
+        self.fixed_timestep = Some(timestep);
+        self
+    }
+
+    /// 设置目标帧率
+    pub fn target_fps(mut self, fps: u32) -> Self {
+        self.target_fps = Some(fps);
         self
     }
 

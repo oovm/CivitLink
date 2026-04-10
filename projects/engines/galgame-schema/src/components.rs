@@ -285,6 +285,8 @@ pub struct AudioControl {
 impl Component for AudioControl {}
 
 /// 选项状态
+///
+/// 作为全局资源存储当前选项列表、选中索引和激活状态。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChoiceState {
     /// 可用选项列表
@@ -294,5 +296,3 @@ pub struct ChoiceState {
     /// 选项是否激活
     pub is_active: bool,
 }
-
-impl Component for ChoiceState {}

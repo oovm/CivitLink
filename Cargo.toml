@@ -15,6 +15,7 @@ members = [
     "projects/toolchain/*",
     "projects/engines/*",
     "examples/basic",
+    "examples/web-render-verify",
     "examples/stg-basic",
     "examples/platformer-basic",
 ]
@@ -59,7 +60,7 @@ tempfile = "3.27.0"
 futures = "0.3.0"
 softbuffer = "0.4.0"
 tiny-skia = "0.12.0"
-naga = { version = "29.0.1", features = ["wgsl-in", "wgsl-out", "validate"] }
+naga = { version = "29.0.1", features = ["wgsl-in", "wgsl-out"] }
 piet-common = "0.7"
 kurbo = "0.11"
 
@@ -124,7 +125,6 @@ gg-plugin-scene-transition = { path = "projects/plugins/gg-plugin-scene-transiti
 gg-plugin-save = { path = "projects/plugins/gg-plugin-save" }
 gg-plugin-tilemap = { path = "projects/plugins/gg-plugin-tilemap" }
 gg-plugin-spine = { path = "projects/plugins/gg-plugin-spine" }
-gg-plugin-ui = { path = "projects/plugins/gg-plugin-ui" }
 gg-plugin-ui = { path = "projects/plugins/gg-plugin-ui" }
 
 # gnostic gamer engines

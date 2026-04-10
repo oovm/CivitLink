@@ -119,8 +119,17 @@ pub struct StageScheduler {
 
 impl StageScheduler {
     /// 创建新的阶段调度器
+    ///
+    /// 默认固定时间步长为 1/60 秒，最大固定更新步数为 5。
     pub fn new() -> Self {
-        Self { systems: HashMap::new(), set_configs: HashMap::new(), startup_executed: false }
+        Self {
+            systems: HashMap::new(),
+            set_configs: HashMap::new(),
+            startup_executed: false,
+            fixed_timestep: Duration::from_secs_f32(1.0 / 60.0),
+            accumulator: Duration::ZERO,
+            max_fixed_steps: 5,
+        }
     }
 
     /// 添加系统到默认阶段（Update）
@@ -150,20 +159,32 @@ impl StageScheduler {
 
     /// 执行一帧，按阶段顺序运行系统
     ///
-    /// 首次调用时执行顺序为：Startup → PreUpdate → Update → PostUpdate → Render，
-    /// 后续调用跳过 Startup 阶段。
-    pub fn tick(&mut self, world: &mut World) -> GResult<()> {
-        let stages: Vec<Stage> = if !self.startup_executed {
-            self.startup_executed = true;
-            vec![Stage::Startup, Stage::PreUpdate, Stage::Update, Stage::PostUpdate, Stage::Render]
-        }
-        else {
-            vec![Stage::PreUpdate, Stage::Update, Stage::PostUpdate, Stage::Render]
-        };
+    /// 将 delta 时间累加到累加器中，当累加器超过固定时间步长时
+    /// 执行 FixedUpdate 阶段。执行顺序为：
+    /// Startup（仅首次）→ PreUpdate → FixedUpdate（可能多次）→ Update → PostUpdate → Render。
+    pub fn tick(&mut self, world: &mut World, delta: Duration) -> GResult<()> {
+        self.accumulator += delta;
 
-        for stage in stages {
-            self.run_stage(stage, world)?;
+        let max_accumulator = self.fixed_timestep * self.max_fixed_steps as u32;
+        if self.accumulator > max_accumulator {
+            self.accumulator = max_accumulator;
         }
+
+        if !self.startup_executed {
+            self.startup_executed = true;
+            self.run_stage(Stage::Startup, world)?;
+        }
+
+        self.run_stage(Stage::PreUpdate, world)?;
+
+        while self.accumulator >= self.fixed_timestep {
+            self.run_stage(Stage::FixedUpdate, world)?;
+            self.accumulator -= self.fixed_timestep;
+        }
+
+        self.run_stage(Stage::Update, world)?;
+        self.run_stage(Stage::PostUpdate, world)?;
+        self.run_stage(Stage::Render, world)?;
 
         Ok(())
     }
@@ -181,6 +202,16 @@ impl StageScheduler {
     /// 检查启动阶段是否已执行
     pub fn is_startup_executed(&self) -> bool {
         self.startup_executed
+    }
+
+    /// 设置固定更新时间步长
+    pub fn set_fixed_timestep(&mut self, timestep: Duration) {
+        self.fixed_timestep = timestep;
+    }
+
+    /// 获取固定更新时间步长
+    pub fn fixed_timestep(&self) -> Duration {
+        self.fixed_timestep
     }
 
     /// 执行指定阶段的所有系统
@@ -306,7 +337,7 @@ mod tests {
     fn test_stage_scheduler_tick_empty() {
         let mut scheduler = StageScheduler::new();
         let mut world = World::new();
-        let result = scheduler.tick(&mut world);
+        let result = scheduler.tick(&mut world, Duration::from_secs_f32(1.0 / 60.0));
         assert!(result.is_ok());
         assert!(scheduler.is_startup_executed());
     }
@@ -341,7 +372,7 @@ mod tests {
             Stage::Update,
         );
 
-        let result = scheduler.tick(&mut world);
+        let result = scheduler.tick(&mut world, Duration::from_secs_f32(1.0 / 60.0));
         assert!(result.is_ok());
         assert_eq!(world.entities().len(), 2);
     }
@@ -369,12 +400,12 @@ mod tests {
             Stage::Update,
         );
 
-        scheduler.tick(&mut world).unwrap();
+        scheduler.tick(&mut world, Duration::from_secs_f32(1.0 / 60.0)).unwrap();
         assert!(scheduler.is_startup_executed());
 
         let count_after_first = world.entities().len();
 
-        scheduler.tick(&mut world).unwrap();
+        scheduler.tick(&mut world, Duration::from_secs_f32(1.0 / 60.0)).unwrap();
         let count_after_second = world.entities().len();
 
         assert_eq!(count_after_second - count_after_first, 1);
@@ -407,7 +438,7 @@ mod tests {
         scheduler.add_system("first", Box::new(|_world| Ok(())));
         scheduler.add_system("second", Box::new(|_world| Ok(()))).after("first");
 
-        let result = scheduler.tick(&mut world);
+        let result = scheduler.tick(&mut world, Duration::from_secs_f32(1.0 / 60.0));
         assert!(result.is_ok());
     }
 
@@ -419,7 +450,7 @@ mod tests {
         scheduler.add_system("second", Box::new(|_world| Ok(())));
         scheduler.add_system("first", Box::new(|_world| Ok(()))).before("second");
 
-        let result = scheduler.tick(&mut world);
+        let result = scheduler.tick(&mut world, Duration::from_secs_f32(1.0 / 60.0));
         assert!(result.is_ok());
     }
 

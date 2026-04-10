@@ -18,6 +18,7 @@ use std::{
 use archetype::{ArchetypeGraph, ArchetypeId};
 pub use entity::{Entity, EntityAllocator, EntityLocation};
 use gg_error::{GError, GErrorKind, GResult};
+pub use gg_macros::Component;
 
 pub use entity::Entity as EntityType;
 

@@ -7,7 +7,8 @@ use crate::config::GalgameConfig;
 use gg_asset::AssetServer;
 use gg_core::plugin::PluginManager;
 use gg_ecs::{Entity, World};
-use gg_plugin_dialogue::schema::ChoiceState;
+use gg_plugin_dialogue::plugin::DialoguePlugin;
+use gg_plugin_dialogue::schema::{ChoiceState, DeltaTime};
 use gg_plugin_dialogue::typewriter::TypewriterState;
 use gg_plugin_portrait::plugin::PortraitPlugin;
 use gg_plugin_save::plugin::SavePlugin;
@@ -43,6 +44,12 @@ pub struct GalgameEngine {
     plugin_manager: PluginManager,
     /// 上一帧的时间戳
     last_frame_time: Option<Instant>,
+    /// 鼠标位置
+    mouse_position: [f32; 2],
+    /// 待处理的推进对话请求
+    pending_advance: bool,
+    /// 待处理的 UI 点击分发请求
+    pending_ui_click: bool,
 }
 
 impl GalgameEngine {
@@ -62,6 +69,9 @@ impl GalgameEngine {
             ui_tree: UiTree::new(),
             plugin_manager: PluginManager::new(),
             last_frame_time: None,
+            mouse_position: [0.0, 0.0],
+            pending_advance: false,
+            pending_ui_click: false,
         }
     }
 
@@ -119,6 +129,49 @@ impl GalgameEngine {
         self.world.run_systems()
     }
 
+    /// 处理输入事件
+    ///
+    /// 检查是否需要推进对话或跳过打字机效果。
+    fn handle_input(&mut self) {
+        let should_advance = self.pending_advance;
+        if !should_advance {
+            return;
+        }
+        self.pending_advance = false;
+
+        if let Some(state) = self.world.get_resource_mut::<TypewriterState>() {
+            if !state.is_complete() {
+                state.skip();
+                return;
+            }
+        }
+
+        let has_active_choices = self.world
+            .get_component::<ChoiceState>(Entity::new(0, 0))
+            .map(|c| c.is_active)
+            .unwrap_or(false);
+
+        if !has_active_choices {
+            self.world.remove_resource::<TypewriterState>();
+        }
+    }
+
+    /// 将鼠标点击事件分发到 UI 事件系统
+    fn dispatch_click_to_ui(&mut self) {
+        let tree = self.world.get_resource::<UiTreeResource>().map(|r| r.0.clone());
+        if let Some(event_sys_res) = self.world.get_resource_mut::<EventSystemResource>() {
+            if let Some(ref tree) = tree {
+                event_sys_res.0.dispatch(
+                    &UiEvent::Click {
+                        x: self.mouse_position[0],
+                        y: self.mouse_position[1],
+                    },
+                    tree,
+                );
+            }
+        }
+    }
+
     /// 运行主循环
     ///
     /// 使用 winit 事件循环驱动主循环：
@@ -140,11 +193,45 @@ impl GalgameEngine {
                     match event {
                         Event::WindowEvent { event, .. } => {
                             renderer.handle_window_event(&event);
+                            match &event {
+                                winit::event::WindowEvent::KeyboardInput { event, .. } => {
+                                    if event.state == ElementState::Pressed {
+                                        match event.physical_key {
+                                            winit::keyboard::PhysicalKey::Code(
+                                                winit::keyboard::KeyCode::Enter,
+                                            )
+                                            | winit::keyboard::PhysicalKey::Code(
+                                                winit::keyboard::KeyCode::Space,
+                                            ) => {
+                                                self.pending_advance = true;
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                                winit::event::WindowEvent::MouseInput { state, button, .. } => {
+                                    if *state == ElementState::Pressed && *button == MouseButton::Left {
+                                        self.pending_advance = true;
+                                        self.pending_ui_click = true;
+                                    }
+                                }
+                                winit::event::WindowEvent::CursorMoved { position, .. } => {
+                                    self.mouse_position = [position.x as f32, position.y as f32];
+                                }
+                                _ => {}
+                            }
                             if renderer.should_close() {
                                 elwt.exit();
                             }
                         }
                         Event::AboutToWait => {
+                            if self.pending_ui_click {
+                                self.pending_ui_click = false;
+                                self.dispatch_click_to_ui();
+                            }
+
+                            self.handle_input();
+
                             if let Err(_) = self.tick() {
                                 elwt.exit();
                             }

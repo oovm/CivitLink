@@ -3,7 +3,7 @@
 
 use crate::schema::{ChoiceState, DialogueHistory, DialogueNode, GameVariables, HistoryEntry, WaitTimer};
 use gg_core::{GError, GErrorKind, GResult};
-use gg_ecs::{Entity, System, World};
+use gg_ecs::{System, World};
 
 use crate::{commands::CommandDispatcher, typewriter::TypewriterState};
 
@@ -98,8 +98,8 @@ impl System for DialogueSystem {
 
         if !choices.is_empty() {
             let choice_state = world
-                .get_component_mut::<ChoiceState>(Entity::new(0, 0))
-                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "ChoiceState component not found".to_string() })?;
+                .get_resource_mut::<ChoiceState>()
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "ChoiceState resource not found".to_string() })?;
             choice_state.choices = choices;
             choice_state.selected_index = None;
             choice_state.is_active = true;
@@ -124,7 +124,7 @@ impl System for DialogueSystem {
 /// 选项系统
 ///
 /// 负责处理玩家选择选项的逻辑：
-/// - 查找所有 ChoiceState 组件
+/// - 查找 ChoiceState 资源
 /// - 如果 selected_index 有值，获取对应 Choice
 /// - 评估 Choice 的 condition（通过 GameVariables.evaluate_condition）
 /// - 推进到 next_node_id
@@ -146,13 +146,13 @@ impl System for ChoiceSystem {
     /// 执行选项系统逻辑
     ///
     /// 执行流程：
-    /// 1. 查找所有 ChoiceState 组件
+    /// 1. 查找 ChoiceState 资源
     /// 2. 如果 selected_index 有值，获取对应 Choice
     /// 3. 评估 Choice 的 condition（通过 GameVariables.evaluate_condition）
     /// 4. 推进到 next_node_id
     fn execute(&mut self, world: &mut World) -> GResult<()> {
         let (selected_index, choices, _is_active) = {
-            let choice_state = match world.get_component_mut::<ChoiceState>(Entity::new(0, 0)) {
+            let choice_state = match world.get_resource_mut::<ChoiceState>() {
                 Some(cs) => cs,
                 None => return Ok(()),
             };
@@ -187,8 +187,8 @@ impl System for ChoiceSystem {
         let next_node_id = choice.next_node_id.clone();
         {
             let choice_state = world
-                .get_component_mut::<ChoiceState>(Entity::new(0, 0))
-                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "ChoiceState component not found".to_string() })?;
+                .get_resource_mut::<ChoiceState>()
+                .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "ChoiceState resource not found".to_string() })?;
             choice_state.is_active = false;
             choice_state.selected_index = None;
             choice_state.choices.clear();

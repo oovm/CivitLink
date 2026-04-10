@@ -2,7 +2,7 @@
 //! 将平台输入事件转换为 UI 事件并分发到 EventSystem
 
 use gg_core::GResult;
-use gg_ecs::{Resource, System};
+use gg_ecs::System;
 use gg_ui::UiEvent;
 
 use crate::{EventSystemResource, FocusManager, UiTreeResource};

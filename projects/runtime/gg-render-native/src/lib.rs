@@ -12,5 +12,9 @@ pub mod font_manager;
 /// 原生渲染器模块
 pub mod renderer;
 
+/// 纹理缓存模块
+pub mod texture_cache;
+
 pub use font_manager::FontManager;
 pub use renderer::NativeRenderer;
+pub use texture_cache::NativeTextureCache;

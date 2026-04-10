@@ -10,6 +10,7 @@ use crate::{
 use gg_core::{GError, GErrorKind, GResult, plugin::Plugin};
 use gg_ecs::World;
 use std::sync::Arc;
+use std::time::Duration;
 
 /// 运行时插件 trait
 ///
@@ -86,6 +87,12 @@ impl App {
         self
     }
 
+    /// 添加固定更新系统（FixedUpdate 阶段）
+    pub fn add_fixed_update_system(&mut self, name: impl Into<String>, system: SystemFn) -> &mut Self {
+        self.scheduler.add_system_to_stage(name, system, Stage::FixedUpdate);
+        self
+    }
+
     /// 添加更新系统（Update 阶段）
     pub fn add_update_system(&mut self, name: impl Into<String>, system: SystemFn) -> &mut Self {
         self.scheduler.add_system_to_stage(name, system, Stage::Update);
@@ -136,8 +143,8 @@ impl App {
     /// 执行一帧
     ///
     /// 按阶段顺序执行系统，首次调用包含 Startup 阶段。
-    pub fn tick(&mut self) -> GResult<()> {
-        self.scheduler.tick(&mut self.world)
+    pub fn tick(&mut self, delta: Duration) -> GResult<()> {
+        self.scheduler.tick(&mut self.world, delta)
     }
 
     /// 停止应用程序

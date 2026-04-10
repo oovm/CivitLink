@@ -204,7 +204,7 @@ impl DesktopInput {
             winit::event::MouseButton::Middle => PointerButton::Middle,
             winit::event::MouseButton::Back => PointerButton::Other(1),
             winit::event::MouseButton::Forward => PointerButton::Other(2),
-            winit::event::MouseButton::Other(n) => PointerButton::Other(n),
+            winit::event::MouseButton::Other(n) => PointerButton::Other(n as u8),
         }
     }
 }

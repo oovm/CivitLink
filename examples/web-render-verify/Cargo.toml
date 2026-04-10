@@ -1,5 +1,5 @@
 [package]
-name = "gg-shader"
+name = "web-render-verify"
 version = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }
@@ -7,4 +7,4 @@ license = { workspace = true }
 
 [dependencies]
 gg-core = { workspace = true }
-naga = { workspace = true, features = ["wgsl-in", "wgsl-out"] }
+gg-platform-web = { workspace = true }

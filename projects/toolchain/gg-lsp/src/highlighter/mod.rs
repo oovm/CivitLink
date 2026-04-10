@@ -7,7 +7,6 @@ use oak_highlight::{
     HighlightResult,
     HighlightSegment,
     HighlightSpan,
-    HighlightStyle,
     HighlightTheme,
     highlighter::Highlighter,
     themes::Theme,
@@ -247,7 +246,7 @@ impl Highlighter for GgHighlighter {
 }
 
 /// 将字符位置范围转换为字节偏移范围。
-fn byte_range(source: &str, char_start: usize, char_end: usize, chars: &[char]) -> Range<usize> {
+fn byte_range(_source: &str, char_start: usize, char_end: usize, chars: &[char]) -> Range<usize> {
     let byte_start = if char_start == 0 {
         0
     }

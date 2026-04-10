@@ -11,6 +11,8 @@ pub mod fs;
 pub mod input;
 /// 移动平台生命周期管理
 pub mod lifecycle;
+/// 移动平台生命周期管理器
+pub mod lifecycle_manager;
 /// 移动平台输入扩展
 pub mod mobile_input;
 /// 移动平台构建时实现
@@ -29,6 +31,7 @@ pub mod window;
 pub use fs::MobileFileSystem;
 pub use input::MobileInputImpl;
 pub use lifecycle::MobileLifecycle;
+pub use lifecycle_manager::{LifecycleState, MobileLifecycleManager};
 pub use mobile_input::MobileInput;
 pub use platform::{MobilePlatform, MobileTarget};
 pub use runtime::MobileRuntimePlatform;
