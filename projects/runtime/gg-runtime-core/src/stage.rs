@@ -16,6 +16,8 @@ pub enum Stage {
     Startup,
     /// 预更新阶段，在 Update 之前执行
     PreUpdate,
+    /// 固定更新阶段，以固定时间步长执行，适用于物理和游戏逻辑
+    FixedUpdate,
     /// 更新阶段，主要游戏逻辑执行
     Update,
     /// 后更新阶段，在 Update 之后执行
@@ -32,6 +34,7 @@ impl Stage {
         match self {
             Stage::Startup => "Startup",
             Stage::PreUpdate => "PreUpdate",
+            Stage::FixedUpdate => "FixedUpdate",
             Stage::Update => "Update",
             Stage::PostUpdate => "PostUpdate",
             Stage::Render => "Render",

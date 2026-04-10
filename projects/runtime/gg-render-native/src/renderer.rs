@@ -1,181 +1,49 @@
-use std::{path::Path, sync::Arc};
+use std::{num::NonZeroU32, path::Path, sync::Arc};
 
-use ab_glyph::{Font, ScaleFont};
 use gg_core::{GError, GErrorKind, GResult};
-use gg_render::{DrawCommand, RenderContext, Renderer, SurfaceInfo, TextureId, Transform, TransitionKind, WindowEvent};
+use gg_render::{Camera, Color, DrawCommand, Rect, RenderContext, Renderer, SurfaceInfo, TextureId, Transform, TransitionKind, WindowEvent};
+use kurbo::{Affine, Circle, Ellipse, Line, Point, RoundedRect, Shape, Vec2};
+use piet_common::{Device, FontFamily, ImageFormat, InterpolationMode, RenderContext as PietRenderContext, Text, TextLayoutBuilder};
+use winit::{event::Event, event_loop::EventLoop, window::{Window, WindowAttributes}};
 
-#[cfg(not(target_arch = "wasm32"))]
-use winit::{
-    event::Event,
-    event_loop::EventLoop,
-    window::{Window, WindowAttributes},
-};
+use crate::{font_manager::FontManager, texture_cache::NativeTextureCache};
 
-use crate::{
-    glyph_cache::GlyphCache,
-    pipeline::{RenderItem, RenderItemType, SpritePipeline, SpriteUniforms, TransitionPipeline, TransitionUniforms},
-    texture_cache::TextureCache,
-    uniform_pool::UniformPool,
-};
-
-/// WGPU 渲染器
+/// 原生渲染器
 ///
-/// 基于 WGPU 实现的渲染器，提供跨平台的 2D 图形渲染能力。
-/// 支持精灵绘制、文本渲染、矩形绘制和场景过渡动画。
+/// 基于平台原生 2D 图形 API（Direct2D/CoreGraphics/Cairo）实现的渲染器，
+/// 通过 piet-common 进行渲染，使用 softbuffer 将渲染结果呈现到 winit 窗口。
+/// 专为编辑器场景优化，支持 CJK 文本渲染和原生窗口集成。
 ///
 /// # 使用方式
 ///
-/// 1. 通过 [`WgpuRenderer::new`] 创建渲染器（桌面平台，需要传入 winit 事件循环）
-///    或通过 [`WgpuRenderer::new_from_surface`] 从已有的 wgpu 对象创建（所有平台）
-/// 2. 在 winit 事件循环中调用 [`WgpuRenderer::handle_window_event`] 转发事件（桌面平台）
+/// 1. 通过 [`NativeRenderer::new`] 创建渲染器
+/// 2. 在 winit 事件循环中调用 [`NativeRenderer::handle_window_event`] 转发事件
 /// 3. 每帧依次调用 [`Renderer::begin_frame`]、[`Renderer::draw`]、[`Renderer::end_frame`]、[`Renderer::present`]
-/// 4. 通过 [`WgpuRenderer::poll_events`] 获取窗口事件
-pub struct WgpuRenderer {
-    /// 窗口（桌面平台）
-    #[cfg(not(target_arch = "wasm32"))]
+/// 4. 通过 [`NativeRenderer::poll_events`] 获取窗口事件
+pub struct NativeRenderer {
+    /// winit 窗口
     window: Arc<Window>,
-    /// 渲染表面
-    surface: wgpu::Surface<'static>,
-    /// wgpu 设备
-    device: wgpu::Device,
-    /// 命令队列
-    queue: wgpu::Queue,
-    /// 表面配置
-    config: wgpu::SurfaceConfiguration,
+    /// softbuffer 渲染表面，用于将像素数据呈现到窗口
+    surface: softbuffer::Surface<Arc<Window>, Arc<Window>>,
+    /// piet 设备，用于创建位图渲染目标
+    device: Device,
     /// 渲染表面信息
     surface_info: SurfaceInfo,
-    /// 纹理缓存
-    texture_cache: TextureCache,
-    /// 字形缓存
-    glyph_cache: GlyphCache,
-    /// 精灵渲染管线
-    sprite_pipeline: SpritePipeline,
-    /// 过渡渲染管线
-    transition_pipeline: TransitionPipeline,
+    /// 原生纹理缓存
+    texture_cache: NativeTextureCache,
+    /// 字体管理器
+    font_manager: FontManager,
     /// 是否应该关闭窗口
     should_close: bool,
     /// 待处理的窗口事件
     pending_events: Vec<WindowEvent>,
-    /// 当前帧的表面纹理
-    frame_output: Option<wgpu::SurfaceTexture>,
-    /// 命令编码器
-    command_encoder: Option<wgpu::CommandEncoder>,
-    /// 1x1 白色像素纹理的标识符
-    white_pixel_texture: TextureId,
-    /// Uniform 缓冲区池
-    uniform_pool: UniformPool,
 }
 
-impl WgpuRenderer {
-    /// 检查窗口是否应该关闭
-    pub fn should_close(&self) -> bool {
-        self.should_close
-    }
-
-    /// 轮询窗口事件
-    ///
-    /// 返回并清空内部事件缓冲区中的所有窗口事件。
-    /// 桌面平台通过 [`WgpuRenderer::handle_window_event`] 转发 winit 事件，
-    /// Web 平台通过 [`WgpuRenderer::push_event`] 推送事件。
-    pub fn poll_events(&mut self) -> Vec<WindowEvent> {
-        std::mem::take(&mut self.pending_events)
-    }
-
-    /// 获取 wgpu 设备的引用
-    pub fn device(&self) -> &wgpu::Device {
-        &self.device
-    }
-
-    /// 获取字形缓存的可变引用
-    pub fn glyph_cache_mut(&mut self) -> &mut GlyphCache {
-        &mut self.glyph_cache
-    }
-
-    /// 计算正交投影矩阵
-    ///
-    /// 创建一个将像素坐标映射到裁剪空间的正交投影矩阵。
-    /// 原点在左上角，X 轴向右，Y 轴向下。
-    fn orthographic(width: f32, height: f32) -> [[f32; 4]; 4] {
-        [[2.0 / width, 0.0, 0.0, 0.0], [0.0, -2.0 / height, 0.0, 0.0], [0.0, 0.0, 0.5, 0.0], [-1.0, 1.0, 0.5, 1.0]]
-    }
-
-    /// 计算平移矩阵
-    fn translate(tx: f32, ty: f32) -> [[f32; 4]; 4] {
-        [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [tx, ty, 0.0, 1.0]]
-    }
-
-    /// 计算旋转矩阵
-    fn rotate(angle: f32) -> [[f32; 4]; 4] {
-        let (s, c) = (angle.sin(), angle.cos());
-        [[c, s, 0.0, 0.0], [-s, c, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
-    }
-
-    /// 计算缩放矩阵
-    fn scale(sx: f32, sy: f32) -> [[f32; 4]; 4] {
-        [[sx, 0.0, 0.0, 0.0], [0.0, sy, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
-    }
-
-    /// 4x4 矩阵乘法
-    fn mat4_mul(a: &[[f32; 4]; 4], b: &[[f32; 4]; 4]) -> [[f32; 4]; 4] {
-        let mut result = [[0.0f32; 4]; 4];
-        for i in 0..4 {
-            for j in 0..4 {
-                result[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j] + a[i][3] * b[3][j];
-            }
-        }
-        result
-    }
-
-    /// 计算精灵的 MVP 矩阵
-    fn compute_sprite_mvp(transform: &Transform, size: [f32; 2], surface_width: u32, surface_height: u32) -> [[f32; 4]; 4] {
-        let projection = Self::orthographic(surface_width as f32, surface_height as f32);
-        let model_t = Self::translate(transform.position[0], transform.position[1]);
-        let model_r = Self::rotate(transform.rotation);
-        let model_s = Self::scale(size[0] * transform.scale[0], size[1] * transform.scale[1]);
-        let model = Self::mat4_mul(&model_t, &Self::mat4_mul(&model_r, &model_s));
-        Self::mat4_mul(&projection, &model)
-    }
-
-    /// 计算全屏四边形的 MVP 矩阵
-    fn compute_fullscreen_mvp(surface_width: u32, surface_height: u32) -> [[f32; 4]; 4] {
-        let projection = Self::orthographic(surface_width as f32, surface_height as f32);
-        let model = Self::scale(surface_width as f32, surface_height as f32);
-        Self::mat4_mul(&projection, &model)
-    }
-
-    /// 将过渡类型转换为着色器参数值
-    fn transition_kind_to_param(kind: TransitionKind) -> f32 {
-        match kind {
-            TransitionKind::Fade => 0.0,
-            TransitionKind::CrossDissolve => 1.0,
-            TransitionKind::SlideLeft => 2.0,
-            TransitionKind::SlideRight => 3.0,
-            TransitionKind::SlideUp => 4.0,
-            TransitionKind::SlideDown => 5.0,
-        }
-    }
-
-    /// 重新加载纹理（用于 HMR 热更新）
-    ///
-    /// 从指定路径重新加载纹理数据并更新 GPU 纹理对象。
-    /// 如果加载失败，保留旧纹理不变。
-    ///
-    /// # 参数
-    ///
-    /// - `path` - 纹理文件路径
-    pub fn reload_texture(&mut self, path: &str) -> GResult<()> {
-        let path = std::path::Path::new(path);
-        self.texture_cache.load_texture(path, &self.device, &self.queue)?;
-        Ok(())
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl WgpuRenderer {
-    /// 创建新的 WGPU 渲染器（桌面平台）
+impl NativeRenderer {
+    /// 创建新的原生渲染器
     ///
     /// 使用指定的 winit 事件循环和渲染表面信息创建渲染器。
-    /// 内部会创建窗口、初始化 WGPU 设备和渲染管线。
+    /// 内部会创建窗口、初始化 softbuffer 表面和 piet 设备。
     ///
     /// # 参数
     ///
@@ -197,144 +65,36 @@ impl WgpuRenderer {
                 .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法创建窗口: {}", e) })?,
         );
 
-        let (surface, device, queue, config) = pollster::block_on(async {
-            let instance =
-                wgpu::Instance::new(&wgpu::InstanceDescriptor { backends: wgpu::Backends::all(), ..Default::default() });
+        let context = softbuffer::Context::new(Arc::clone(&window))
+            .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法创建 softbuffer 上下文: {}", e) })?;
+        let surface = softbuffer::Surface::new(&context, Arc::clone(&window))
+            .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法创建 softbuffer 表面: {}", e) })?;
 
-            let surface = instance
-                .create_surface(Arc::clone(&window))
-                .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法创建渲染表面: {}", e) })?;
-
-            let adapter = instance
-                .request_adapter(&wgpu::RequestAdapterOptions {
-                    power_preference: wgpu::PowerPreference::default(),
-                    compatible_surface: Some(&surface),
-                    force_fallback_adapter: false,
-                })
-                .await
-                .ok_or(GError { kind: GErrorKind::Platform, message: "无法找到合适的图形适配器".to_string() })?;
-
-            let (device, queue) = adapter
-                .request_device(
-                    &wgpu::DeviceDescriptor {
-                        label: Some("gg_render_device"),
-                        required_features: wgpu::Features::empty(),
-                        required_limits: wgpu::Limits::default(),
-                        ..Default::default()
-                    },
-                    None,
-                )
-                .await
-                .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法创建图形设备: {}", e) })?;
-
-            let surface_caps = surface.get_capabilities(&adapter);
-            let surface_format = surface_caps.formats.iter().find(|f| f.is_srgb()).copied().unwrap_or(surface_caps.formats[0]);
-
-            let config = wgpu::SurfaceConfiguration {
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-                format: surface_format,
-                width: surface_info.width,
-                height: surface_info.height,
-                present_mode: wgpu::PresentMode::Fifo,
-                alpha_mode: surface_caps.alpha_modes[0],
-                view_formats: vec![],
-                desired_maximum_frame_latency: 2,
-            };
-
-            surface.configure(&device, &config);
-
-            Ok::<_, GError>((surface, device, queue, config))
-        })?;
-
-        let sprite_pipeline = SpritePipeline::new(&device, config.format);
-        let transition_pipeline = TransitionPipeline::new(&device, config.format);
-
-        let mut texture_cache = TextureCache::new();
-        let white_pixel_data: [u8; 4] = [255, 255, 255, 255];
-        let white_pixel_texture =
-            texture_cache.create_texture_from_data(1, 1, &white_pixel_data, &device, &queue, "white_pixel").map_err(|e| {
-                GError { kind: GErrorKind::Platform, message: format!("无法创建白色像素纹理: {}", e.message) }
-            })?;
-
-        let glyph_cache = GlyphCache::new();
-
-        let buffer_size = std::cmp::max(std::mem::size_of::<SpriteUniforms>(), std::mem::size_of::<TransitionUniforms>());
-        let uniform_pool = UniformPool::new(buffer_size);
+        let device = Device::new()
+            .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法创建 piet 设备: {}", e) })?;
 
         Ok(Self {
             window,
             surface,
             device,
-            queue,
-            config,
             surface_info,
-            texture_cache,
-            glyph_cache,
-            sprite_pipeline,
-            transition_pipeline,
+            texture_cache: NativeTextureCache::new(),
+            font_manager: FontManager::new(),
             should_close: false,
             pending_events: Vec::new(),
-            frame_output: None,
-            command_encoder: None,
-            white_pixel_texture,
-            uniform_pool,
         })
     }
 
-    /// 从已有的 wgpu 对象创建渲染器（桌面平台）
+    /// 检查窗口是否应该关闭
+    pub fn should_close(&self) -> bool {
+        self.should_close
+    }
+
+    /// 轮询窗口事件
     ///
-    /// 适用于自定义窗口系统集成场景，
-    /// 调用者负责创建 wgpu 实例、适配器、设备和表面。
-    ///
-    /// # 参数
-    ///
-    /// - `surface` - wgpu 渲染表面
-    /// - `device` - wgpu 设备
-    /// - `queue` - wgpu 命令队列
-    /// - `config` - 表面配置
-    /// - `surface_info` - 渲染表面信息
-    /// - `window` - winit 窗口
-    pub fn new_from_surface(
-        surface: wgpu::Surface<'static>,
-        device: wgpu::Device,
-        queue: wgpu::Queue,
-        config: wgpu::SurfaceConfiguration,
-        surface_info: SurfaceInfo,
-        window: Arc<Window>,
-    ) -> GResult<Self> {
-        let sprite_pipeline = SpritePipeline::new(&device, config.format);
-        let transition_pipeline = TransitionPipeline::new(&device, config.format);
-
-        let mut texture_cache = TextureCache::new();
-        let white_pixel_data: [u8; 4] = [255, 255, 255, 255];
-        let white_pixel_texture =
-            texture_cache.create_texture_from_data(1, 1, &white_pixel_data, &device, &queue, "white_pixel").map_err(|e| {
-                GError { kind: GErrorKind::Platform, message: format!("无法创建白色像素纹理: {}", e.message) }
-            })?;
-
-        let glyph_cache = GlyphCache::new();
-
-        let buffer_size = std::cmp::max(std::mem::size_of::<SpriteUniforms>(), std::mem::size_of::<TransitionUniforms>());
-        let uniform_pool = UniformPool::new(buffer_size);
-
-        Ok(Self {
-            window,
-            surface,
-            device,
-            queue,
-            config,
-            surface_info,
-            texture_cache,
-            glyph_cache,
-            sprite_pipeline,
-            transition_pipeline,
-            should_close: false,
-            pending_events: Vec::new(),
-            frame_output: None,
-            command_encoder: None,
-            white_pixel_texture,
-            uniform_pool,
-        })
+    /// 返回并清空内部事件缓冲区中的所有窗口事件。
+    pub fn poll_events(&mut self) -> Vec<WindowEvent> {
+        std::mem::take(&mut self.pending_events)
     }
 
     /// 处理 winit 窗口事件
@@ -351,9 +111,6 @@ impl WgpuRenderer {
                 let width = physical_size.width;
                 let height = physical_size.height;
                 if width > 0 && height > 0 {
-                    self.config.width = width;
-                    self.config.height = height;
-                    self.surface.configure(&self.device, &self.config);
                     self.surface_info.width = width;
                     self.surface_info.height = height;
                 }
@@ -390,88 +147,262 @@ impl WgpuRenderer {
     pub fn window(&self) -> &Arc<Window> {
         &self.window
     }
-}
 
-#[cfg(target_arch = "wasm32")]
-impl WgpuRenderer {
-    /// 从已有的 wgpu 对象创建渲染器（Web 平台）
-    ///
-    /// 适用于 Web 平台，调用者负责通过异步方式
-    /// 创建 wgpu 实例、适配器、设备和表面。
-    ///
-    /// # 参数
-    ///
-    /// - `surface` - wgpu 渲染表面
-    /// - `device` - wgpu 设备
-    /// - `queue` - wgpu 命令队列
-    /// - `config` - 表面配置
-    /// - `surface_info` - 渲染表面信息
-    pub fn new_from_surface(
-        surface: wgpu::Surface<'static>,
-        device: wgpu::Device,
-        queue: wgpu::Queue,
-        config: wgpu::SurfaceConfiguration,
-        surface_info: SurfaceInfo,
-    ) -> GResult<Self> {
-        let sprite_pipeline = SpritePipeline::new(&device, config.format);
-        let transition_pipeline = TransitionPipeline::new(&device, config.format);
-
-        let mut texture_cache = TextureCache::new();
-        let white_pixel_data: [u8; 4] = [255, 255, 255, 255];
-        let white_pixel_texture =
-            texture_cache.create_texture_from_data(1, 1, &white_pixel_data, &device, &queue, "white_pixel").map_err(|e| {
-                GError { kind: GErrorKind::Platform, message: format!("无法创建白色像素纹理: {}", e.message) }
-            })?;
-
-        let glyph_cache = GlyphCache::new();
-
-        let buffer_size = std::cmp::max(std::mem::size_of::<SpriteUniforms>(), std::mem::size_of::<TransitionUniforms>());
-        let uniform_pool = UniformPool::new(buffer_size);
-
-        Ok(Self {
-            surface,
-            device,
-            queue,
-            config,
-            surface_info,
-            texture_cache,
-            glyph_cache,
-            sprite_pipeline,
-            transition_pipeline,
-            should_close: false,
-            pending_events: Vec::new(),
-            frame_output: None,
-            command_encoder: None,
-            white_pixel_texture,
-            uniform_pool,
-        })
+    /// 获取字体管理器的可变引用
+    pub fn font_manager_mut(&mut self) -> &mut FontManager {
+        &mut self.font_manager
     }
 
-    /// 推送窗口事件到内部缓冲区
+    /// 将 gg Color 转换为 piet Color
+    fn to_piet_color(color: &Color) -> piet_common::Color {
+        piet_common::Color::rgba(color.r as f64, color.g as f64, color.b as f64, color.a as f64)
+    }
+
+    /// 将 RGBA 预乘像素数据转换为 softbuffer 所需的 u32 像素格式
     ///
-    /// Web 平台通过此方法将 JavaScript 端的事件转换为引擎事件。
-    ///
-    /// # 参数
-    ///
-    /// - `event` - 窗口事件
-    pub fn push_event(&mut self, event: WindowEvent) {
-        if matches!(event, WindowEvent::CloseRequested) {
-            self.should_close = true;
+    /// softbuffer 使用 0x00RRGGBB 格式，piet 输出 RGBA 预乘格式。
+    /// 对于预乘 alpha 的像素，需要先反预乘再转换。
+    fn convert_rgba_to_softbuffer(rgba_data: &[u8], width: usize, height: usize) -> Vec<u32> {
+        let mut buffer = Vec::with_capacity(width * height);
+        for pixel in rgba_data.chunks_exact(4) {
+            let r = pixel[0] as f32 / 255.0;
+            let g = pixel[1] as f32 / 255.0;
+            let b = pixel[2] as f32 / 255.0;
+            let a = pixel[3] as f32 / 255.0;
+
+            let r_unmul = if a > 0.0 { (r / a).min(1.0) } else { 0.0 };
+            let g_unmul = if a > 0.0 { (g / a).min(1.0) } else { 0.0 };
+            let b_unmul = if a > 0.0 { (b / a).min(1.0) } else { 0.0 };
+
+            let r_val = (r_unmul * 255.0) as u32;
+            let g_val = (g_unmul * 255.0) as u32;
+            let b_val = (b_unmul * 255.0) as u32;
+
+            buffer.push((r_val << 16) | (g_val << 8) | b_val);
         }
-        self.pending_events.push(event);
+        buffer
+    }
+
+    /// 渲染精灵绘制命令
+    fn draw_sprite(
+        rc: &mut impl PietRenderContext,
+        texture_cache: &NativeTextureCache,
+        texture_id: TextureId,
+        transform: &Transform,
+        size: &[f32; 2],
+        tint: &Color,
+    ) -> GResult<()> {
+        let image = texture_cache.get(texture_id).ok_or_else(|| GError {
+            kind: GErrorKind::Asset,
+            message: format!("纹理不存在，ID: {:?}", texture_id),
+        })?;
+
+        let current_transform = rc.current_transform();
+        let sprite_transform = Affine::translate((transform.position[0] as f64, transform.position[1] as f64))
+            * Affine::rotate(transform.rotation as f64)
+            * Affine::scale_non_uniform(size[0] as f64 * transform.scale[0] as f64, size[1] as f64 * transform.scale[1] as f64);
+
+        rc.transform(current_transform.inverse() * sprite_transform);
+
+        let dst_rect = kurbo::Rect::new(0.0, 0.0, size[0] as f64, size[1] as f64);
+        rc.draw_image(image, dst_rect, InterpolationMode::Bilinear);
+
+        if tint.a > 0.0 && (tint.r < 1.0 || tint.g < 1.0 || tint.b < 1.0 || tint.a < 1.0) {
+            let tint_brush = Self::to_piet_color(tint);
+            rc.fill(dst_rect, &tint_brush);
+        }
+
+        rc.transform(current_transform.inverse() * current_transform);
+
+        Ok(())
+    }
+
+    /// 渲染文本绘制命令
+    fn draw_text(
+        rc: &mut impl PietRenderContext,
+        font_manager: &FontManager,
+        text: &str,
+        position: &[f32; 2],
+        font_size: f32,
+        color: &Color,
+        max_width: Option<f32>,
+    ) -> GResult<()> {
+        let font_family = match font_manager.font_family() {
+            Some(name) => FontFamily::Named(name.into()),
+            None => FontFamily::default(),
+        };
+
+        let mut layout_builder = rc.text().new_text_layout(text.to_string()).font(font_family, font_size as f64);
+
+        if let Some(max_w) = max_width {
+            layout_builder = layout_builder.max_width(max_w as f64);
+        }
+
+        let layout = layout_builder.build().map_err(|e| GError {
+            kind: GErrorKind::Runtime,
+            message: format!("无法创建文本布局: {}", e),
+        })?;
+
+        let brush = Self::to_piet_color(color);
+        rc.draw_text(&layout, Point::new(position[0] as f64, position[1] as f64), &brush);
+
+        Ok(())
+    }
+
+    /// 渲染矩形绘制命令
+    fn draw_rect(rc: &mut impl PietRenderContext, rect: &Rect, color: &Color, corner_radius: f32) {
+        let brush = Self::to_piet_color(color);
+
+        if corner_radius > 0.0 {
+            let rounded = RoundedRect::new(
+                rect.x as f64,
+                rect.y as f64,
+                (rect.x + rect.width) as f64,
+                (rect.y + rect.height) as f64,
+                corner_radius as f64,
+            );
+            rc.fill(rounded, &brush);
+        } else {
+            let shape = kurbo::Rect::new(rect.x as f64, rect.y as f64, (rect.x + rect.width) as f64, (rect.y + rect.height) as f64);
+            rc.fill(shape, &brush);
+        }
+    }
+
+    /// 渲染线段绘制命令
+    fn draw_line(rc: &mut impl PietRenderContext, start: &[f32; 2], end: &[f32; 2], color: &Color, width: f32) {
+        let brush = Self::to_piet_color(color);
+        let line = Line::new(
+            Point::new(start[0] as f64, start[1] as f64),
+            Point::new(end[0] as f64, end[1] as f64),
+        );
+        rc.stroke(line, &brush, width as f64);
+    }
+
+    /// 渲染圆形绘制命令
+    fn draw_circle(rc: &mut impl PietRenderContext, center: &[f32; 2], radius: f32, color: &Color, filled: bool) {
+        let brush = Self::to_piet_color(color);
+        let circle = Circle::new(Point::new(center[0] as f64, center[1] as f64), radius as f64);
+
+        if filled {
+            rc.fill(circle, &brush);
+        } else {
+            rc.stroke(circle, &brush, 1.0);
+        }
+    }
+
+    /// 渲染椭圆绘制命令
+    fn draw_ellipse(rc: &mut impl PietRenderContext, center: &[f32; 2], radii: &[f32; 2], color: &Color, filled: bool) {
+        let brush = Self::to_piet_color(color);
+        let ellipse = Ellipse::new(
+            Point::new(center[0] as f64, center[1] as f64),
+            Vec2::new(radii[0] as f64, radii[1] as f64),
+        );
+
+        if filled {
+            rc.fill(ellipse, &brush);
+        } else {
+            rc.stroke(ellipse, &brush, 1.0);
+        }
+    }
+
+    /// 渲染过渡动画绘制命令
+    fn draw_transition(
+        rc: &mut impl PietRenderContext,
+        texture_cache: &NativeTextureCache,
+        old_texture: Option<TextureId>,
+        new_texture: Option<TextureId>,
+        progress: f32,
+        kind: TransitionKind,
+        surface_width: u32,
+        surface_height: u32,
+    ) -> GResult<()> {
+        let w = surface_width as f64;
+        let h = surface_height as f64;
+
+        match kind {
+            TransitionKind::Fade => {
+                if let Some(old_id) = old_texture {
+                    if let Some(old_img) = texture_cache.get(old_id) {
+                        let dst = kurbo::Rect::new(0.0, 0.0, w, h);
+                        rc.draw_image(old_img, dst, InterpolationMode::Bilinear);
+                    }
+                }
+                if let Some(new_id) = new_texture {
+                    if let Some(new_img) = texture_cache.get(new_id) {
+                        let dst = kurbo::Rect::new(0.0, 0.0, w, h);
+                        let saved = rc.current_transform();
+                        rc.transform(saved * Affine::scale(1.0));
+                        let alpha_brush = piet_common::Color::rgba(1.0, 1.0, 1.0, progress as f64);
+                        rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
+                        rc.clip(kurbo::Rect::new(0.0, 0.0, w, h));
+                        rc.draw_image(new_img, dst, InterpolationMode::Bilinear);
+                        rc.fill(kurbo::Rect::new(0.0, 0.0, w, h), &alpha_brush);
+                        rc.restore().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法恢复渲染状态: {}", e) })?;
+                    }
+                }
+            }
+            TransitionKind::CrossDissolve => {
+                if let Some(old_id) = old_texture {
+                    if let Some(old_img) = texture_cache.get(old_id) {
+                        let dst = kurbo::Rect::new(0.0, 0.0, w, h);
+                        rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
+                        rc.clip(kurbo::Rect::new(0.0, 0.0, w, h));
+                        rc.draw_image(old_img, dst, InterpolationMode::Bilinear);
+                        let old_alpha = piet_common::Color::rgba(0.0, 0.0, 0.0, 1.0 - progress as f64);
+                        rc.fill(kurbo::Rect::new(0.0, 0.0, w, h), &old_alpha);
+                        rc.restore().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法恢复渲染状态: {}", e) })?;
+                    }
+                }
+                if let Some(new_id) = new_texture {
+                    if let Some(new_img) = texture_cache.get(new_id) {
+                        let dst = kurbo::Rect::new(0.0, 0.0, w, h);
+                        rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
+                        rc.clip(kurbo::Rect::new(0.0, 0.0, w, h));
+                        rc.draw_image(new_img, dst, InterpolationMode::Bilinear);
+                        let new_alpha = piet_common::Color::rgba(0.0, 0.0, 0.0, progress as f64);
+                        rc.fill(kurbo::Rect::new(0.0, 0.0, w, h), &new_alpha);
+                        rc.restore().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法恢复渲染状态: {}", e) })?;
+                    }
+                }
+            }
+            TransitionKind::SlideLeft | TransitionKind::SlideRight | TransitionKind::SlideUp | TransitionKind::SlideDown => {
+                let (old_offset, new_offset) = match kind {
+                    TransitionKind::SlideLeft => ((-(progress * surface_width as f32) as f64, 0.0), (((1.0 - progress) * surface_width as f32) as f64, 0.0)),
+                    TransitionKind::SlideRight => (((progress * surface_width as f32) as f64, 0.0), (-((1.0 - progress) * surface_width as f32) as f64, 0.0)),
+                    TransitionKind::SlideUp => ((0.0, -(progress * surface_height as f32) as f64), (0.0, ((1.0 - progress) * surface_height as f32) as f64)),
+                    TransitionKind::SlideDown => ((0.0, (progress * surface_height as f32) as f64), (0.0, -((1.0 - progress) * surface_height as f32) as f64)),
+                    _ => unreachable!(),
+                };
+
+                if let Some(old_id) = old_texture {
+                    if let Some(old_img) = texture_cache.get(old_id) {
+                        rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
+                        rc.clip(kurbo::Rect::new(0.0, 0.0, w, h));
+                        let saved = rc.current_transform();
+                        rc.transform(saved * Affine::translate(old_offset));
+                        rc.draw_image(old_img, kurbo::Rect::new(0.0, 0.0, w, h), InterpolationMode::Bilinear);
+                        rc.restore().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法恢复渲染状态: {}", e) })?;
+                    }
+                }
+                if let Some(new_id) = new_texture {
+                    if let Some(new_img) = texture_cache.get(new_id) {
+                        rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
+                        rc.clip(kurbo::Rect::new(0.0, 0.0, w, h));
+                        let saved = rc.current_transform();
+                        rc.transform(saved * Affine::translate(new_offset));
+                        rc.draw_image(new_img, kurbo::Rect::new(0.0, 0.0, w, h), InterpolationMode::Bilinear);
+                        rc.restore().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法恢复渲染状态: {}", e) })?;
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
-impl Renderer for WgpuRenderer {
+impl Renderer for NativeRenderer {
     fn begin_frame(&mut self) -> GResult<()> {
-        self.uniform_pool.recycle_frame();
-        let output = self
-            .surface
-            .get_current_texture()
-            .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法获取当前帧纹理: {:?}", e) })?;
-        self.frame_output = Some(output);
-        self.command_encoder =
-            Some(self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_encoder") }));
         Ok(())
     }
 
@@ -480,253 +411,153 @@ impl Renderer for WgpuRenderer {
     }
 
     fn draw(&mut self, context: &RenderContext) -> GResult<()> {
-        let surface_width = context.surface_width();
-        let surface_height = context.surface_height();
+        let width = context.surface_width() as usize;
+        let height = context.surface_height() as usize;
 
-        // 阶段 1：预光栅化所有文本字形
-        {
-            for cmd in context.commands() {
-                if let DrawCommand::Text { text, font_size, .. } = cmd {
-                    let font = self
-                        .glyph_cache
-                        .font()
-                        .ok_or_else(|| GError {
-                            kind: GErrorKind::Runtime, message: "未加载字体，无法渲染文本".to_string()
-                        })?
-                        .clone();
-
-                    let px_scale = ab_glyph::PxScale { x: *font_size, y: *font_size };
-
-                    for c in text.chars() {
-                        let glyph_id = font.glyph_id(c);
-                        let glyph = glyph_id.with_scale(px_scale);
-                        self.glyph_cache.get_or_rasterize(glyph, &self.device, &self.queue, &mut self.texture_cache)?;
-                    }
-                }
-            }
+        if width == 0 || height == 0 {
+            return Ok(());
         }
 
-        // 阶段 2：创建渲染项
-        let mut render_items: Vec<RenderItem> = Vec::new();
+        let mut bitmap_target = self.device.bitmap_target(width, height, 1.0).map_err(|e| GError {
+            kind: GErrorKind::Platform,
+            message: format!("无法创建位图渲染目标: {}", e),
+        })?;
+
+        let rc = bitmap_target.render_context();
+
+        rc.clear(kurbo::Rect::new(0.0, 0.0, width as f64, height as f64), piet_common::Color::BLACK);
+
+        if let Some(camera) = context.camera() {
+            rc.transform(
+                Affine::translate((-camera.position[0] as f64, -camera.position[1] as f64))
+                    * Affine::rotate(camera.rotation as f64)
+                    * Affine::scale(camera.zoom as f64),
+            );
+        }
+
+        if let Some(clip_rect) = context.clip_rect() {
+            rc.clip(kurbo::Rect::new(
+                clip_rect.x as f64,
+                clip_rect.y as f64,
+                (clip_rect.x + clip_rect.width) as f64,
+                (clip_rect.y + clip_rect.height) as f64,
+            ));
+        }
 
         for cmd in context.commands() {
             match cmd {
-                DrawCommand::Sprite { texture_id, transform, size, tint, .. } => {
-                    let mvp = Self::compute_sprite_mvp(transform, *size, surface_width, surface_height);
-                    let uniforms =
-                        SpriteUniforms { mvp, tint: [tint.r, tint.g, tint.b, tint.a], uv_transform: [0.0, 0.0, 1.0, 1.0] };
-                    let uniform_buffer =
-                        self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
-                    let uniform_bind_group = self.sprite_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
-                    let texture_bind_group = self
-                        .texture_cache
-                        .create_bind_group(*texture_id, &self.device, self.sprite_pipeline.texture_layout())
-                        .ok_or_else(|| GError {
-                            kind: GErrorKind::Asset,
-                            message: format!("无法创建精灵纹理绑定组，纹理 ID: {:?}", texture_id),
-                        })?;
-
-                    render_items.push(RenderItem {
-                        item_type: RenderItemType::Sprite,
-                        uniform_bind_group,
-                        texture_bind_group,
-                        uniform_buffer,
-                    });
-                }
-                DrawCommand::Text { text, position, font_size, color, .. } => {
-                    let font = match self.glyph_cache.font() {
-                        Some(f) => f.clone(),
-                        None => continue,
-                    };
-
-                    let px_scale = ab_glyph::PxScale { x: *font_size, y: *font_size };
-                    let scaled_font = font.as_scaled(px_scale);
-
-                    let mut cursor_x = position[0];
-                    let cursor_y = position[1];
-
-                    for c in text.chars() {
-                        let glyph_id = font.glyph_id(c);
-                        let advance = scaled_font.h_advance(glyph_id);
-                        let glyph = glyph_id.with_scale(px_scale);
-
-                        let glyph_info = match self.glyph_cache.get_or_rasterize(
-                            glyph,
-                            &self.device,
-                            &self.queue,
-                            &mut self.texture_cache,
-                        ) {
-                            Ok(info) => info,
-                            Err(_) => {
-                                cursor_x += advance;
-                                continue;
-                            }
-                        };
-
-                        if glyph_info.texture_id != TextureId::INVALID && glyph_info.size[0] > 0.0 && glyph_info.size[1] > 0.0 {
-                            let glyph_transform = Transform {
-                                position: [cursor_x + glyph_info.offset[0], cursor_y + glyph_info.offset[1]],
-                                scale: [1.0, 1.0],
-                                rotation: 0.0,
-                                z_index: 0.0,
-                            };
-
-                            let mvp =
-                                Self::compute_sprite_mvp(&glyph_transform, glyph_info.size, surface_width, surface_height);
-                            let uv_transform = [
-                                glyph_info.uv_rect[0],
-                                glyph_info.uv_rect[1],
-                                glyph_info.uv_rect[2] - glyph_info.uv_rect[0],
-                                glyph_info.uv_rect[3] - glyph_info.uv_rect[1],
-                            ];
-                            let uniforms = SpriteUniforms { mvp, tint: [color.r, color.g, color.b, color.a], uv_transform };
-                            let uniform_buffer =
-                                self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
-                            let uniform_bind_group =
-                                self.sprite_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
-
-                            if let Some(texture_bind_group) = self.texture_cache.create_bind_group(
-                                glyph_info.texture_id,
-                                &self.device,
-                                self.sprite_pipeline.texture_layout(),
-                            ) {
-                                render_items.push(RenderItem {
-                                    item_type: RenderItemType::Sprite,
-                                    uniform_bind_group,
-                                    texture_bind_group,
-                                    uniform_buffer,
-                                });
-                            }
-                        }
-
-                        cursor_x += advance;
+                DrawCommand::Sprite {
+                    texture_id,
+                    transform,
+                    size,
+                    tint,
+                    clip_rect: sprite_clip,
+                } => {
+                    if let Some(sprite_clip) = sprite_clip {
+                        rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
+                        rc.clip(kurbo::Rect::new(
+                            sprite_clip.x as f64,
+                            sprite_clip.y as f64,
+                            (sprite_clip.x + sprite_clip.width) as f64,
+                            (sprite_clip.y + sprite_clip.height) as f64,
+                        ));
+                        Self::draw_sprite(rc, &self.texture_cache, *texture_id, transform, size, tint)?;
+                        rc.restore().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法恢复渲染状态: {}", e) })?;
+                    } else {
+                        Self::draw_sprite(rc, &self.texture_cache, *texture_id, transform, size, tint)?;
                     }
                 }
-                DrawCommand::Rect { rect, color, .. } => {
-                    let transform = Transform { position: [rect.x, rect.y], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
-                    let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], surface_width, surface_height);
-                    let uniforms =
-                        SpriteUniforms { mvp, tint: [color.r, color.g, color.b, color.a], uv_transform: [0.0, 0.0, 1.0, 1.0] };
-                    let uniform_buffer =
-                        self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
-                    let uniform_bind_group = self.sprite_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
-                    let texture_bind_group = self
-                        .texture_cache
-                        .create_bind_group(self.white_pixel_texture, &self.device, self.sprite_pipeline.texture_layout())
-                        .ok_or_else(|| GError {
-                            kind: GErrorKind::Asset, message: "无法创建矩形纹理绑定组".to_string()
-                        })?;
-
-                    render_items.push(RenderItem {
-                        item_type: RenderItemType::Sprite,
-                        uniform_bind_group,
-                        texture_bind_group,
-                        uniform_buffer,
-                    });
+                DrawCommand::Text {
+                    text,
+                    position,
+                    font_size,
+                    color,
+                    max_width,
+                } => {
+                    Self::draw_text(rc, &self.font_manager, text, position, *font_size, color, *max_width)?;
                 }
-                DrawCommand::Transition { old_texture, new_texture, progress, kind } => {
-                    let old_id = old_texture.unwrap_or(self.white_pixel_texture);
-                    let new_id = new_texture.unwrap_or(self.white_pixel_texture);
-
-                    let mvp = Self::compute_fullscreen_mvp(surface_width, surface_height);
-                    let uniforms = TransitionUniforms {
-                        mvp,
-                        params: [*progress, Self::transition_kind_to_param(*kind), 0.0, 0.0],
-                        tint: [1.0, 1.0, 1.0, 1.0],
-                    };
-                    let uniform_buffer =
-                        self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
-                    let uniform_bind_group = self.transition_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
-                    let texture_bind_group = self
-                        .texture_cache
-                        .create_transition_bind_group(old_id, new_id, &self.device, self.transition_pipeline.texture_layout())
-                        .ok_or_else(|| GError {
-                            kind: GErrorKind::Asset, message: "无法创建过渡纹理绑定组".to_string()
-                        })?;
-
-                    render_items.push(RenderItem {
-                        item_type: RenderItemType::Transition,
-                        uniform_bind_group,
-                        texture_bind_group,
-                        uniform_buffer,
-                    });
+                DrawCommand::Rect {
+                    rect,
+                    color,
+                    corner_radius,
+                } => {
+                    Self::draw_rect(rc, rect, color, *corner_radius);
+                }
+                DrawCommand::Line {
+                    start,
+                    end,
+                    color,
+                    width,
+                } => {
+                    Self::draw_line(rc, start, end, color, *width);
+                }
+                DrawCommand::Circle {
+                    center,
+                    radius,
+                    color,
+                    filled,
+                } => {
+                    Self::draw_circle(rc, center, *radius, color, *filled);
+                }
+                DrawCommand::Ellipse {
+                    center,
+                    radii,
+                    color,
+                    filled,
+                } => {
+                    Self::draw_ellipse(rc, center, radii, color, *filled);
+                }
+                DrawCommand::Transition {
+                    old_texture,
+                    new_texture,
+                    progress,
+                    kind,
+                } => {
+                    Self::draw_transition(
+                        rc,
+                        &self.texture_cache,
+                        *old_texture,
+                        *new_texture,
+                        *progress,
+                        *kind,
+                        context.surface_width(),
+                        context.surface_height(),
+                    )?;
                 }
             }
         }
 
-        // 阶段 3：记录渲染通道
-        let encoder = self.command_encoder.as_mut().ok_or_else(|| GError {
-            kind: GErrorKind::Runtime,
-            message: "命令编码器不存在，请先调用 begin_frame".to_string(),
+        rc.finish().map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法完成渲染: {}", e) })?;
+
+        let raw_pixels = bitmap_target.raw_pixels(ImageFormat::RgbaPremul).map_err(|e| GError {
+            kind: GErrorKind::Platform,
+            message: format!("无法获取像素数据: {}", e),
         })?;
-        let frame =
-            self.frame_output.as_ref().ok_or_else(|| GError {
-                kind: GErrorKind::Runtime,
-                message: "帧输出不存在，请先调用 begin_frame".to_string(),
-            })?;
-        let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let sprite_pipeline = &self.sprite_pipeline;
-        let transition_pipeline = &self.transition_pipeline;
+        let surface_width = context.surface_width();
+        let surface_height = context.surface_height();
 
-        let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("render_pass"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view,
-                resolve_target: None,
-                ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store },
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        });
+        let buffer = Self::convert_rgba_to_softbuffer(&raw_pixels, width, height);
 
-        for item in &render_items {
-            match item.item_type {
-                RenderItemType::Sprite => {
-                    render_pass.set_pipeline(sprite_pipeline.pipeline());
-                    render_pass.set_vertex_buffer(0, sprite_pipeline.vertex_buffer().slice(..));
-                    render_pass.set_index_buffer(sprite_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
-                }
-                RenderItemType::Transition => {
-                    render_pass.set_pipeline(transition_pipeline.pipeline());
-                    render_pass.set_vertex_buffer(0, sprite_pipeline.vertex_buffer().slice(..));
-                    render_pass.set_index_buffer(sprite_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
-                }
-            }
-            render_pass.set_bind_group(0, &item.uniform_bind_group, &[]);
-            render_pass.set_bind_group(1, &item.texture_bind_group, &[]);
-            render_pass.draw_indexed(0..6, 0, 0..1);
-        }
-
-        drop(render_pass);
-
-        for RenderItem { uniform_buffer, .. } in render_items {
-            self.uniform_pool.mark_used(uniform_buffer);
+        if let (Some(w), Some(h)) = (NonZeroU32::new(surface_width), NonZeroU32::new(surface_height)) {
+            self.surface.resize(w, h);
+            self.surface.copy_raw_buffer(&buffer);
+            self.surface.present().map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法呈现渲染结果: {}", e) })?;
         }
 
         Ok(())
     }
 
     fn present(&mut self) -> GResult<()> {
-        if let Some(encoder) = self.command_encoder.take() {
-            self.queue.submit(std::iter::once(encoder.finish()));
-        }
-        if let Some(frame) = self.frame_output.take() {
-            frame.present();
-        }
         Ok(())
     }
 
     fn load_texture(&mut self, path: &Path) -> GResult<TextureId> {
-        self.texture_cache.load_texture(path, &self.device, &self.queue)
+        self.texture_cache.load_texture(path, &mut self.device)
     }
 
     fn resize(&mut self, width: u32, height: u32) {
         if width > 0 && height > 0 {
-            self.config.width = width;
-            self.config.height = height;
-            self.surface.configure(&self.device, &self.config);
             self.surface_info.width = width;
             self.surface_info.height = height;
         }
@@ -737,8 +568,6 @@ impl Renderer for WgpuRenderer {
     }
 
     fn reload_texture(&mut self, path: &str) -> GResult<()> {
-        let path_ref = std::path::Path::new(path);
-        self.texture_cache.load_texture(path_ref, &self.device, &self.queue)?;
-        Ok(())
+        self.texture_cache.reload_texture(path, &mut self.device)
     }
 }

@@ -54,6 +54,16 @@ pub fn arpg_template(name: &str) -> EngineManifest {
     }
 }
 
+/// 返回 VisualNovel 类型的资源目录列表
+pub fn visual_novel_asset_dirs() -> Vec<&'static str> {
+    vec!["backgrounds", "portraits", "bgm", "se", "ui"]
+}
+
+/// 返回 ARPG 类型的资源目录列表
+pub fn arpg_asset_dirs() -> Vec<&'static str> {
+    vec!["sprites", "tilemaps", "bgm", "se"]
+}
+
 /// 创建自定义类型的最小化引擎清单
 pub fn custom_template(name: &str) -> EngineManifest {
     EngineManifest {

@@ -16,6 +16,9 @@ fn main() -> gg_tools::GResult<()> {
         gg_tools::Commands::Build { manifest, platform, release } => {
             gg_tools::cmds::build::cmd_build(&manifest, platform.as_deref(), release)
         }
+        gg_tools::Commands::Run { manifest, platform, release, editor } => {
+            gg_tools::cmds::run::cmd_run(&manifest, platform.as_deref(), release, editor)
+        }
         gg_tools::Commands::Package { manifest, platform, release } => {
             gg_tools::cmds::package::cmd_package(&manifest, platform.as_deref(), release)
         }

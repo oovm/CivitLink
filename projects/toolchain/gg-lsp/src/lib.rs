@@ -6,11 +6,15 @@
 
 mod kind;
 
+pub mod completion;
+
 #[cfg(feature = "oak-highlight")]
 pub mod highlighter;
 
 #[cfg(feature = "oak-pretty-print")]
 pub mod formatter;
+
+pub use completion::{CompletionEntry, CompletionItemKind, CompletionProvider};
 
 use core::range::Range;
 use oak_core::tree::RedNode;
@@ -30,6 +34,13 @@ impl<V: Vfs> GgLanguageService<V> {
     /// Creates a new `GgLanguageService` with the given VFS.
     pub fn new(vfs: V) -> Self {
         Self { vfs, workspace: oak_lsp::workspace::WorkspaceManager::new() }
+    }
+
+    /// 提供自动补全
+    pub fn completion(&self, _uri: &str, prefix: &str) -> Vec<CompletionEntry> {
+        let provider = CompletionProvider::new();
+        let source = String::new();
+        provider.complete(prefix, &source)
     }
 }
 

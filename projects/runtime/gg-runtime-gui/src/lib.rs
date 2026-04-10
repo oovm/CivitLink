@@ -388,9 +388,10 @@ impl GuiRuntime {
         }
 
         if let Some(component) = &self.root_component {
-            if let Ok(_comp) = component.read() {
+            if let Ok(comp) = component.read() {
+                let cached_id = comp.get_id().to_string();
                 if let Ok(renderer) = self.renderer.read() {
-                    let arc_comp: Arc<dyn VxComponent> = Arc::new(ComponentWrapper { inner: Arc::clone(component) });
+                    let arc_comp: Arc<dyn VxComponent> = Arc::new(ComponentWrapper { inner: Arc::clone(component), cached_id });
                     renderer.render(arc_comp);
                 }
             }
@@ -406,6 +407,8 @@ impl GuiRuntime {
 struct ComponentWrapper {
     /// 内部组件
     inner: Arc<RwLock<dyn VxComponent>>,
+    /// 缓存的组件 ID
+    cached_id: String,
 }
 
 impl VxComponent for ComponentWrapper {
@@ -424,7 +427,7 @@ impl VxComponent for ComponentWrapper {
     }
 
     fn get_id(&self) -> &str {
-        if let Ok(comp) = self.inner.read() { comp.get_id().to_string().leak() } else { "" }
+        &self.cached_id
     }
 
     fn handle_event(&mut self, event: &GuiEvent) {

@@ -15,6 +15,8 @@ pub mod lifecycle;
 pub mod mobile_input;
 /// 移动平台构建时实现
 pub mod platform;
+/// 移动平台运行时实现
+pub mod runtime;
 /// 移动平台服务工厂
 pub mod services;
 /// 移动平台线程实现
@@ -29,6 +31,7 @@ pub use input::MobileInputImpl;
 pub use lifecycle::MobileLifecycle;
 pub use mobile_input::MobileInput;
 pub use platform::{MobilePlatform, MobileTarget};
+pub use runtime::MobileRuntimePlatform;
 pub use services::MobilePlatformServices;
 pub use thread::MobileThread;
 pub use time::MobileTime;

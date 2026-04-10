@@ -211,6 +211,21 @@ impl FontStyle {
     }
 }
 
+/// 溢出处理方式
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Overflow {
+    /// 可见，子节点超出父节点区域时正常显示
+    Visible,
+    /// 裁剪，子节点超出父节点区域时被裁剪
+    Clip,
+}
+
+impl Default for Overflow {
+    fn default() -> Self {
+        Self::Visible
+    }
+}
+
 /// UI 样式
 #[derive(Debug, Clone, PartialEq)]
 pub struct Style {
@@ -226,6 +241,10 @@ pub struct Style {
     pub corner_radius: f32,
     /// 字体样式
     pub font: Option<FontStyle>,
+    /// 溢出处理方式
+    pub overflow: Overflow,
+    /// 图片纹理路径
+    pub image_path: Option<String>,
 }
 
 impl Default for Style {
@@ -237,6 +256,8 @@ impl Default for Style {
             border_width: 0.0,
             corner_radius: 0.0,
             font: None,
+            overflow: Overflow::default(),
+            image_path: None,
         }
     }
 }
@@ -280,6 +301,18 @@ impl Style {
     /// 设置字体样式
     pub fn with_font(mut self, font: FontStyle) -> Self {
         self.font = Some(font);
+        self
+    }
+
+    /// 设置溢出处理方式
+    pub fn with_overflow(mut self, overflow: Overflow) -> Self {
+        self.overflow = overflow;
+        self
+    }
+
+    /// 设置图片纹理路径
+    pub fn with_image_path(mut self, path: impl Into<String>) -> Self {
+        self.image_path = Some(path.into());
         self
     }
 }

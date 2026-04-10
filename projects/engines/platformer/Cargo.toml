@@ -1,6 +1,6 @@
 [package]
-name = "gg-engine-stg"
-description = "STG (Shoot 'em up) game engine based on GG meta-engine"
+name = "gg-engine-platformer"
+description = "Platformer (2D platform) game engine based on GG meta-engine"
 version = "0.1.0"
 edition = "2021"
 

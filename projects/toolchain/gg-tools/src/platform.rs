@@ -20,6 +20,23 @@ pub enum Platform {
     Mobile,
 }
 
+impl Platform {
+    /// 根据 Cargo 目标三元组推断平台类别
+    ///
+    /// 包含 `wasm32` 的目标归为 Web，包含 `android` 或 `ios` 的归为 Mobile，其余归为 Desktop。
+    pub fn from_target(target: &str) -> Self {
+        if target.contains("wasm32") {
+            Platform::Web
+        }
+        else if target.contains("android") || target.contains("ios") {
+            Platform::Mobile
+        }
+        else {
+            Platform::Desktop
+        }
+    }
+}
+
 /// 平台目标信息
 ///
 /// 包含平台的显示名称、Cargo 目标三元组和平台特定的 Cargo features。

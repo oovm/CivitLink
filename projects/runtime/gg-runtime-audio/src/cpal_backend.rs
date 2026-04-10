@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor, path::Path};
+use std::{collections::HashMap, io::Cursor, path::Path, time::Duration};
 
 use gg_core::{GError, GErrorKind, GResult};
 use rodio::{Decoder, OutputStream, OutputStreamHandle, Sink, Source};
@@ -96,7 +96,12 @@ impl AudioEngine for CpalAudioEngine {
 
         let sample_rate = source.sample_rate();
         let channels = source.channels();
-        let duration_secs = Self::estimate_duration(&data, format);
+        let duration_secs = source
+            .duration()
+            .unwrap_or_else(|| {
+                Duration::from_secs_f64(Self::estimate_duration(&data, format))
+            })
+            .as_secs_f64();
 
         let sound_id = self.allocate_sound_id();
 
@@ -172,6 +177,7 @@ impl AudioEngine for CpalAudioEngine {
         }
     }
 
+    /// 处理音频命令队列，并清理已播放完毕的 Sink
     fn update(&mut self, context: &AudioContext) -> GResult<()> {
         for command in context.commands() {
             match command.clone() {
@@ -192,6 +198,9 @@ impl AudioEngine for CpalAudioEngine {
                 }
             }
         }
+
+        self.active_sinks.retain(|_, sink| !sink.empty());
+
         Ok(())
     }
 

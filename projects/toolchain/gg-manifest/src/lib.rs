@@ -9,4 +9,4 @@ pub mod manifest;
 pub mod template;
 
 pub use manifest::{DisplaySection, EngineManifest, EngineSection, GameType, ModulesSection, PlatformEntry, ToolchainSection};
-pub use template::{arpg_template, custom_template, visual_novel_template};
+pub use template::{arpg_asset_dirs, arpg_template, custom_template, visual_novel_asset_dirs, visual_novel_template};

@@ -6,7 +6,11 @@
 //! 专为编辑器场景优化，支持 CJK 文本渲染和原生窗口集成。
 //! 仅支持桌面平台（Windows、macOS、Linux）。
 
+/// 字体管理器模块
+pub mod font_manager;
+
 /// 原生渲染器模块
 pub mod renderer;
 
+pub use font_manager::FontManager;
 pub use renderer::NativeRenderer;

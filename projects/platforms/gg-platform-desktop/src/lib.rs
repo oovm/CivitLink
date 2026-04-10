@@ -22,6 +22,7 @@ pub mod window;
 pub use fs::DesktopFileSystem;
 pub use input::DesktopInput;
 pub use platform::{DesktopPlatform, DesktopTargetOs};
+pub use runtime::DesktopRuntimePlatform;
 pub use services::DesktopPlatformServices;
 pub use thread::DesktopThread;
 pub use time::DesktopTime;

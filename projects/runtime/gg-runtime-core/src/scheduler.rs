@@ -7,6 +7,7 @@ use crate::stage::{Stage, SystemDescriptor, SystemFn, SystemSetId};
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::World;
 use std::collections::{HashMap, HashSet};
+use std::time::Duration;
 
 /// 系统构建器，用于配置系统排序约束
 ///
@@ -108,6 +109,12 @@ pub struct StageScheduler {
     set_configs: HashMap<SystemSetId, SetConfig>,
     /// 启动阶段是否已执行
     startup_executed: bool,
+    /// 固定更新时间步长
+    fixed_timestep: Duration,
+    /// 固定更新累加器
+    accumulator: Duration,
+    /// 最大固定更新步数，防止死亡螺旋
+    max_fixed_steps: usize,
 }
 
 impl StageScheduler {

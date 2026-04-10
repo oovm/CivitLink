@@ -1,6 +1,7 @@
 //! Syntax kinds module.
 
 /// Syntax kind for GG Engine.
+#[derive(Clone, Copy)]
 pub enum SyntaxKind {
     /// Unknown syntax kind.
     Unknown,

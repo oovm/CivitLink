@@ -87,6 +87,17 @@ impl EventSystem {
         false
     }
 
+    /// 向指定节点分发事件
+    ///
+    /// 直接将事件发送到指定节点的事件处理器，不执行命中测试。
+    /// 如果处理器返回 `true`，表示事件已被消费。
+    pub fn dispatch_to_node(&mut self, node_id: UiNodeId, event: &UiEvent) -> bool {
+        if let Some(handler) = self.handlers.get_mut(&node_id) {
+            return handler(event);
+        }
+        false
+    }
+
     /// 命中测试
     ///
     /// 从后往前遍历节点（反向渲染顺序），找到包含指定点的最前端可见节点。

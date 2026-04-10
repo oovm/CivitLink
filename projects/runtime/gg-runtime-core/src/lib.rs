@@ -23,6 +23,8 @@ pub use registry::{ComponentAccessor, ComponentRegistry};
 pub use scheduler::StageScheduler;
 pub use stage::{Stage, SystemDescriptor, SystemFn, SystemSet, SystemSetId};
 
+pub use crate::InputEvents;
+
 use gg_asset::AssetServer;
 use gg_bytecode::{BytecodeModule, BytecodeValue, Host};
 use gg_core::{GError, GErrorKind, GResult, plugin::Plugin};
@@ -44,8 +46,19 @@ use std::{
 pub struct FrameTime {
     /// 当前帧的 delta 时间（秒）
     pub delta_seconds: f32,
+    /// 固定更新的时间步长（秒）
+    pub fixed_delta_seconds: f32,
     /// 累计运行时间（秒）
     pub elapsed_seconds: f32,
+}
+
+/// 输入事件资源
+///
+/// 存储当前帧收集的所有输入事件，作为 ECS 资源注册到世界中，
+/// 供游戏系统查询和处理键盘、指针、手柄等输入。
+pub struct InputEvents {
+    /// 当前帧的输入事件列表
+    pub events: Vec<gg_core::platform::InputEvent>,
 }
 
 /// 引擎宿主，实现 Host trait，将 VM 指令桥接到 ECS 世界
@@ -272,6 +285,43 @@ impl DeltaTimer {
     }
 }
 
+/// 帧率限制器
+///
+/// 根据目标帧率控制帧间隔，在无垂直同步时通过睡眠补足剩余帧时间。
+pub struct FrameLimiter {
+    /// 目标帧时间
+    target_frame_time: Duration,
+}
+
+impl FrameLimiter {
+    /// 根据目标帧率创建帧率限制器
+    pub fn new(target_fps: u32) -> Self {
+        Self { target_frame_time: Duration::from_secs_f64(1.0 / target_fps as f64) }
+    }
+
+    /// 根据目标帧率创建帧率限制器
+    pub fn from_fps(target_fps: u32) -> Self {
+        Self::new(target_fps)
+    }
+
+    /// 获取目标帧率
+    pub fn target_fps(&self) -> u32 {
+        (1.0 / self.target_frame_time.as_secs_f64()) as u32
+    }
+
+    /// 获取目标帧时间
+    pub fn target_frame_time(&self) -> Duration {
+        self.target_frame_time
+    }
+
+    /// 如果帧耗时不足目标帧时间，则睡眠补足
+    pub fn sleep_if_needed(&self, frame_elapsed: Duration) {
+        if frame_elapsed < self.target_frame_time {
+            std::thread::sleep(self.target_frame_time - frame_elapsed);
+        }
+    }
+}
+
 /// 运行时系统
 ///
 /// 管理游戏循环的核心运行时，集成脚本引擎、阶段调度器、
@@ -327,6 +377,7 @@ impl Runtime {
         });
 
         let asset_server = AssetServer::new();
+        let frame_limiter = FrameLimiter::new(builder.target_fps.unwrap_or(60));
 
         Ok(Self {
             script_engine: ScriptEngine::new(),
@@ -343,6 +394,7 @@ impl Runtime {
             plugin_manager: plugin::PluginManager::new(),
             running: false,
             delta_timer: DeltaTimer::new(),
+            frame_limiter,
         })
     }
 
@@ -489,9 +541,6 @@ impl Runtime {
         self.running = false;
     }
 
-    /// 目标帧时间（约 60 FPS），在无垂直同步时使用
-    const TARGET_FRAME_TIME: Duration = Duration::from_nanos(16_666_667);
-
     /// 运行游戏循环
     pub fn run(&mut self) -> GResult<()> {
         while self.running {
@@ -533,7 +582,10 @@ impl Runtime {
         };
         self.host.world_mut().insert_resource(frame_time);
 
-        let _input_events = self.platform_services.input.poll_events();
+        let input_events = InputEvents {
+            events: self.platform_services.input.poll_events(),
+        };
+        self.host.world_mut().insert_resource(input_events);
 
         if let Some(ref mut hmr) = self.hmr_manager {
             if let Some(new_module) = hmr.process_script_reload() {

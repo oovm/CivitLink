@@ -10,6 +10,8 @@ pub mod fs;
 pub mod input;
 /// Web 平台构建时实现
 pub mod platform;
+/// Web 平台运行时实现
+pub mod runtime;
 /// Web 平台渲染后端适配
 pub mod render;
 /// Web 平台服务工厂
@@ -24,6 +26,7 @@ pub mod window;
 pub use fs::WebFileSystem;
 pub use input::WebInput;
 pub use platform::WebPlatform;
+pub use runtime::WebRuntimePlatform;
 pub use render::{RenderBackendType, detect_best_backend, is_webgl2_available, is_webgpu_available};
 pub use services::WebPlatformServices;
 pub use thread::WebThread;

@@ -71,6 +71,21 @@ pub enum Commands {
         #[arg(long)]
         release: bool,
     },
+    /// 运行生成的引擎
+    Run {
+        /// 清单文件路径
+        #[arg(long, default_value = ".")]
+        manifest: String,
+        /// 目标平台
+        #[arg(long)]
+        platform: Option<String>,
+        /// 发布模式运行
+        #[arg(long)]
+        release: bool,
+        /// 编辑器模式
+        #[arg(long)]
+        editor: bool,
+    },
     /// 将构建产物打包为平台分发格式
     Package {
         /// 清单文件路径

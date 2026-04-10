@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use gg_render::TextureId;
+
 use crate::{layout::LayoutResult, style::Style};
 
 /// UI 节点 ID
@@ -19,6 +21,13 @@ pub enum UiNodeData {
     Custom {
         /// 控件类型标识
         kind: String,
+    },
+    /// 图片节点
+    Image {
+        /// 纹理标识符
+        texture_id: Option<TextureId>,
+        /// 图片尺寸 `[width, height]`
+        size: Option<(f32, f32)>,
     },
 }
 

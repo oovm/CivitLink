@@ -5,6 +5,8 @@
 
 pub mod binding;
 pub mod focus;
+pub mod input_bridge;
+pub mod texture_registry;
 
 use gg_core::{
     GResult,
@@ -17,6 +19,7 @@ use gg_ui::{EventSystem, LayoutEngine, UiRenderer, UiTree};
 use crate::{
     binding::{BindingRegistry, BindingSystem},
     focus::FocusManager,
+    texture_registry::TextureRegistry,
 };
 
 /// UI 树资源
@@ -83,6 +86,7 @@ impl Plugin for UiPlugin {
         registrar.insert_resource(EventSystemResource::new());
         registrar.insert_resource(FocusManager::new());
         registrar.insert_resource(BindingRegistry::new());
+        registrar.insert_resource(TextureRegistry::new());
         registrar.register_system(Box::new(UiUpdateSystem));
         registrar.register_system(Box::new(UiRenderSystem));
         registrar.register_system(Box::new(BindingSystem::new()));
@@ -118,11 +122,14 @@ impl System for UiUpdateSystem {
 
     /// 执行 UI 更新系统逻辑
     ///
-    /// 从 World 获取 UiTreeResource，克隆出 UiTree，
-    /// 调用 LayoutEngine::compute 执行布局计算，
-    /// 然后将计算结果回写到 World 中。
+    /// 从 World 获取 RenderContext 的表面尺寸作为布局可用区域，
+    /// 若 RenderContext 不存在则回退到 800x600。
+    /// 克隆 UiTree 执行布局计算后回写到 World。
     fn execute(&mut self, world: &mut World) -> GResult<()> {
-        let (width, height) = (800.0_f32, 600.0_f32);
+        let (width, height) = world
+            .get_resource::<RenderContext>()
+            .map(|ctx| (ctx.surface_width() as f32, ctx.surface_height() as f32))
+            .unwrap_or((800.0, 600.0));
 
         let tree_opt = world.get_resource::<UiTreeResource>().map(|r| r.0.clone());
         if let Some(mut tree) = tree_opt {

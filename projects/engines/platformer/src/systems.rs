@@ -1,53 +1,43 @@
-//! STG 引擎系统定义
+//! Platformer 引擎系统定义
 //! 定义游戏中使用的各种 ECS 系统
 
 use crate::components::*;
 use gg_core::GResult;
 use gg_ecs::{Query, System, World};
-use std::time::{Duration, Instant};
 
 /// 输入系统
 /// 处理玩家输入
 pub struct InputSystem {
     /// 移动速度
     move_speed: f32,
-    /// 上方向键是否按下
-    up_pressed: bool,
-    /// 下方向键是否按下
-    down_pressed: bool,
+    /// 跳跃力度
+    jump_force: f32,
     /// 左方向键是否按下
     left_pressed: bool,
     /// 右方向键是否按下
     right_pressed: bool,
-    /// 射击键是否按下
-    shoot_pressed: bool,
-    /// 特殊武器键是否按下
-    special_pressed: bool,
+    /// 跳跃键是否按下
+    jump_pressed: bool,
 }
 
 impl InputSystem {
     /// 创建新的输入系统
-    pub fn new(move_speed: f32) -> Self {
+    pub fn new(move_speed: f32, jump_force: f32) -> Self {
         Self {
             move_speed,
-            up_pressed: false,
-            down_pressed: false,
+            jump_force,
             left_pressed: false,
             right_pressed: false,
-            shoot_pressed: false,
-            special_pressed: false,
+            jump_pressed: false,
         }
     }
 
     /// 设置按键状态
     pub fn set_key_state(&mut self, key: &str, pressed: bool) {
         match key {
-            "Up" => self.up_pressed = pressed,
-            "Down" => self.down_pressed = pressed,
             "Left" => self.left_pressed = pressed,
             "Right" => self.right_pressed = pressed,
-            "Space" => self.shoot_pressed = pressed,
-            "Shift" => self.special_pressed = pressed,
+            "Space" => self.jump_pressed = pressed,
             _ => {},
         }
     }
@@ -55,27 +45,74 @@ impl InputSystem {
 
 impl System for InputSystem {
     fn run(&mut self, world: &mut World) -> GResult<()> {
-        let mut query = world.query::<(&mut Velocity, &Player)>();
+        let mut query = world.query::<(&mut Velocity, &mut Player, &PhysicsBody)>();
 
-        for (velocity, _) in query.iter_mut() {
-            // 重置速度
-            velocity.dx = 0.0;
-            velocity.dy = 0.0;
-
+        for (velocity, player, physics_body) in query.iter_mut() {
             // 处理水平移动
             if self.left_pressed {
-                velocity.dx -= self.move_speed;
-            }
-            if self.right_pressed {
-                velocity.dx += self.move_speed;
+                velocity.dx = -self.move_speed;
+            } else if self.right_pressed {
+                velocity.dx = self.move_speed;
+            } else {
+                velocity.dx = 0.0;
             }
 
-            // 处理垂直移动
-            if self.up_pressed {
-                velocity.dy -= self.move_speed;
+            // 处理跳跃
+            if self.jump_pressed && player.can_jump && physics_body.on_ground {
+                velocity.dy = -self.jump_force;
+                player.jump_count = 1;
             }
-            if self.down_pressed {
-                velocity.dy += self.move_speed;
+        }
+
+        Ok(())
+    }
+}
+
+/// 物理系统
+/// 处理物理模拟和碰撞响应
+pub struct PhysicsSystem {
+    /// 重力加速度
+    gravity: f32,
+    /// 最大下落速度
+    max_fall_speed: f32,
+    /// 地面摩擦系数
+    ground_friction: f32,
+    /// 空中摩擦力
+    air_friction: f32,
+}
+
+impl PhysicsSystem {
+    /// 创建新的物理系统
+    pub fn new(gravity: f32, max_fall_speed: f32, ground_friction: f32, air_friction: f32) -> Self {
+        Self {
+            gravity,
+            max_fall_speed,
+            ground_friction,
+            air_friction,
+        }
+    }
+}
+
+impl System for PhysicsSystem {
+    fn run(&mut self, world: &mut World) -> GResult<()> {
+        let mut query = world.query::<(&mut Velocity, &mut PhysicsBody)>();
+
+        for (velocity, physics_body) in query.iter_mut() {
+            if physics_body.affected_by_gravity && !physics_body.is_static {
+                // 应用重力
+                velocity.dy += self.gravity * physics_body.gravity_scale;
+
+                // 限制最大下落速度
+                if velocity.dy > self.max_fall_speed {
+                    velocity.dy = self.max_fall_speed;
+                }
+            }
+
+            // 应用摩擦力
+            if physics_body.on_ground {
+                velocity.dx *= self.ground_friction;
+            } else {
+                velocity.dx *= self.air_friction;
             }
         }
 
@@ -104,25 +141,27 @@ impl MovementSystem {
 
 impl System for MovementSystem {
     fn run(&mut self, world: &mut World) -> GResult<()> {
-        let mut query = world.query::<(&mut Transform, &Velocity)>();
+        let mut query = world.query::<(&mut Transform, &Velocity, &PhysicsBody)>();
 
-        for (transform, velocity) in query.iter_mut() {
-            // 更新位置
-            transform.x += velocity.dx;
-            transform.y += velocity.dy;
+        for (transform, velocity, physics_body) in query.iter_mut() {
+            if !physics_body.is_static {
+                // 更新位置
+                transform.x += velocity.dx;
+                transform.y += velocity.dy;
 
-            // 边界检查
-            if transform.x < 0.0 {
-                transform.x = 0.0;
-            }
-            if transform.x > self.screen_width {
-                transform.x = self.screen_width;
-            }
-            if transform.y < 0.0 {
-                transform.y = 0.0;
-            }
-            if transform.y > self.screen_height {
-                transform.y = self.screen_height;
+                // 边界检查
+                if transform.x < 0.0 {
+                    transform.x = 0.0;
+                }
+                if transform.x > self.screen_width {
+                    transform.x = self.screen_width;
+                }
+                if transform.y < 0.0 {
+                    transform.y = 0.0;
+                }
+                if transform.y > self.screen_height {
+                    transform.y = self.screen_height;
+                }
             }
         }
 
@@ -181,6 +220,12 @@ impl CollisionSystem {
 impl System for CollisionSystem {
     fn run(&mut self, world: &mut World) -> GResult<()> {
         let entities = world.entities().to_vec();
+
+        // 重置地面状态
+        let mut physics_query = world.query::<&mut PhysicsBody>();
+        for physics_body in physics_query.iter_mut() {
+            physics_body.on_ground = false;
+        }
 
         // 使用空间分区优化碰撞检测
         // 这里使用简单的网格分区，实际项目中可以使用更复杂的空间分区算法
@@ -254,128 +299,75 @@ impl CollisionSystem {
 
     /// 处理碰撞响应
     fn handle_collision(&self, world: &mut World, entity1: u32, entity2: u32) {
-        // 检查是否是玩家与敌人的碰撞
-        if world.has_component::<Player>(entity1) && world.has_component::<Enemy>(entity2) {
-            // 处理玩家受伤
-            if let Some(mut health) = world.get_component_mut::<Health>(entity1) {
-                if health.current > 0 {
-                    health.current -= 1;
+        // 检查是否是玩家与平台的碰撞
+        if world.has_component::<Player>(entity1) && world.has_component::<Platform>(entity2) {
+            // 处理玩家与平台的碰撞
+            if let (Some(mut transform1), Some(mut velocity1), Some(mut physics_body1), Some(transform2), Some(collider2)) = (
+                world.get_component_mut::<Transform>(entity1),
+                world.get_component_mut::<Velocity>(entity1),
+                world.get_component_mut::<PhysicsBody>(entity1),
+                world.get_component::<Transform>(entity2),
+                world.get_component::<Collider>(entity2),
+            ) {
+                // 检查玩家是否在平台上方
+                if transform1.y < transform2.y {
+                    // 标记玩家在地面上
+                    physics_body1.on_ground = true;
+                    physics_body1.ground_normal = (0.0, 1.0);
+
+                    // 调整玩家位置
+                    if let ColliderType::Rectangle { height: h2, .. } = collider2.collider_type {
+                        transform1.y = transform2.y - h2 / 2.0 - 16.0; // 16.0 是玩家高度的一半
+                    }
+
+                    // 重置垂直速度
+                    velocity1.dy = 0.0;
                 }
             }
         }
 
-        // 检查是否是玩家子弹与敌人的碰撞
-        if world.has_component::<Bullet>(entity1) && world.has_component::<Enemy>(entity2) {
-            if let Some(bullet) = world.get_component::<Bullet>(entity1) {
-                if matches!(bullet.shooter_type, ShooterType::Player) {
-                    // 处理敌人受伤
-                    if let Some(mut health) = world.get_component_mut::<Health>(entity2) {
-                        health.current -= bullet.damage;
-                    }
-                    // 销毁子弹
-                    world.despawn(entity1);
-                }
-            }
-        }
-
-        // 检查是否是敌人子弹与玩家的碰撞
-        if world.has_component::<Bullet>(entity2) && world.has_component::<Player>(entity1) {
-            if let Some(bullet) = world.get_component::<Bullet>(entity2) {
-                if matches!(bullet.shooter_type, ShooterType::Enemy) {
-                    // 处理玩家受伤
-                    if let Some(mut health) = world.get_component_mut::<Health>(entity1) {
-                        if health.current > 0 {
-                            health.current -= bullet.damage;
-                        }
-                    }
-                    // 销毁子弹
-                    world.despawn(entity2);
+        // 检查是否是玩家与可收集物品的碰撞
+        if world.has_component::<Player>(entity1) && world.has_component::<Collectible>(entity2) {
+            // 处理玩家收集物品
+            if let Some(mut collectible) = world.get_component_mut::<Collectible>(entity2) {
+                if !collectible.collected {
+                    collectible.collected = true;
+                    // 这里可以添加收集物品的逻辑，如增加分数等
                 }
             }
         }
     }
 }
 
-/// 武器系统
-/// 处理武器和射击逻辑
-pub struct WeaponSystem {
-    /// 子弹速度
-    bullet_speed: f32,
-    /// 当前时间
-    current_time: Instant,
+/// 收集系统
+/// 处理物品收集逻辑
+pub struct CollectibleSystem {
+    /// 分数
+    score: u32,
 }
 
-impl WeaponSystem {
-    /// 创建新的武器系统
-    pub fn new(bullet_speed: f32) -> Self {
+impl CollectibleSystem {
+    /// 创建新的收集系统
+    pub fn new() -> Self {
         Self {
-            bullet_speed,
-            current_time: Instant::now(),
+            score: 0,
         }
     }
 }
 
-impl System for WeaponSystem {
+impl System for CollectibleSystem {
     fn run(&mut self, world: &mut World) -> GResult<()> {
-        let mut query = world.query::<(&Transform, &Weapon, &Player)>();
-        let current_time = Instant::now();
+        let mut query = world.query::<(&mut Collectible, &Transform)>();
 
-        for (transform, weapon, _) in query.iter() {
-            // 检查是否可以射击
-            let elapsed = current_time.duration_since(self.current_time).as_millis() as u64;
-            if elapsed - weapon.last_fire_time > (1000.0 / weapon.fire_rate) as u64 {
-                // 创建子弹
-                self.create_bullet(world, transform, weapon);
+        for (collectible, transform) in query.iter_mut() {
+            if collectible.collected {
+                // 增加分数
+                self.score += collectible.value;
+                // 这里可以添加其他收集物品的逻辑
             }
         }
 
-        self.current_time = current_time;
         Ok(())
-    }
-}
-
-impl WeaponSystem {
-    /// 创建子弹
-    fn create_bullet(&self, world: &mut World, transform: &Transform, weapon: &Weapon) {
-        let bullet_entity = world.spawn();
-
-        // 添加变换组件
-        world.add_component(bullet_entity, Transform {
-            x: transform.x,
-            y: transform.y,
-            rotation: 0.0,
-            scale: 1.0,
-        }).unwrap();
-
-        // 添加速度组件
-        world.add_component(bullet_entity, Velocity {
-            dx: 0.0,
-            dy: -self.bullet_speed,
-            ax: 0.0,
-            ay: 0.0,
-        }).unwrap();
-
-        // 添加精灵组件
-        world.add_component(bullet_entity, Sprite {
-            path: "bullet.png".to_string(),
-            width: 8.0,
-            height: 16.0,
-            visible: true,
-        }).unwrap();
-
-        // 添加碰撞体组件
-        world.add_component(bullet_entity, Collider {
-            collider_type: ColliderType::Circle { radius: 4.0 },
-            layer: 2,
-            mask: 4,
-        }).unwrap();
-
-        // 添加子弹组件
-        world.add_component(bullet_entity, Bullet {
-            bullet_type: weapon.weapon_type.clone(),
-            damage: 1,
-            shooter_type: ShooterType::Player,
-        }).unwrap();
     }
 }
 
@@ -400,9 +392,9 @@ impl AISystem {
 
 impl System for AISystem {
     fn run(&mut self, world: &mut World) -> GResult<()> {
-        let mut query = world.query::<(&mut Transform, &mut Velocity, &mut AI, &Enemy)>();
+        let mut query = world.query::<(&mut Transform, &mut Velocity, &mut AI)>();
 
-        for (transform, velocity, ai, _) in query.iter_mut() {
+        for (transform, velocity, ai) in query.iter_mut() {
             match ai.behavior {
                 AIBehavior::Patrol => {
                     self.handle_patrol(transform, velocity, ai);
@@ -470,71 +462,14 @@ impl AISystem {
 
     /// 处理攻击行为
     fn handle_attack(&self, transform: &mut Transform, world: &mut World) {
-        // 创建敌人子弹
-        let bullet_entity = world.spawn();
-
-        // 添加变换组件
-        world.add_component(bullet_entity, Transform {
-            x: transform.x,
-            y: transform.y,
-            rotation: 0.0,
-            scale: 1.0,
-        }).unwrap();
-
-        // 添加速度组件
-        world.add_component(bullet_entity, Velocity {
-            dx: 0.0,
-            dy: 2.0,
-            ax: 0.0,
-            ay: 0.0,
-        }).unwrap();
-
-        // 添加精灵组件
-        world.add_component(bullet_entity, Sprite {
-            path: "enemy_bullet.png".to_string(),
-            width: 8.0,
-            height: 16.0,
-            visible: true,
-        }).unwrap();
-
-        // 添加碰撞体组件
-        world.add_component(bullet_entity, Collider {
-            collider_type: ColliderType::Circle { radius: 4.0 },
-            layer: 4,
-            mask: 2,
-        }).unwrap();
-
-        // 添加子弹组件
-        world.add_component(bullet_entity, Bullet {
-            bullet_type: "enemy".to_string(),
-            damage: 1,
-            shooter_type: ShooterType::Enemy,
-        }).unwrap();
+        // 这里可以实现攻击逻辑
+        // 例如创建攻击实体或发射子弹
     }
 
     /// 处理躲避行为
     fn handle_evade(&self, transform: &mut Transform, velocity: &mut Velocity, ai: &mut AI, world: &World) {
-        // 寻找玩家子弹
-        let mut bullet_positions = vec![];
-        let mut bullet_query = world.query::<&Transform, &Bullet>();
-        for (bullet_transform, bullet) in bullet_query.iter() {
-            if matches!(bullet.shooter_type, ShooterType::Player) {
-                bullet_positions.push((bullet_transform.x, bullet_transform.y));
-            }
-        }
-
-        // 避开子弹
-        for (bullet_x, bullet_y) in bullet_positions {
-            let dx = bullet_x - transform.x;
-            let dy = bullet_y - transform.y;
-            let distance = (dx * dx + dy * dy).sqrt();
-
-            if distance < 50.0 {
-                // 远离子弹
-                velocity.dx -= dx / distance * ai.move_speed;
-                velocity.dy -= dy / distance * ai.move_speed;
-            }
-        }
+        // 这里可以实现躲避逻辑
+        // 例如检测玩家位置并远离
     }
 }
 
