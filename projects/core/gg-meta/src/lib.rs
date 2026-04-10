@@ -1,3 +1,5 @@
+#![feature(new_range_api)]
+
 use oak_core::{
     Range,
     source::{SourceBuffer, ToSource},

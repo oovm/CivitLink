@@ -143,9 +143,9 @@ impl PropertyBinding for EcsPropertyBinding {
         if world.get_resource::<PropertyStore>().is_none() {
             world.insert_resource(PropertyStore::new());
         }
-        let store = world.get_resource_mut::<PropertyStore>().ok_or_else(|| {
-            GError { kind: GErrorKind::Ecs, message: "PropertyStore not available".to_string() }
-        })?;
+        let store = world
+            .get_resource_mut::<PropertyStore>()
+            .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "PropertyStore not available".to_string() })?;
         store.set(entity, &self.component_type, &self.property_name, value);
         Ok(())
     }
