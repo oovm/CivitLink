@@ -1,5 +1,6 @@
 use gg_core::platform::{PlatformServices, WindowConfig};
 
+use crate::render::RenderBackendType;
 use crate::{WebFileSystem, WebInput, WebThread, WebTime, WebWindow};
 
 /// Web 平台服务工厂
@@ -26,5 +27,13 @@ impl WebPlatformServices {
             Box::new(WebWindow::new(window_config)),
             Box::new(WebThread::new()),
         )
+    }
+
+    /// 检测 Web 平台的最佳渲染后端
+    ///
+    /// 优先返回 WebGPU，若不可用则回退到 WebGL2。
+    /// 若两者均不可用则返回 `None`。
+    pub fn detect_render_backend() -> Option<RenderBackendType> {
+        crate::render::detect_best_backend()
     }
 }

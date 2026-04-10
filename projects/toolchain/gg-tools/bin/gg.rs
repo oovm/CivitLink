@@ -14,6 +14,10 @@ fn main() -> gg_tools::GResult<()> {
         gg_tools::Commands::Build { manifest, platform, release } => {
             gg_tools::cmds::build::cmd_build(&manifest, platform.as_deref(), release)
         }
+        gg_tools::Commands::Package { manifest, platform, release } => {
+            gg_tools::cmds::package::cmd_package(&manifest, platform.as_deref(), release)
+        }
+        gg_tools::Commands::Sheet { command } => gg_tools::cmds::sheet::cmd_sheet(&command),
         gg_tools::Commands::NewGame { name } => gg_tools::cmds::new_game::cmd_new_game(&name),
         gg_tools::Commands::ModConverter { path } => gg_tools::cmds::mod_converter::cmd_mod_converter(path.as_deref()),
         gg_tools::Commands::ScriptBench => gg_tools::cmds::script_bench::cmd_script_bench(),

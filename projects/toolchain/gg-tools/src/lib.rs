@@ -5,5 +5,6 @@
 //! 提供 gg-tools 命令行工具的共享功能和工具函数
 
 pub mod cmds;
+pub mod platform;
 
 pub use cmds::*;

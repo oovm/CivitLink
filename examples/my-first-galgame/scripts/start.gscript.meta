@@ -1,0 +1,16 @@
+MetaFile({
+    version: "1.0",
+    asset: Asset({
+        type: "script",
+        path: "examples/my-first-galgame/scripts/start.gscript",
+        guid: "000069d8-8dfa-7b30-b834-286930000000",
+        name: "start.gscript",
+        size: 471,
+        modified: "2026-04-10T05:43:22.636Z",
+    }),
+    import_settings: None,
+    dependencies: [],
+    references: [],
+    timestamp: "2026-04-10T05:43:22.636Z",
+    hash: None,
+})

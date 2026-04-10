@@ -16,9 +16,16 @@ pub mod sound;
 /// 基于 cpal + rodio 的音频后端实现
 pub mod cpal_backend;
 
+#[cfg(feature = "web-audio")]
+/// 基于 Web Audio API 的音频后端实现
+pub mod web_backend;
+
 pub use command::AudioCommand;
 pub use engine::{AudioContext, AudioEngine};
 pub use sound::{SoundDescriptor, SoundFormat, SoundId};
 
 #[cfg(feature = "cpal-backend")]
 pub use cpal_backend::CpalAudioEngine;
+
+#[cfg(feature = "web-audio")]
+pub use web_backend::WebAudioEngine;

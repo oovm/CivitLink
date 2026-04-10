@@ -1,0 +1,150 @@
+//! Meta 命令模块
+//! 
+//! 用于生成和管理资源的 meta 文件
+
+use std::fs;
+use std::path::{Path, PathBuf};
+use clap::{Args, Command};
+
+use crate::platform::Platform;
+
+/// Meta 命令参数
+#[derive(Args, Debug)]
+pub struct MetaArgs {
+    /// 目标目录或文件路径
+    #[arg(required = true)]
+    pub target: String,
+    
+    /// 递归处理目录
+    #[arg(short, long, default_value_t = true)]
+    pub recursive: bool,
+}
+
+/// 注册 Meta 命令
+pub fn register_command() -> Command {
+    Command::new("meta")
+        .about("生成和管理资源的 meta 文件")
+        .args(&MetaArgs::augment_args())
+}
+
+/// 执行 Meta 命令
+pub fn execute(args: &MetaArgs, _platform: &Platform) -> anyhow::Result<()> {
+    let target_path = Path::new(&args.target);
+    
+    if target_path.is_dir() {
+        if args.recursive {
+            process_directory(target_path)?;
+        } else {
+            process_files_in_directory(target_path)?;
+        }
+    } else if target_path.is_file() {
+        generate_meta_file(target_path)?;
+    } else {
+        anyhow::bail!("Target path does not exist: {}", args.target);
+    }
+    
+    Ok(())
+}
+
+/// 处理目录中的所有文件
+fn process_directory(path: &Path) -> anyhow::Result<()> {
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let entry_path = entry.path();
+        
+        if entry_path.is_dir() {
+            process_directory(&entry_path)?;
+        } else if entry_path.is_file() && !entry_path.extension().map_or(false, |ext| ext == "meta") {
+            generate_meta_file(&entry_path)?;
+        }
+    }
+    Ok(())
+}
+
+/// 处理目录中的直接文件（非递归）
+fn process_files_in_directory(path: &Path) -> anyhow::Result<()> {
+    for entry in fs::read_dir(path)? {
+        let entry = entry?;
+        let entry_path = entry.path();
+        
+        if entry_path.is_file() && !entry_path.extension().map_or(false, |ext| ext == "meta") {
+            generate_meta_file(&entry_path)?;
+        }
+    }
+    Ok(())
+}
+
+/// 生成 meta 文件
+fn generate_meta_file(file_path: &Path) -> anyhow::Result<()> {
+    let stats = fs::metadata(file_path)?;
+    let size = stats.len();
+    let name = file_path.file_name().unwrap().to_string_lossy().to_string();
+    let relative_path = get_relative_path(file_path)?;
+    let asset_type = get_asset_type(&name);
+    
+    // 生成 UUID v7 格式的 GUID
+    let guid = generate_uuid_v7();
+    let timestamp = chrono::Utc::now().to_rfc3339();
+    
+    // 构建 meta 内容
+    let meta_content = format!(
+        r#"MetaFile({{
+    version: "1.0",
+    asset: Asset({{
+        type: "{asset_type}",
+        path: "{relative_path}",
+        guid: "{guid}",
+        name: "{name}",
+        size: {size},
+        modified: "{timestamp}",
+    }}),
+    import_settings: None,
+    dependencies: [],
+    references: [],
+    timestamp: "{timestamp}",
+    hash: None,
+}})"#
+    );
+    
+    let meta_path = file_path.with_extension(format!("{}.meta", file_path.extension().unwrap_or_default().to_string_lossy()));
+    fs::write(&meta_path, meta_content)?;
+    println!("Generated meta file for {}", file_path.display());
+    
+    Ok(())
+}
+
+/// 获取相对路径
+fn get_relative_path(file_path: &Path) -> anyhow::Result<String> {
+    let project_root = Path::new("e:\\灵之镜有限公司\\gg-game-engine");
+    let relative_path = file_path.strip_prefix(project_root)?;
+    Ok(relative_path.to_string_lossy().replace('\\', "/"))
+}
+
+/// 获取资源类型
+fn get_asset_type(filename: &str) -> String {
+    let ext = Path::new(filename).extension().unwrap_or_default().to_string_lossy().to_lowercase();
+    match ext.as_str() {
+        "toml" => "config".to_string(),
+        "gscript" => "script".to_string(),
+        "png" => "texture".to_string(),
+        "jpg" => "texture".to_string(),
+        "jpeg" => "texture".to_string(),
+        "wav" => "audio".to_string(),
+        "mp3" => "audio".to_string(),
+        "ogg" => "audio".to_string(),
+        "glsl" => "shader".to_string(),
+        "vert" => "shader".to_string(),
+        "frag" => "shader".to_string(),
+        "scene" => "scene".to_string(),
+        "prefab" => "prefab".to_string(),
+        "anim" => "animation".to_string(),
+        "material" => "material".to_string(),
+        _ => "unknown".to_string(),
+    }
+}
+
+/// 生成 UUID v7
+fn generate_uuid_v7() -> String {
+    use uuid::Uuid;
+    Uuid::now_v7().to_string()
+}

@@ -16,5 +16,9 @@ gg-factory = { workspace = true }
 gg-script = { workspace = true }
 gg-vm = { workspace = true }
 gg-runtime-core = { workspace = true, features = ["desktop"] }
+gg-sheet = { workspace = true }
+gg-meta = { workspace = true }
 toml = { workspace = true }
 clap = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }

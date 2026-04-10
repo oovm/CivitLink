@@ -2,13 +2,13 @@
 
 ## Overview
 
-`gg-meta` is a metadata management module for the GG Game Engine. It provides functionality to create, read, and write metadata files for game assets using RON (Rusty Object Notation) format.
+`gg-meta` is a metadata management module for the GG Game Engine. It provides functionality to create, read, and write metadata files for game assets using Oak-von format.
 
 ## Features
 
 - Create metadata files with unique GUIDs (UUID v7)
-- Read metadata from RON files
-- Write metadata to RON files
+- Read metadata from Oak-von files
+- Write metadata to Oak-von files
 - Manage dependencies and references between assets
 - Track asset modifications with timestamps
 - Generate unique GUIDs for assets
@@ -53,13 +53,13 @@ let meta = MetaFile::from_file(Path::new("assets/textures/player.png.meta")).unw
 
 // Access metadata fields
 println!("Asset GUID: {}", meta.asset.guid);
-println!("Asset type: {}", meta.asset.type);
+println!("Asset type: {}", meta.asset.r#type);
 println!("Asset path: {}", meta.asset.path);
 ```
 
 ## File Structure
 
-The metadata file is stored in RON format and contains the following fields:
+The metadata file is stored in Oak-von format and contains the following fields:
 
 - `version`: Metadata format version
 - `asset`: Asset information (type, path, GUID, name, size, modified timestamp)
@@ -72,7 +72,8 @@ The metadata file is stored in RON format and contains the following fields:
 ## Dependencies
 
 - `serde`: For serialization and deserialization
-- `ron`: For RON format support
+- `oak-von`: For Oak-von format support
+- `oak-core`: For Oak core functionality
 - `uuid`: For generating UUID v7 GUIDs
 - `chrono`: For timestamp generation
 - `serde_json`: For import settings
