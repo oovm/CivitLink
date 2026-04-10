@@ -2,7 +2,6 @@
 
 use std::collections::HashMap;
 
-use gg_ecs::Component;
 use serde::{Deserialize, Serialize};
 
 /// 斜坡方向
@@ -61,8 +60,6 @@ pub struct Tilemap {
     pub layers: Vec<TileLayer>,
 }
 
-impl Component for Tilemap {}
-
 /// 瓦片组件
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Tile {
@@ -79,8 +76,6 @@ pub struct Tile {
     /// 瓦片类型
     pub tile_type: TileType,
 }
-
-impl Component for Tile {}
 
 /// 对象属性值
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -107,5 +102,3 @@ pub struct MapObject {
     /// 自定义属性
     pub properties: HashMap<String, ObjectPropertyValue>,
 }
-
-impl Component for MapObject {}

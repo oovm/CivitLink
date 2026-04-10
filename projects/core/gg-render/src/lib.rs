@@ -19,7 +19,7 @@ pub mod transform;
 pub use color::Color;
 pub use command::{DrawCommand, TransitionKind};
 pub use rect::Rect;
-pub use renderer::{RenderContext, Renderer};
+pub use renderer::{Camera, RenderContext, Renderer};
 pub use surface::{SurfaceInfo, WindowEvent};
 pub use texture::{PixelFormat, TextureDescriptor, TextureId};
 pub use transform::Transform;
@@ -32,7 +32,7 @@ pub mod prelude {
         color::Color,
         command::{DrawCommand, TransitionKind},
         rect::Rect,
-        renderer::{RenderContext, Renderer},
+        renderer::{Camera, RenderContext, Renderer},
         surface::{SurfaceInfo, WindowEvent},
         texture::{PixelFormat, TextureDescriptor, TextureId},
         transform::Transform,

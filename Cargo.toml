@@ -52,6 +52,7 @@ uuid = { version = "1.8", features = ["serde", "v7"] }
 zip = "2"
 chrono = "0.4"
 tempfile = "3.9"
+futures = "0.3"
 
 # gnostic gamer modules
 gg-core = { path = "projects/core/gg-core" }
@@ -95,6 +96,7 @@ gg-editor-preview = { path = "projects/editor/gg-editor-preview" }
 gg-editor-scene-galgame = { path = "projects/editor/gg-editor-scene-galgame" }
 gg-editor-script = { path = "projects/editor/gg-editor-script" }
 gg-editor-lsp = { path = "projects/editor/gg-editor-lsp" }
+gg-lsp = { path = "projects/editor/gg-editor-lsp" }
 
 # gnostic gamer platforms
 gg-platform-mobile = { path = "projects/platforms/gg-platform-mobile" }
@@ -118,3 +120,9 @@ gg-galgame-editor-scene = { path = "projects/engines/gg-galgame-editor-scene" }
 oak-core = { path = "../oaks/projects/oak-core" }
 oak-von = { path = "../oaks/examples/oak-von" }
 oak-valkyrie = { path = "../oaks/examples/oak-valkyrie" }
+oak-highlight = { path = "../oaks/projects/oak-highlight" }
+oak-pretty-print = { path = "../oaks/projects/oak-pretty-print" }
+oak-lsp = { path = "../oaks/projects/oak-lsp" }
+oak-hover = { path = "../oaks/projects/oak-hover" }
+oak-vfs = { path = "../oaks/projects/oak-vfs" }
+oak-mcp = { path = "../oaks/projects/oak-mcp" }

@@ -5,6 +5,8 @@
 pub mod build;
 pub mod generate;
 pub mod init;
+pub mod lsp;
+pub mod mcp;
 pub mod meta;
 pub mod mod_converter;
 pub mod new_game;

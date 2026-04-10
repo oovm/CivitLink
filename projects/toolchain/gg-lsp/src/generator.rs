@@ -117,7 +117,7 @@ impl EngineFactory {
         if !manifest.modules.gom.is_empty() {
             match manifest.modules.gom.as_str() {
                 "VisualNovel" => {
-                    deps.push_str("gg-galgame-schema = { path = \"../../plugins/gg-galgame-schema\" }\n");
+                    deps.push_str("galgame-schema = { path = \"../../plugins/galgame-schema\" }\n");
                 }
                 _ => {
                     let gom_lower = manifest.modules.gom.to_lowercase();

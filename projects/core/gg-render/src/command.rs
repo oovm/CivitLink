@@ -60,6 +60,39 @@ pub enum DrawCommand {
         /// 圆角半径
         corner_radius: f32,
     },
+    /// 线段绘制
+    Line {
+        /// 起点 `[x, y]`
+        start: [f32; 2],
+        /// 终点 `[x, y]`
+        end: [f32; 2],
+        /// 线段颜色
+        color: Color,
+        /// 线段宽度（像素）
+        width: f32,
+    },
+    /// 圆形绘制
+    Circle {
+        /// 圆心 `[x, y]`
+        center: [f32; 2],
+        /// 半径（像素）
+        radius: f32,
+        /// 填充颜色
+        color: Color,
+        /// 是否填充；`true` 为填充，`false` 为描边
+        filled: bool,
+    },
+    /// 椭圆绘制
+    Ellipse {
+        /// 中心 `[x, y]`
+        center: [f32; 2],
+        /// 半轴 `[rx, ry]`
+        radii: [f32; 2],
+        /// 填充颜色
+        color: Color,
+        /// 是否填充；`true` 为填充，`false` 为描边
+        filled: bool,
+    },
     /// 过渡动画
     Transition {
         /// 旧纹理

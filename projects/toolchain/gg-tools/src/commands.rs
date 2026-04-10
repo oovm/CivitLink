@@ -108,5 +108,20 @@ pub enum Commands {
         /// 递归处理目录
         #[arg(short, long, default_value_t = true)]
         recursive: bool,
+        /// 先读取再输出（重新生成 meta 文件）
+        #[arg(long, default_value_t = false)]
+        regenerate: bool,
+    },
+    /// 启动 LSP 服务
+    Lsp {
+        /// 工作目录
+        #[arg(long, default_value = ".")]
+        workspace: String,
+    },
+    /// 启动 MCP 服务
+    Mcp {
+        /// 工作目录
+        #[arg(long, default_value = ".")]
+        workspace: String,
     },
 }
