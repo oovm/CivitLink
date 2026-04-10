@@ -1,11 +1,13 @@
 [package]
 name = "gg-plugin-save"
-version = "0.1.0"
-edition = "2021"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
-gg-core = { path = "../../core/gg-core" }
-gg-ecs = { path = "../../core/gg-ecs" }
-gg-galgame-schema = { path = "../gg-galgame-schema" }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-galgame-schema = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

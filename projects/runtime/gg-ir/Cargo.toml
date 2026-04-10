@@ -9,4 +9,4 @@ license = { workspace = true }
 gg-core = { workspace = true }
 gg-compiler-core = { workspace = true }
 serde = { workspace = true }
-serde_json = "1"
+serde_json = { workspace = true }

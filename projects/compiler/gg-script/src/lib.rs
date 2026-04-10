@@ -275,80 +275,32 @@ mod tests {
         assert!(!ir_module.functions[0].instructions.is_empty());
     }
 
-    /// 端到端测试：源码 → IR → 优化 → 字节码 → 执行
+    /// 端到端测试：源码 → IR → VM 执行
     #[test]
     fn test_end_to_end_pipeline_arithmetic() {
-        use gg_bytecode::format::{BytecodeFunction, BytecodeInstruction, BytecodeModule, BytecodeValue};
+        use gg_vm::{Vm, VmResult};
         use gg_bytecode::host::Host;
-        use gg_bytecode::interpreter::{BytecodeInterpreter, InterpretResult};
+        use gg_bytecode::format::BytecodeValue;
 
         struct TestHost {
-            entities: Vec<u64>,
             log: Vec<String>,
         }
 
         impl TestHost {
             fn new() -> Self {
-                Self {
-                    entities: Vec::new(),
-                    log: Vec::new(),
-                }
+                Self { log: Vec::new() }
             }
         }
 
         impl Host for TestHost {
-            fn spawn_entity(&mut self) -> u64 {
-                let id = self.entities.len() as u64;
-                self.entities.push(id);
-                id
-            }
-
+            fn spawn_entity(&mut self) -> u64 { 0 }
             fn despawn_entity(&mut self, _entity_id: u64) {}
-
-            fn add_component(&mut self, entity_id: u64, component_type: &str, value: BytecodeValue) {
-                self.log.push(format!(
-                    "add_component({}, {}, {:?})",
-                    entity_id, component_type, value
-                ));
-            }
-
-            fn get_component_field(
-                &mut self,
-                _entity_id: u64,
-                _component_type: &str,
-                _field: &str,
-            ) -> Option<BytecodeValue> {
-                None
-            }
-
-            fn set_component_field(
-                &mut self,
-                entity_id: u64,
-                component_type: &str,
-                field: &str,
-                value: BytecodeValue,
-            ) {
-                self.log.push(format!(
-                    "set_component_field({}, {}, {}, {:?})",
-                    entity_id, component_type, field, value
-                ));
-            }
-
-            fn call_host_function(
-                &mut self,
-                name: &str,
-                args: Vec<BytecodeValue>,
-            ) -> Option<BytecodeValue> {
+            fn add_component(&mut self, _entity_id: u64, _component_type: &str, _value: BytecodeValue) {}
+            fn get_component_field(&mut self, _entity_id: u64, _component_type: &str, _field: &str) -> Option<BytecodeValue> { None }
+            fn set_component_field(&mut self, _entity_id: u64, _component_type: &str, _field: &str, _value: BytecodeValue) {}
+            fn call_host_function(&mut self, name: &str, args: Vec<BytecodeValue>) -> Option<BytecodeValue> {
                 self.log.push(format!("call_host_function({}, {:?})", name, args));
-                match name {
-                    "print" => None,
-                    "spawn_entity" => {
-                        let id = self.entities.len() as u64;
-                        self.entities.push(id);
-                        Some(BytecodeValue::Entity(id))
-                    }
-                    _ => None,
-                }
+                None
             }
         }
 
@@ -366,11 +318,12 @@ mod tests {
         assert_eq!(module.functions.len(), 1);
         assert_eq!(module.functions[0].name, "calc");
 
-        let mut interpreter = BytecodeInterpreter::new();
+        let mut vm = Vm::new();
         let mut host = TestHost::new();
-        let result = interpreter.execute(&module, "calc", &mut host);
+        let result = vm.execute_ir(&module, "calc", &mut host);
 
-        assert!(matches!(result, InterpretResult::Ok | InterpretResult::Return(_)));
+        assert!(matches!(result, VmResult::Ok | VmResult::Return(_)));
         assert!(host.log.iter().any(|l| l.contains("call_host_function(print")));
+    }
     }
 }

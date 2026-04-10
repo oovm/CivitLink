@@ -1,11 +1,13 @@
 [package]
 name = "gg-plugin-portrait"
-version = "0.1.0"
-edition = "2021"
+version = { workspace = true }
+edition = { workspace = true }
+authors = ["灵之镜有限公司"]
+license = "MIT"
 
 [dependencies]
-gg-core = { path = "../../core/gg-core" }
-gg-ecs = { path = "../../core/gg-ecs" }
-gg-asset = { path = "../../core/gg-asset" }
-gg-galgame-schema = { path = "../gg-galgame-schema" }
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-asset = { workspace = true }
+gg-galgame-schema = { workspace = true }
 gg-render = { workspace = true }

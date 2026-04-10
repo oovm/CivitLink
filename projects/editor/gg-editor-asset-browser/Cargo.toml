@@ -1,12 +1,14 @@
 [package]
 name = "gg-editor-asset-browser"
-version = "0.1.0"
-edition = "2021"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
-gg-core = { path = "../../core/gg-core" }
-gg-ecs = { path = "../../core/gg-ecs" }
-gg-asset = { path = "../../core/gg-asset" }
-gg-galgame-schema = { path = "../../plugins/gg-galgame-schema" }
-gg-editor-shell = { path = "../gg-editor-shell" }
-gg-ui = { path = "../../plugins/gg-ui" }
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-asset = { workspace = true }
+gg-galgame-schema = { workspace = true }
+gg-editor-shell = { workspace = true }
+gg-ui = { workspace = true }

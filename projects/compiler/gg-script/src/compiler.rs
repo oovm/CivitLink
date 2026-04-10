@@ -213,8 +213,18 @@ impl ValkyrieCompiler {
                         oak_valkyrie::ast::StringSegment::Interpolation { .. } => "",
                     })
                     .collect::<String>();
-                let idx = self.module.add_constant(IrValue::String(content));
-                instructions.push(OpCode::LoadConst(idx));
+                if content.parse::<i64>().is_ok() {
+                    let value = content.parse::<i64>().unwrap();
+                    let idx = self.module.add_constant(IrValue::Int(value));
+                    instructions.push(OpCode::LoadConst(idx));
+                } else if content.parse::<f64>().is_ok() {
+                    let value = content.parse::<f64>().unwrap();
+                    let idx = self.module.add_constant(IrValue::Float(value));
+                    instructions.push(OpCode::LoadConst(idx));
+                } else {
+                    let idx = self.module.add_constant(IrValue::String(content));
+                    instructions.push(OpCode::LoadConst(idx));
+                }
             }
 
             Expr::Binary {

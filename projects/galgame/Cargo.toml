@@ -1,21 +1,23 @@
 [package]
 name = "gg-galgame"
-version = "0.1.0"
-edition = "2024"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
-gg-core = { path = "../core/gg-core" }
-gg-ecs = { path = "../core/gg-ecs" }
-gg-asset = { path = "../core/gg-asset" }
-gg-platform-desktop = { path = "../platforms/gg-platform-desktop" }
-gg-galgame-schema = { path = "../plugins/gg-galgame-schema" }
-gg-plugin-dialogue = { path = "../plugins/gg-plugin-dialogue" }
-gg-plugin-portrait = { path = "../plugins/gg-plugin-portrait" }
-gg-plugin-scene-transition = { path = "../plugins/gg-plugin-scene-transition" }
-gg-plugin-save = { path = "../plugins/gg-plugin-save" }
-gg-render = { path = "../core/gg-render" }
-gg-render-wgpu = { path = "../runtime/gg-render-wgpu" }
-gg-ui = { path = "../plugins/gg-ui" }
-winit = "0.30"
-serde = { version = "1", features = ["derive"] }
-toml = "0.8"
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-asset = { workspace = true }
+gg-platform-desktop = { workspace = true }
+gg-galgame-schema = { workspace = true }
+gg-plugin-dialogue = { workspace = true }
+gg-plugin-portrait = { workspace = true }
+gg-plugin-scene-transition = { workspace = true }
+gg-plugin-save = { workspace = true }
+gg-render = { workspace = true }
+gg-render-wgpu = { workspace = true }
+gg-ui = { workspace = true }
+winit = { workspace = true }
+serde = { workspace = true }
+toml = { workspace = true }

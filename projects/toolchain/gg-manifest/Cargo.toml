@@ -8,6 +8,6 @@ license = { workspace = true }
 [dependencies]
 gg-core = { workspace = true }
 serde = { workspace = true }
-toml = "0.8"
+toml = { workspace = true }
 
 [dev-dependencies]

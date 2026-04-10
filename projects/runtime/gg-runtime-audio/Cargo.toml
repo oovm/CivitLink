@@ -7,8 +7,8 @@ license = { workspace = true }
 
 [dependencies]
 gg-core = { workspace = true }
-cpal = { version = "0.15", optional = true }
-rodio = { version = "0.19", optional = true }
+cpal = { workspace = true, optional = true }
+rodio = { workspace = true, optional = true }
 
 [features]
 default = []

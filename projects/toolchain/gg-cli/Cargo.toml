@@ -6,7 +6,7 @@ authors = { workspace = true }
 license = { workspace = true }
 
 [[bin]]
-name = "gg-cli"
+name = "gg"
 path = "src/main.rs"
 
 [dependencies]

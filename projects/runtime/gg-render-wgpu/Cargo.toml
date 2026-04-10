@@ -8,9 +8,9 @@ license = { workspace = true }
 [dependencies]
 gg-core = { workspace = true }
 gg-render = { workspace = true }
-wgpu = "24"
-winit = "0.30"
-image = "0.25"
-ab_glyph = "0.2"
-bytemuck = { version = "1", features = ["derive"] }
-pollster = "0.4"
+wgpu = { workspace = true }
+winit = { workspace = true }
+image = { workspace = true }
+ab_glyph = { workspace = true }
+bytemuck = { workspace = true }
+pollster = { workspace = true }

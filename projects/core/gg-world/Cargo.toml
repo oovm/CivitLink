@@ -1,0 +1,12 @@
+[package]
+name = "gg-world"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-ecs = { workspace = true }
+gg-asset = { workspace = true }
+gg-reflection = { workspace = true }
+gg-error = { workspace = true }

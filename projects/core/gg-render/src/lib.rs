@@ -1,19 +1,6 @@
 #![warn(missing_docs)]
 
-//! GG 引擎渲染硬件抽象层
-//!
-//! 提供与具体图形 API 无关的渲染抽象接口，
-//! 支持精灵绘制、文本渲染、矩形绘制和场景过渡动画。
-//!
-//! # 模块结构
-//!
-//! - [`color`] - 颜色类型
-//! - [`command`] - 绘制命令
-//! - [`surface`] - 渲染表面与窗口事件
-//! - [`texture`] - 纹理标识与描述
-//! - [`renderer`] - 渲染器 trait 与渲染上下文
-//! - [`transform`] - 二维变换
-//! - [`rect`] - 矩形区域
+#![doc = include_str!("readme.md")]
 
 /// 颜色类型
 pub mod color;

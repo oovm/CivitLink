@@ -1,19 +1,21 @@
 [package]
 name = "galgame-cli-demo"
-version = "0.1.0"
-edition = "2021"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
 
 [[bin]]
 name = "galgame-cli-demo"
 path = "src/main.rs"
 
 [dependencies]
-gg-core = { path = "../../projects/core/gg-core" }
-gg-ecs = { path = "../../projects/core/gg-ecs" }
-gg-asset = { path = "../../projects/core/gg-asset" }
-gg-runtime-core = { path = "../../projects/runtime/gg-runtime-core" }
-gg-galgame-schema = { path = "../../projects/plugins/gg-galgame-schema" }
-gg-plugin-dialogue = { path = "../../projects/plugins/gg-plugin-dialogue" }
-gg-plugin-portrait = { path = "../../projects/plugins/gg-plugin-portrait" }
-gg-plugin-scene-transition = { path = "../../projects/plugins/gg-plugin-scene-transition" }
-gg-plugin-save = { path = "../../projects/plugins/gg-plugin-save" }
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-asset = { workspace = true }
+gg-runtime-core = { workspace = true }
+gg-galgame-schema = { workspace = true }
+gg-plugin-dialogue = { workspace = true }
+gg-plugin-portrait = { workspace = true }
+gg-plugin-scene-transition = { workspace = true }
+gg-plugin-save = { workspace = true }
