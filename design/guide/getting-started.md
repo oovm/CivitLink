@@ -82,7 +82,7 @@ cd my-game-engine
 [package]
 name = "my-game-engine"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 # 核心框架

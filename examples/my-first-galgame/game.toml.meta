@@ -3,14 +3,14 @@ MetaFile({
     asset: Asset({
         type: "config",
         path: "examples/my-first-galgame/game.toml",
-        guid: "000069d8-8dfa-739f-dfe6-6f65b0000000",
+        guid: "000069d8-8fb5-7f31-98ee-904cd8000000",
         name: "game.toml",
         size: 191,
-        modified: "2026-04-10T05:43:22.628Z",
+        modified: "2026-04-10T05:50:45.463Z",
     }),
     import_settings: None,
     dependencies: [],
     references: [],
-    timestamp: "2026-04-10T05:43:22.628Z",
+    timestamp: "2026-04-10T05:50:45.463Z",
     hash: None,
 })

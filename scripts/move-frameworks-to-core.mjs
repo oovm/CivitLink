@@ -44,7 +44,7 @@ async function main() {
   const coreCargoContent = `[package]
 name = "gwg-core"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 description = "GWG Engine 核心框架"
 license = "MIT"
 

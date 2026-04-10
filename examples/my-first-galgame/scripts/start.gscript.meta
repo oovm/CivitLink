@@ -3,14 +3,14 @@ MetaFile({
     asset: Asset({
         type: "script",
         path: "examples/my-first-galgame/scripts/start.gscript",
-        guid: "000069d8-8dfa-7b30-b834-286930000000",
+        guid: "000069d8-8fb5-7338-97aa-ab63d8000000",
         name: "start.gscript",
         size: 471,
-        modified: "2026-04-10T05:43:22.636Z",
+        modified: "2026-04-10T05:50:45.469Z",
     }),
     import_settings: None,
     dependencies: [],
     references: [],
-    timestamp: "2026-04-10T05:43:22.636Z",
+    timestamp: "2026-04-10T05:50:45.469Z",
     hash: None,
 })
