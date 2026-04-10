@@ -3,6 +3,7 @@ use std::{path::Path, sync::Arc};
 use ab_glyph::{Font, ScaleFont};
 use gg_core::{GError, GErrorKind, GResult};
 use gg_render::{Camera, DrawCommand, RenderContext, Renderer, SurfaceInfo, TextureId, Transform, TransitionKind, WindowEvent};
+use wgpu::util::DeviceExt;
 
 #[cfg(not(target_arch = "wasm32"))]
 use winit::{
@@ -20,6 +21,20 @@ use crate::{
     texture_cache::TextureCache,
     uniform_pool::UniformPool,
 };
+
+/// 裁剪矩形
+///
+/// 用于渲染通道中的像素裁剪区域。
+struct ScissorRect {
+    /// x 坐标
+    x: u32,
+    /// y 坐标
+    y: u32,
+    /// 宽度
+    w: u32,
+    /// 高度
+    h: u32,
+}
 
 /// 离屏渲染目标
 ///
@@ -484,10 +499,10 @@ impl WgpuRenderer {
 
         let sprite_batches = sprite_batcher.flush();
 
-        let encoder =
+        let mut encoder =
             self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_target_encoder") });
 
-        let scissor_rect = context.clip_rect().map(|r| wgpu::Rect {
+        let scissor_rect = context.clip_rect().map(|r| ScissorRect {
             x: r.x.max(0.0) as u32,
             y: r.y.max(0.0) as u32,
             w: r.width.max(0.0) as u32,
@@ -499,11 +514,13 @@ impl WgpuRenderer {
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &target.view,
                 resolve_target: None,
+                depth_slice: None,
                 ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store },
             })],
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
 
         if let Some(rect) = &scissor_rect {
@@ -593,7 +610,7 @@ impl WgpuRenderer {
 
         let (surface, device, queue, config) = pollster::block_on(async {
             let instance =
-                wgpu::Instance::new(&wgpu::InstanceDescriptor { backends: wgpu::Backends::all(), ..Default::default() });
+                wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle());
 
             let surface = instance
                 .create_surface(Arc::clone(&window))
@@ -606,7 +623,7 @@ impl WgpuRenderer {
                     force_fallback_adapter: false,
                 })
                 .await
-                .ok_or(GError { kind: GErrorKind::Platform, message: "无法找到合适的图形适配器".to_string() })?;
+                .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法找到合适的图形适配器: {}", e) })?;
 
             let (device, queue) = adapter
                 .request_device(
@@ -616,7 +633,6 @@ impl WgpuRenderer {
                         required_limits: wgpu::Limits::default(),
                         ..Default::default()
                     },
-                    None,
                 )
                 .await
                 .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法创建图形设备: {}", e) })?;
@@ -874,10 +890,25 @@ struct IndexedCommand {
 impl Renderer for WgpuRenderer {
     fn begin_frame(&mut self) -> GResult<()> {
         self.uniform_pool.recycle_frame();
-        let output = self
-            .surface
-            .get_current_texture()
-            .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法获取当前帧纹理: {:?}", e) })?;
+        let output = match self.surface.get_current_texture() {
+            wgpu::CurrentSurfaceTexture::Success(surface_texture) => surface_texture,
+            wgpu::CurrentSurfaceTexture::Suboptimal(surface_texture) => surface_texture,
+            wgpu::CurrentSurfaceTexture::Timeout => {
+                return Err(GError { kind: GErrorKind::Platform, message: "获取当前帧纹理超时".to_string() });
+            }
+            wgpu::CurrentSurfaceTexture::Occluded => {
+                return Err(GError { kind: GErrorKind::Platform, message: "获取当前帧纹理: 窗口被遮挡".to_string() });
+            }
+            wgpu::CurrentSurfaceTexture::Outdated => {
+                return Err(GError { kind: GErrorKind::Platform, message: "获取当前帧纹理: 表面已过时".to_string() });
+            }
+            wgpu::CurrentSurfaceTexture::Lost => {
+                return Err(GError { kind: GErrorKind::Platform, message: "获取当前帧纹理: 表面已丢失".to_string() });
+            }
+            wgpu::CurrentSurfaceTexture::Validation => {
+                return Err(GError { kind: GErrorKind::Platform, message: "获取当前帧纹理: 验证错误".to_string() });
+            }
+        };
         self.frame_output = Some(output);
         self.command_encoder =
             Some(self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_encoder") }));
@@ -1109,7 +1140,7 @@ impl Renderer for WgpuRenderer {
             })?;
         let view = frame.texture.create_view(&wgpu::TextureViewDescriptor::default());
 
-        let scissor_rect = context.clip_rect().map(|r| wgpu::Rect {
+        let scissor_rect = context.clip_rect().map(|r| ScissorRect {
             x: r.x.max(0.0) as u32,
             y: r.y.max(0.0) as u32,
             w: r.width.max(0.0) as u32,
@@ -1121,11 +1152,13 @@ impl Renderer for WgpuRenderer {
             color_attachments: &[Some(wgpu::RenderPassColorAttachment {
                 view: &view,
                 resolve_target: None,
+                depth_slice: None,
                 ops: wgpu::Operations { load: wgpu::LoadOp::Clear(wgpu::Color::BLACK), store: wgpu::StoreOp::Store },
             })],
             depth_stencil_attachment: None,
             timestamp_writes: None,
             occlusion_query_set: None,
+            multiview_mask: None,
         });
 
         if let Some(rect) = &scissor_rect {

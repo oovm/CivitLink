@@ -311,17 +311,23 @@ impl World {
 
         let has_component = self.archetype_graph.get(old_archetype_id).map(|a| a.has_component(type_id)).unwrap_or(false);
 
-        if !has_component {
+        if has_component {
+            let archetype = self.archetype_graph.get_mut(old_archetype_id).unwrap();
+            archetype.add_component_raw(location.row, component, type_id);
+        } else {
             let mut new_types =
                 self.archetype_graph.get(old_archetype_id).map(|a| a.component_types().clone()).unwrap_or_default();
             new_types.insert(type_id);
 
             let new_archetype_id = self.archetype_graph.get_or_create(new_types);
             self.migrate_entity(entity, location, old_archetype_id, new_archetype_id, &[]);
+
+            let new_location = self.entity_allocator.get_location(entity).unwrap();
+            let archetype = self.archetype_graph.get_mut(new_archetype_id).unwrap();
+            archetype.add_component_raw(new_location.row, component, type_id);
         }
 
         self.mark_changed(entity, type_id);
-        let _ = component;
         Ok(())
     }
 
@@ -619,3 +625,70 @@ mod tests_component_derive {
         assert_eq!(name.0, "Hero");
     }
 }
+
+#[cfg(test)]
+mod tests_add_component_raw {
+    use super::*;
+
+    #[derive(Debug, PartialEq, Clone)]
+    struct Position {
+        x: f32,
+        y: f32,
+    }
+
+    #[derive(Debug, PartialEq, Clone)]
+    struct Velocity {
+        dx: f32,
+        dy: f32,
+    }
+
+    #[test]
+    fn test_add_component_raw_basic() {
+        let mut world = World::new();
+        let entity = world.spawn().id();
+
+        let pos = Position { x: 1.0, y: 2.0 };
+        let type_id = TypeId::of::<Position>();
+        world.add_component_raw(entity, Box::new(pos), type_id).unwrap();
+
+        let result = world.get_component::<Position>(entity);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().x, 1.0);
+        assert_eq!(result.unwrap().y, 2.0);
+    }
+
+    #[test]
+    fn test_add_component_raw_overwrite() {
+        let mut world = World::new();
+        let entity = world.spawn().id();
+
+        world.add_component(entity, Position { x: 1.0, y: 2.0 }).unwrap();
+
+        let new_pos = Position { x: 3.0, y: 4.0 };
+        world.add_component_raw(entity, Box::new(new_pos), TypeId::of::<Position>()).unwrap();
+
+        let result = world.get_component::<Position>(entity).unwrap();
+        assert_eq!(result.x, 3.0);
+        assert_eq!(result.y, 4.0);
+    }
+
+    #[test]
+    fn test_add_component_raw_with_migration() {
+        let mut world = World::new();
+        let entity = world.spawn().id();
+
+        world.add_component(entity, Position { x: 1.0, y: 2.0 }).unwrap();
+
+        let vel = Velocity { dx: 0.5, dy: 0.3 };
+        world.add_component_raw(entity, Box::new(vel), TypeId::of::<Velocity>()).unwrap();
+
+        let pos = world.get_component::<Position>(entity).unwrap();
+        assert_eq!(pos.x, 1.0);
+        assert_eq!(pos.y, 2.0);
+
+        let vel = world.get_component::<Velocity>(entity).unwrap();
+        assert_eq!(vel.dx, 0.5);
+        assert_eq!(vel.dy, 0.3);
+    }
+}
+

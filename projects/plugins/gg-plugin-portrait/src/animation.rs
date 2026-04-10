@@ -137,6 +137,8 @@ impl PortraitManager {
             is_speaking: false,
             z_order: 0,
             texture_id: TextureId::INVALID,
+            texture_width: 200.0,
+            texture_height: 400.0,
         };
         world.add_component(entity, state)?;
         let animation = PortraitAnimationState::new(transition);

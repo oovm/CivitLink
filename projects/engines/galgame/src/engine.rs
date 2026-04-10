@@ -231,7 +231,7 @@ impl GalgameEngine {
         }
 
         let has_active_choices = self.world
-            .get_component::<ChoiceState>(Entity::new(0, 0))
+            .get_resource::<ChoiceState>()
             .map(|c| c.is_active)
             .unwrap_or(false);
 

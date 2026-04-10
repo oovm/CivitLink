@@ -206,6 +206,12 @@ pub struct PortraitState {
     /// 立绘纹理标识
     #[serde(skip)]
     pub texture_id: TextureId,
+    /// 立绘纹理宽度（像素），未加载时为 200.0
+    #[serde(skip)]
+    pub texture_width: f32,
+    /// 立绘纹理高度（像素），未加载时为 400.0
+    #[serde(skip)]
+    pub texture_height: f32,
 }
 
 impl Component for PortraitState {}

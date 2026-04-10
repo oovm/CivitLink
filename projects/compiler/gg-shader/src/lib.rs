@@ -8,13 +8,9 @@
 
 /// 内置着色器模块
 pub mod builtin;
-/// gs 语言 AST 模块
-pub mod ast;
 /// GG Shader 编译器公共 API
 pub mod compiler;
 /// gs AST → naga IR 转换模块
 pub mod lower;
-/// gs 语言解析器模块
-pub mod parser;
 /// naga IR 序列化模块
 pub mod serialize;

@@ -1,5 +1,6 @@
 //! Shader 文件编译模块
-//! 将 .shader 文件解析为结构化数据，并编译 Valkyrie 兼容代码为字节码
+//! 将 .shader 文件解析为结构化数据，编译 Valkyrie 兼容代码为字节码，
+//! 并将 GPU 着色器编译为 naga IR 序列化产物
 
 use gg_bytecode::BytecodeWriter;
 use gg_compiler_core::{
@@ -9,6 +10,7 @@ use gg_compiler_core::{
 };
 use gg_core::{GError, GErrorKind, GResult};
 use gg_script::ScriptCompiler;
+use gg_shader::compiler::GgShaderCompiler;
 
 /// Shader 源码产物类型名称
 const SHADER_SOURCE_TYPE: &str = "shader_source";
@@ -536,42 +538,49 @@ impl Transformer for ShaderTransformer {
                 }
             }
 
-            let mut gpu_shader_text = String::new();
+            let gpu_compiler = GgShaderCompiler::new();
+            let mut gpu_shader_data = Vec::new();
+
             for shader in &shader_file.shaders {
-                gpu_shader_text.push_str(&format!("shader {} by {} {{\n", shader.name, shader.kind));
+                let shader_source = format!(
+                    "shader {} by {} {{\n{}\n{}\n{}\n{}\n}}\n",
+                    shader.name,
+                    shader.kind,
+                    shader.uniforms.as_deref().unwrap_or(""),
+                    shader.render_states.as_deref().unwrap_or(""),
+                    shader.functions.iter().map(|f| {
+                        let kw = match &f.kind {
+                            ShaderFunctionKind::Vertex => "vertex",
+                            ShaderFunctionKind::Fragment => "fragment",
+                            ShaderFunctionKind::Compute => "compute",
+                        };
+                        let ret = match &f.return_type {
+                            Some(rt) => format!(" -> {}", rt),
+                            None => String::new(),
+                        };
+                        format!("{}({}){} {{\n{}\n}}", kw, f.params, ret, f.body)
+                    }).collect::<Vec<_>>().join("\n"),
+                    shader.fallback.as_deref().unwrap_or("")
+                );
 
-                if let Some(ref u) = shader.uniforms {
-                    gpu_shader_text.push_str(&format!("  uniforms {{\n{}\n  }}\n", u));
+                match gpu_compiler.compile_to_bytes(&shader_source) {
+                    Ok(naga_bytes) => {
+                        gpu_shader_data.extend_from_slice(&naga_bytes);
+                    }
+                    Err(e) => {
+                        context.add_diagnostic(
+                            DiagnosticLevel::Warning,
+                            self.name(),
+                            &format!("Failed to compile GPU shader '{}' to naga IR: {}. Falling back to text format.", shader.name, e),
+                        );
+                        gpu_shader_data.extend_from_slice(shader_source.as_bytes());
+                    }
                 }
-
-                if let Some(ref rs) = shader.render_states {
-                    gpu_shader_text.push_str(&format!("  render_states {{\n{}\n  }}\n", rs));
-                }
-
-                for func in &shader.functions {
-                    let keyword = match &func.kind {
-                        ShaderFunctionKind::Vertex => "vertex",
-                        ShaderFunctionKind::Fragment => "fragment",
-                        ShaderFunctionKind::Compute => "compute",
-                    };
-                    let return_part = match &func.return_type {
-                        Some(rt) => format!(" -> {}", rt),
-                        None => String::new(),
-                    };
-                    gpu_shader_text
-                        .push_str(&format!("  {}({}){} {{\n{}\n  }}\n", keyword, func.params, return_part, func.body));
-                }
-
-                if let Some(ref fb) = shader.fallback {
-                    gpu_shader_text.push_str(&format!("  fallback {{\n{}\n  }}\n", fb));
-                }
-
-                gpu_shader_text.push_str("}\n");
             }
 
-            if !gpu_shader_text.is_empty() {
+            if !gpu_shader_data.is_empty() {
                 let gpu_key = ArtifactKey::new(GPU_SHADER_TYPE, &key.id);
-                output.insert(Artifact::new(gpu_key, gpu_shader_text.into_bytes()));
+                output.insert(Artifact::new(gpu_key, gpu_shader_data));
             }
         }
 

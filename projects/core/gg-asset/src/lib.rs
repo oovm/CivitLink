@@ -256,14 +256,12 @@ pub struct AssetServer {
     loaders: HashMap<TypeId, Box<dyn ErasedAssetLoader>>,
     /// 资源加载状态，按资源唯一标识索引
     load_states: DashMap<u64, LoadState>,
-    /// 资源加载完成回调，按资源类型索引
-    on_load_callbacks: HashMap<TypeId, Vec<Box<dyn Fn(u64) + Send + Sync>>>,
 }
 
 impl AssetServer {
     /// 创建新的资源服务器
     pub fn new() -> Self {
-        Self { cache: AssetCache::new(), loaders: HashMap::new(), load_states: DashMap::new(), on_load_callbacks: HashMap::new() }
+        Self { cache: AssetCache::new(), loaders: HashMap::new(), load_states: DashMap::new() }
     }
 
     /// 注册资源加载器
@@ -272,16 +270,6 @@ impl AssetServer {
     /// 后续可通过 `load` 方法异步加载该类型的资源。
     pub fn register_loader<T: Asset, L: AssetLoader<T> + Send + Sync + 'static>(&mut self, loader: L) {
         self.loaders.insert(TypeId::of::<T>(), Box::new(TypedAssetLoader { loader, _marker: PhantomData }));
-    }
-
-    /// 注册资源加载完成回调
-    ///
-    /// 当指定类型的资源异步加载完成时，回调将被调用，
-    /// 传入加载完成的资源 Handle ID。
-    /// 同步添加的资源（通过 `add_asset`）不会触发回调。
-    pub fn on_load<T: Asset + 'static>(&mut self, callback: impl Fn(u64) + Send + Sync + 'static) {
-        let type_id = TypeId::of::<T>();
-        self.on_load_callbacks.entry(type_id).or_default().push(Box::new(callback));
     }
 
     /// 异步加载指定路径的资源
@@ -308,11 +296,6 @@ impl AssetServer {
                 let asset = asset_box.downcast::<T>().map_err(|_| AssetError::TypeMismatch)?;
                 let handle = self.cache.insert_with_id(id, path, *asset);
                 self.load_states.insert(id, LoadState::Loaded);
-                if let Some(callbacks) = self.on_load_callbacks.get(&type_id) {
-                    for callback in callbacks {
-                        callback(handle.id);
-                    }
-                }
                 Ok(handle)
             }
             Err(e) => {
@@ -545,60 +528,4 @@ pub mod prelude {
         Asset, AssetCache, AssetError, AssetLoader, AssetServer, BinaryAsset, BinaryLoader, Handle, ImageAsset,
         ImageLoader, LoadState, TextAsset, TextLoader,
     };
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use std::sync::{Arc, Mutex};
-
-    struct TestAsset {
-        data: String,
-    }
-
-    impl Asset for TestAsset {
-        fn type_name() -> &'static str {
-            "TestAsset"
-        }
-    }
-
-    struct TestLoader;
-
-    impl AssetLoader<TestAsset> for TestLoader {
-        async fn load(&self, _path: &Path) -> Result<TestAsset, AssetError> {
-            Ok(TestAsset { data: "loaded".to_string() })
-        }
-    }
-
-    #[test]
-    fn test_on_load_callback_invoked() {
-        let mut server = AssetServer::new();
-        server.register_loader::<TestAsset, TestLoader>(TestLoader);
-
-        let called = Arc::new(Mutex::new(false));
-        let called_clone = called.clone();
-        server.on_load::<TestAsset>(move |id| {
-            *called_clone.lock().unwrap() = true;
-        });
-
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let handle = rt.block_on(server.load::<TestAsset>("test.asset")).unwrap();
-
-        assert!(*called.lock().unwrap());
-    }
-
-    #[test]
-    fn test_add_asset_no_callback() {
-        let mut server = AssetServer::new();
-
-        let called = Arc::new(Mutex::new(false));
-        let called_clone = called.clone();
-        server.on_load::<TestAsset>(move |_id| {
-            *called_clone.lock().unwrap() = true;
-        });
-
-        server.add_asset("test.asset", TestAsset { data: "direct".to_string() });
-
-        assert!(!*called.lock().unwrap());
-    }
 }

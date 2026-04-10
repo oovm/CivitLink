@@ -127,6 +127,25 @@ impl Archetype {
         self.component_types.insert(TypeId::of::<T>());
     }
 
+    /// 添加类型擦除的组件到指定行
+    ///
+    /// 与 add_component 类似，但接受已装箱的类型擦除组件。
+    /// 通过类型 ID 查找或创建组件列，然后将组件数据写入对应位置。
+    pub fn add_component_raw(&mut self, row: usize, component: Box<dyn std::any::Any + Send + Sync>, type_id: std::any::TypeId) {
+        let column = self.storage.get_column_mut(type_id);
+        if let Some(column) = column {
+            column.ensure_len(row + 1);
+            let size = column.size();
+            if size > 0 {
+                unsafe {
+                    let src = &*component as *const (dyn std::any::Any + Send + Sync) as *const u8;
+                    column.set_raw(row, src, size);
+                }
+            }
+        }
+        self.component_types.insert(type_id);
+    }
+
     /// 确保组件列存在
     pub fn ensure_column<T: Component>(&mut self) {
         self.storage.get_or_add_column::<T>();

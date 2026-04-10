@@ -79,6 +79,10 @@ impl ValkyrieCompiler {
                 let mut instructions = Vec::new();
                 self.compile_statement(stmt, &mut instructions)?;
             }
+            Item::Shader(shader) => {
+                // 编译 shader 定义
+                // 目前我们只需要解析 shader 结构，具体的 shader 编译会在 gg-shader 中处理
+            }
             _ => {}
         }
         Ok(())

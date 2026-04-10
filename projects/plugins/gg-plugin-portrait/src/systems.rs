@@ -60,8 +60,8 @@ impl PortraitRenderSystem {
             let (x, y) = layout.calculate_position(&state.position);
             let transform = Transform { position: [x, y], z_index: state.z_order as f32, ..Transform::IDENTITY };
             let tint = Color::new(1.0, 1.0, 1.0, state.opacity);
-            let portrait_width = state.scale * 200.0;
-            let portrait_height = state.scale * 400.0;
+            let portrait_width = state.scale * state.texture_width;
+            let portrait_height = state.scale * state.texture_height;
             context.draw(DrawCommand::Sprite {
                 texture_id: state.texture_id,
                 transform,

@@ -1,17 +1,19 @@
 //! GG Shader 编译器公共 API
-//!
+//! 
 //! 提供从 gs 源码到 naga IR 的完整编译管线，
 //! 以及 naga IR 的序列化/反序列化和验证功能。
 
 use gg_core::{GError, GErrorKind, GResult};
 use naga;
+use oak_core::Builder;
+use oak_core::{SourceText, parser::ParseSession};
+use oak_valkyrie::{ValkyrieBuilder, ValkyrieLanguage};
 
 use crate::lower::GslLowerer;
-use crate::parser::GslParser;
 use crate::serialize;
 
 /// GG Shader 编译器
-///
+/// 
 /// 提供 gs 源码到 naga IR 的完整编译管线。
 /// 支持编译、序列化、反序列化和验证操作。
 pub struct GgShaderCompiler {
@@ -31,13 +33,33 @@ impl GgShaderCompiler {
     }
 
     /// 编译 gs 源码为 naga Module
-    ///
+    /// 
     /// 解析 gs 源码，将其转换为 naga IR 中间表示。
     /// 仅编译第一个着色器块，忽略命名空间和 micro 函数。
     pub fn compile(&self, source: &str) -> GResult<naga::Module> {
-        let shader_file = GslParser::parse(source)?;
+        // 使用 oak-valkyrie 解析 gs 源码
+        let language = ValkyrieLanguage::with_shader_support();
+        let builder = ValkyrieBuilder::new(&language);
+        let source_text = SourceText::new(source);
+        let mut cache = ParseSession::<ValkyrieLanguage>::default();
+        let diagnostics = builder.build(&source_text, &[], &mut cache);
 
-        let shader = shader_file.shaders.first().ok_or_else(|| GError {
+        let root = diagnostics.result.map_err(|e| GError {
+            kind: GErrorKind::Other,
+            message: format!("解析 gs 源码失败: {:?}", e),
+        })?;
+
+        // 打印所有解析到的项，以便调试
+        println!("解析到的项数量: {}", root.items.len());
+        for (i, item) in root.items.iter().enumerate() {
+            println!("项 {}: {:?}", i, item);
+        }
+
+        // 查找第一个 shader 定义
+        let shader = root.items.iter().find_map(|item| match item {
+            oak_valkyrie::ast::Item::Shader(shader) => Some(shader),
+            _ => None,
+        }).ok_or_else(|| GError {
             kind: GErrorKind::Other,
             message: "gs 源码中未找到着色器块".to_string(),
         })?;
@@ -51,7 +73,7 @@ impl GgShaderCompiler {
     }
 
     /// 编译 gs 源码为序列化的二进制数据
-    ///
+    /// 
     /// 等价于 `compile()` 后调用 `serialize_module()`。
     pub fn compile_to_bytes(&self, source: &str) -> GResult<Vec<u8>> {
         let module = self.compile(source)?;

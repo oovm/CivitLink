@@ -7,4 +7,6 @@ license = { workspace = true }
 
 [dependencies]
 gg-core = { workspace = true }
-naga = { workspace = true, features = ["wgsl-in", "wgsl-out"] }
+naga = { workspace = true }
+oak-core = { workspace = true }
+oak-valkyrie = { workspace = true }

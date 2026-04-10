@@ -1,5 +1,5 @@
 //! gs AST → naga IR 转换器
-//!
+//! 
 //! 将 gs 语言的类型化 AST 转换为 naga IR 中间表示，
 //! 支持顶点着色器、片段着色器、计算着色器和 uniforms。
 
@@ -7,12 +7,11 @@ use std::collections::HashMap;
 
 use gg_core::{GError, GErrorKind, GResult};
 use naga;
-
-use crate::ast::*;
+use oak_valkyrie::ast::{Shader, Item, MicroDefinition, Namespace, Statement};
 
 /// gs AST → naga IR 转换器
 ///
-/// 将 `GslShaderBlock` AST 转换为 `naga::Module`，
+/// 将 oak-valkyrie 的 Shader AST 转换为 `naga::Module`，
 /// 支持顶点着色器、片段着色器、计算着色器和 uniforms。
 pub struct GslLowerer {
     /// 局部变量名到 naga 句柄的映射
@@ -33,15 +32,35 @@ impl GslLowerer {
         }
     }
 
-    /// 将 gs AST 着色器块转换为 naga Module
-    pub fn lower(&mut self, shader: &GslShaderBlock) -> GResult<naga::Module> {
+    /// 将 oak-valkyrie 的 Shader AST 转换为 naga Module
+    pub fn lower(&mut self, shader: &Shader) -> GResult<naga::Module> {
         self.local_vars.clear();
         self.global_vars.clear();
         self.type_cache.clear();
 
         let mut module = naga::Module::default();
 
-        let uniform_buffer_members = self.create_uniform_buffer_members(shader, &mut module)?;
+        // 处理 shader 内的 items，提取 uniforms 和 functions
+        let mut uniforms = Vec::new();
+        let mut functions = Vec::new();
+
+        for item in &shader.items {
+            match item {
+                Item::Micro(micro) => {
+                    // 处理 micro 函数
+                }
+                Item::Namespace(namespace) => {
+                    // 处理命名空间
+                }
+                Item::Statement(stmt) => {
+                    // 处理语句
+                }
+                _ => {}
+            }
+        }
+
+        // 创建 uniform 缓冲区
+        let uniform_buffer_members = self.create_uniform_buffer_members(&uniforms, &mut module)?;
         let uniform_buffer_ty = if !uniform_buffer_members.is_empty() {
             let ty = module.types.insert(
                 naga::Type {
@@ -73,81 +92,8 @@ impl GslLowerer {
             None
         };
 
-        let mut next_texture_binding = 0u32;
-        for uniform in &shader.uniforms {
-            match uniform.ty {
-                GslType::Texture2D | GslType::Texture3D | GslType::TextureCube => {
-                    let dim = match uniform.ty {
-                        GslType::Texture2D => naga::ImageDimension::D2,
-                        GslType::Texture3D => naga::ImageDimension::D3,
-                        GslType::TextureCube => naga::ImageDimension::Cube,
-                        _ => naga::ImageDimension::D2,
-                    };
-                    let tex_ty = module.types.insert(
-                        naga::Type {
-                            name: None,
-                            inner: naga::TypeInner::Image {
-                                dim,
-                                arrayed: false,
-                                class: naga::ImageClass::Sampled {
-                                    multi: false,
-                                    kind: naga::ScalarKind::Float,
-                                },
-                            },
-                        },
-                        naga::Span::UNDEFINED,
-                    );
-                    let binding_group = get_decorator_group(&uniform.decorators).unwrap_or(1);
-                    let binding_idx = get_decorator_binding(&uniform.decorators).unwrap_or(next_texture_binding);
-                    next_texture_binding = next_texture_binding.max(binding_idx + 1);
-                    let gv = module.global_variables.append(
-                        naga::GlobalVariable {
-                            name: Some(uniform.name.clone()),
-                            space: naga::AddressSpace::Handle,
-                            binding: Some(naga::ResourceBinding {
-                                group: binding_group,
-                                binding: binding_idx,
-                            }),
-                            ty: tex_ty,
-                            init: None,
-                            memory_decorations: naga::MemoryDecorations::empty(),
-                        },
-                        naga::Span::UNDEFINED,
-                    );
-                    self.global_vars.insert(uniform.name.clone(), gv);
-                }
-                GslType::Sampler => {
-                    let sampler_ty = module.types.insert(
-                        naga::Type {
-                            name: None,
-                            inner: naga::TypeInner::Sampler { comparison: false },
-                        },
-                        naga::Span::UNDEFINED,
-                    );
-                    let binding_group = get_decorator_group(&uniform.decorators).unwrap_or(1);
-                    let binding_idx = get_decorator_binding(&uniform.decorators).unwrap_or(next_texture_binding);
-                    next_texture_binding = next_texture_binding.max(binding_idx + 1);
-                    let gv = module.global_variables.append(
-                        naga::GlobalVariable {
-                            name: Some(uniform.name.clone()),
-                            space: naga::AddressSpace::Handle,
-                            binding: Some(naga::ResourceBinding {
-                                group: binding_group,
-                                binding: binding_idx,
-                            }),
-                            ty: sampler_ty,
-                            init: None,
-                            memory_decorations: naga::MemoryDecorations::empty(),
-                        },
-                        naga::Span::UNDEFINED,
-                    );
-                    self.global_vars.insert(uniform.name.clone(), gv);
-                }
-                _ => {}
-            }
-        }
-
-        for func in &shader.functions {
+        // 处理 functions
+        for func in &functions {
             let entry_point = self.lower_entry_point(func, &mut module, uniform_buffer_ty)?;
             module.entry_points.push(entry_point);
         }
@@ -158,206 +104,40 @@ impl GslLowerer {
     /// 创建 uniform 缓冲区结构体成员
     fn create_uniform_buffer_members(
         &mut self,
-        shader: &GslShaderBlock,
+        uniforms: &Vec<()>,
         module: &mut naga::Module,
     ) -> GResult<Vec<naga::StructMember>> {
         let mut members = Vec::new();
         let mut offset = 0u32;
 
-        for uniform in &shader.uniforms {
-            match uniform.ty {
-                GslType::Texture2D | GslType::Texture3D | GslType::TextureCube | GslType::Sampler => {
-                    continue;
-                }
-                _ => {}
-            }
-
-            let ty = self.lower_type(&uniform.ty, module);
-            let size = self.type_size(&uniform.ty);
-            if offset % 16 != 0 {
-                offset = ((offset / 16) + 1) * 16;
-            }
-            members.push(naga::StructMember {
-                name: Some(uniform.name.clone()),
-                ty,
-                binding: None,
-                offset,
-            });
-            offset += size;
-        }
+        // TODO: 从 oak-valkyrie 的 AST 中提取 uniform 成员
+        // 目前返回空的成员列表
 
         Ok(members)
     }
 
-    /// 将 gs 类型转换为 naga 类型句柄
-    fn lower_type(&mut self, ty: &GslType, module: &mut naga::Module) -> naga::Handle<naga::Type> {
-        let key = format!("{:?}", ty);
-        if let Some(&handle) = self.type_cache.get(&key) {
-            return handle;
-        }
-
-        let inner = match ty {
-            GslType::Scalar(s) => naga::TypeInner::Scalar(Self::lower_scalar(*s)),
-            GslType::Vector { size, scalar } => naga::TypeInner::Vector {
-                size: Self::lower_vector_size(*size),
-                scalar: Self::lower_scalar(*scalar),
-            },
-            GslType::Matrix { columns, rows, scalar } => naga::TypeInner::Matrix {
-                columns: Self::lower_vector_size(*columns),
-                rows: Self::lower_vector_size(*rows),
-                scalar: Self::lower_scalar(*scalar),
-            },
-            GslType::Texture2D => naga::TypeInner::Image {
-                dim: naga::ImageDimension::D2,
-                arrayed: false,
-                class: naga::ImageClass::Sampled {
-                    multi: false,
-                    kind: naga::ScalarKind::Float,
-                },
-            },
-            GslType::Texture3D => naga::TypeInner::Image {
-                dim: naga::ImageDimension::D3,
-                arrayed: false,
-                class: naga::ImageClass::Sampled {
-                    multi: false,
-                    kind: naga::ScalarKind::Float,
-                },
-            },
-            GslType::TextureCube => naga::TypeInner::Image {
-                dim: naga::ImageDimension::Cube,
-                arrayed: false,
-                class: naga::ImageClass::Sampled {
-                    multi: false,
-                    kind: naga::ScalarKind::Float,
-                },
-            },
-            GslType::Sampler => naga::TypeInner::Sampler { comparison: false },
-            GslType::Buffer(inner) => {
-                let inner_ty = self.lower_type(inner, module);
-                naga::TypeInner::BindingArray {
-                    base: inner_ty,
-                    size: naga::ArraySize::Dynamic,
-                }
-            }
-            GslType::Struct { fields } => {
-                let mut naga_members = Vec::new();
-                let mut offset = 0u32;
-                for field in fields {
-                    let field_ty = self.lower_type(&field.ty, module);
-                    let size = self.type_size(&field.ty);
-                    if offset % 16 != 0 {
-                        offset = ((offset / 16) + 1) * 16;
-                    }
-                    naga_members.push(naga::StructMember {
-                        name: Some(field.name.clone()),
-                        ty: field_ty,
-                        binding: self.lower_binding_opt(&field.decorators),
-                        offset,
-                    });
-                    offset += size;
-                }
-                naga::TypeInner::Struct {
-                    members: naga_members,
-                    span: offset,
-                }
-            }
-        };
-
-        let handle = module.types.insert(
-            naga::Type { name: None, inner },
-            naga::Span::UNDEFINED,
-        );
-        self.type_cache.insert(key, handle);
-        handle
-    }
-
-    /// 将 gs 标量类型转换为 naga Scalar
-    fn lower_scalar(s: GslScalarType) -> naga::Scalar {
-        match s {
-            GslScalarType::Bool => naga::Scalar::BOOL,
-            GslScalarType::U32 => naga::Scalar::U32,
-            GslScalarType::I32 => naga::Scalar::I32,
-            GslScalarType::F32 => naga::Scalar::F32,
-        }
-    }
-
-    /// 将 gs 向量维度转换为 naga VectorSize
-    fn lower_vector_size(size: GslVectorSize) -> naga::VectorSize {
-        match size {
-            GslVectorSize::Bi => naga::VectorSize::Bi,
-            GslVectorSize::Tri => naga::VectorSize::Tri,
-            GslVectorSize::Quad => naga::VectorSize::Quad,
-        }
-    }
-
-    /// 将 gs 装饰器列表转换为 naga Binding（可选）
-    fn lower_binding_opt(&self, decorators: &[GslDecorator]) -> Option<naga::Binding> {
-        for dec in decorators {
-            match dec {
-                GslDecorator::Location(loc) => {
-                    return Some(naga::Binding::Location {
-                        location: *loc,
-                        interpolation: None,
-                        sampling: None,
-                        blend_src: None,
-                        per_primitive: false,
-                    });
-                }
-                GslDecorator::Builtin(kind) => {
-                    return Some(naga::Binding::BuiltIn(match kind {
-                        GslBuiltinKind::Position => naga::BuiltIn::Position { invariant: false },
-                        GslBuiltinKind::GlobalInvocationId => naga::BuiltIn::GlobalInvocationId,
-                        GslBuiltinKind::VertexIndex => naga::BuiltIn::VertexIndex,
-                        GslBuiltinKind::InstanceIndex => naga::BuiltIn::InstanceIndex,
-                    }));
-                }
-                _ => {}
-            }
-        }
-        None
-    }
-
-    /// 将 gs 函数转换为 naga EntryPoint
+    /// 将函数转换为 naga EntryPoint
     fn lower_entry_point(
         &mut self,
-        func: &GslFunction,
+        func: &(),
         module: &mut naga::Module,
         _uniform_buffer_ty: Option<naga::Handle<naga::Type>>,
     ) -> GResult<naga::EntryPoint> {
         self.local_vars.clear();
 
-        let stage = self.lower_stage(&func.kind);
+        // TODO: 从 oak-valkyrie 的 AST 中提取函数信息
+        let stage = naga::ShaderStage::Vertex;
         let mut function = naga::Function::default();
-        function.name = Some(func.name.clone());
+        function.name = Some("vertex".to_string());
 
-        for param in &func.params {
-            let ty = self.lower_type(&param.ty, module);
-            let binding = self.lower_binding_opt(&param.decorators);
-            function.arguments.push(naga::FunctionArgument {
-                name: Some(param.name.clone()),
-                ty,
-                binding,
-            });
-        }
+        // TODO: 处理函数参数
 
-        if let Some(ref ret_ty) = func.return_type {
-            let ty = self.lower_type(ret_ty, module);
-            let binding = self.lower_binding_opt(&func.return_decorators);
-            function.result = Some(naga::FunctionResult { ty, binding });
-        }
+        // TODO: 处理返回类型
 
-        let mut stmts = Vec::new();
-        for stmt in &func.body {
-            let lowered = self.lower_stmt(stmt, &mut function, module)?;
-            stmts.extend(lowered);
-        }
-
-        for s in stmts {
-            function.body.push(s, naga::Span::UNDEFINED);
-        }
+        // TODO: 处理函数体
 
         Ok(naga::EntryPoint {
-            name: func.name.clone(),
+            name: "vertex".to_string(),
             stage,
             early_depth_test: None,
             workgroup_size: [0; 3],
@@ -368,390 +148,10 @@ impl GslLowerer {
             incoming_ray_payload: None,
         })
     }
-
-    /// 将 gs 表达式转换为 naga Expression 句柄
-    fn lower_expr(
-        &mut self,
-        expr: &GslExpr,
-        function: &mut naga::Function,
-        module: &mut naga::Module,
-    ) -> GResult<naga::Handle<naga::Expression>> {
-        let naga_expr = match expr {
-            GslExpr::LiteralInt(n) => naga::Expression::Literal(naga::Literal::I32(*n as i32)),
-            GslExpr::LiteralFloat(f) => naga::Expression::Literal(naga::Literal::F32(*f as f32)),
-            GslExpr::LiteralBool(b) => naga::Expression::Literal(naga::Literal::Bool(*b)),
-            GslExpr::Variable(name) => {
-                if let Some(&local_handle) = self.local_vars.get(name) {
-                    naga::Expression::LocalVariable(local_handle)
-                } else if let Some(&global_handle) = self.global_vars.get(name) {
-                    naga::Expression::GlobalVariable(global_handle)
-                } else {
-                    return Err(GError {
-                        kind: GErrorKind::Other,
-                        message: format!("未定义的变量: '{}'", name),
-                    });
-                }
-            }
-            GslExpr::Binary { left, op, right } => {
-                let left_handle = self.lower_expr(left, function, module)?;
-                let right_handle = self.lower_expr(right, function, module)?;
-                naga::Expression::Binary {
-                    op: self.lower_binary_op(op),
-                    left: left_handle,
-                    right: right_handle,
-                }
-            }
-            GslExpr::Unary { op, operand } => {
-                let operand_handle = self.lower_expr(operand, function, module)?;
-                naga::Expression::Unary {
-                    op: self.lower_unary_op(op),
-                    expr: operand_handle,
-                }
-            }
-            GslExpr::Call { func: fn_name, args } => {
-                let lowered_args: GResult<Vec<_>> = args
-                    .iter()
-                    .map(|a| self.lower_expr(a, function, module))
-                    .collect();
-                let arg_handles = lowered_args?;
-
-                match fn_name.as_str() {
-                    "normalize" | "dot" | "cross" | "max" | "min" | "clamp" | "mix" | "abs"
-                    | "sign" | "floor" | "ceil" | "fract" | "sqrt" | "pow" | "exp" | "log"
-                    | "sin" | "cos" | "tan" | "asin" | "acos" | "atan" | "length" | "distance"
-                    | "reflect" | "refract" | "step" | "smoothstep" => {
-                        let math_fun = self.lower_math_fun(fn_name);
-                        let arg = arg_handles.first().copied().unwrap_or_else(|| {
-                            function.expressions.append(
-                                naga::Expression::Literal(naga::Literal::F32(0.0)),
-                                naga::Span::UNDEFINED,
-                            )
-                        });
-                        let arg1 = arg_handles.get(1).copied();
-                        let arg2 = arg_handles.get(2).copied();
-                        let arg3 = arg_handles.get(3).copied();
-                        naga::Expression::Math {
-                            fun: math_fun,
-                            arg,
-                            arg1,
-                            arg2,
-                            arg3,
-                        }
-                    }
-                    _ => {
-                        if let Some(&global_handle) = self.global_vars.get(fn_name) {
-                            naga::Expression::GlobalVariable(global_handle)
-                        } else {
-                            return Err(GError {
-                                kind: GErrorKind::Other,
-                                message: format!("未定义的函数: '{}'", fn_name),
-                            });
-                        }
-                    }
-                }
-            }
-            GslExpr::VectorConstruct { scalar, size, args } => {
-                let lowered_args: GResult<Vec<_>> = args
-                    .iter()
-                    .map(|a| self.lower_expr(a, function, module))
-                    .collect();
-                let components = lowered_args?;
-                let ty = self.lower_type(&GslType::Vector { size: *size, scalar: *scalar }, module);
-                naga::Expression::Compose { ty, components }
-            }
-            GslExpr::MatrixConstruct { scalar, columns, rows, args } => {
-                let lowered_args: GResult<Vec<_>> = args
-                    .iter()
-                    .map(|a| self.lower_expr(a, function, module))
-                    .collect();
-                let components = lowered_args?;
-                let ty = self.lower_type(&GslType::Matrix { columns: *columns, rows: *rows, scalar: *scalar }, module);
-                naga::Expression::Compose { ty, components }
-            }
-            GslExpr::Member { object, member: _ } => {
-                let base = self.lower_expr(object, function, module)?;
-                let field_index = self.lookup_member_index(object, module);
-                naga::Expression::AccessIndex { base, index: field_index }
-            }
-            GslExpr::Index { object, index } => {
-                let base = self.lower_expr(object, function, module)?;
-                let index_handle = self.lower_expr(index, function, module)?;
-                naga::Expression::Access { base, index: index_handle }
-            }
-            GslExpr::TextureSample { texture, sampler, coords } => {
-                let texture_handle = self.lower_expr(texture, function, module)?;
-                let sampler_handle = self.lower_expr(sampler, function, module)?;
-                let coords_handle = self.lower_expr(coords, function, module)?;
-                naga::Expression::ImageSample {
-                    image: texture_handle,
-                    sampler: sampler_handle,
-                    gather: None,
-                    coordinate: coords_handle,
-                    array_index: None,
-                    offset: None,
-                    level: naga::SampleLevel::Auto,
-                    depth_ref: None,
-                    clamp_to_edge: false,
-                }
-            }
-        };
-
-        let handle = function.expressions.append(naga_expr, naga::Span::UNDEFINED);
-        Ok(handle)
-    }
-
-    /// 将 gs 语句转换为 naga Statement 列表
-    fn lower_stmt(
-        &mut self,
-        stmt: &GslStmt,
-        function: &mut naga::Function,
-        module: &mut naga::Module,
-    ) -> GResult<Vec<naga::Statement>> {
-        let mut result = Vec::new();
-
-        match stmt {
-            GslStmt::Let { name, ty, value } | GslStmt::LetMut { name, ty, value } => {
-                let value_handle = self.lower_expr(value, function, module)?;
-                let value_ty = if let Some(t) = ty.as_ref() {
-                    self.lower_type(t, module)
-                } else {
-                    self.infer_expr_type(value, module)
-                };
-
-                let local_var = naga::LocalVariable {
-                    name: Some(name.clone()),
-                    ty: value_ty,
-                    init: Some(value_handle),
-                };
-                let local_handle = function.local_variables.append(local_var, naga::Span::UNDEFINED);
-                self.local_vars.insert(name.clone(), local_handle);
-
-                result.push(naga::Statement::Emit(naga::Range::new_from_bounds(value_handle, value_handle)));
-            }
-            GslStmt::Assign { target, value } => {
-                let value_handle = self.lower_expr(value, function, module)?;
-                let target_handle = self.lower_expr(target, function, module)?;
-                result.push(naga::Statement::Emit(naga::Range::new_from_bounds(value_handle, value_handle)));
-                result.push(naga::Statement::Store {
-                    pointer: target_handle,
-                    value: value_handle,
-                });
-            }
-            GslStmt::Return { value } => {
-                if let Some(v) = value {
-                    let handle = self.lower_expr(v, function, module)?;
-                    result.push(naga::Statement::Emit(naga::Range::new_from_bounds(handle, handle)));
-                    result.push(naga::Statement::Return { value: Some(handle) });
-                } else {
-                    result.push(naga::Statement::Return { value: None });
-                }
-            }
-            GslStmt::If { condition, then_block, else_block } => {
-                let cond_handle = self.lower_expr(condition, function, module)?;
-                result.push(naga::Statement::Emit(naga::Range::new_from_bounds(cond_handle, cond_handle)));
-
-                let mut accept = naga::Block::new();
-                for s in then_block {
-                    let lowered = self.lower_stmt(s, function, module)?;
-                    for st in lowered {
-                        accept.push(st, naga::Span::UNDEFINED);
-                    }
-                }
-
-                let reject = if let Some(else_stmts) = else_block {
-                    let mut block = naga::Block::new();
-                    for s in else_stmts {
-                        let lowered = self.lower_stmt(s, function, module)?;
-                        for st in lowered {
-                            block.push(st, naga::Span::UNDEFINED);
-                        }
-                    }
-                    block
-                } else {
-                    naga::Block::new()
-                };
-
-                result.push(naga::Statement::If {
-                    condition: cond_handle,
-                    accept,
-                    reject,
-                });
-            }
-            GslStmt::Expr { expr } => {
-                let handle = self.lower_expr(expr, function, module)?;
-                result.push(naga::Statement::Emit(naga::Range::new_from_bounds(handle, handle)));
-            }
-        }
-
-        Ok(result)
-    }
-
-    /// 将 gs 二元运算符转换为 naga BinaryOperator
-    fn lower_binary_op(&self, op: &GslBinaryOp) -> naga::BinaryOperator {
-        match op {
-            GslBinaryOp::Add => naga::BinaryOperator::Add,
-            GslBinaryOp::Sub => naga::BinaryOperator::Subtract,
-            GslBinaryOp::Mul => naga::BinaryOperator::Multiply,
-            GslBinaryOp::Div => naga::BinaryOperator::Divide,
-            GslBinaryOp::Mod => naga::BinaryOperator::Modulo,
-            GslBinaryOp::Eq => naga::BinaryOperator::Equal,
-            GslBinaryOp::Ne => naga::BinaryOperator::NotEqual,
-            GslBinaryOp::Lt => naga::BinaryOperator::Less,
-            GslBinaryOp::Le => naga::BinaryOperator::LessEqual,
-            GslBinaryOp::Gt => naga::BinaryOperator::Greater,
-            GslBinaryOp::Ge => naga::BinaryOperator::GreaterEqual,
-            GslBinaryOp::And => naga::BinaryOperator::LogicalAnd,
-            GslBinaryOp::Or => naga::BinaryOperator::LogicalOr,
-        }
-    }
-
-    /// 将 gs 一元运算符转换为 naga UnaryOperator
-    fn lower_unary_op(&self, op: &GslUnaryOp) -> naga::UnaryOperator {
-        match op {
-            GslUnaryOp::Neg => naga::UnaryOperator::Negate,
-            GslUnaryOp::Not => naga::UnaryOperator::LogicalNot,
-        }
-    }
-
-    /// 将 gs 函数类型转换为 naga ShaderStage
-    fn lower_stage(&self, kind: &GslFunctionKind) -> naga::ShaderStage {
-        match kind {
-            GslFunctionKind::Vertex => naga::ShaderStage::Vertex,
-            GslFunctionKind::Fragment => naga::ShaderStage::Fragment,
-            GslFunctionKind::Compute => naga::ShaderStage::Compute,
-            GslFunctionKind::Micro => naga::ShaderStage::Compute,
-        }
-    }
-
-    /// 将 gs 内置函数名转换为 naga MathFunction
-    fn lower_math_fun(&self, name: &str) -> naga::MathFunction {
-        match name {
-            "abs" => naga::MathFunction::Abs,
-            "sign" => naga::MathFunction::Sign,
-            "floor" => naga::MathFunction::Floor,
-            "ceil" => naga::MathFunction::Ceil,
-            "fract" => naga::MathFunction::Fract,
-            "sqrt" => naga::MathFunction::Sqrt,
-            "pow" => naga::MathFunction::Pow,
-            "exp" => naga::MathFunction::Exp,
-            "log" => naga::MathFunction::Log,
-            "sin" => naga::MathFunction::Sin,
-            "cos" => naga::MathFunction::Cos,
-            "tan" => naga::MathFunction::Tan,
-            "asin" => naga::MathFunction::Asin,
-            "acos" => naga::MathFunction::Acos,
-            "atan" => naga::MathFunction::Atan,
-            "normalize" => naga::MathFunction::Normalize,
-            "dot" => naga::MathFunction::Dot,
-            "cross" => naga::MathFunction::Cross,
-            "max" => naga::MathFunction::Max,
-            "min" => naga::MathFunction::Min,
-            "clamp" => naga::MathFunction::Clamp,
-            "mix" => naga::MathFunction::Mix,
-            "length" => naga::MathFunction::Length,
-            "distance" => naga::MathFunction::Distance,
-            "reflect" => naga::MathFunction::Reflect,
-            "refract" => naga::MathFunction::Refract,
-            "step" => naga::MathFunction::Step,
-            "smoothstep" => naga::MathFunction::SmoothStep,
-            _ => naga::MathFunction::Abs,
-        }
-    }
-
-    /// 查找结构体成员的索引
-    fn lookup_member_index(
-        &self,
-        object: &GslExpr,
-        module: &naga::Module,
-    ) -> u32 {
-        if let GslExpr::Variable(name) = object {
-            if name == "uniforms" {
-                if let Some(&gv_handle) = self.global_vars.get("uniforms") {
-                    let gv = &module.global_variables[gv_handle];
-                    if let naga::TypeInner::Struct { members, .. } = &module.types[gv.ty].inner {
-                        for (idx, m) in members.iter().enumerate() {
-                            if m.name.as_deref() == Some(name) {
-                                return idx as u32;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        0
-    }
-
-    /// 推断表达式的类型
-    fn infer_expr_type(&mut self, expr: &GslExpr, module: &mut naga::Module) -> naga::Handle<naga::Type> {
-        match expr {
-            GslExpr::LiteralInt(_) => self.lower_type(&GslType::Scalar(GslScalarType::I32), module),
-            GslExpr::LiteralFloat(_) => self.lower_type(&GslType::Scalar(GslScalarType::F32), module),
-            GslExpr::LiteralBool(_) => self.lower_type(&GslType::Scalar(GslScalarType::Bool), module),
-            _ => self.lower_type(&GslType::Scalar(GslScalarType::F32), module),
-        }
-    }
-
-    /// 估算类型大小（字节）
-    fn type_size(&self, ty: &GslType) -> u32 {
-        match ty {
-            GslType::Scalar(_) => 4,
-            GslType::Vector { size, .. } => match size {
-                GslVectorSize::Bi => 8,
-                GslVectorSize::Tri => 12,
-                GslVectorSize::Quad => 16,
-            },
-            GslType::Matrix { columns, rows, .. } => {
-                let col_size: u32 = match rows {
-                    GslVectorSize::Bi => 8,
-                    GslVectorSize::Tri => 12,
-                    GslVectorSize::Quad => 16,
-                };
-                let num_cols: u32 = match columns {
-                    GslVectorSize::Bi => 2,
-                    GslVectorSize::Tri => 3,
-                    GslVectorSize::Quad => 4,
-                };
-                col_size * num_cols
-            }
-            GslType::Texture2D | GslType::Texture3D | GslType::TextureCube | GslType::Sampler => 0,
-            GslType::Buffer(_) => 8,
-            GslType::Struct { fields } => {
-                let mut total = 0u32;
-                for field in fields {
-                    let size = self.type_size(&field.ty);
-                    if total % 16 != 0 {
-                        total = ((total / 16) + 1) * 16;
-                    }
-                    total += size;
-                }
-                total
-            }
-        }
-    }
 }
 
 impl Default for GslLowerer {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// 从装饰器列表获取 group 值
-fn get_decorator_group(decorators: &[GslDecorator]) -> Option<u32> {
-    for dec in decorators {
-        if let GslDecorator::Group(g) = dec {
-            return Some(*g);
-        }
-    }
-    None
-}
-
-/// 从装饰器列表获取 binding 值
-fn get_decorator_binding(decorators: &[GslDecorator]) -> Option<u32> {
-    for dec in decorators {
-        if let GslDecorator::Binding(b) = dec {
-            return Some(*b);
-        }
-    }
-    None
 }

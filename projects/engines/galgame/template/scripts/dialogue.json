@@ -1,0 +1,84 @@
+{
+  "nodes": [
+    {
+      "id": "start",
+      "speaker_id": null,
+      "text": "欢迎来到 GG Galgame 引擎的 MVP Demo！",
+      "commands": [
+        {
+          "ChangeBackground": {
+            "asset_path": "assets/backgrounds/bg_school.png",
+            "transition": { "Fade": { "duration_secs": 1.0 } }
+          }
+        }
+      ],
+      "choices": [],
+      "next_node_id": "intro_1"
+    },
+    {
+      "id": "intro_1",
+      "speaker_id": "sakura",
+      "text": "你好！我是小樱，很高兴认识你。",
+      "commands": [
+        {
+          "ShowPortrait": {
+            "character_id": "sakura",
+            "expression": "smile",
+            "position": "Center",
+            "transition": { "Fade": { "duration_secs": 0.5 } }
+          }
+        }
+      ],
+      "choices": [],
+      "next_node_id": "intro_2"
+    },
+    {
+      "id": "intro_2",
+      "speaker_id": "sakura",
+      "text": "今天天气真好呢，你想做些什么？",
+      "commands": [],
+      "choices": [
+        {
+          "text": "去公园散步",
+          "next_node_id": "park",
+          "condition": null
+        },
+        {
+          "text": "在教室里聊天",
+          "next_node_id": "classroom",
+          "condition": null
+        }
+      ],
+      "next_node_id": null
+    },
+    {
+      "id": "park",
+      "speaker_id": "sakura",
+      "text": "公园里的樱花开了，真漂亮！",
+      "commands": [],
+      "choices": [],
+      "next_node_id": null
+    },
+    {
+      "id": "classroom",
+      "speaker_id": "sakura",
+      "text": "在教室里安静地聊天也很不错呢。",
+      "commands": [],
+      "choices": [],
+      "next_node_id": null
+    }
+  ],
+  "characters": [
+    {
+      "id": "sakura",
+      "name": "小樱",
+      "default_portrait_path": "assets/portraits/sakura_smile.png",
+      "expression_map": {
+        "smile": "assets/portraits/sakura_smile.png"
+      },
+      "default_position": "Center",
+      "color": [1.0, 0.8, 0.9, 1.0]
+    }
+  ],
+  "variables": {}
+}

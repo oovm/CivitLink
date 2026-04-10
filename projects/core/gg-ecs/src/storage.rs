@@ -174,6 +174,22 @@ impl ComponentColumn {
         }
     }
 
+    /// 设置指定位置的组件（类型擦除版本）
+    ///
+    /// 从原始指针拷贝组件数据到指定行。
+    /// 调用方必须确保 `src` 指向的数据类型与列的类型匹配，
+    /// 且 `size` 与列的 `size` 一致。
+    pub fn set_raw(&mut self, index: usize, src: *const u8, size: usize) {
+        debug_assert_eq!(size, self.size);
+        debug_assert!(index < self.len);
+        if self.size > 0 {
+            unsafe {
+                let dst = self.data.as_ptr().add(index * self.size);
+                std::ptr::copy_nonoverlapping(src, dst, self.size);
+            }
+        }
+    }
+
     /// 获取指定位置的组件引用
     pub fn get<T: Component>(&self, index: usize) -> Option<&T> {
         if index >= self.len || TypeId::of::<T>() != self.type_id || self.size == 0 {
