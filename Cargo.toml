@@ -63,22 +63,27 @@ gg-macros = { path = "projects/core/gg-macros" }
 gg-meta = { path = "projects/core/gg-meta" }
 gg-schedule = { path = "projects/core/gg-schedule" }
 gg-world = { path = "projects/core/gg-world" }
-gg-render = { path = "projects/core/gg-render" }
-gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
-gg-render-wgpu = { path = "projects/runtime/gg-render-wgpu" }
-gg-runtime-gui = { path = "projects/runtime/gg-runtime-gui" }
-gg-runtime-audio = { path = "projects/runtime/gg-runtime-audio" }
+
 gg-ir = { path = "projects/runtime/gg-ir" }
 gg-bytecode = { path = "projects/runtime/gg-bytecode" }
 gg-vm = { path = "projects/runtime/gg-vm" }
 gg-script = { path = "projects/compiler/gg-script" }
-gg-compiler-core = { path = "projects/compiler/gg-compiler-core" }
-gg-compiler-aot = { path = "projects/compiler/gg-compiler-aot" }
 gg-sheet = { path = "projects/compiler/gg-sheet" }
 gg-ui = { path = "projects/plugins/gg-ui" }
 gg-manifest = { path = "projects/toolchain/gg-manifest" }
 gg-factory = { path = "projects/toolchain/gg-factory" }
 gg-tools = { path = "projects/toolchain/gg-tools" }
+
+gg-compiler-core = { path = "projects/compiler/gg-compiler-core" }
+gg-compiler-aot = { path = "projects/compiler/gg-compiler-aot" }
+
+gg-render = { path = "projects/core/gg-render" }
+gg-render-wgpu = { path = "projects/runtime/gg-render-wgpu" }
+gg-render-native = { path = "projects/runtime/gg-render-native" }
+
+gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
+gg-runtime-gui = { path = "projects/runtime/gg-runtime-gui" }
+gg-runtime-audio = { path = "projects/runtime/gg-runtime-audio" }
 
 # gnostic gamer editors
 gg-editor-scene = { path = "projects/editor/gg-editor-scene" }
