@@ -6,7 +6,6 @@
 use gg_core::{GError, GErrorKind, GResult};
 use naga;
 
-use crate::ast::GslShaderBlock;
 use crate::lower::GslLowerer;
 use crate::parser::GslParser;
 use crate::serialize;
@@ -68,9 +67,9 @@ impl GgShaderCompiler {
 
     /// 验证 naga Module 的正确性
     pub fn validate(&self, module: &naga::Module) -> GResult<()> {
-        let mut validator = naga::Validator::new(
-            naga::ValidationFlags::all(),
-            naga::Capabilities::all(),
+        let mut validator = naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::all(),
         );
         validator.validate(module).map_err(|e| GError {
             kind: GErrorKind::Other,

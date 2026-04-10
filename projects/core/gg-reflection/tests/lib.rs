@@ -1,90 +1,17 @@
 use gg_reflection::prelude::*;
+use gg_reflection::PartialReflect;
 
-#[derive(Clone)]
+#[derive(Reflect, Clone)]
 struct TestStruct {
     name: String,
     value: i32,
 }
 
-impl PartialReflect for String {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-    fn type_name(&self) -> &'static str {
-        std::any::type_name::<Self>()
-    }
-    fn clone_reflect(&self) -> Box<dyn PartialReflect> {
-        Box::new(self.clone())
-    }
-    fn try_assign(&mut self, source: &dyn PartialReflect) -> Result<(), String> {
-        if let Some(val) = source.as_any().downcast_ref::<String>() {
-            *self = val.clone();
-            Ok(())
-        }
-        else {
-            Err(format!("type mismatch: expected String, got {}", source.type_name()))
-        }
-    }
-}
+#[derive(Reflect, Clone)]
+struct TupleStruct(f32, f32);
 
-impl PartialReflect for i32 {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-    fn type_name(&self) -> &'static str {
-        std::any::type_name::<Self>()
-    }
-    fn clone_reflect(&self) -> Box<dyn PartialReflect> {
-        Box::new(self.clone())
-    }
-    fn try_assign(&mut self, source: &dyn PartialReflect) -> Result<(), String> {
-        if let Some(val) = source.as_any().downcast_ref::<i32>() {
-            *self = *val;
-            Ok(())
-        }
-        else {
-            Err(format!("type mismatch: expected i32, got {}", source.type_name()))
-        }
-    }
-}
-
-impl PartialReflect for TestStruct {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-    fn type_name(&self) -> &'static str {
-        std::any::type_name::<Self>()
-    }
-    fn clone_reflect(&self) -> Box<dyn PartialReflect> {
-        Box::new(self.clone())
-    }
-    fn field_names(&self) -> &[&str] {
-        &["name", "value"]
-    }
-    fn field(&self, name: &str) -> Option<&dyn PartialReflect> {
-        match name {
-            "name" => Some(&self.name),
-            "value" => Some(&self.value),
-            _ => None,
-        }
-    }
-    fn field_mut(&mut self, name: &str) -> Option<&mut dyn PartialReflect> {
-        match name {
-            "name" => Some(&mut self.name),
-            "value" => Some(&mut self.value),
-            _ => None,
-        }
-    }
-}
+#[derive(Reflect, Clone)]
+struct UnitStruct;
 
 #[test]
 fn test_reflection_registry_register_and_is_registered() {
@@ -193,4 +120,29 @@ fn test_struct_property_editor_set_property_missing_field() {
     let mut editor = StructPropertyEditor::new(s);
     let result = editor.set_property("nonexistent", Box::new(99_i32));
     assert!(result.is_err());
+}
+
+#[test]
+fn test_named_struct_reflect() {
+    let s = TestStruct { name: "hello".to_string(), value: 42 };
+    assert_eq!(s.field_names(), &["name", "value"]);
+    assert!(s.field("name").is_some());
+    assert!(s.field("value").is_some());
+    assert!(s.field("nonexistent").is_none());
+}
+
+#[test]
+fn test_tuple_struct_reflect() {
+    let s = TupleStruct(1.0, 2.0);
+    assert_eq!(s.field_names(), &["0", "1"]);
+    assert!(s.field("0").is_some());
+    assert!(s.field("1").is_some());
+    assert!(s.field("2").is_none());
+}
+
+#[test]
+fn test_unit_struct_reflect() {
+    let s = UnitStruct;
+    assert_eq!(s.field_names(), &[] as &[&str]);
+    assert!(s.field("x").is_none());
 }

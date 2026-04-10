@@ -4,6 +4,7 @@
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 use gg_galgame_schema::components::PortraitState;
+use gg_plugin_dialogue::schema::DeltaTime;
 use gg_render::{Color, DrawCommand, RenderContext, TextureId, Transform};
 
 use crate::{animation::PortraitAnimationState, layout::PortraitLayout};
@@ -117,22 +118,16 @@ impl System for PortraitRenderSystem {
 /// 立绘动画系统
 ///
 /// 负责每帧更新立绘动画进度：
+/// - 从 World 的 DeltaTime 资源读取真实帧间隔时间
 /// - 遍历所有带 `PortraitAnimationState` 的实体
 /// - 更新动画进度
 /// - 动画完成后移除动画组件
-pub struct PortraitAnimationSystem {
-    /// 帧间隔时间（秒）
-    pub delta_secs: f32,
-}
+pub struct PortraitAnimationSystem {}
 
 impl PortraitAnimationSystem {
     /// 创建新的立绘动画系统
-    ///
-    /// # 参数
-    ///
-    /// - `delta_secs` - 帧间隔时间（秒）
-    pub fn new(delta_secs: f32) -> Self {
-        Self { delta_secs }
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
@@ -145,17 +140,20 @@ impl System for PortraitAnimationSystem {
     /// 执行立绘动画系统逻辑
     ///
     /// 执行流程：
-    /// 1. 收集所有带 `PortraitAnimationState` 的实体
-    /// 2. 更新每个动画的进度
-    /// 3. 收集已完成动画的实体 ID
-    /// 4. 移除已完成动画的 `PortraitAnimationState` 组件
+    /// 1. 从 World 的 DeltaTime 资源读取真实帧间隔时间
+    /// 2. 收集所有带 `PortraitAnimationState` 的实体
+    /// 3. 更新每个动画的进度
+    /// 4. 收集已完成动画的实体 ID
+    /// 5. 移除已完成动画的 `PortraitAnimationState` 组件
     fn execute(&mut self, world: &mut World) -> GResult<()> {
+        let delta = world.get_resource::<DeltaTime>().map(|d| d.secs).unwrap_or(1.0 / 60.0);
+
         let entities: Vec<Entity> = world.entities().iter().copied().collect();
 
         let mut completed: Vec<Entity> = Vec::new();
         for entity in entities {
             if let Some(anim) = world.get_component_mut::<PortraitAnimationState>(entity) {
-                anim.update(self.delta_secs);
+                anim.update(delta);
                 if anim.is_complete {
                     completed.push(entity);
                 }

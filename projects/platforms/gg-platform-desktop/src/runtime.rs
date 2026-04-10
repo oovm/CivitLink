@@ -27,3 +27,28 @@ impl RuntimePlatform for DesktopRuntimePlatform {
         DesktopPlatformServices::create()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gg_core::platform::RuntimePlatform;
+
+    #[test]
+    fn test_runtime_platform_id() {
+        let platform = DesktopRuntimePlatform;
+        assert_eq!(platform.id(), "desktop");
+    }
+
+    #[test]
+    fn test_runtime_platform_display_name() {
+        let platform = DesktopRuntimePlatform;
+        assert_eq!(platform.display_name(), "Desktop (Windows/macOS/Linux)");
+    }
+
+    #[test]
+    fn test_runtime_platform_create_services() {
+        let platform = DesktopRuntimePlatform;
+        let services = platform.create_services();
+        assert_eq!(services.window.size(), (1280, 720));
+    }
+}

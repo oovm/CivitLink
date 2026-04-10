@@ -1,11 +1,14 @@
 //! Galgame 引擎核心模块
 //! 提供引擎初始化、主循环和插件管理功能
 
+use std::collections::HashMap;
+use std::path::Path;
 use std::time::Instant;
 
 use crate::config::GalgameConfig;
-use gg_asset::AssetServer;
+use gg_asset::{AssetServer, Handle, ImageAsset};
 use gg_core::plugin::PluginManager;
+use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::{Entity, World};
 use gg_plugin_dialogue::plugin::DialoguePlugin;
 use gg_plugin_dialogue::schema::{ChoiceState, DeltaTime};
@@ -14,7 +17,7 @@ use gg_plugin_portrait::plugin::PortraitPlugin;
 use gg_plugin_save::plugin::SavePlugin;
 use gg_plugin_scene_transition::plugin::SceneTransitionPlugin;
 use gg_plugin_ui::{EventSystemResource, UiPlugin, UiTreeResource};
-use gg_render::{RenderContext, Renderer, SurfaceInfo};
+use gg_render::{RenderContext, Renderer, SurfaceInfo, TextureId};
 use gg_render_wgpu::WgpuRenderer;
 use gg_ui::{LayoutEngine, UiEvent, UiRenderer, UiTree};
 use winit::event::{ElementState, Event, MouseButton};
@@ -50,6 +53,10 @@ pub struct GalgameEngine {
     pending_advance: bool,
     /// 待处理的 UI 点击分发请求
     pending_ui_click: bool,
+    /// 纹理路径到 TextureId 的映射
+    texture_map: HashMap<String, TextureId>,
+    /// 纹理尺寸映射
+    texture_sizes: HashMap<TextureId, [f32; 2]>,
 }
 
 impl GalgameEngine {
@@ -72,6 +79,8 @@ impl GalgameEngine {
             mouse_position: [0.0, 0.0],
             pending_advance: false,
             pending_ui_click: false,
+            texture_map: HashMap::new(),
+            texture_sizes: HashMap::new(),
         }
     }
 
@@ -92,6 +101,53 @@ impl GalgameEngine {
         self.plugin_manager.initialize_all()?;
 
         Ok(())
+    }
+
+    /// 加载纹理到渲染器
+    ///
+    /// 从文件加载图像并注册到 WgpuRenderer 的纹理缓存中。
+    /// 返回的 TextureId 可用于后续的 DrawCommand::Sprite 渲染。
+    ///
+    /// # 参数
+    ///
+    /// - `path` - 图像文件路径
+    pub fn load_texture(&mut self, path: &str) -> GResult<TextureId> {
+        if let Some(&id) = self.texture_map.get(path) {
+            return Ok(id);
+        }
+
+        let renderer = self.renderer.as_mut().ok_or_else(|| GError {
+            kind: GErrorKind::Runtime,
+            message: "Renderer not initialized".to_string(),
+        })?;
+
+        let texture_id = renderer.load_texture(Path::new(path))?;
+
+        let img_data = std::fs::read(path).ok();
+        let size = if let Some(data) = img_data {
+            image::load_from_memory(&data)
+                .map(|img| [img.width() as f32, img.height() as f32])
+                .unwrap_or([200.0, 400.0])
+        } else {
+            [200.0, 400.0]
+        };
+        self.texture_sizes.insert(texture_id, size);
+
+        self.texture_map.insert(path.to_string(), texture_id);
+
+        Ok(texture_id)
+    }
+
+    /// 查询纹理尺寸
+    ///
+    /// 根据纹理标识符查询对应的图像尺寸。
+    /// 如果纹理未加载则返回 None。
+    ///
+    /// # 参数
+    ///
+    /// - `texture_id` - 纹理标识符
+    pub fn texture_size(&self, texture_id: TextureId) -> Option<[f32; 2]> {
+        self.texture_sizes.get(&texture_id).copied()
     }
 
     /// 使用事件循环初始化渲染器

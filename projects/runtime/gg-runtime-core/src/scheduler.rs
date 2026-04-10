@@ -361,7 +361,7 @@ mod tests {
     fn test_stage_scheduler_tick_runs_systems() {
         let mut scheduler = StageScheduler::new();
         let mut world = World::new();
-        let entity = world.spawn().id();
+        world.spawn().id();
 
         scheduler.add_system_to_stage(
             "spawn_system",

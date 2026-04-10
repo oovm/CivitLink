@@ -6,6 +6,8 @@
 //! 将 gs 源码编译为 naga IR 中间表示，
 //! 支持跨平台着色器分发（WGSL/HLSL/GLSL/SPIR-V/MSL）。
 
+/// 内置着色器模块
+pub mod builtin;
 /// gs 语言 AST 模块
 pub mod ast;
 /// GG Shader 编译器公共 API

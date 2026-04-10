@@ -11,3 +11,4 @@ gg-ecs = { workspace = true }
 gg-asset = { workspace = true }
 gg-galgame-schema = { workspace = true }
 gg-render = { workspace = true }
+gg-plugin-dialogue = { workspace = true }

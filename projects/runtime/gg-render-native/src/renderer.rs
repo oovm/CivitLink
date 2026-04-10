@@ -3,7 +3,7 @@ use std::{num::NonZeroU32, path::Path, sync::Arc};
 use gg_core::{GError, GErrorKind, GResult};
 use gg_render::{Color, DrawCommand, Rect, RenderContext, Renderer, SurfaceInfo, TextureId, Transform, TransitionKind, WindowEvent};
 use kurbo::{Affine, Circle, Ellipse, Line, Point, RoundedRect, Vec2};
-use piet_common::{Device, FontFamily, ImageFormat, InterpolationMode, RenderContext as PietRenderContext, Text, TextLayoutBuilder};
+use piet_common::{FontFamily, ImageFormat, InterpolationMode, PietImage, RenderContext as PietRenderContext, Text, TextLayoutBuilder};
 use winit::{event::Event, event_loop::EventLoop, window::{Window, WindowAttributes}};
 
 use crate::{font_manager::FontManager, texture_cache::NativeTextureCache};
@@ -26,7 +26,7 @@ pub struct NativeRenderer {
     /// softbuffer 渲染表面，用于将像素数据呈现到窗口
     surface: softbuffer::Surface<Arc<Window>, Arc<Window>>,
     /// piet 设备，用于创建位图渲染目标
-    device: Device,
+    device: piet_common::Device,
     /// 渲染表面信息
     surface_info: SurfaceInfo,
     /// 原生纹理缓存
@@ -70,7 +70,7 @@ impl NativeRenderer {
         let surface = softbuffer::Surface::new(&context, Arc::clone(&window))
             .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法创建 softbuffer 表面: {}", e) })?;
 
-        let device = Device::new()
+        let device = piet_common::Device::new()
             .map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法创建 piet 设备: {}", e) })?;
 
         Ok(Self {
@@ -185,14 +185,14 @@ impl NativeRenderer {
 
     /// 渲染精灵绘制命令
     fn draw_sprite(
-        rc: &mut impl PietRenderContext,
-        texture_cache: &NativeTextureCache,
+        rc: &mut impl PietRenderContext<Image = PietImage>,
+        texture_cache: &mut NativeTextureCache,
         texture_id: TextureId,
         transform: &Transform,
         size: &[f32; 2],
         tint: &Color,
     ) -> GResult<()> {
-        let image = texture_cache.get(texture_id).ok_or_else(|| GError {
+        let image = texture_cache.get_or_create(texture_id, rc).ok_or_else(|| GError {
             kind: GErrorKind::Asset,
             message: format!("纹理不存在，ID: {:?}", texture_id),
         })?;
@@ -219,7 +219,7 @@ impl NativeRenderer {
 
     /// 渲染文本绘制命令
     fn draw_text(
-        rc: &mut impl PietRenderContext,
+        rc: &mut impl PietRenderContext<Image = PietImage>,
         font_manager: &FontManager,
         text: &str,
         position: &[f32; 2],
@@ -254,7 +254,7 @@ impl NativeRenderer {
     }
 
     /// 渲染矩形绘制命令
-    fn draw_rect(rc: &mut impl PietRenderContext, rect: &Rect, color: &Color, corner_radius: f32) {
+    fn draw_rect(rc: &mut impl PietRenderContext<Image = PietImage>, rect: &Rect, color: &Color, corner_radius: f32) {
         let brush = rc.solid_brush(Self::to_piet_color(color));
 
         if corner_radius > 0.0 {
@@ -273,7 +273,7 @@ impl NativeRenderer {
     }
 
     /// 渲染线段绘制命令
-    fn draw_line(rc: &mut impl PietRenderContext, start: &[f32; 2], end: &[f32; 2], color: &Color, width: f32) {
+    fn draw_line(rc: &mut impl PietRenderContext<Image = PietImage>, start: &[f32; 2], end: &[f32; 2], color: &Color, width: f32) {
         let brush = rc.solid_brush(Self::to_piet_color(color));
         let line = Line::new(
             Point::new(start[0] as f64, start[1] as f64),
@@ -283,7 +283,7 @@ impl NativeRenderer {
     }
 
     /// 渲染圆形绘制命令
-    fn draw_circle(rc: &mut impl PietRenderContext, center: &[f32; 2], radius: f32, color: &Color, filled: bool) {
+    fn draw_circle(rc: &mut impl PietRenderContext<Image = PietImage>, center: &[f32; 2], radius: f32, color: &Color, filled: bool) {
         let brush = rc.solid_brush(Self::to_piet_color(color));
         let circle = Circle::new(Point::new(center[0] as f64, center[1] as f64), radius as f64);
 
@@ -295,7 +295,7 @@ impl NativeRenderer {
     }
 
     /// 渲染椭圆绘制命令
-    fn draw_ellipse(rc: &mut impl PietRenderContext, center: &[f32; 2], radii: &[f32; 2], color: &Color, filled: bool) {
+    fn draw_ellipse(rc: &mut impl PietRenderContext<Image = PietImage>, center: &[f32; 2], radii: &[f32; 2], color: &Color, filled: bool) {
         let brush = rc.solid_brush(Self::to_piet_color(color));
         let ellipse = Ellipse::new(
             Point::new(center[0] as f64, center[1] as f64),
@@ -312,8 +312,8 @@ impl NativeRenderer {
 
     /// 渲染过渡动画绘制命令
     fn draw_transition(
-        rc: &mut impl PietRenderContext,
-        texture_cache: &NativeTextureCache,
+        rc: &mut impl PietRenderContext<Image = PietImage>,
+        texture_cache: &mut NativeTextureCache,
         old_texture: Option<TextureId>,
         new_texture: Option<TextureId>,
         progress: f32,
@@ -327,13 +327,13 @@ impl NativeRenderer {
         match kind {
             TransitionKind::Fade => {
                 if let Some(old_id) = old_texture {
-                    if let Some(old_img) = texture_cache.get(old_id) {
+                    if let Some(old_img) = texture_cache.get_or_create(old_id, rc) {
                         let dst = kurbo::Rect::new(0.0, 0.0, w, h);
                         rc.draw_image(old_img, dst, InterpolationMode::Bilinear);
                     }
                 }
                 if let Some(new_id) = new_texture {
-                    if let Some(new_img) = texture_cache.get(new_id) {
+                    if let Some(new_img) = texture_cache.get_or_create(new_id, rc) {
                         let dst = kurbo::Rect::new(0.0, 0.0, w, h);
                         rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
                         let alpha_brush = rc.solid_brush(piet_common::Color::rgba(1.0, 1.0, 1.0, progress as f64));
@@ -346,7 +346,7 @@ impl NativeRenderer {
             }
             TransitionKind::CrossDissolve => {
                 if let Some(old_id) = old_texture {
-                    if let Some(old_img) = texture_cache.get(old_id) {
+                    if let Some(old_img) = texture_cache.get_or_create(old_id, rc) {
                         let dst = kurbo::Rect::new(0.0, 0.0, w, h);
                         rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
                         rc.clip(kurbo::Rect::new(0.0, 0.0, w, h));
@@ -357,7 +357,7 @@ impl NativeRenderer {
                     }
                 }
                 if let Some(new_id) = new_texture {
-                    if let Some(new_img) = texture_cache.get(new_id) {
+                    if let Some(new_img) = texture_cache.get_or_create(new_id, rc) {
                         let dst = kurbo::Rect::new(0.0, 0.0, w, h);
                         rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
                         rc.clip(kurbo::Rect::new(0.0, 0.0, w, h));
@@ -378,7 +378,7 @@ impl NativeRenderer {
                 };
 
                 if let Some(old_id) = old_texture {
-                    if let Some(old_img) = texture_cache.get(old_id) {
+                    if let Some(old_img) = texture_cache.get_or_create(old_id, rc) {
                         rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
                         rc.clip(kurbo::Rect::new(0.0, 0.0, w, h));
                         let saved = rc.current_transform();
@@ -388,7 +388,7 @@ impl NativeRenderer {
                     }
                 }
                 if let Some(new_id) = new_texture {
-                    if let Some(new_img) = texture_cache.get(new_id) {
+                    if let Some(new_img) = texture_cache.get_or_create(new_id, rc) {
                         rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
                         rc.clip(kurbo::Rect::new(0.0, 0.0, w, h));
                         let saved = rc.current_transform();
@@ -406,6 +406,7 @@ impl NativeRenderer {
 
 impl Renderer for NativeRenderer {
     fn begin_frame(&mut self) -> GResult<()> {
+        self.texture_cache.invalidate_piet_images();
         Ok(())
     }
 
@@ -426,7 +427,7 @@ impl Renderer for NativeRenderer {
             message: format!("无法创建位图渲染目标: {}", e),
         })?;
 
-        let rc = bitmap_target.render_context();
+        let mut rc = bitmap_target.render_context();
 
         rc.clear(kurbo::Rect::new(0.0, 0.0, width as f64, height as f64), piet_common::Color::BLACK);
 
@@ -464,10 +465,10 @@ impl Renderer for NativeRenderer {
                             (sprite_clip.x + sprite_clip.width) as f64,
                             (sprite_clip.y + sprite_clip.height) as f64,
                         ));
-                        Self::draw_sprite(&mut rc, &self.texture_cache, *texture_id, transform, size, tint)?;
+                        Self::draw_sprite(&mut rc, &mut self.texture_cache, *texture_id, transform, size, tint)?;
                         rc.restore().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法恢复渲染状态: {}", e) })?;
                     } else {
-                        Self::draw_sprite(&mut rc, &self.texture_cache, *texture_id, transform, size, tint)?;
+                        Self::draw_sprite(&mut rc, &mut self.texture_cache, *texture_id, transform, size, tint)?;
                     }
                 }
                 DrawCommand::Text {
@@ -518,7 +519,7 @@ impl Renderer for NativeRenderer {
                 } => {
                     Self::draw_transition(
                         &mut rc,
-                        &self.texture_cache,
+                        &mut self.texture_cache,
                         *old_texture,
                         *new_texture,
                         *progress,
@@ -531,6 +532,8 @@ impl Renderer for NativeRenderer {
         }
 
         rc.finish().map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法完成渲染: {}", e) })?;
+
+        drop(rc);
 
         let pixel_count = width * height;
         let mut raw_pixels = vec![0u8; pixel_count * 4];
@@ -545,7 +548,7 @@ impl Renderer for NativeRenderer {
         let buffer = Self::convert_rgba_to_softbuffer(&raw_pixels, width, height);
 
         if let (Some(w), Some(h)) = (NonZeroU32::new(surface_width), NonZeroU32::new(surface_height)) {
-            self.surface.resize(w, h);
+            let _ = self.surface.resize(w, h);
             let mut surface_buffer = self.surface.buffer_mut().map_err(|e| GError {
                 kind: GErrorKind::Platform,
                 message: format!("无法获取 softbuffer 缓冲区: {}", e),
@@ -565,7 +568,7 @@ impl Renderer for NativeRenderer {
     }
 
     fn load_texture(&mut self, path: &Path) -> GResult<TextureId> {
-        self.texture_cache.load_texture(path, &mut self.device)
+        self.texture_cache.load_texture(path)
     }
 
     fn resize(&mut self, width: u32, height: u32) {
@@ -580,6 +583,6 @@ impl Renderer for NativeRenderer {
     }
 
     fn reload_texture(&mut self, path: &str) -> GResult<()> {
-        self.texture_cache.reload_texture(path, &mut self.device)
+        self.texture_cache.reload_texture(path)
     }
 }

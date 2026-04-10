@@ -10,9 +10,19 @@ use naga;
 ///
 /// 使用 WGSL 文本格式进行序列化，确保跨平台兼容性。
 pub fn serialize_module(module: &naga::Module) -> GResult<Vec<u8>> {
+    let module_info = naga::valid::Validator::new(
+        naga::valid::ValidationFlags::all(),
+        naga::valid::Capabilities::all(),
+    )
+    .validate(module)
+    .map_err(|e| GError {
+        kind: GErrorKind::Other,
+        message: format!("naga Module 验证失败: {:?}", e),
+    })?;
+
     let wgsl = naga::back::wgsl::write_string(
         module,
-        &naga::back::wgsl::Options::default(),
+        &module_info,
         naga::back::wgsl::WriterFlags::empty(),
     )
     .map_err(|e| GError {

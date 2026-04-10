@@ -4,6 +4,8 @@
 //!
 //! 提供实体-组件-系统架构，基于 Archetype 存储实现高性能的实体管理、组件存储和查询功能。
 
+extern crate self as gg_ecs;
+
 pub mod archetype;
 pub mod entity;
 pub mod query;
@@ -591,7 +593,6 @@ pub mod prelude {
         query::{QueryResult, WorldQuery},
         storage::{ComponentColumn, ComponentStorage},
     };
-    pub use gg_macros::Component;
 }
 
 #[cfg(test)]

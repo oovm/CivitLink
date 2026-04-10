@@ -42,7 +42,7 @@ impl Plugin for PortraitPlugin {
     /// 注册立绘渲染系统和立绘动画系统。
     fn build(&self, registrar: &mut PluginRegistrar) {
         registrar.register_system(Box::new(PortraitRenderSystem::new(self.screen_width, self.screen_height)));
-        registrar.register_system(Box::new(PortraitAnimationSystem::new(1.0 / 60.0)));
+        registrar.register_system(Box::new(PortraitAnimationSystem::new()));
     }
 
     /// 返回插件依赖列表

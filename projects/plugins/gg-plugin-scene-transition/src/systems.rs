@@ -4,6 +4,7 @@
 use gg_core::GResult;
 use gg_ecs::{System, World};
 use gg_galgame_schema::components::{SlideDirection, TransitionType};
+use gg_plugin_dialogue::schema::DeltaTime;
 use gg_render::{DrawCommand, RenderContext, TransitionKind};
 
 use crate::transition::{TransitionManager, TransitionState};
@@ -69,10 +70,11 @@ impl System for TransitionSystem {
 
     /// 执行转场系统逻辑
     ///
-    /// 计算帧间时间差，更新所有 TransitionState 的进度，
+    /// 从 World 的 DeltaTime 资源读取真实帧间隔时间，
+    /// 更新所有 TransitionState 的进度，
     /// 对已完成的转场执行完成处理。
     fn execute(&mut self, world: &mut World) -> GResult<()> {
-        let delta_secs = 1.0 / 60.0;
+        let delta_secs = world.get_resource::<DeltaTime>().map(|d| d.secs).unwrap_or(1.0 / 60.0);
 
         let mut has_complete = false;
 

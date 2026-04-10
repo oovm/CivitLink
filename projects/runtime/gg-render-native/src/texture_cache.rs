@@ -135,7 +135,7 @@ impl NativeTextureCache {
     /// # 返回值
     ///
     /// 如果找到或成功创建则返回图像引用，否则返回 `None`
-    pub fn get_or_create(&mut self, id: TextureId, rc: &mut impl PietRenderContext) -> Option<&PietImage> {
+    pub fn get_or_create(&mut self, id: TextureId, rc: &mut impl PietRenderContext<Image = PietImage>) -> Option<&PietImage> {
         if self.piet_images.contains_key(&id) {
             return self.piet_images.get(&id);
         }

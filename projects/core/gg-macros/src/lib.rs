@@ -162,19 +162,9 @@ pub fn derive_reflect(input: TokenStream) -> TokenStream {
 
 /// 为类型派生 `Component` trait
 ///
-/// 生成空 impl 块，因为 `Component` 使用 blanket impl
-/// （任何满足 `Any + Send + Sync` 的类型自动成为组件），
-/// 此宏主要用于文档目的和未来扩展性。
+/// 由于 `Component` 使用 blanket impl（任何满足 `Any + Send + Sync` 的类型自动成为组件），
+/// 此宏不生成 impl 块，仅作为语义标记用于文档目的和未来扩展性。
 #[proc_macro_derive(Component)]
-pub fn derive_component(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-
-    let name = &input.ident;
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-
-    let expanded = quote! {
-        impl #impl_generics gg_ecs::Component for #name #ty_generics #where_clause {}
-    };
-
-    TokenStream::from(expanded)
+pub fn derive_component(_input: TokenStream) -> TokenStream {
+    TokenStream::new()
 }

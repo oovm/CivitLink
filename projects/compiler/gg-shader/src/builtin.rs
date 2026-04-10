@@ -1,54 +1,13 @@
-//! 着色器源码与加载模块
+//! 内置着色器 naga IR 构建模块
 //!
-//! 定义内置着色器源码和 GPU 着色器源抽象，
-//! 支持从 naga IR 或 WGSL 文本创建着色器模块。
+//! 提供内置着色器（精灵、过渡、批渲染精灵）的 naga IR 构建函数，
+//! 通过 naga 的 WGSL 前端解析预定义的 WGSL 源码生成 naga Module。
 
-use std::borrow::Cow;
+use gg_core::{GError, GErrorKind, GResult};
+use naga;
 
-/// GPU 着色器源
-///
-/// 封装 naga IR 和 WGSL 两种着色器源，
-/// 提供统一的着色器模块创建接口。
-pub enum GpuShaderSource {
-    /// naga IR 着色器源
-    Naga(Cow<'static, naga::Module>),
-    /// WGSL 文本着色器源
-    Wgsl(Cow<'static, str>),
-}
-
-impl GpuShaderSource {
-    /// 从 naga Module 创建着色器源
-    pub fn from_naga(module: naga::Module) -> Self {
-        GpuShaderSource::Naga(Cow::Owned(module))
-    }
-
-    /// 从 WGSL 字符串创建着色器源
-    pub fn from_wgsl(source: impl Into<Cow<'static, str>>) -> Self {
-        GpuShaderSource::Wgsl(source.into())
-    }
-
-    /// 创建 wgpu 着色器模块
-    pub fn create_shader_module(&self, device: &wgpu::Device, label: &str) -> wgpu::ShaderModule {
-        match self {
-            GpuShaderSource::Naga(module) => device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(label),
-                source: wgpu::ShaderSource::Naga(module.clone()),
-            }),
-            GpuShaderSource::Wgsl(source) => device.create_shader_module(wgpu::ShaderModuleDescriptor {
-                label: Some(label),
-                source: wgpu::ShaderSource::Wgsl(source.clone()),
-            }),
-        }
-    }
-}
-
-/// 精灵着色器 WGSL 源码（保留作为文档参考和回退方案）
-///
-/// 顶点着色器将单位四边形通过 MVP 矩阵变换到屏幕空间，
-/// 并通过 `uv_transform` 对纹理坐标进行偏移和缩放，
-/// 片段着色器对纹理进行采样并乘以着色颜色。
-#[allow(dead_code)]
-pub const SPRITE_SHADER: &str = r#"
+/// 精灵着色器 WGSL 源码
+pub const SPRITE_SHADER_WGSL: &str = r#"
 struct VertexInput {
     @location(0) position: vec2f,
     @location(1) uv: vec2f,
@@ -87,12 +46,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 }
 "#;
 
-/// 过渡着色器 WGSL 源码（保留作为文档参考和回退方案）
-///
-/// 与精灵着色器类似，但支持两个纹理和一个进度参数，
-/// 用于场景切换时的过渡动画效果。
-#[allow(dead_code)]
-pub const TRANSITION_SHADER: &str = r#"
+/// 过渡着色器 WGSL 源码
+pub const TRANSITION_SHADER_WGSL: &str = r#"
 struct VertexInput {
     @location(0) position: vec2f,
     @location(1) uv: vec2f,
@@ -168,12 +123,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 }
 "#;
 
-/// 批渲染精灵着色器 WGSL 源码（保留作为文档参考和回退方案）
-///
-/// 与精灵着色器功能相同，但通过实例化顶点属性传递 per-instance 数据，
-/// 支持一次绘制调用渲染多个同纹理精灵。
-#[allow(dead_code)]
-pub const SPRITE_BATCH_SHADER: &str = r#"
+/// 批渲染精灵着色器 WGSL 源码
+pub const BATCH_SPRITE_SHADER_WGSL: &str = r#"
 struct VertexInput {
     @location(0) position: vec2f,
     @location(1) uv: vec2f,
@@ -218,3 +169,26 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
     return tex_color * input.tint;
 }
 "#;
+
+/// 从 WGSL 源码构建 naga Module
+fn parse_wgsl(source: &str, label: &str) -> GResult<naga::Module> {
+    naga::front::wgsl::parse_str(source).map_err(|e| GError {
+        kind: GErrorKind::Other,
+        message: format!("内置着色器 '{}' WGSL 解析失败: {:?}", label, e),
+    })
+}
+
+/// 构建精灵着色器的 naga Module
+pub fn builtin_sprite_shader() -> GResult<naga::Module> {
+    parse_wgsl(SPRITE_SHADER_WGSL, "sprite")
+}
+
+/// 构建过渡着色器的 naga Module
+pub fn builtin_transition_shader() -> GResult<naga::Module> {
+    parse_wgsl(TRANSITION_SHADER_WGSL, "transition")
+}
+
+/// 构建批渲染精灵着色器的 naga Module
+pub fn builtin_batch_sprite_shader() -> GResult<naga::Module> {
+    parse_wgsl(BATCH_SPRITE_SHADER_WGSL, "batch_sprite")
+}

@@ -19,7 +19,7 @@ members = [
     "examples/stg-basic",
     "examples/platformer-basic",
 ]
-# exclude = ["projects/engines/platformer", "projects/engines/stg"]
+exclude = ["projects/engines/platformer", "projects/engines/stg"]
 
 [workspace.package]
 version = "0.0.0"
@@ -63,6 +63,7 @@ tiny-skia = "0.12.0"
 naga = { version = "29.0.1", features = ["wgsl-in", "wgsl-out"] }
 piet-common = "0.7"
 kurbo = "0.11"
+ttf-parser = "0.24"
 
 # gnostic gamer modules
 gg-core = { path = "projects/core/gg-core" }
@@ -89,6 +90,7 @@ gg-mcp = { path = "projects/toolchain/gg-mcp" }
 gg-lsp = { path = "projects/toolchain/gg-lsp" }
 
 # gnostic gamer compilers
+gg-shader = { path = "projects/compiler/gg-shader" }
 gg-compiler-core = { path = "projects/compiler/gg-compiler-core" }
 gg-compiler-aot = { path = "projects/compiler/gg-compiler-aot" }
 

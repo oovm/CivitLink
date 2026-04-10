@@ -8,7 +8,9 @@ license = { workspace = true }
 [dependencies]
 gg-core = { workspace = true }
 gg-render = { workspace = true }
+gg-shader = { workspace = true }
 wgpu = { workspace = true }
+naga = { workspace = true }
 image = { workspace = true }
 ab_glyph = { workspace = true }
 bytemuck = { workspace = true }

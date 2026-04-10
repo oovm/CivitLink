@@ -10,11 +10,13 @@ pub mod texture_registry;
 
 use gg_core::{
     GResult,
+    platform::{InputEvent, KeyState, PointerAction, PointerButton},
     plugin::{Plugin, PluginRegistrar},
 };
 use gg_ecs::{System, World};
-use gg_render::{Color, DrawCommand, RenderContext};
-use gg_ui::{EventSystem, LayoutEngine, UiTree};
+use gg_render::RenderContext;
+use gg_runtime_core::InputEvents;
+use gg_ui::{EventSystem, LayoutEngine, UiEvent, UiRenderer, UiTree};
 
 use crate::{
     binding::{BindingRegistry, BindingSystem},
@@ -77,7 +79,7 @@ impl Plugin for UiPlugin {
     ///
     /// 注册以下资源和系统：
     /// - 资源：UiTreeResource、EventSystemResource、FocusManager、BindingRegistry、InputState
-    /// - 系统：UiUpdateSystem、UiRenderSystem、BindingSystem、InputBridgeSystem
+    /// - 系统：UiInputSystem、UiUpdateSystem、UiRenderSystem、BindingSystem、InputBridgeSystem
     fn build(&self, registrar: &mut PluginRegistrar) {
         registrar.insert_resource(UiTreeResource::new());
         registrar.insert_resource(EventSystemResource::new());
@@ -85,6 +87,7 @@ impl Plugin for UiPlugin {
         registrar.insert_resource(BindingRegistry::new());
         registrar.insert_resource(TextureRegistry::new());
         registrar.insert_resource(InputState::new());
+        registrar.register_system(Box::new(UiInputSystem));
         registrar.register_system(Box::new(UiUpdateSystem));
         registrar.register_system(Box::new(UiRenderSystem));
         registrar.register_system(Box::new(BindingSystem::new()));
@@ -103,6 +106,99 @@ impl Plugin for UiPlugin {
 
     /// 关闭 UI 插件
     fn shutdown(&self) -> GResult<()> {
+        Ok(())
+    }
+}
+
+/// UI 输入系统
+///
+/// 将平台输入事件转换为 UI 事件并分发到 UI 节点。
+/// 在 PreUpdate 阶段执行，优先于 UiUpdateSystem。
+pub struct UiInputSystem;
+
+impl System for UiInputSystem {
+    /// 返回系统名称
+    fn name(&self) -> &str {
+        "ui_input"
+    }
+
+    /// 执行 UI 输入系统逻辑
+    ///
+    /// 从 World 获取 InputEvents 资源，将每个 InputEvent 转换为 UiEvent，
+    /// 通过 EventSystem::dispatch 分发到 UI 节点。
+    /// 对于键盘事件，若存在焦点节点，则路由到焦点节点处理器。
+    fn execute(&mut self, world: &mut World) -> GResult<()> {
+        let events = world.get_resource::<InputEvents>().map(|r| r.events.clone());
+        let events = match events {
+            Some(e) => e,
+            None => return Ok(()),
+        };
+
+        if events.is_empty() {
+            return Ok(());
+        }
+
+        let tree = world.get_resource::<UiTreeResource>().map(|r| r.0.clone());
+        let tree = match tree {
+            Some(t) => t,
+            None => return Ok(()),
+        };
+
+        let focused = world.get_resource::<FocusManager>().and_then(|fm| fm.focused());
+
+        let mut pointer_events: Vec<UiEvent> = Vec::new();
+        let mut key_events: Vec<UiEvent> = Vec::new();
+
+        for event in &events {
+            match event {
+                InputEvent::Pointer { action, button, position: (x, y) } => {
+                    match action {
+                        PointerAction::Down => {
+                            if *button == Some(PointerButton::Left) {
+                                pointer_events.push(UiEvent::Click { x: *x, y: *y });
+                            }
+                            pointer_events.push(UiEvent::MouseDown { x: *x, y: *y });
+                        }
+                        PointerAction::Up => {
+                            pointer_events.push(UiEvent::MouseUp { x: *x, y: *y });
+                        }
+                        PointerAction::Move => {
+                            pointer_events.push(UiEvent::MouseMove { x: *x, y: *y });
+                        }
+                        PointerAction::Scroll(_) => {}
+                    }
+                }
+                InputEvent::Keyboard { key, state: KeyState::Pressed } => {
+                    key_events.push(UiEvent::KeyInput { key: format!("{:?}", key) });
+                }
+                _ => {}
+            }
+        }
+
+        if !pointer_events.is_empty() {
+            if let Some(event_system) = world.get_resource_mut::<EventSystemResource>() {
+                for ui_event in &pointer_events {
+                    event_system.0.dispatch(ui_event, &tree);
+                }
+            }
+        }
+
+        if !key_events.is_empty() {
+            if let Some(event_system) = world.get_resource_mut::<EventSystemResource>() {
+                for key_event in &key_events {
+                    event_system.0.dispatch(key_event, &tree);
+                }
+            }
+
+            if let Some(focused_id) = focused {
+                if let Some(event_system) = world.get_resource_mut::<EventSystemResource>() {
+                    for key_event in &key_events {
+                        event_system.0.dispatch_to_node(focused_id, key_event);
+                    }
+                }
+            }
+        }
+
         Ok(())
     }
 }
@@ -144,7 +240,8 @@ impl System for UiUpdateSystem {
 
 /// UI 渲染系统
 ///
-/// 每帧将 UI 树转换为 DrawCommand 渲染指令。
+/// 每帧将 UI 树通过 UiRenderer 转换为 DrawCommand 渲染指令。
+/// 在渲染前从 TextureRegistry 解析图片路径到纹理标识符。
 pub struct UiRenderSystem;
 
 impl System for UiRenderSystem {
@@ -155,30 +252,29 @@ impl System for UiRenderSystem {
 
     /// 执行 UI 渲染系统逻辑
     ///
-    /// 从 World 获取 UiTreeResource，遍历 UI 节点，
-    /// 为每个可见节点提交 DrawCommand::Rect 渲染指令。
+    /// 从 World 获取 UiTreeResource 和 TextureRegistry，
+    /// 将图片路径解析为纹理标识符后，委托 UiRenderer::render 生成绘制命令。
     fn execute(&mut self, world: &mut World) -> GResult<()> {
-        let tree_opt = world.get_resource::<UiTreeResource>().map(|r| r.0.clone());
-        let tree = match tree_opt {
+        let texture_registry = world.get_resource::<TextureRegistry>().cloned();
+
+        if let Some(tree_res) = world.get_resource_mut::<UiTreeResource>() {
+            if let Some(ref registry) = texture_registry {
+                Self::resolve_image_textures(&mut tree_res.0, registry);
+            }
+        }
+
+        let tree = world.get_resource::<UiTreeResource>().map(|r| r.0.clone());
+        let tree = match tree {
             Some(t) => t,
             None => return Ok(()),
         };
 
-        let render_ctx = world.get_resource_mut::<RenderContext>();
-        if render_ctx.is_none() {
+        if world.get_resource_mut::<RenderContext>().is_none() {
             return Ok(());
         }
 
-        let mut commands = Vec::new();
-
-        if let Some(root_id) = tree.root() {
-            Self::render_node(&tree, root_id, &mut commands);
-        }
-
         if let Some(ctx) = world.get_resource_mut::<RenderContext>() {
-            for cmd in commands {
-                ctx.draw(cmd);
-            }
+            UiRenderer::render(&tree, ctx);
         }
 
         Ok(())
@@ -186,37 +282,36 @@ impl System for UiRenderSystem {
 }
 
 impl UiRenderSystem {
-    /// 递归渲染 UI 节点
-    fn render_node(tree: &UiTree, node_id: gg_ui::UiNodeId, commands: &mut Vec<DrawCommand>) {
-        let node = match tree.get(node_id) {
-            Some(n) => n,
-            None => return,
-        };
-
-        if !node.visible {
-            return;
+    /// 将 UI 树中所有 Image 节点的 image_path 解析为 texture_id
+    fn resolve_image_textures(tree: &mut UiTree, registry: &TextureRegistry) {
+        if let Some(root_id) = tree.root() {
+            Self::resolve_node_textures(tree, root_id, registry);
         }
+    }
 
-        if let Some(ref layout) = node.layout_result {
-            commands.push(DrawCommand::Rect {
-                rect: gg_render::Rect::new(layout.x, layout.y, layout.width, layout.height),
-                color: Color::TRANSPARENT,
-                corner_radius: 0.0,
-            });
-
-            if let gg_ui::UiNodeData::Text { ref content } = node.data {
-                commands.push(DrawCommand::Text {
-                    text: content.clone(),
-                    position: [layout.x, layout.y],
-                    font_size: 16.0,
-                    color: Color::WHITE,
-                    max_width: Some(layout.width),
-                });
+    fn resolve_node_textures(
+        tree: &mut UiTree,
+        node_id: gg_ui::UiNodeId,
+        registry: &TextureRegistry,
+    ) {
+        let image_path = tree.get(node_id).and_then(|n| n.style.image_path.clone());
+        if let Some(path) = image_path {
+            if let Some(node) = tree.get_mut(node_id) {
+                if let gg_ui::UiNodeData::Image {
+                    ref mut texture_id, ..
+                } = node.data
+                {
+                    *texture_id = registry.get(&path);
+                }
             }
         }
 
-        for &child_id in &node.children {
-            Self::render_node(tree, child_id, commands);
+        let children: Vec<gg_ui::UiNodeId> = tree
+            .get(node_id)
+            .map(|n| n.children.clone())
+            .unwrap_or_default();
+        for child_id in children {
+            Self::resolve_node_textures(tree, child_id, registry);
         }
     }
 }

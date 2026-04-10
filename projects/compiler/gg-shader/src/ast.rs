@@ -4,7 +4,7 @@
 //! 包含完整的类型信息，用于解析器输出和 naga IR 转换器输入。
 
 /// gs 语言标量类型
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GslScalarType {
     /// 布尔类型
     Bool,

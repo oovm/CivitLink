@@ -45,6 +45,89 @@ pub trait PartialReflect {
     }
 }
 
+/// 为 `Copy` 基本类型生成 `PartialReflect` 实现
+macro_rules! impl_reflect_primitive {
+    ($ty:ty) => {
+        impl PartialReflect for $ty {
+            fn as_any(&self) -> &dyn Any {
+                self
+            }
+
+            fn as_any_mut(&mut self) -> &mut dyn Any {
+                self
+            }
+
+            fn type_name(&self) -> &'static str {
+                std::any::type_name::<Self>()
+            }
+
+            fn clone_reflect(&self) -> Box<dyn PartialReflect> {
+                Box::new(*self)
+            }
+
+            fn try_assign(&mut self, source: &dyn PartialReflect) -> Result<(), String> {
+                if let Some(val) = source.as_any().downcast_ref::<Self>() {
+                    *self = *val;
+                    Ok(())
+                } else {
+                    Err(format!(
+                        "type mismatch: expected {}, got {}",
+                        self.type_name(),
+                        source.type_name()
+                    ))
+                }
+            }
+        }
+    };
+}
+
+impl_reflect_primitive!(f32);
+impl_reflect_primitive!(f64);
+impl_reflect_primitive!(i8);
+impl_reflect_primitive!(i16);
+impl_reflect_primitive!(i32);
+impl_reflect_primitive!(i64);
+impl_reflect_primitive!(i128);
+impl_reflect_primitive!(isize);
+impl_reflect_primitive!(u8);
+impl_reflect_primitive!(u16);
+impl_reflect_primitive!(u32);
+impl_reflect_primitive!(u64);
+impl_reflect_primitive!(u128);
+impl_reflect_primitive!(usize);
+impl_reflect_primitive!(bool);
+
+impl PartialReflect for String {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn type_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
+
+    fn clone_reflect(&self) -> Box<dyn PartialReflect> {
+        Box::new(self.clone())
+    }
+
+    fn try_assign(&mut self, source: &dyn PartialReflect) -> Result<(), String> {
+        if let Some(val) = source.as_any().downcast_ref::<Self>() {
+            *self = val.clone();
+            Ok(())
+        } else {
+            Err(format!(
+                "type mismatch: expected {}, got {}",
+                self.type_name(),
+                source.type_name()
+            ))
+        }
+    }
+}
+
 /// 运行时类型信息
 pub struct TypeInfo {
     /// 类型 ID
@@ -230,47 +313,4 @@ pub mod prelude {
         PartialReflect, PropertyEditor, PropertyInfo, ReflectionRegistry, StructPropertyEditor, TypeInfo, TypeRegistration,
     };
     pub use gg_macros::Reflect;
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::PartialReflect;
-    use crate::prelude::Reflect;
-
-    #[derive(Reflect, Clone)]
-    struct NamedStruct {
-        x: f32,
-        y: f32,
-    }
-
-    #[derive(Reflect, Clone)]
-    struct TupleStruct(f32, f32);
-
-    #[derive(Reflect, Clone)]
-    struct UnitStruct;
-
-    #[test]
-    fn test_named_struct_reflect() {
-        let s = NamedStruct { x: 1.0, y: 2.0 };
-        assert_eq!(s.field_names(), &["x", "y"]);
-        assert!(s.field("x").is_some());
-        assert!(s.field("y").is_some());
-        assert!(s.field("z").is_none());
-    }
-
-    #[test]
-    fn test_tuple_struct_reflect() {
-        let s = TupleStruct(1.0, 2.0);
-        assert_eq!(s.field_names(), &["0", "1"]);
-        assert!(s.field("0").is_some());
-        assert!(s.field("1").is_some());
-        assert!(s.field("2").is_none());
-    }
-
-    #[test]
-    fn test_unit_struct_reflect() {
-        let s = UnitStruct;
-        assert_eq!(s.field_names(), &[] as &[&str]);
-        assert!(s.field("x").is_none());
-    }
 }
