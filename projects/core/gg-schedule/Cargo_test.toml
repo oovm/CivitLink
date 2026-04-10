@@ -1,8 +1,0 @@
-[package]
-name = "gg-schedule-test"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-gg-ecs = { path = "../gg-ecs" }
-gg-error = { path = "../gg-error" }

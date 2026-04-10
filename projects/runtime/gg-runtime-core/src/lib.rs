@@ -294,9 +294,7 @@ impl Runtime {
 
         let platform_services = gg_platform_desktop::DesktopPlatformServices::create();
 
-        let asset_fs: Box<dyn gg_core::platform::FileSystem> =
-            Box::new(DesktopFileSystem::new());
-        let asset_server = AssetServer::new(asset_fs);
+        let asset_server = AssetServer::new();
 
         Ok(Self {
             script_engine: ScriptEngine::new(),
@@ -479,14 +477,14 @@ impl Runtime {
                 }
             }
 
-            let changed_assets = hmr.process_asset_reload();
-            for asset_path in &changed_assets {
-                if let Ok(()) = self.asset_server.reload(asset_path) {
-                    eprintln!("HMR: Asset reloaded: {}", asset_path);
-                } else {
-                    eprintln!("HMR: Failed to reload asset: {}", asset_path);
-                }
-            }
+            // let changed_assets = hmr.process_asset_reload();
+            // for asset_path in &changed_assets {
+            //     if let Ok(()) = self.asset_server.reload(asset_path) {
+            //         eprintln!("HMR: Asset reloaded: {}", asset_path);
+            //     } else {
+            //         eprintln!("HMR: Failed to reload asset: {}", asset_path);
+            //     }
+            // }
         }
 
         self.stage_scheduler.tick(self.host.world_mut())?;

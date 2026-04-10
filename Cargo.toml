@@ -19,16 +19,29 @@ members = [
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
-authors = ["Lingames"]
+authors = ["GG Teams"]
 license = "MIT"
 
 [workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "0.8"
+wgpu = "0.20"
+winit = "0.29"
+image = "0.25"
+ab_glyph = "0.2"
+bytemuck = "1.14"
+pollster = "0.3"
+cpal = "0.15"
+rodio = "0.17"
+
 gg-core = { path = "projects/core/gg-core" }
 gg-error = { path = "projects/core/gg-error" }
 gg-ecs = { path = "projects/core/gg-ecs" }
 gg-asset = { path = "projects/core/gg-asset" }
 gg-reflection = { path = "projects/core/gg-reflection" }
 gg-schedule = { path = "projects/core/gg-schedule" }
+gg-world = { path = "projects/core/gg-world" }
 gg-render = { path = "projects/core/gg-render" }
 gg-render-wgpu = { path = "projects/runtime/gg-render-wgpu" }
 gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
@@ -49,6 +62,13 @@ gg-plugin-scene-transition = { path = "projects/plugins/gg-plugin-scene-transiti
 gg-plugin-save = { path = "projects/plugins/gg-plugin-save" }
 gg-editor-lsp = { path = "projects/editor/gg-editor-lsp" }
 gg-editor-scene = { path = "projects/editor/gg-editor-scene" }
+gg-editor-shell = { path = "projects/editor/gg-editor-shell" }
+gg-editor-asset-browser = { path = "projects/editor/gg-editor-asset-browser" }
+gg-editor-character = { path = "projects/editor/gg-editor-character" }
+gg-editor-inspector = { path = "projects/editor/gg-editor-inspector" }
+gg-editor-preview = { path = "projects/editor/gg-editor-preview" }
+gg-editor-scene-galgame = { path = "projects/editor/gg-editor-scene-galgame" }
+gg-editor-script = { path = "projects/editor/gg-editor-script" }
 gg-manifest = { path = "projects/toolchain/gg-manifest" }
 gg-factory = { path = "projects/toolchain/gg-factory" }
 gg-cli = { path = "projects/toolchain/gg-cli" }
@@ -57,14 +77,3 @@ gg-platform-desktop = { path = "projects/platforms/gg-platform-desktop" }
 gg-platform-web = { path = "projects/platforms/gg-platform-web" }
 gg-plugin-tilemap = { path = "projects/plugins/gg-plugin-tilemap" }
 gg-plugin-spine = { path = "projects/plugins/gg-plugin-spine" }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-toml = "0.8"
-wgpu = "0.20"
-winit = "0.29"
-image = "0.25"
-ab_glyph = "0.20"
-bytemuck = "1.14"
-pollster = "0.3"
-cpal = "0.15"
-rodio = "0.17"

@@ -1,10 +1,9 @@
-# WAE - Wae Algebraic Effects
+# GG Game Engine
 
-**微服务优先的 Rust 异步框架，深度融合 tokio，提供从 HTTP 服务到云服务的一站式解决方案。**
+**现代化的 GAL 游戏引擎，基于 Rust 构建，提供跨平台支持和丰富的插件系统。**
 
 [![Rust](https://img.shields.io/badge/rust-1.75%2B-orange.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![GitHub](https://img.shields.io/badge/github-oovm/wae-blue.svg)](https://github.com/oovm/wae)
 
 ---
 
@@ -12,29 +11,73 @@
 
 | 特性               | 说明                                   |
 |------------------|--------------------------------------|
-| 🚀 **微服务优先**     | 服务发现、配置中心、链路追踪、健康检查、优雅关闭，开箱即用        |
-| ⚡ **深度融合 tokio** | 基于 tokio-net 零抽象，原生 async/await，极致性能 |
-| 🤖 **AI 友好**     | 清晰的 Trait 抽象，统一的错误处理，最小化样板代码         |
-| 🦀 **纯血 Rust**   | 零 FFI 绑定，跨平台支持，内存安全，可审计              |
+| 🎮 **GAL 游戏专用**    | 专为视觉小说和 GAL 游戏设计，提供丰富的对话、角色和场景管理功能    |
+| 🦀 **纯血 Rust**   | 利用 Rust 的内存安全和性能优势，确保游戏运行稳定高效 |
+| 📱 **跨平台支持**    | 支持桌面（Windows、macOS、Linux）、Web 和移动平台        |
+| 🔌 **插件系统**     | 模块化设计，支持通过插件扩展功能，如对话系统、角色立绘、场景过渡等    |
+| 🎨 **渲染系统**     | 基于 WGPU 的现代化渲染系统，支持 2D 图形和文本渲染       |
+| 📜 **脚本系统**     | 内置 Valkyrie 脚本引擎，支持游戏逻辑和剧情编写         |
+| 🔧 **编辑器集成**    | 提供可视化编辑器，简化游戏开发流程          |
 
 ---
 
 ## 📦 模块概览
 
-WAE 采用模块化的 Crate 设计，每个模块可独立使用：
+GG Game Engine 采用模块化的 Crate 设计，每个模块可独立使用：
 
-| 模块               | 功能                            |
-|------------------|-------------------------------|
-| **wae-types**    | 核心类型定义                     |
-| **wae-https**    | HTTP/HTTPS 服务，构建器模式，统一响应结构    |
-| **wae-effect**   | 代数效应依赖注入，声明式依赖获取              |
-| **wae-ai**       | AI 服务抽象，支持腾讯混元、火山引擎等          |
-| **wae-storage**  | 存储服务抽象，支持腾讯云 COS、阿里云 OSS、本地存储 |
-| **wae-database** | 数据库 ORM，基于 Turso (SQLite 兼容)    |
-| **wae-cache**    | 缓存服务抽象，支持内存缓存                 |
-| **wae-service**  | 服务发现与注册，负载均衡策略                |
-| **wae-config**   | 多层级配置管理，支持 TOML/YAML/环境变量     |
-| **wae-email**    | 邮件服务抽象，支持 SMTP/Sendmail       |
+### 核心模块 (core)
+- **gg-core**: 核心功能和平台抽象
+- **gg-ecs**: 实体组件系统
+- **gg-asset**: 资源管理系统
+- **gg-reflection**: 运行时反射系统
+- **gg-render**: 渲染系统抽象
+- **gg-schedule**: 任务调度系统
+- **gg-world**: 游戏世界管理
+- **gg-error**: 错误处理系统
+
+### 编译器模块 (compiler)
+- **gg-compiler-core**: 编译器核心功能
+- **gg-compiler-script**: 脚本编译器
+- **gg-compiler-aot**: AOT 编译器
+- **gg-script**: 脚本解析和执行
+
+### 编辑器模块 (editor)
+- **gg-editor-shell**: 编辑器外壳和基础框架
+- **gg-editor-asset-browser**: 资源浏览器
+- **gg-editor-inspector**: 属性检查器
+- **gg-editor-scene**: 场景编辑器
+- **gg-editor-script**: 脚本编辑器
+- **gg-editor-preview**: 游戏预览
+- **gg-editor-character**: 角色编辑器
+- **gg-editor-lsp**: 语言服务器协议支持
+
+### 平台模块 (platforms)
+- **gg-platform-desktop**: 桌面平台实现
+- **gg-platform-web**: Web 平台实现
+- **gg-platform-mobile**: 移动平台实现
+
+### 插件模块 (plugins)
+- **gg-plugin-dialogue**: 对话系统插件
+- **gg-plugin-portrait**: 角色立绘插件
+- **gg-plugin-save**: 存档系统插件
+- **gg-plugin-scene-transition**: 场景过渡插件
+- **gg-plugin-spine**: Spine 动画插件
+- **gg-plugin-tilemap**: 瓦片地图插件
+- **gg-ui**: UI 系统
+- **gg-galgame-schema**: GAL 游戏数据 schema
+
+### 运行时模块 (runtime)
+- **gg-runtime-core**: 运行时核心
+- **gg-runtime-audio**: 音频系统
+- **gg-render-wgpu**: WGPU 渲染实现
+- **gg-bytecode**: 字节码执行
+- **gg-ir**: 中间表示
+- **gg-vm**: 虚拟机
+
+### 工具链模块 (toolchain)
+- **gg-cli**: 命令行工具
+- **gg-factory**: 项目生成器
+- **gg-manifest**: 项目配置管理
 
 ---
 
@@ -44,61 +87,62 @@ WAE 采用模块化的 Crate 设计，每个模块可独立使用：
 
 ```toml
 [dependencies]
-wae = { git = "https://github.com/oovm/wae" }
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1", features = ["derive"] }
+gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
 ```
 
-### 基础 HTTP 服务
+### 基础示例
 
 ```rust
-use wae::prelude::*;
+use gg_runtime_core::prelude::*;
 
-#[wae::main]
-async fn main() -> Result<()> {
-    Server::bind("0.0.0.0:3000")
-        .routes(routes())
-        .with_graceful_shutdown()
-        .serve()
-        .await
+fn main() -> Result<()> {
+    let app = App::builder()
+        .with_plugins([
+            gg_plugin_dialogue::DialoguePlugin::default(),
+            gg_plugin_portrait::PortraitPlugin::default(),
+        ])
+        .build();
+    
+    app.run()
 }
 ```
 
-更多详细示例请查看 [快速开始文档](documentation/zh-hans/guide/getting-started.md)。
+更多详细示例请查看 [examples](examples/) 目录。
 
 ---
 
 ## 📖 文档
 
-- [简介](documentation/zh-hans/guide/introduction.md) - 了解 WAE 的设计理念
-- [快速开始](documentation/zh-hans/guide/getting-started.md) - 5 分钟上手 WAE
-- [核心优势](documentation/zh-hans/guide/advantages.md) - 深入了解各模块特性
-- [架构设计](documentation/zh-hans/architecture/overview.md) - 模块化设计原则
+- [设计文档](design/index.md) - 了解引擎的设计理念和架构
+- [快速开始](design/guide/getting-started.md) - 5 分钟上手 GG Game Engine
+- [核心优势](design/guide/advantages.md) - 深入了解各模块特性
+- [架构设计](design/architecture/overview.md) - 模块化设计原则
 
 ---
 
-## 📝 开发规范
+## 🎯 项目结构
 
-### Emoji 提交规范
+```
+gg-game-engine/
+├── design/          # 设计文档
+├── examples/        # 示例项目
+├── projects/        # 核心模块
+│   ├── core/        # 核心功能
+│   ├── compiler/    # 编译器
+│   ├── editor/      # 编辑器
+│   ├── galgame/     # GAL 游戏模板
+│   ├── platforms/   # 平台实现
+│   ├── plugins/     # 插件系统
+│   ├── runtime/     # 运行时
+│   └── toolchain/   # 工具链
+└── scripts/         # 辅助脚本
+```
 
-| Emoji  | 含义      |
-|--------|---------|
-| 🎂     | 项目初始化   |
-| 🎉     | 发布新版本   |
-| 🧪🔮   | 实验性代码   |
-| 🔧🐛🐞 | Bug 修复  |
-| 🔒     | 安全修复    |
-| 🐣🐤🐥 | 新增功能    |
-| 📝🎀   | 文档更新    |
-| 🚀     | 性能优化    |
-| 🚧     | 开发中     |
-| 🚨     | 测试覆盖    |
-| 🚥     | CI 改进   |
-| 🔥🧨   | 删除代码或文件 |
-| 🧹     | 代码重构    |
-| 📈     | 添加分析或分支 |
-| 🤖     | 自动化修复   |
-| 📦     | 更新依赖    |
+---
+
+## 🤝 贡献
+
+欢迎贡献代码、报告问题或提出建议！请查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解如何参与。
 
 ---
 

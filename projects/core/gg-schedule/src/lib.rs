@@ -71,7 +71,7 @@ impl ScheduleLabel for Startup {
     }
 
     fn hash_box(&self, hasher: &mut dyn Hasher) {
-        self.label_name().hash(hasher);
+        hasher.write(self.label_name().as_bytes());
     }
 }
 
@@ -93,7 +93,7 @@ impl ScheduleLabel for Update {
     }
 
     fn hash_box(&self, hasher: &mut dyn Hasher) {
-        self.label_name().hash(hasher);
+        hasher.write(self.label_name().as_bytes());
     }
 }
 
@@ -115,7 +115,7 @@ impl ScheduleLabel for FixedUpdate {
     }
 
     fn hash_box(&self, hasher: &mut dyn Hasher) {
-        self.label_name().hash(hasher);
+        hasher.write(self.label_name().as_bytes());
     }
 }
 
@@ -137,7 +137,7 @@ impl ScheduleLabel for PostUpdate {
     }
 
     fn hash_box(&self, hasher: &mut dyn Hasher) {
-        self.label_name().hash(hasher);
+        hasher.write(self.label_name().as_bytes());
     }
 }
 
@@ -159,7 +159,7 @@ impl ScheduleLabel for Render {
     }
 
     fn hash_box(&self, hasher: &mut dyn Hasher) {
-        self.label_name().hash(hasher);
+        hasher.write(self.label_name().as_bytes());
     }
 }
 
@@ -181,7 +181,7 @@ impl ScheduleLabel for Exit {
     }
 
     fn hash_box(&self, hasher: &mut dyn Hasher) {
-        self.label_name().hash(hasher);
+        hasher.write(self.label_name().as_bytes());
     }
 }
 
@@ -321,7 +321,7 @@ impl Schedule {
         let order = self.topological_sort()?;
         let mut systems = std::mem::take(&mut self.systems);
         for idx in order {
-            systems[idx].func(world)?;
+            (systems[idx].func)(world)?;
         }
         self.systems = systems;
         Ok(())
