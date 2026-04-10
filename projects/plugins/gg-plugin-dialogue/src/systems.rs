@@ -179,7 +179,7 @@ impl System for ChoiceSystem {
             let variables = world
                 .get_resource::<GameVariables>()
                 .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "GameVariables resource not found".to_string() })?;
-            if !variables.evaluate_condition(condition) {
+            if !ExpressionEvaluator::evaluate(condition, &variables) {
                 return Err(GError { kind: GErrorKind::Plugin, message: format!("Condition '{}' not satisfied", condition) });
             }
         }
@@ -206,19 +206,13 @@ impl System for ChoiceSystem {
 /// 打字机效果系统
 ///
 /// 每帧更新 TypewriterState 资源，推进当前显示位置。
-pub struct TypewriterSystem {
-    /// 帧间隔时间（秒）
-    pub delta_secs: f32,
-}
+/// 使用 World 中的 DeltaTime 资源获取真实帧间隔。
+pub struct TypewriterSystem;
 
 impl TypewriterSystem {
     /// 创建新的打字机效果系统
-    ///
-    /// # 参数
-    ///
-    /// - `delta_secs` - 帧间隔时间（秒）
-    pub fn new(delta_secs: f32) -> Self {
-        Self { delta_secs }
+    pub fn new() -> Self {
+        Self
     }
 }
 
@@ -230,10 +224,14 @@ impl System for TypewriterSystem {
 
     /// 执行打字机效果系统逻辑
     ///
-    /// 如果 World 中存在 TypewriterState 资源，更新其显示进度。
+    /// 如果 World 中存在 TypewriterState 资源，使用真实 delta time 更新其显示进度。
     fn execute(&mut self, world: &mut World) -> GResult<()> {
+        let delta = world
+            .get_resource::<DeltaTime>()
+            .map(|d| d.secs)
+            .unwrap_or(1.0 / 60.0);
         if let Some(state) = world.get_resource_mut::<TypewriterState>() {
-            state.update(self.delta_secs);
+            state.update(delta);
         }
         Ok(())
     }
@@ -242,19 +240,13 @@ impl System for TypewriterSystem {
 /// 等待系统
 ///
 /// 每帧更新 WaitTimer 资源倒计时，完成后移除 WaitTimer 资源。
-pub struct WaitSystem {
-    /// 帧间隔时间（秒）
-    pub delta_secs: f32,
-}
+/// 使用 World 中的 DeltaTime 资源获取真实帧间隔。
+pub struct WaitSystem;
 
 impl WaitSystem {
     /// 创建新的等待系统
-    ///
-    /// # 参数
-    ///
-    /// - `delta_secs` - 帧间隔时间（秒）
-    pub fn new(delta_secs: f32) -> Self {
-        Self { delta_secs }
+    pub fn new() -> Self {
+        Self
     }
 }
 
@@ -266,11 +258,16 @@ impl System for WaitSystem {
 
     /// 执行等待系统逻辑
     ///
-    /// 如果 World 中存在 WaitTimer 资源，减少剩余时间。
+    /// 如果 World 中存在 WaitTimer 资源，使用真实 delta time 减少剩余时间。
     /// 当剩余时间小于等于零时，移除 WaitTimer 资源。
     fn execute(&mut self, world: &mut World) -> GResult<()> {
+        let delta = world
+            .get_resource::<DeltaTime>()
+            .map(|d| d.secs)
+            .unwrap_or(1.0 / 60.0);
+
         let should_remove = if let Some(timer) = world.get_resource_mut::<WaitTimer>() {
-            timer.remaining_secs -= self.delta_secs;
+            timer.remaining_secs -= delta;
             timer.remaining_secs <= 0.0
         }
         else {

@@ -6,7 +6,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use clap::{Args, Command};
 
-use gg_meta::{MetaFile, generate_guid};
+use gg_core::{GError, GErrorKind, GResult};
+use gg_meta::MetaFile;
 use crate::platform::Platform;
 
 /// Meta 命令参数
@@ -27,13 +28,11 @@ pub struct MetaArgs {
 
 /// 注册 Meta 命令
 pub fn register_command() -> Command {
-    Command::new("meta")
-        .about("生成和管理资源的 meta 文件")
-        .args(&MetaArgs::augment_args())
+    MetaArgs::augment_args(Command::new("meta").about("生成和管理资源的 meta 文件"))
 }
 
 /// 执行 Meta 命令
-pub fn execute(args: &MetaArgs, _platform: &Platform) -> anyhow::Result<()> {
+pub fn execute(args: &MetaArgs, _platform: &Platform) -> GResult<()> {
     let target_path = Path::new(&args.target);
     
     if target_path.is_dir() {
@@ -57,21 +56,21 @@ pub fn execute(args: &MetaArgs, _platform: &Platform) -> anyhow::Result<()> {
             generate_meta_file(target_path)?;
         }
     } else {
-        anyhow::bail!("Target path does not exist: {}", args.target);
+        return Err(GError { kind: GErrorKind::Runtime, message: format!("Target path does not exist: {}", args.target) });
     }
     
     Ok(())
 }
 
 /// 处理目录中的所有文件
-fn process_directory(path: &Path) -> anyhow::Result<()> {
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
+fn process_directory(path: &Path) -> GResult<()> {
+    for entry in fs::read_dir(path).map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory '{}': {}", path.display(), e) })? {
+        let entry = entry.map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
         let entry_path = entry.path();
         
         if entry_path.is_dir() {
             process_directory(&entry_path)?;
-        } else if entry_path.is_file() && !entry_path.extension().map_or(false, |ext| ext == "meta") {
+        } else if !entry_path.extension().map_or(false, |ext| ext == "meta") {
             generate_meta_file(&entry_path)?;
         }
     }
@@ -79,9 +78,9 @@ fn process_directory(path: &Path) -> anyhow::Result<()> {
 }
 
 /// 处理目录中的直接文件（非递归）
-fn process_files_in_directory(path: &Path) -> anyhow::Result<()> {
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
+fn process_files_in_directory(path: &Path) -> GResult<()> {
+    for entry in fs::read_dir(path).map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory '{}': {}", path.display(), e) })? {
+        let entry = entry.map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
         let entry_path = entry.path();
         
         if entry_path.is_file() && !entry_path.extension().map_or(false, |ext| ext == "meta") {
@@ -92,8 +91,8 @@ fn process_files_in_directory(path: &Path) -> anyhow::Result<()> {
 }
 
 /// 生成 meta 文件
-fn generate_meta_file(file_path: &Path) -> anyhow::Result<()> {
-    let stats = fs::metadata(file_path)?;
+fn generate_meta_file(file_path: &Path) -> GResult<()> {
+    let stats = fs::metadata(file_path).map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read file metadata '{}': {}", file_path.display(), e) })?;
     let size = stats.len() as u64;
     let name = file_path.file_name().unwrap().to_string_lossy().to_string();
     let relative_path = get_relative_path(file_path)?;
@@ -114,27 +113,27 @@ fn generate_meta_file(file_path: &Path) -> anyhow::Result<()> {
     let meta_path = file_path.with_extension(format!("{}.meta", file_path.extension().unwrap_or_default().to_string_lossy()));
     
     // 写入文件
-    meta.to_file(&meta_path)?;
+    meta.to_file(&meta_path).map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to write meta file '{}': {}", meta_path.display(), e) })?;
     println!("Generated meta file for {}", file_path.display());
     
     Ok(())
 }
 
 /// 重新生成 meta 文件（先读取再输出）
-fn regenerate_meta_file(file_path: &Path) -> anyhow::Result<()> {
+fn regenerate_meta_file(file_path: &Path) -> GResult<()> {
     // 生成 meta 文件路径
     let meta_path = file_path.with_extension(format!("{}.meta", file_path.extension().unwrap_or_default().to_string_lossy()));
     
     // 检查 meta 文件是否存在
     if meta_path.exists() {
         // 读取现有的 meta 文件
-        let mut meta = MetaFile::from_file(&meta_path)?;
+        let mut meta = MetaFile::from_file(&meta_path).map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to read meta file '{}': {}", meta_path.display(), e) })?;
         
         // 更新时间戳
         meta.update_timestamp();
         
         // 写入文件
-        meta.to_file(&meta_path)?;
+        meta.to_file(&meta_path).map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to write meta file '{}': {}", meta_path.display(), e) })?;
         println!("Regenerated meta file for {}", file_path.display());
     } else {
         // 如果 meta 文件不存在，则生成新的
@@ -145,9 +144,9 @@ fn regenerate_meta_file(file_path: &Path) -> anyhow::Result<()> {
 }
 
 /// 处理目录中的所有文件（重新生成）
-fn process_directory_regenerate(path: &Path) -> anyhow::Result<()> {
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
+fn process_directory_regenerate(path: &Path) -> GResult<()> {
+    for entry in fs::read_dir(path).map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory '{}': {}", path.display(), e) })? {
+        let entry = entry.map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
         let entry_path = entry.path();
         
         if entry_path.is_dir() {
@@ -160,9 +159,9 @@ fn process_directory_regenerate(path: &Path) -> anyhow::Result<()> {
 }
 
 /// 处理目录中的直接文件（非递归，重新生成）
-fn process_files_in_directory_regenerate(path: &Path) -> anyhow::Result<()> {
-    for entry in fs::read_dir(path)? {
-        let entry = entry?;
+fn process_files_in_directory_regenerate(path: &Path) -> GResult<()> {
+    for entry in fs::read_dir(path).map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory '{}': {}", path.display(), e) })? {
+        let entry = entry.map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
         let entry_path = entry.path();
         
         if entry_path.is_file() && !entry_path.extension().map_or(false, |ext| ext == "meta") {
@@ -173,9 +172,9 @@ fn process_files_in_directory_regenerate(path: &Path) -> anyhow::Result<()> {
 }
 
 /// 获取相对路径
-fn get_relative_path(file_path: &Path) -> anyhow::Result<String> {
-    let project_root = Path::new("e:\\灵之镜有限公司\\gg-game-engine");
-    let relative_path = file_path.strip_prefix(project_root)?;
+fn get_relative_path(file_path: &Path) -> GResult<String> {
+    let project_root = Path::new("e:\灵之镜有限公司\gg-game-engine");
+    let relative_path = file_path.strip_prefix(project_root).map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to get relative path: {}", e) })?;
     Ok(relative_path.to_string_lossy().replace('\\', "/"))
 }
 

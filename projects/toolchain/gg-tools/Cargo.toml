@@ -27,3 +27,4 @@ chrono = { workspace = true }
 zip = { workspace = true }
 tokio = { workspace = true }
 oak-vfs = { workspace = true }
+once_cell = "1.18"

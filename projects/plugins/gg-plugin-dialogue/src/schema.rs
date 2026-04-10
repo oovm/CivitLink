@@ -391,6 +391,28 @@ impl GameVariables {
             _ => None,
         }
     }
+
+    /// 使用表达式求值器评估复合条件
+    ///
+    /// 支持逻辑运算（AND、OR、NOT）和比较运算的复合表达式。
+    pub fn evaluate_expression(&self, expression: &str) -> bool {
+        crate::expression::ExpressionEvaluator::evaluate(expression, self)
+    }
+}
+
+/// 帧间隔时间资源
+///
+/// 存储当前帧与上一帧之间的时间间隔，供系统使用真实时间更新。
+#[derive(Debug, Clone, Copy)]
+pub struct DeltaTime {
+    /// 帧间隔时间（秒）
+    pub secs: f32,
+}
+
+impl Default for DeltaTime {
+    fn default() -> Self {
+        Self { secs: 1.0 / 60.0 }
+    }
 }
 
 /// 等待计时器

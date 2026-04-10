@@ -1,10 +1,11 @@
 #![warn(missing_docs)]
 
 //! 平台映射模块
-//!
+//! 
 //! 提供平台名称到 Cargo 目标三元组的映射，以及平台工具链检查功能。
 
 use gg_manifest::EngineManifest;
+use once_cell::sync::Lazy;
 
 /// 平台类别
 ///
@@ -33,94 +34,96 @@ pub struct PlatformTarget {
 }
 
 /// 平台名称到目标信息的映射表
-pub static PLATFORM_MAP: &[(&str, PlatformTarget)] = &[
-    (
-        "windows",
-        PlatformTarget {
-            name: "Windows".to_string(),
-            target: "x86_64-pc-windows-msvc".to_string(),
-            features: vec!["desktop".to_string()],
-        },
-    ),
-    (
-        "windows-gnu",
-        PlatformTarget {
-            name: "Windows (GNU)".to_string(),
-            target: "x86_64-pc-windows-gnu".to_string(),
-            features: vec!["desktop".to_string()],
-        },
-    ),
-    (
-        "macos",
-        PlatformTarget {
-            name: "macOS".to_string(),
-            target: "aarch64-apple-darwin".to_string(),
-            features: vec!["desktop".to_string()],
-        },
-    ),
-    (
-        "macos-x86",
-        PlatformTarget {
-            name: "macOS (x86)".to_string(),
-            target: "x86_64-apple-darwin".to_string(),
-            features: vec!["desktop".to_string()],
-        },
-    ),
-    (
-        "linux",
-        PlatformTarget {
-            name: "Linux".to_string(),
-            target: "x86_64-unknown-linux-gnu".to_string(),
-            features: vec!["desktop".to_string()],
-        },
-    ),
-    (
-        "web",
-        PlatformTarget {
-            name: "Web".to_string(),
-            target: "wasm32-unknown-unknown".to_string(),
-            features: vec!["web".to_string()],
-        },
-    ),
-    (
-        "android",
-        PlatformTarget {
-            name: "Android".to_string(),
-            target: "aarch64-linux-android".to_string(),
-            features: vec!["mobile".to_string()],
-        },
-    ),
-    (
-        "android-x86",
-        PlatformTarget {
-            name: "Android (x86)".to_string(),
-            target: "x86_64-linux-android".to_string(),
-            features: vec!["mobile".to_string()],
-        },
-    ),
-    (
-        "ios",
-        PlatformTarget {
-            name: "iOS".to_string(),
-            target: "aarch64-apple-ios".to_string(),
-            features: vec!["mobile".to_string()],
-        },
-    ),
-    (
-        "ios-sim",
-        PlatformTarget {
-            name: "iOS Simulator".to_string(),
-            target: "aarch64-apple-ios-sim".to_string(),
-            features: vec!["mobile".to_string()],
-        },
-    ),
-];
+pub static PLATFORM_MAP: Lazy<Vec<(&'static str, PlatformTarget)>> = Lazy::new(|| {
+    vec![
+        (
+            "windows",
+            PlatformTarget {
+                name: "Windows".to_string(),
+                target: "x86_64-pc-windows-msvc".to_string(),
+                features: vec!["desktop".to_string()],
+            },
+        ),
+        (
+            "windows-gnu",
+            PlatformTarget {
+                name: "Windows (GNU)".to_string(),
+                target: "x86_64-pc-windows-gnu".to_string(),
+                features: vec!["desktop".to_string()],
+            },
+        ),
+        (
+            "macos",
+            PlatformTarget {
+                name: "macOS".to_string(),
+                target: "aarch64-apple-darwin".to_string(),
+                features: vec!["desktop".to_string()],
+            },
+        ),
+        (
+            "macos-x86",
+            PlatformTarget {
+                name: "macOS (x86)".to_string(),
+                target: "x86_64-apple-darwin".to_string(),
+                features: vec!["desktop".to_string()],
+            },
+        ),
+        (
+            "linux",
+            PlatformTarget {
+                name: "Linux".to_string(),
+                target: "x86_64-unknown-linux-gnu".to_string(),
+                features: vec!["desktop".to_string()],
+            },
+        ),
+        (
+            "web",
+            PlatformTarget {
+                name: "Web".to_string(),
+                target: "wasm32-unknown-unknown".to_string(),
+                features: vec!["web".to_string()],
+            },
+        ),
+        (
+            "android",
+            PlatformTarget {
+                name: "Android".to_string(),
+                target: "aarch64-linux-android".to_string(),
+                features: vec!["mobile".to_string()],
+            },
+        ),
+        (
+            "android-x86",
+            PlatformTarget {
+                name: "Android (x86)".to_string(),
+                target: "x86_64-linux-android".to_string(),
+                features: vec!["mobile".to_string()],
+            },
+        ),
+        (
+            "ios",
+            PlatformTarget {
+                name: "iOS".to_string(),
+                target: "aarch64-apple-ios".to_string(),
+                features: vec!["mobile".to_string()],
+            },
+        ),
+        (
+            "ios-sim",
+            PlatformTarget {
+                name: "iOS Simulator".to_string(),
+                target: "aarch64-apple-ios-sim".to_string(),
+                features: vec!["mobile".to_string()],
+            },
+        ),
+    ]
+});
 
 /// 根据平台名称查找映射的目标信息
 ///
 /// 在 `PLATFORM_MAP` 中查找与给定名称匹配的条目，返回对应的 `PlatformTarget` 引用。
-pub fn resolve_platform(name: &str) -> Option<&'static PlatformTarget> {
-    PLATFORM_MAP.iter().find(|(key, _)| *key == name).map(|(_, target)| target)
+pub fn resolve_platform(name: &str) -> Option<&PlatformTarget> {
+    (&*PLATFORM_MAP).iter().find(|(key, _)| *key == name).map(|(_, target)| target)
 }
 
 /// 从引擎清单的 `platforms` 字段解析平台列表
