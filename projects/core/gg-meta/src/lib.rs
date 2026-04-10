@@ -77,8 +77,10 @@ pub struct Reference {
 impl MetaFile {
     /// 创建新的元数据文件
     pub fn new(asset_type: &str, asset_path: &str, asset_name: &str, size: u64) -> Self {
-        let guid = Uuid::new_v4().to_string();
-        let timestamp = chrono::Utc::now().to_rfc3339();
+        use uuid::Timestamp;
+        let timestamp = chrono::Utc::now();
+        let guid = Uuid::now_v7().to_string();
+        let timestamp_str = timestamp.to_rfc3339();
 
         Self {
             version: "1.0".to_string(),
@@ -88,12 +90,12 @@ impl MetaFile {
                 guid,
                 name: asset_name.to_string(),
                 size,
-                modified: timestamp.clone(),
+                modified: timestamp_str.clone(),
             },
             import_settings: None,
             dependencies: Vec::new(),
             references: Vec::new(),
-            timestamp,
+            timestamp: timestamp_str,
             hash: None,
         }
     }
@@ -102,14 +104,15 @@ impl MetaFile {
     pub fn from_file(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         let content = std::fs::read_to_string(path)?;
         let von_value = parse(&content)?;
-        let meta: Self = serde::from_value(serde_json::to_value(von_value)?)?;
+        let json_value = to_value(von_value)?;
+        let meta: Self = from_value(json_value)?;
         Ok(meta)
     }
 
     /// 写入元数据到文件
     pub fn to_file(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        let json_value = serde_json::to_value(self)?;
-        let von_value: VonValue = serde::from_value(json_value)?;
+        let json_value = to_value(self)?;
+        let von_value: VonValue = from_value(json_value)?;
         let mut buffer = SourceBuffer::new();
         von_value.to_source(&mut buffer);
         let content = buffer.to_string();
@@ -141,7 +144,7 @@ impl MetaFile {
 
 /// 生成新的GUID
 pub fn generate_guid() -> String {
-    Uuid::new_v4().to_string()
+    Uuid::now_v7().to_string()
 }
 
 

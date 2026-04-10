@@ -16,7 +16,12 @@ use super::build::cmd_build;
 /// 将构建产物打包为平台分发格式，若构建产物不存在则先执行构建
 pub fn cmd_package(manifest_path: &str, platform: Option<&str>, release: bool) -> GResult<()> {
     let platform_name = platform.unwrap_or("windows");
-    let platform_target = resolve_platform(platform_name)?;
+    let platform_target = resolve_platform(platform_name)
+        .cloned()
+        .ok_or_else(|| GError {
+            kind: GErrorKind::Runtime,
+            message: format!("Unknown platform '{}'", platform_name),
+        })?;
 
     let project_dir = PathBuf::from(manifest_path);
     let generated_dir = project_dir.join("generated");

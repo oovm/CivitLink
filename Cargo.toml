@@ -1,4 +1,5 @@
 [workspace]
+resolver = "3"
 members = [
     "projects/core/*",
     "projects/compiler/gg-script",
@@ -48,11 +49,10 @@ tokio = { version = "1", features = ["full"] }
 syn = "2"
 quote = "1"
 proc-macro2 = "1"
-uuid = { version = "1.6", features = ["serde"] }
+uuid = { version = "1.8", features = ["serde", "v7"] }
 chrono = "0.4"
 tempfile = "3.9"
-oak-von = { path = "../oaks/examples/oak-von" }
-oak-core = { path = "../oaks/projects/oak-core" }
+
 # gnostic gamer modules
 gg-core = { path = "projects/core/gg-core" }
 gg-error = { path = "projects/core/gg-error" }
@@ -100,4 +100,6 @@ gg-platform-web = { path = "projects/platforms/gg-platform-web" }
 gg-plugin-tilemap = { path = "projects/plugins/gg-plugin-tilemap" }
 gg-plugin-spine = { path = "projects/plugins/gg-plugin-spine" }
 # oak parsers
+oak-core = { path = "../oaks/projects/oak-core" }
+oak-von = { path = "../oaks/examples/oak-von" }
 oak-valkyrie = { path = "../oaks/examples/oak-valkyrie" }

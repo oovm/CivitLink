@@ -1,5 +1,4 @@
-use crate::MetaFile;
-use std::path::Path;
+use gg_meta::MetaFile;
 use std::fs;
 
 #[test]

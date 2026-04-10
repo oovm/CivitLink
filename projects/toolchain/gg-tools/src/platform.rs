@@ -6,6 +6,19 @@
 
 use gg_manifest::EngineManifest;
 
+/// 平台类别
+///
+/// 表示平台的大类划分，用于区分桌面、Web 和移动平台。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Platform {
+    /// 桌面平台（Windows、macOS、Linux）
+    Desktop,
+    /// Web 平台（WASM）
+    Web,
+    /// 移动平台（Android、iOS）
+    Mobile,
+}
+
 /// 平台目标信息
 ///
 /// 包含平台的显示名称、Cargo 目标三元组和平台特定的 Cargo features。
@@ -129,10 +142,7 @@ pub fn resolve_from_manifest(manifest: &EngineManifest) -> Vec<PlatformTarget> {
 ///
 /// 运行 `rustup target list --installed` 并检查输出中是否包含指定的目标三元组。
 pub fn check_target_installed(target: &str) -> bool {
-    let output = match std::process::Command::new("rustup")
-        .args(["target", "list", "--installed"])
-        .output()
-    {
+    let output = match std::process::Command::new("rustup").args(["target", "list", "--installed"]).output() {
         Ok(output) => output,
         Err(_) => return false,
     };
