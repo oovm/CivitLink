@@ -13,7 +13,9 @@ use winit::{
 
 use crate::{
     glyph_cache::GlyphCache,
-    pipeline::{BatchSpritePipeline, RenderItem, RenderItemType, SpritePipeline, SpriteUniforms, TransitionPipeline, TransitionUniforms},
+    pipeline::{
+        BatchSpritePipeline, RenderItem, RenderItemType, SpritePipeline, SpriteUniforms, TransitionPipeline, TransitionUniforms,
+    },
     sprite_batch::{SpriteBatch, SpriteBatcher},
     texture_cache::TextureCache,
     uniform_pool::UniformPool,
@@ -168,11 +170,7 @@ impl WgpuRenderer {
     ///
     /// 根据相机参数计算视图投影矩阵。
     /// 无相机时返回正交投影矩阵，有相机时叠加相机变换。
-    fn compute_view_projection(
-        surface_width: u32,
-        surface_height: u32,
-        camera: Option<&Camera>,
-    ) -> [[f32; 4]; 4] {
+    fn compute_view_projection(surface_width: u32, surface_height: u32, camera: Option<&Camera>) -> [[f32; 4]; 4] {
         let projection = Self::orthographic(surface_width as f32, surface_height as f32);
 
         match camera {
@@ -186,7 +184,10 @@ impl WgpuRenderer {
                 let center_t = Self::translate(half_w, half_h);
                 let center_t_inv = Self::translate(-half_w, -half_h);
 
-                let view = Self::mat4_mul(&center_t, &Self::mat4_mul(&view_r, &Self::mat4_mul(&view_s, &Self::mat4_mul(&center_t_inv, &view_t))));
+                let view = Self::mat4_mul(
+                    &center_t,
+                    &Self::mat4_mul(&view_r, &Self::mat4_mul(&view_s, &Self::mat4_mul(&center_t_inv, &view_t))),
+                );
                 Self::mat4_mul(&projection, &view)
             }
         }
@@ -265,12 +266,7 @@ impl WgpuRenderer {
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let texture_id = self.texture_cache.register_texture(texture);
 
-        Ok(RenderTarget {
-            view,
-            texture_id,
-            width,
-            height,
-        })
+        Ok(RenderTarget { view, texture_id, width, height })
     }
 
     /// 渲染到离屏纹理
@@ -330,7 +326,8 @@ impl WgpuRenderer {
         indexed.sort_by(|a, b| {
             if a.is_transition != b.is_transition {
                 if a.is_transition { std::cmp::Ordering::Greater } else { std::cmp::Ordering::Less }
-            } else {
+            }
+            else {
                 a.z_index.partial_cmp(&b.z_index).unwrap_or(std::cmp::Ordering::Equal)
             }
         });
@@ -399,7 +396,12 @@ impl WgpuRenderer {
                 DrawCommand::Rect { rect, color, .. } => {
                     let transform = Transform { position: [rect.x, rect.y], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
                     let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], &view_projection);
-                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                    sprite_batcher.push(
+                        self.white_pixel_texture,
+                        mvp,
+                        [color.r, color.g, color.b, color.a],
+                        [0.0, 0.0, 1.0, 1.0],
+                    );
                 }
                 DrawCommand::Line { start, end, color, width } => {
                     let dx = end[0] - start[0];
@@ -409,14 +411,14 @@ impl WgpuRenderer {
                         continue;
                     }
                     let angle = dy.atan2(dx);
-                    let transform = Transform {
-                        position: *start,
-                        scale: [1.0, 1.0],
-                        rotation: angle,
-                        z_index: 0.0,
-                    };
+                    let transform = Transform { position: *start, scale: [1.0, 1.0], rotation: angle, z_index: 0.0 };
                     let mvp = Self::compute_sprite_mvp(&transform, [length, *width], &view_projection);
-                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                    sprite_batcher.push(
+                        self.white_pixel_texture,
+                        mvp,
+                        [color.r, color.g, color.b, color.a],
+                        [0.0, 0.0, 1.0, 1.0],
+                    );
                 }
                 DrawCommand::Circle { center, radius, color, .. } => {
                     let transform = Transform {
@@ -427,7 +429,12 @@ impl WgpuRenderer {
                     };
                     let size = [radius * 2.0, radius * 2.0];
                     let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
-                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                    sprite_batcher.push(
+                        self.white_pixel_texture,
+                        mvp,
+                        [color.r, color.g, color.b, color.a],
+                        [0.0, 0.0, 1.0, 1.0],
+                    );
                 }
                 DrawCommand::Ellipse { center, radii, color, .. } => {
                     let transform = Transform {
@@ -438,7 +445,12 @@ impl WgpuRenderer {
                     };
                     let size = [radii[0] * 2.0, radii[1] * 2.0];
                     let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
-                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                    sprite_batcher.push(
+                        self.white_pixel_texture,
+                        mvp,
+                        [color.r, color.g, color.b, color.a],
+                        [0.0, 0.0, 1.0, 1.0],
+                    );
                 }
                 DrawCommand::Transition { old_texture, new_texture, progress, kind } => {
                     let old_id = old_texture.unwrap_or(self.white_pixel_texture);
@@ -472,7 +484,8 @@ impl WgpuRenderer {
 
         let sprite_batches = sprite_batcher.flush();
 
-        let encoder = self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_target_encoder") });
+        let encoder =
+            self.device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: Some("render_target_encoder") });
 
         let scissor_rect = context.clip_rect().map(|r| wgpu::Rect {
             x: r.x.max(0.0) as u32,
@@ -498,13 +511,11 @@ impl WgpuRenderer {
         }
 
         for SpriteBatch { texture_id, instances } in &sprite_batches {
-            let instance_buffer = self
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("sprite_instance_buffer"),
-                    contents: bytemuck::cast_slice(instances),
-                    usage: wgpu::BufferUsages::VERTEX,
-                });
+            let instance_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("sprite_instance_buffer"),
+                contents: bytemuck::cast_slice(instances),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
 
             let texture_bind_group = self
                 .texture_cache
@@ -927,7 +938,8 @@ impl Renderer for WgpuRenderer {
         indexed.sort_by(|a, b| {
             if a.is_transition != b.is_transition {
                 if a.is_transition { std::cmp::Ordering::Greater } else { std::cmp::Ordering::Less }
-            } else {
+            }
+            else {
                 a.z_index.partial_cmp(&b.z_index).unwrap_or(std::cmp::Ordering::Equal)
             }
         });
@@ -997,7 +1009,12 @@ impl Renderer for WgpuRenderer {
                 DrawCommand::Rect { rect, color, .. } => {
                     let transform = Transform { position: [rect.x, rect.y], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
                     let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], &view_projection);
-                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                    sprite_batcher.push(
+                        self.white_pixel_texture,
+                        mvp,
+                        [color.r, color.g, color.b, color.a],
+                        [0.0, 0.0, 1.0, 1.0],
+                    );
                 }
                 DrawCommand::Line { start, end, color, width } => {
                     let dx = end[0] - start[0];
@@ -1007,14 +1024,14 @@ impl Renderer for WgpuRenderer {
                         continue;
                     }
                     let angle = dy.atan2(dx);
-                    let transform = Transform {
-                        position: *start,
-                        scale: [1.0, 1.0],
-                        rotation: angle,
-                        z_index: 0.0,
-                    };
+                    let transform = Transform { position: *start, scale: [1.0, 1.0], rotation: angle, z_index: 0.0 };
                     let mvp = Self::compute_sprite_mvp(&transform, [length, *width], &view_projection);
-                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                    sprite_batcher.push(
+                        self.white_pixel_texture,
+                        mvp,
+                        [color.r, color.g, color.b, color.a],
+                        [0.0, 0.0, 1.0, 1.0],
+                    );
                 }
                 DrawCommand::Circle { center, radius, color, .. } => {
                     let transform = Transform {
@@ -1025,7 +1042,12 @@ impl Renderer for WgpuRenderer {
                     };
                     let size = [radius * 2.0, radius * 2.0];
                     let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
-                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                    sprite_batcher.push(
+                        self.white_pixel_texture,
+                        mvp,
+                        [color.r, color.g, color.b, color.a],
+                        [0.0, 0.0, 1.0, 1.0],
+                    );
                 }
                 DrawCommand::Ellipse { center, radii, color, .. } => {
                     let transform = Transform {
@@ -1036,7 +1058,12 @@ impl Renderer for WgpuRenderer {
                     };
                     let size = [radii[0] * 2.0, radii[1] * 2.0];
                     let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
-                    sprite_batcher.push(self.white_pixel_texture, mvp, [color.r, color.g, color.b, color.a], [0.0, 0.0, 1.0, 1.0]);
+                    sprite_batcher.push(
+                        self.white_pixel_texture,
+                        mvp,
+                        [color.r, color.g, color.b, color.a],
+                        [0.0, 0.0, 1.0, 1.0],
+                    );
                 }
                 DrawCommand::Transition { old_texture, new_texture, progress, kind } => {
                     let old_id = old_texture.unwrap_or(self.white_pixel_texture);
@@ -1107,13 +1134,11 @@ impl Renderer for WgpuRenderer {
 
         // 绘制精灵批次
         for SpriteBatch { texture_id, instances } in &sprite_batches {
-            let instance_buffer = self
-                .device
-                .create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("sprite_instance_buffer"),
-                    contents: bytemuck::cast_slice(instances),
-                    usage: wgpu::BufferUsages::VERTEX,
-                });
+            let instance_buffer = self.device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                label: Some("sprite_instance_buffer"),
+                contents: bytemuck::cast_slice(instances),
+                usage: wgpu::BufferUsages::VERTEX,
+            });
 
             let texture_bind_group = self
                 .texture_cache

@@ -4,8 +4,7 @@
 //!
 //! 将构建产物打包为平台分发格式
 
-use crate::platform::resolve_platform;
-use crate::{GError, GErrorKind, GResult};
+use crate::{GError, GErrorKind, GResult, platform::resolve_platform};
 use gg_manifest::EngineManifest;
 use std::path::PathBuf;
 
@@ -18,10 +17,7 @@ pub fn cmd_package(manifest_path: &str, platform: Option<&str>, release: bool) -
     let platform_name = platform.unwrap_or("windows");
     let platform_target = resolve_platform(platform_name)
         .cloned()
-        .ok_or_else(|| GError {
-            kind: GErrorKind::Runtime,
-            message: format!("Unknown platform '{}'", platform_name),
-        })?;
+        .ok_or_else(|| GError { kind: GErrorKind::Runtime, message: format!("Unknown platform '{}'", platform_name) })?;
 
     let project_dir = PathBuf::from(manifest_path);
     let generated_dir = project_dir.join("generated");
@@ -34,15 +30,18 @@ pub fn cmd_package(manifest_path: &str, platform: Option<&str>, release: bool) -
 
     let build_artifact_dir = if platform_target.name == "web" {
         generated_dir.join("target").join(&platform_target.target).join(profile)
-    } else {
+    }
+    else {
         generated_dir.join("target").join(profile)
     };
 
     let needs_build = if platform_target.name == "windows" {
         !build_artifact_dir.join(format!("{}.exe", package_name)).exists()
-    } else if platform_target.name == "web" {
+    }
+    else if platform_target.name == "web" {
         !build_artifact_dir.join(format!("{}.wasm", package_name)).exists()
-    } else {
+    }
+    else {
         !build_artifact_dir.join(&package_name).exists()
     };
 
@@ -83,10 +82,8 @@ fn package_windows(build_dir: &PathBuf, dist_dir: &PathBuf, package_name: &str) 
         kind: GErrorKind::Io,
         message: format!("Failed to read build directory '{}': {}", build_dir.display(), e),
     })? {
-        let entry = entry.map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read directory entry: {}", e),
-        })?;
+        let entry =
+            entry.map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
         let path = entry.path();
         if let Some(ext) = path.extension() {
             if ext.eq_ignore_ascii_case("dll") {
@@ -95,10 +92,7 @@ fn package_windows(build_dir: &PathBuf, dist_dir: &PathBuf, package_name: &str) 
         }
     }
 
-    let zip_path = dist_dir
-        .parent()
-        .unwrap_or(dist_dir)
-        .join(format!("{}-windows.zip", package_name));
+    let zip_path = dist_dir.parent().unwrap_or(dist_dir).join(format!("{}-windows.zip", package_name));
     create_zip_from_dir(dist_dir, &zip_path)?;
     println!("  Zipped: {}", zip_path.display());
 
@@ -116,10 +110,8 @@ fn package_web(build_dir: &PathBuf, dist_dir: &PathBuf, package_name: &str) -> G
         kind: GErrorKind::Io,
         message: format!("Failed to read build directory '{}': {}", build_dir.display(), e),
     })? {
-        let entry = entry.map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read directory entry: {}", e),
-        })?;
+        let entry =
+            entry.map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
         let path = entry.path();
         if let Some(ext) = path.extension() {
             if ext.eq_ignore_ascii_case("js") {
@@ -130,20 +122,17 @@ fn package_web(build_dir: &PathBuf, dist_dir: &PathBuf, package_name: &str) -> G
 
     let html_content = generate_web_html(package_name);
     let html_path = dist_dir.join("index.html");
-    std::fs::write(&html_path, html_content).map_err(|e| GError {
-        kind: GErrorKind::Io,
-        message: format!("Failed to write index.html: {}", e),
-    })?;
+    std::fs::write(&html_path, html_content)
+        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write index.html: {}", e) })?;
 
     Ok(())
 }
 
 /// 复制单个文件到目标目录
 fn copy_file(src: &PathBuf, dest_dir: &PathBuf) -> GResult<()> {
-    let file_name = src.file_name().ok_or_else(|| GError {
-        kind: GErrorKind::Runtime,
-        message: format!("Invalid file path: {}", src.display()),
-    })?;
+    let file_name = src
+        .file_name()
+        .ok_or_else(|| GError { kind: GErrorKind::Runtime, message: format!("Invalid file path: {}", src.display()) })?;
     let dest = dest_dir.join(file_name);
     std::fs::copy(src, &dest).map_err(|e| GError {
         kind: GErrorKind::Io,
@@ -191,39 +180,26 @@ fn create_zip_from_dir(dir: &std::path::Path, zip_path: &std::path::Path) -> GRe
         message: format!("Failed to create zip file '{}': {}", zip_path.display(), e),
     })?;
     let mut zip = zip::ZipWriter::new(file);
-    let options = zip::write::SimpleFileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated);
+    let options = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
-    for entry in std::fs::read_dir(dir).map_err(|e| GError {
-        kind: GErrorKind::Io,
-        message: format!("Failed to read directory '{}': {}", dir.display(), e),
-    })? {
-        let entry = entry.map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read directory entry: {}", e),
-        })?;
+    for entry in std::fs::read_dir(dir)
+        .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory '{}': {}", dir.display(), e) })?
+    {
+        let entry =
+            entry.map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
         let path = entry.path();
         if !path.is_file() {
             continue;
         }
         let name = path.file_name().unwrap().to_str().unwrap();
-        zip.start_file(name, options).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to add '{}' to zip: {}", name, e),
-        })?;
-        let mut f = std::fs::File::open(&path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to open '{}': {}", path.display(), e),
-        })?;
-        std::io::copy(&mut f, &mut zip).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to write '{}' to zip: {}", name, e),
-        })?;
+        zip.start_file(name, options)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to add '{}' to zip: {}", name, e) })?;
+        let mut f = std::fs::File::open(&path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to open '{}': {}", path.display(), e) })?;
+        std::io::copy(&mut f, &mut zip)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write '{}' to zip: {}", name, e) })?;
     }
 
-    zip.finish().map_err(|e| GError {
-        kind: GErrorKind::Io,
-        message: format!("Failed to finalize zip: {}", e),
-    })?;
+    zip.finish().map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to finalize zip: {}", e) })?;
     Ok(())
 }

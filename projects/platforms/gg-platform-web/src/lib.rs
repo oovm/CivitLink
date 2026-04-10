@@ -24,7 +24,7 @@ pub mod window;
 pub use fs::WebFileSystem;
 pub use input::WebInput;
 pub use platform::WebPlatform;
-pub use render::{RenderBackendType, detect_best_backend, is_webgpu_available, is_webgl2_available};
+pub use render::{RenderBackendType, detect_best_backend, is_webgl2_available, is_webgpu_available};
 pub use services::WebPlatformServices;
 pub use thread::WebThread;
 pub use time::WebTime;

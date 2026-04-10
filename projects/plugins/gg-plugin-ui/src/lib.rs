@@ -14,8 +14,10 @@ use gg_ecs::{Resource, System, World};
 use gg_render::{Color, DrawCommand, RenderContext, Transform};
 use gg_ui::{EventSystem, LayoutEngine, UiRenderer, UiTree};
 
-use crate::binding::{BindingRegistry, BindingSystem};
-use crate::focus::FocusManager;
+use crate::{
+    binding::{BindingRegistry, BindingSystem},
+    focus::FocusManager,
+};
 
 /// UI 树资源
 ///

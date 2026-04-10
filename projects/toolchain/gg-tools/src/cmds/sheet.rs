@@ -4,8 +4,7 @@
 //!
 //! 配置表管理工具，透传调用 gg-sheet 的 CLI 逻辑
 
-use crate::commands::SheetCommands;
-use crate::{GError, GErrorKind, GResult};
+use crate::{GError, GErrorKind, GResult, commands::SheetCommands};
 
 /// 执行 `sheet` 子命令
 ///
@@ -18,11 +17,8 @@ pub fn cmd_sheet(command: &SheetCommands) -> GResult<()> {
         SheetCommands::Watch { workspace } => (workspace.as_str(), gg_sheet::cli::SheetCommands::Watch),
     };
 
-    let cli = gg_sheet::cli::SheetCli {
-        command: sheet_command,
-        workspace: std::path::PathBuf::from(workspace),
-        verbose: false,
-    };
+    let cli =
+        gg_sheet::cli::SheetCli { command: sheet_command, workspace: std::path::PathBuf::from(workspace), verbose: false };
 
     cli.run().map_err(|e| GError { kind: GErrorKind::Other, message: e.to_string() })
 }

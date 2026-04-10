@@ -4,8 +4,10 @@ use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 use gg_render::{Color, DrawCommand, Rect, RenderContext, Transform};
 
-use crate::components::{BoneTransform, SpineAnimationState, SpineSkeleton};
-use crate::resources::SpineData;
+use crate::{
+    components::{BoneTransform, SpineAnimationState, SpineSkeleton},
+    resources::SpineData,
+};
 
 /// Spine 动画更新系统
 ///
@@ -94,7 +96,8 @@ impl System for SpineAnimationSystem {
                     if track.time >= track.duration {
                         if track.looping {
                             track.time %= track.duration;
-                        } else {
+                        }
+                        else {
                             track.time = track.duration;
                         }
                     }
@@ -102,10 +105,8 @@ impl System for SpineAnimationSystem {
             }
         }
 
-        let bone_defs: Vec<crate::resources::BoneDef> = world
-            .get_resource::<SpineData>()
-            .map(|d| d.bones.clone())
-            .unwrap_or_default();
+        let bone_defs: Vec<crate::resources::BoneDef> =
+            world.get_resource::<SpineData>().map(|d| d.bones.clone()).unwrap_or_default();
 
         let skeleton_entities: Vec<Entity> = world.query::<SpineSkeleton>().map(|(e, _)| e).collect();
 
@@ -165,15 +166,10 @@ impl System for SpineRenderSystem {
 
             for (slot_name, slot_attachments) in &spine_data.attachments {
                 for attachment in slot_attachments {
-                    let bone_idx = spine_data
-                        .bones
-                        .iter()
-                        .position(|b| b.name == *slot_name);
+                    let bone_idx = spine_data.bones.iter().position(|b| b.name == *slot_name);
 
                     let world_transform = match bone_idx {
-                        Some(idx) if idx < skeleton.world_transforms.len() => {
-                            skeleton.world_transforms[idx]
-                        }
+                        Some(idx) if idx < skeleton.world_transforms.len() => skeleton.world_transforms[idx],
                         _ => BoneTransform::default(),
                     };
 

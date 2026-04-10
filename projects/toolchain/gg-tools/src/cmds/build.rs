@@ -3,8 +3,10 @@
 //! 若 `generated/` 不存在则先自动生成，然后调用 cargo build 构建生成的项目。
 //! 支持多平台构建，可通过 `--platform` 参数指定目标平台。
 
-use crate::platform::{check_target_installed, resolve_from_manifest, resolve_platform, PlatformTarget};
-use crate::{GError, GErrorKind, GResult};
+use crate::{
+    GError, GErrorKind, GResult,
+    platform::{PlatformTarget, check_target_installed, resolve_from_manifest, resolve_platform},
+};
 use gg_manifest::EngineManifest;
 use std::path::PathBuf;
 
@@ -30,10 +32,7 @@ pub fn cmd_build(manifest_path: &str, platform: Option<&str>, release: bool) -> 
             let manifest = load_manifest(manifest_path)?;
             let platforms = resolve_from_manifest(&manifest);
             if platforms.is_empty() {
-                return Err(GError {
-                    kind: GErrorKind::Runtime,
-                    message: "No platforms defined in manifest".to_string(),
-                });
+                return Err(GError { kind: GErrorKind::Runtime, message: "No platforms defined in manifest".to_string() });
             }
             build_all_platforms(&generated_dir, &platforms, release)
         }
@@ -51,7 +50,10 @@ pub fn cmd_build(manifest_path: &str, platform: Option<&str>, release: bool) -> 
                 }
                 None => Err(GError {
                     kind: GErrorKind::Runtime,
-                    message: format!("Unknown platform '{}'. Available: windows, windows-gnu, macos, macos-x86, linux, web, android, android-x86, ios, ios-sim", name),
+                    message: format!(
+                        "Unknown platform '{}'. Available: windows, windows-gnu, macos, macos-x86, linux, web, android, android-x86, ios, ios-sim",
+                        name
+                    ),
                 }),
             }
         }
@@ -74,9 +76,8 @@ fn build_default(generated_dir: &PathBuf, release: bool) -> GResult<()> {
         cmd.arg("--release");
     }
 
-    let status = cmd
-        .status()
-        .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to run cargo build: {}", e) })?;
+    let status =
+        cmd.status().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to run cargo build: {}", e) })?;
 
     if !status.success() {
         return Err(GError { kind: GErrorKind::Runtime, message: "Build failed".to_string() });
@@ -90,10 +91,7 @@ fn build_default(generated_dir: &PathBuf, release: bool) -> GResult<()> {
 fn build_all_platforms(generated_dir: &PathBuf, platforms: &[PlatformTarget], release: bool) -> GResult<()> {
     for pt in platforms {
         if !check_target_installed(&pt.target) {
-            eprintln!(
-                "Warning: target '{}' is not installed. Install with: rustup target add {}",
-                pt.target, pt.target
-            );
+            eprintln!("Warning: target '{}' is not installed. Install with: rustup target add {}", pt.target, pt.target);
         }
         build_for_platform(generated_dir, pt, release)?;
     }
@@ -117,9 +115,8 @@ fn build_for_platform(generated_dir: &PathBuf, platform: &PlatformTarget, releas
         cmd.arg("--release");
     }
 
-    let status = cmd
-        .status()
-        .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to run cargo build: {}", e) })?;
+    let status =
+        cmd.status().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to run cargo build: {}", e) })?;
 
     if !status.success() {
         return Err(GError {

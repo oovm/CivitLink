@@ -2,7 +2,7 @@
 #![warn(missing_docs)]
 
 //! GG Meta 库
-//! 
+//!
 //! 用于处理游戏资源的元数据文件
 
 use serde::{Deserialize, Serialize};
@@ -136,5 +136,3 @@ impl MetaFile {
 pub fn generate_guid() -> String {
     Uuid::now_v7().to_string()
 }
-
-

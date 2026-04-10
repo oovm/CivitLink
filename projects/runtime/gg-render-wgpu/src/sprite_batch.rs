@@ -1,5 +1,5 @@
-use gg_render::TextureId;
 use bytemuck::{Pod, Zeroable};
+use gg_render::TextureId;
 
 /// 批渲染精灵实例数据
 ///
@@ -66,13 +66,7 @@ impl SpriteBatcher {
     /// - `mvp` - MVP 变换矩阵
     /// - `tint` - 着色颜色 RGBA
     /// - `uv_transform` - UV 偏移和缩放
-    pub fn push(
-        &mut self,
-        texture_id: TextureId,
-        mvp: [[f32; 4]; 4],
-        tint: [f32; 4],
-        uv_transform: [f32; 4],
-    ) {
+    pub fn push(&mut self, texture_id: TextureId, mvp: [[f32; 4]; 4], tint: [f32; 4], uv_transform: [f32; 4]) {
         match self.current_texture_id {
             Some(tid) if tid == texture_id => {}
             Some(_) => {

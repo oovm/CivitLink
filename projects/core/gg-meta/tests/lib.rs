@@ -1,4 +1,4 @@
-use gg_meta::{generate_guid, MetaFile};
+use gg_meta::{MetaFile, generate_guid};
 use std::fs;
 use tempfile::tempdir;
 

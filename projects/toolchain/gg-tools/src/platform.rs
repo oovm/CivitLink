@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 
 //! 平台映射模块
-//! 
+//!
 //! 提供平台名称到 Cargo 目标三元组的映射，以及平台工具链检查功能。
 
 use gg_manifest::EngineManifest;

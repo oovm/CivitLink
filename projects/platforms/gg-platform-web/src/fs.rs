@@ -1,6 +1,4 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::path::Path;
+use std::{cell::RefCell, collections::HashMap, path::Path};
 
 use gg_core::{
     GError, GErrorKind, GResult,
@@ -47,10 +45,8 @@ impl WebFileSystem {
 
         let url = self.build_url(path);
 
-        let window = web_sys::window().ok_or_else(|| GError {
-            kind: GErrorKind::Platform,
-            message: "No window object available".to_string(),
-        })?;
+        let window = web_sys::window()
+            .ok_or_else(|| GError { kind: GErrorKind::Platform, message: "No window object available".to_string() })?;
 
         let promise = window.fetch_with_str(&url);
 
@@ -66,7 +62,8 @@ impl WebFileSystem {
             });
         }
 
-        let array_buffer_promise = response.array_buffer()
+        let array_buffer_promise = response
+            .array_buffer()
             .map_err(|_| GError { kind: GErrorKind::Io, message: format!("Failed to get array buffer for '{}'", url) })?;
 
         let array_buffer = wasm_bindgen_futures::futures::block_on(wasm_bindgen_futures::JsFuture::from(array_buffer_promise))

@@ -226,10 +226,7 @@ impl System for TypewriterSystem {
     ///
     /// 如果 World 中存在 TypewriterState 资源，使用真实 delta time 更新其显示进度。
     fn execute(&mut self, world: &mut World) -> GResult<()> {
-        let delta = world
-            .get_resource::<DeltaTime>()
-            .map(|d| d.secs)
-            .unwrap_or(1.0 / 60.0);
+        let delta = world.get_resource::<DeltaTime>().map(|d| d.secs).unwrap_or(1.0 / 60.0);
         if let Some(state) = world.get_resource_mut::<TypewriterState>() {
             state.update(delta);
         }
@@ -261,10 +258,7 @@ impl System for WaitSystem {
     /// 如果 World 中存在 WaitTimer 资源，使用真实 delta time 减少剩余时间。
     /// 当剩余时间小于等于零时，移除 WaitTimer 资源。
     fn execute(&mut self, world: &mut World) -> GResult<()> {
-        let delta = world
-            .get_resource::<DeltaTime>()
-            .map(|d| d.secs)
-            .unwrap_or(1.0 / 60.0);
+        let delta = world.get_resource::<DeltaTime>().map(|d| d.secs).unwrap_or(1.0 / 60.0);
 
         let should_remove = if let Some(timer) = world.get_resource_mut::<WaitTimer>() {
             timer.remaining_secs -= delta;

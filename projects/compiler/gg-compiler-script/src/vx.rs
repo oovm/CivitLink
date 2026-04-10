@@ -41,17 +41,10 @@ impl VxParser {
         let style = Self::extract_section(content, "style")?;
 
         if template.is_none() && script.is_none() && style.is_none() {
-            return Err(GError {
-                kind: GErrorKind::Other,
-                message: "No valid section found in .vx file".to_string(),
-            });
+            return Err(GError { kind: GErrorKind::Other, message: "No valid section found in .vx file".to_string() });
         }
 
-        Ok(VxFile {
-            template,
-            script,
-            style,
-        })
+        Ok(VxFile { template, script, style })
     }
 
     /// 从内容中提取指定标签的区块内容
@@ -71,16 +64,15 @@ impl VxParser {
 
         while depth > 0 {
             let next_open = Self::find_tag_open(content, &tag_prefix, search_from);
-            let next_close = content[search_from..]
-                .find(&closing_tag)
-                .map(|p| search_from + p);
+            let next_close = content[search_from..].find(&closing_tag).map(|p| search_from + p);
 
             match (next_open, next_close) {
                 (Some(op), Some(cp)) => {
                     if op < cp {
                         depth += 1;
                         search_from = op + tag_prefix.len();
-                    } else {
+                    }
+                    else {
                         depth -= 1;
                         if depth == 0 {
                             return Ok(Some(content[content_start..cp].to_string()));
@@ -96,10 +88,7 @@ impl VxParser {
                     search_from = cp + closing_tag.len();
                 }
                 (Some(_), None) | (None, None) => {
-                    return Err(GError {
-                        kind: GErrorKind::Other,
-                        message: format!("Unclosed <{}> tag", tag_name),
-                    });
+                    return Err(GError { kind: GErrorKind::Other, message: format!("Unclosed <{}> tag", tag_name) });
                 }
             }
         }
@@ -170,11 +159,7 @@ impl Transformer for VxTransformer {
 
     fn transform(&self, inputs: &ArtifactSet, context: &mut BuildContext) -> GResult<ArtifactSet> {
         let mut output = ArtifactSet::new();
-        let compiler = if self.optimize {
-            ScriptCompiler::new()
-        } else {
-            ScriptCompiler::no_optimize()
-        };
+        let compiler = if self.optimize { ScriptCompiler::new() } else { ScriptCompiler::no_optimize() };
 
         for key in inputs.keys() {
             if key.type_name != VX_SOURCE_TYPE {
@@ -187,10 +172,7 @@ impl Transformer for VxTransformer {
                     context.add_diagnostic(
                         DiagnosticLevel::Warning,
                         self.name(),
-                        &format!(
-                            "Artifact not found for key: {}/{}",
-                            key.type_name, key.id
-                        ),
+                        &format!("Artifact not found for key: {}/{}", key.type_name, key.id),
                     );
                     continue;
                 }
@@ -202,10 +184,7 @@ impl Transformer for VxTransformer {
                     context.add_diagnostic(
                         DiagnosticLevel::Error,
                         self.name(),
-                        &format!(
-                            "Failed to decode source as UTF-8 for '{}': {}",
-                            key.id, e
-                        ),
+                        &format!("Failed to decode source as UTF-8 for '{}': {}", key.id, e),
                     );
                     continue;
                 }
@@ -228,18 +207,14 @@ impl Transformer for VxTransformer {
                 match compiler.compile_to_ir(script_content, module_name) {
                     Ok(ir_module) => match BytecodeWriter::write(&ir_module) {
                         Ok(bytecode_data) => {
-                            let output_key =
-                                ArtifactKey::new(BYTECODE_MODULE_TYPE, &key.id);
+                            let output_key = ArtifactKey::new(BYTECODE_MODULE_TYPE, &key.id);
                             output.insert(Artifact::new(output_key, bytecode_data));
                         }
                         Err(e) => {
                             context.add_diagnostic(
                                 DiagnosticLevel::Error,
                                 self.name(),
-                                &format!(
-                                    "Failed to serialize bytecode for '{}': {}",
-                                    key.id, e
-                                ),
+                                &format!("Failed to serialize bytecode for '{}': {}", key.id, e),
                             );
                         }
                     },
@@ -247,10 +222,7 @@ impl Transformer for VxTransformer {
                         context.add_diagnostic(
                             DiagnosticLevel::Error,
                             self.name(),
-                            &format!(
-                                "Failed to compile script in '{}': {}",
-                                key.id, e
-                            ),
+                            &format!("Failed to compile script in '{}': {}", key.id, e),
                         );
                     }
                 }
@@ -258,18 +230,12 @@ impl Transformer for VxTransformer {
 
             if let Some(ref template_content) = vx_file.template {
                 let output_key = ArtifactKey::new(VX_TEMPLATE_TYPE, &key.id);
-                output.insert(Artifact::new(
-                    output_key,
-                    template_content.as_bytes().to_vec(),
-                ));
+                output.insert(Artifact::new(output_key, template_content.as_bytes().to_vec()));
             }
 
             if let Some(ref style_content) = vx_file.style {
                 let output_key = ArtifactKey::new(VX_STYLE_TYPE, &key.id);
-                output.insert(Artifact::new(
-                    output_key,
-                    style_content.as_bytes().to_vec(),
-                ));
+                output.insert(Artifact::new(output_key, style_content.as_bytes().to_vec()));
             }
         }
 

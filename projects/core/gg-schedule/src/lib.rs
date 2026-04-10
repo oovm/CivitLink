@@ -611,4 +611,3 @@ pub mod prelude {
         SystemSet, SystemWrapper, Update,
     };
 }
-

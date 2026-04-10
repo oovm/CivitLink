@@ -115,7 +115,10 @@ impl GgFormatter {
     ///
     /// The indented text.
     fn indent_lines(&self, text: &str) -> String {
-        text.lines().map(|line| if line.trim().is_empty() { String::new() } else { format!("    {}", line) }).collect::<Vec<_>>().join("\n")
+        text.lines()
+            .map(|line| if line.trim().is_empty() { String::new() } else { format!("    {}", line) })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 }
 

@@ -37,7 +37,7 @@ pub fn is_webgpu_available() -> bool {
 #[cfg(target_arch = "wasm32")]
 pub fn is_webgl2_available() -> bool {
     js_sys::eval(
-        "(() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch(e) { return false; } })()"
+        "(() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch(e) { return false; } })()",
     )
     .ok()
     .and_then(|v| v.as_bool())
@@ -59,9 +59,11 @@ pub fn is_webgl2_available() -> bool {
 pub fn detect_best_backend() -> Option<RenderBackendType> {
     if is_webgpu_available() {
         Some(RenderBackendType::WebGPU)
-    } else if is_webgl2_available() {
+    }
+    else if is_webgl2_available() {
         Some(RenderBackendType::WebGL)
-    } else {
+    }
+    else {
         None
     }
 }

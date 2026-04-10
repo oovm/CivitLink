@@ -39,8 +39,7 @@ impl ExpressionEvaluator {
             if depth == 0 && expr[i..].starts_with(" OR ") {
                 let left = &expr[..i];
                 let right = &expr[i + 4..];
-                return Self::evaluate_or(left, variables)
-                    || Self::evaluate_and(right, variables);
+                return Self::evaluate_or(left, variables) || Self::evaluate_and(right, variables);
             }
         }
         Self::evaluate_and(expr, variables)
@@ -59,8 +58,7 @@ impl ExpressionEvaluator {
             if depth == 0 && expr[i..].starts_with(" AND ") {
                 let left = &expr[..i];
                 let right = &expr[i + 5..];
-                return Self::evaluate_and(left, variables)
-                    && Self::evaluate_not(right, variables);
+                return Self::evaluate_and(left, variables) && Self::evaluate_not(right, variables);
             }
         }
         Self::evaluate_not(expr, variables)

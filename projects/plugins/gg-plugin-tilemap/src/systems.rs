@@ -44,10 +44,7 @@ impl System for TilemapRenderSystem {
             None => return Ok(()),
         };
 
-        let viewport = world
-            .get_resource::<CameraViewport>()
-            .cloned()
-            .unwrap_or_default();
+        let viewport = world.get_resource::<CameraViewport>().cloned().unwrap_or_default();
 
         let tile_width = tileset.tile_width as f32;
         let tile_height = tileset.tile_height as f32;
@@ -64,11 +61,13 @@ impl System for TilemapRenderSystem {
             let (tileset_col, tileset_row) = if let Some(anim) = world.get_component::<AnimatedTile>(entity) {
                 if anim.frames.is_empty() {
                     (tile.tileset_col, tile.tileset_row)
-                } else {
+                }
+                else {
                     let frame = anim.frames[anim.current_frame.min(anim.frames.len() - 1)];
                     (frame.0, frame.1)
                 }
-            } else {
+            }
+            else {
                 (tile.tileset_col, tile.tileset_row)
             };
 
@@ -82,19 +81,9 @@ impl System for TilemapRenderSystem {
             let src_x = tileset_col * tileset.tile_width;
             let src_y = tileset_row * tileset.tile_height;
 
-            let clip_rect = Rect::new(
-                src_x as f32,
-                src_y as f32,
-                tile_width,
-                tile_height,
-            );
+            let clip_rect = Rect::new(src_x as f32, src_y as f32, tile_width, tile_height);
 
-            let transform = Transform {
-                position: [x, y],
-                scale: [1.0, 1.0],
-                rotation: 0.0,
-                z_index: tile.layer_index as f32,
-            };
+            let transform = Transform { position: [x, y], scale: [1.0, 1.0], rotation: 0.0, z_index: tile.layer_index as f32 };
 
             commands.push(DrawCommand::Sprite {
                 texture_id: tileset.texture_id,
@@ -143,18 +132,10 @@ impl System for TileCollisionSystem {
         for (entity, tile) in world.query::<Tile>() {
             match tile.tile_type {
                 TileType::Solid => {
-                    new_collisions.push(CollisionInfo {
-                        tile_entity: entity,
-                        tile_col: tile.col,
-                        tile_row: tile.row,
-                    });
+                    new_collisions.push(CollisionInfo { tile_entity: entity, tile_col: tile.col, tile_row: tile.row });
                 }
                 TileType::Slope { .. } => {
-                    new_collisions.push(CollisionInfo {
-                        tile_entity: entity,
-                        tile_col: tile.col,
-                        tile_row: tile.row,
-                    });
+                    new_collisions.push(CollisionInfo { tile_entity: entity, tile_col: tile.col, tile_row: tile.row });
                 }
                 _ => {}
             }

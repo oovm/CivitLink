@@ -1,5 +1,8 @@
 use gg_asset::{AssetCache, AssetServer, Handle, LoadState, TextAsset};
-use std::{sync::Arc, sync::Barrier, thread};
+use std::{
+    sync::{Arc, Barrier},
+    thread,
+};
 
 #[test]
 fn test_cache_insert_and_get() {

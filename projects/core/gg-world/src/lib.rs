@@ -272,4 +272,3 @@ impl Default for WorldManager {
 pub mod prelude {
     pub use crate::{EntityRef, GameWorld, WorldManager};
 }
-

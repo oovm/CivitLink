@@ -219,10 +219,7 @@ impl SpineParser {
                     attachments = skin_attachments.clone();
                 }
 
-                skins.push(Skin {
-                    name: json_skin.name.clone(),
-                    attachments: skin_attachments,
-                });
+                skins.push(Skin { name: json_skin.name.clone(), attachments: skin_attachments });
             }
         }
 

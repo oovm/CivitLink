@@ -7,13 +7,10 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-use crate::compiler::SheetCompiler;
-use crate::config::SheetConfig;
-use crate::error::SheetResult;
-use crate::reader::load_table;
-use crate::schema::SheetTable;
-use crate::validate::validate_tables;
-use crate::watch::SheetWatcher;
+use crate::{
+    compiler::SheetCompiler, config::SheetConfig, error::SheetResult, reader::load_table, schema::SheetTable,
+    validate::validate_tables, watch::SheetWatcher,
+};
 
 /// GG-Sheet 命令行工具
 #[derive(Parser, Debug)]

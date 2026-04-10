@@ -3,8 +3,7 @@
 //! 通过 `wasm-bindgen` 绑定 Web Audio API，
 //! 为 WebAssembly 环境提供音频播放能力。
 
-use std::collections::HashMap;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use gg_core::{GError, GErrorKind, GResult};
 
@@ -28,12 +27,7 @@ pub struct WebAudioEngine {
 impl WebAudioEngine {
     /// 创建新的 Web Audio 引擎
     pub fn new() -> GResult<Self> {
-        Ok(Self {
-            sounds: HashMap::new(),
-            descriptors: HashMap::new(),
-            path_to_id: HashMap::new(),
-            next_sound_id: 1,
-        })
+        Ok(Self { sounds: HashMap::new(), descriptors: HashMap::new(), path_to_id: HashMap::new(), next_sound_id: 1 })
     }
 
     /// 分配下一个声音 ID
@@ -63,23 +57,16 @@ impl WebAudioEngine {
         let js_array = js_sys::Uint8Array::new_with_length(data.len() as u32);
         js_array.copy_from(data);
 
-        let audio_ctx = web_sys::AudioContext::new().map_err(|_| GError {
-            kind: GErrorKind::Platform,
-            message: "Failed to create AudioContext".to_string(),
-        })?;
+        let audio_ctx = web_sys::AudioContext::new()
+            .map_err(|_| GError { kind: GErrorKind::Platform, message: "Failed to create AudioContext".to_string() })?;
 
         let promise = audio_ctx
             .decode_audio_data_with_array_buffer(&js_array.buffer())
-            .map_err(|_| GError {
-                kind: GErrorKind::Platform,
-                message: "Failed to decode audio data".to_string(),
-            })?;
+            .map_err(|_| GError { kind: GErrorKind::Platform, message: "Failed to decode audio data".to_string() })?;
 
         use wasm_bindgen_futures::JsFuture;
-        let result = wasm_bindgen_futures::futures::block_on(JsFuture::from(promise)).map_err(|_| GError {
-            kind: GErrorKind::Platform,
-            message: "Audio decode failed".to_string(),
-        })?;
+        let result = wasm_bindgen_futures::futures::block_on(JsFuture::from(promise))
+            .map_err(|_| GError { kind: GErrorKind::Platform, message: "Audio decode failed".to_string() })?;
 
         let audio_buffer = web_sys::AudioBuffer::from(result);
         let sample_rate = audio_buffer.sample_rate() as u32;
@@ -91,10 +78,7 @@ impl WebAudioEngine {
 
     #[cfg(not(target_arch = "wasm32"))]
     fn decode_audio_info(_data: &[u8]) -> GResult<(u32, u16, f64)> {
-        Err(GError {
-            kind: GErrorKind::Platform,
-            message: "WebAudioEngine is only available on wasm32 target".to_string(),
-        })
+        Err(GError { kind: GErrorKind::Platform, message: "WebAudioEngine is only available on wasm32 target".to_string() })
     }
 }
 
@@ -116,12 +100,7 @@ impl AudioEngine for WebAudioEngine {
         let (sample_rate, channels, duration_secs) = Self::decode_audio_info(&data)?;
 
         let sound_id = self.allocate_sound_id();
-        let descriptor = SoundDescriptor {
-            format,
-            duration_secs,
-            channels,
-            sample_rate,
-        };
+        let descriptor = SoundDescriptor { format, duration_secs, channels, sample_rate };
 
         self.sounds.insert(sound_id, data);
         self.descriptors.insert(sound_id, descriptor);
@@ -133,47 +112,36 @@ impl AudioEngine for WebAudioEngine {
     fn play(&mut self, sound_id: SoundId, volume: f32, looped: bool) -> GResult<()> {
         #[cfg(target_arch = "wasm32")]
         {
-            let data = self.sounds.get(&sound_id).ok_or_else(|| GError {
-                kind: GErrorKind::Asset,
-                message: format!("Sound not found: {:?}", sound_id),
-            })?;
+            let data = self
+                .sounds
+                .get(&sound_id)
+                .ok_or_else(|| GError { kind: GErrorKind::Asset, message: format!("Sound not found: {:?}", sound_id) })?;
 
-            let audio_ctx = web_sys::AudioContext::new().map_err(|_| GError {
-                kind: GErrorKind::Platform,
-                message: "Failed to create AudioContext".to_string(),
-            })?;
+            let audio_ctx = web_sys::AudioContext::new()
+                .map_err(|_| GError { kind: GErrorKind::Platform, message: "Failed to create AudioContext".to_string() })?;
 
             let js_array = js_sys::Uint8Array::new_with_length(data.len() as u32);
             js_array.copy_from(data);
 
             let promise = audio_ctx
                 .decode_audio_data_with_array_buffer(&js_array.buffer())
-                .map_err(|_| GError {
-                    kind: GErrorKind::Platform,
-                    message: "Failed to decode audio data".to_string(),
-                })?;
+                .map_err(|_| GError { kind: GErrorKind::Platform, message: "Failed to decode audio data".to_string() })?;
 
-            let result = wasm_bindgen_futures::futures::block_on(wasm_bindgen_futures::JsFuture::from(promise)).map_err(
-                |_| GError {
-                    kind: GErrorKind::Platform,
-                    message: "Audio decode failed".to_string(),
-                },
-            )?;
+            let result = wasm_bindgen_futures::futures::block_on(wasm_bindgen_futures::JsFuture::from(promise))
+                .map_err(|_| GError { kind: GErrorKind::Platform, message: "Audio decode failed".to_string() })?;
 
             let audio_buffer = web_sys::AudioBuffer::from(result);
 
-            let source = audio_ctx.create_buffer_source().map_err(|_| GError {
-                kind: GErrorKind::Platform,
-                message: "Failed to create BufferSourceNode".to_string(),
-            })?;
+            let source = audio_ctx
+                .create_buffer_source()
+                .map_err(|_| GError { kind: GErrorKind::Platform, message: "Failed to create BufferSourceNode".to_string() })?;
 
             source.set_buffer(Some(&audio_buffer));
             source.set_loop(looped);
 
-            let gain_node = audio_ctx.create_gain().map_err(|_| GError {
-                kind: GErrorKind::Platform,
-                message: "Failed to create GainNode".to_string(),
-            })?;
+            let gain_node = audio_ctx
+                .create_gain()
+                .map_err(|_| GError { kind: GErrorKind::Platform, message: "Failed to create GainNode".to_string() })?;
 
             gain_node.gain().set_value(volume);
 
@@ -187,20 +155,16 @@ impl AudioEngine for WebAudioEngine {
                 message: "Failed to connect gain node to destination".to_string(),
             })?;
 
-            source.start().map_err(|_| GError {
-                kind: GErrorKind::Platform,
-                message: "Failed to start audio playback".to_string(),
-            })?;
+            source
+                .start()
+                .map_err(|_| GError { kind: GErrorKind::Platform, message: "Failed to start audio playback".to_string() })?;
 
             Ok(())
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
             let _ = (sound_id, volume, looped);
-            Err(GError {
-                kind: GErrorKind::Platform,
-                message: "WebAudioEngine is only available on wasm32 target".to_string(),
-            })
+            Err(GError { kind: GErrorKind::Platform, message: "WebAudioEngine is only available on wasm32 target".to_string() })
         }
     }
 
@@ -264,19 +228,13 @@ impl WebAudioEngine {
     fn fetch_file_data(&self, path: &Path) -> GResult<Vec<u8>> {
         let url = path.to_string_lossy().to_string();
 
-        let window = web_sys::window().ok_or_else(|| GError {
-            kind: GErrorKind::Platform,
-            message: "No window object available".to_string(),
-        })?;
+        let window = web_sys::window()
+            .ok_or_else(|| GError { kind: GErrorKind::Platform, message: "No window object available".to_string() })?;
 
         let promise = window.fetch_with_str(&url);
 
-        let resp = wasm_bindgen_futures::futures::block_on(wasm_bindgen_futures::JsFuture::from(promise)).map_err(
-            |_| GError {
-                kind: GErrorKind::Io,
-                message: format!("Failed to fetch '{}'", url),
-            },
-        )?;
+        let resp = wasm_bindgen_futures::futures::block_on(wasm_bindgen_futures::JsFuture::from(promise))
+            .map_err(|_| GError { kind: GErrorKind::Io, message: format!("Failed to fetch '{}'", url) })?;
 
         let response = web_sys::Response::from(resp);
 
@@ -287,18 +245,12 @@ impl WebAudioEngine {
             });
         }
 
-        let array_buffer_promise = response.array_buffer().map_err(|_| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to get array buffer for '{}'", url),
-        })?;
+        let array_buffer_promise = response
+            .array_buffer()
+            .map_err(|_| GError { kind: GErrorKind::Io, message: format!("Failed to get array buffer for '{}'", url) })?;
 
-        let array_buffer = wasm_bindgen_futures::futures::block_on(wasm_bindgen_futures::JsFuture::from(
-            array_buffer_promise,
-        ))
-        .map_err(|_| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read array buffer for '{}'", url),
-        })?;
+        let array_buffer = wasm_bindgen_futures::futures::block_on(wasm_bindgen_futures::JsFuture::from(array_buffer_promise))
+            .map_err(|_| GError { kind: GErrorKind::Io, message: format!("Failed to read array buffer for '{}'", url) })?;
 
         let js_array = js_sys::Uint8Array::new(&array_buffer);
         let mut data = vec![0u8; js_array.length() as usize];
@@ -311,10 +263,7 @@ impl WebAudioEngine {
     fn fetch_file_data(&self, path: &Path) -> GResult<Vec<u8>> {
         Err(GError {
             kind: GErrorKind::Platform,
-            message: format!(
-                "WebAudioEngine is only available on wasm32 target, cannot fetch '{}'",
-                path.display()
-            ),
+            message: format!("WebAudioEngine is only available on wasm32 target, cannot fetch '{}'", path.display()),
         })
     }
 }

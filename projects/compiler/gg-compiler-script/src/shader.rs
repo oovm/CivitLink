@@ -99,16 +99,20 @@ impl ShaderParser {
             if Self::match_keyword(&chars, pos, len, "shader") {
                 let shader_block = Self::parse_shader_block(&chars, &mut pos, len)?;
                 shaders.push(shader_block);
-            } else if Self::match_keyword(&chars, pos, len, "micro") {
+            }
+            else if Self::match_keyword(&chars, pos, len, "micro") {
                 let micro_src = Self::parse_brace_block_with_header(&chars, &mut pos, len, "micro")?;
                 micro_functions.push(micro_src);
-            } else if Self::match_keyword(&chars, pos, len, "namespace") {
+            }
+            else if Self::match_keyword(&chars, pos, len, "namespace") {
                 let ns_src = Self::parse_brace_block_with_header(&chars, &mut pos, len, "namespace")?;
                 namespaces.push(ns_src);
-            } else if Self::match_keyword(&chars, pos, len, "using") {
+            }
+            else if Self::match_keyword(&chars, pos, len, "using") {
                 let using_path = Self::parse_using(&chars, &mut pos, len)?;
                 usings.push(using_path);
-            } else {
+            }
+            else {
                 pos += 1;
             }
         }
@@ -120,11 +124,13 @@ impl ShaderParser {
         while *pos < len {
             if chars[*pos].is_whitespace() {
                 *pos += 1;
-            } else if *pos + 1 < len && chars[*pos] == '/' && chars[*pos + 1] == '/' {
+            }
+            else if *pos + 1 < len && chars[*pos] == '/' && chars[*pos + 1] == '/' {
                 while *pos < len && chars[*pos] != '\n' {
                     *pos += 1;
                 }
-            } else if *pos + 1 < len && chars[*pos] == '/' && chars[*pos + 1] == '*' {
+            }
+            else if *pos + 1 < len && chars[*pos] == '/' && chars[*pos + 1] == '*' {
                 *pos += 2;
                 while *pos + 1 < len {
                     if chars[*pos] == '*' && chars[*pos + 1] == '/' {
@@ -133,7 +139,8 @@ impl ShaderParser {
                     }
                     *pos += 1;
                 }
-            } else {
+            }
+            else {
                 break;
             }
         }
@@ -185,18 +192,9 @@ impl ShaderParser {
 
         let block_content = Self::extract_brace_content(chars, pos, len)?;
 
-        let (functions, render_states, uniforms, fallback) =
-            Self::parse_shader_internals(block_content.trim());
+        let (functions, render_states, uniforms, fallback) = Self::parse_shader_internals(block_content.trim());
 
-        Ok(ShaderBlock {
-            name,
-            kind,
-            properties,
-            render_states,
-            functions,
-            uniforms,
-            fallback,
-        })
+        Ok(ShaderBlock { name, kind, properties, render_states, functions, uniforms, fallback })
     }
 
     fn parse_identifier(chars: &[char], pos: &mut usize, len: usize) -> String {
@@ -210,10 +208,7 @@ impl ShaderParser {
 
     fn extract_brace_content(chars: &[char], pos: &mut usize, len: usize) -> GResult<String> {
         if *pos >= len || chars[*pos] != '{' {
-            return Err(GError {
-                kind: GErrorKind::Other,
-                message: "Expected '{' to start block".to_string(),
-            });
+            return Err(GError { kind: GErrorKind::Other, message: "Expected '{' to start block".to_string() });
         }
 
         let start = *pos;
@@ -223,9 +218,11 @@ impl ShaderParser {
         while *pos < len && depth > 0 {
             if chars[*pos] == '{' {
                 depth += 1;
-            } else if chars[*pos] == '}' {
+            }
+            else if chars[*pos] == '}' {
                 depth -= 1;
-            } else if chars[*pos] == '"' || chars[*pos] == '\'' {
+            }
+            else if chars[*pos] == '"' || chars[*pos] == '\'' {
                 let quote = chars[*pos];
                 *pos += 1;
                 while *pos < len && chars[*pos] != quote {
@@ -241,10 +238,7 @@ impl ShaderParser {
         }
 
         if depth != 0 {
-            return Err(GError {
-                kind: GErrorKind::Other,
-                message: "Unmatched braces in block".to_string(),
-            });
+            return Err(GError { kind: GErrorKind::Other, message: "Unmatched braces in block".to_string() });
         }
 
         let content: String = chars[start + 1..*pos].iter().collect();
@@ -253,12 +247,7 @@ impl ShaderParser {
         Ok(content)
     }
 
-    fn parse_brace_block_with_header(
-        chars: &[char],
-        pos: &mut usize,
-        len: usize,
-        keyword: &str,
-    ) -> GResult<String> {
+    fn parse_brace_block_with_header(chars: &[char], pos: &mut usize, len: usize, keyword: &str) -> GResult<String> {
         let header_start = *pos;
         *pos += keyword.len();
 
@@ -267,10 +256,7 @@ impl ShaderParser {
         }
 
         if *pos >= len {
-            return Err(GError {
-                kind: GErrorKind::Other,
-                message: format!("Expected '{{' after {} declaration", keyword),
-            });
+            return Err(GError { kind: GErrorKind::Other, message: format!("Expected '{{' after {} declaration", keyword) });
         }
 
         let _content = Self::extract_brace_content(chars, pos, len)?;
@@ -322,15 +308,18 @@ impl ShaderParser {
                 if let Some(func) = Self::parse_shader_function(&chars, &mut pos, len, ShaderFunctionKind::Vertex) {
                     functions.push(func);
                 }
-            } else if Self::match_keyword(&chars, pos, len, "fragment") {
+            }
+            else if Self::match_keyword(&chars, pos, len, "fragment") {
                 if let Some(func) = Self::parse_shader_function(&chars, &mut pos, len, ShaderFunctionKind::Fragment) {
                     functions.push(func);
                 }
-            } else if Self::match_keyword(&chars, pos, len, "compute") {
+            }
+            else if Self::match_keyword(&chars, pos, len, "compute") {
                 if let Some(func) = Self::parse_shader_function(&chars, &mut pos, len, ShaderFunctionKind::Compute) {
                     functions.push(func);
                 }
-            } else if Self::match_keyword(&chars, pos, len, "render_states") {
+            }
+            else if Self::match_keyword(&chars, pos, len, "render_states") {
                 Self::skip_whitespace_and_comments(&chars, &mut pos, len);
                 if pos < len && chars[pos] == '{' {
                     match Self::extract_brace_content(&chars, &mut pos, len) {
@@ -338,7 +327,8 @@ impl ShaderParser {
                         Err(_) => break,
                     }
                 }
-            } else if Self::match_keyword(&chars, pos, len, "uniforms") {
+            }
+            else if Self::match_keyword(&chars, pos, len, "uniforms") {
                 Self::skip_whitespace_and_comments(&chars, &mut pos, len);
                 if pos < len && chars[pos] == '{' {
                     match Self::extract_brace_content(&chars, &mut pos, len) {
@@ -346,7 +336,8 @@ impl ShaderParser {
                         Err(_) => break,
                     }
                 }
-            } else if Self::match_keyword(&chars, pos, len, "fallback") {
+            }
+            else if Self::match_keyword(&chars, pos, len, "fallback") {
                 Self::skip_whitespace_and_comments(&chars, &mut pos, len);
                 if pos < len && chars[pos] == '{' {
                     match Self::extract_brace_content(&chars, &mut pos, len) {
@@ -354,7 +345,8 @@ impl ShaderParser {
                         Err(_) => break,
                     }
                 }
-            } else {
+            }
+            else {
                 pos += 1;
             }
         }
@@ -362,12 +354,7 @@ impl ShaderParser {
         (functions, render_states, uniforms, fallback)
     }
 
-    fn parse_shader_function(
-        chars: &[char],
-        pos: &mut usize,
-        len: usize,
-        kind: ShaderFunctionKind,
-    ) -> Option<ShaderFunction> {
+    fn parse_shader_function(chars: &[char], pos: &mut usize, len: usize, kind: ShaderFunctionKind) -> Option<ShaderFunction> {
         let keyword_len = match &kind {
             ShaderFunctionKind::Vertex => "vertex".len(),
             ShaderFunctionKind::Fragment => "fragment".len(),
@@ -383,7 +370,8 @@ impl ShaderParser {
             while *pos < len {
                 if chars[*pos] == '(' {
                     depth += 1;
-                } else if chars[*pos] == ')' {
+                }
+                else if chars[*pos] == ')' {
                     depth -= 1;
                     if depth == 0 {
                         *pos += 1;
@@ -403,7 +391,9 @@ impl ShaderParser {
             *pos += 2;
             Self::skip_whitespace_and_comments(chars, pos, len);
             let mut rt = String::new();
-            while *pos < len && (chars[*pos].is_alphanumeric() || chars[*pos] == '_' || chars[*pos] == '<' || chars[*pos] == '>') {
+            while *pos < len
+                && (chars[*pos].is_alphanumeric() || chars[*pos] == '_' || chars[*pos] == '<' || chars[*pos] == '>')
+            {
                 rt.push(chars[*pos]);
                 *pos += 1;
             }
@@ -418,12 +408,7 @@ impl ShaderParser {
         }
 
         match Self::extract_brace_content(chars, pos, len) {
-            Ok(body) => Some(ShaderFunction {
-                kind,
-                params,
-                return_type,
-                body: body.trim().to_string(),
-            }),
+            Ok(body) => Some(ShaderFunction { kind, params, return_type, body: body.trim().to_string() }),
             Err(_) => None,
         }
     }
@@ -464,10 +449,7 @@ impl Transformer for ShaderTransformer {
     }
 
     fn output_keys(&self) -> Vec<ArtifactKey> {
-        vec![
-            ArtifactKey::new(BYTECODE_MODULE_TYPE, "*"),
-            ArtifactKey::new(GPU_SHADER_TYPE, "*"),
-        ]
+        vec![ArtifactKey::new(BYTECODE_MODULE_TYPE, "*"), ArtifactKey::new(GPU_SHADER_TYPE, "*")]
     }
 
     fn transform(&self, inputs: &ArtifactSet, context: &mut BuildContext) -> GResult<ArtifactSet> {
@@ -576,10 +558,8 @@ impl Transformer for ShaderTransformer {
                         Some(rt) => format!(" -> {}", rt),
                         None => String::new(),
                     };
-                    gpu_shader_text.push_str(&format!(
-                        "  {}({}){} {{\n{}\n  }}\n",
-                        keyword, func.params, return_part, func.body
-                    ));
+                    gpu_shader_text
+                        .push_str(&format!("  {}({}){} {{\n{}\n  }}\n", keyword, func.params, return_part, func.body));
                 }
 
                 if let Some(ref fb) = shader.fallback {

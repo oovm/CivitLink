@@ -1,8 +1,7 @@
 //! GG-Sheet 项目配置模块
 //! 提供从 GGSheet.toml 加载和保存项目配置的功能
 
-use std::collections::HashMap;
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 use serde::{Deserialize, Serialize};
 
@@ -46,26 +45,17 @@ fn default_output_dir() -> String {
 
 impl Default for SheetConfig {
     fn default() -> Self {
-        Self {
-            sheet_dir: default_sheet_dir(),
-            output_dir: default_output_dir(),
-            namespace: None,
-            tables: HashMap::new(),
-        }
+        Self { sheet_dir: default_sheet_dir(), output_dir: default_output_dir(), namespace: None, tables: HashMap::new() }
     }
 }
 
 impl SheetConfig {
     /// 从 TOML 文件加载配置
     pub fn load(path: &Path) -> SheetResult<SheetConfig> {
-        let content = std::fs::read_to_string(path).map_err(|e| SheetError::Io {
-            path: path.to_path_buf(),
-            message: format!("无法读取配置文件: {}", e),
-        })?;
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| SheetError::Io { path: path.to_path_buf(), message: format!("无法读取配置文件: {}", e) })?;
 
-        toml::from_str(&content).map_err(|e| SheetError::Config {
-            message: format!("配置文件解析失败: {}", e),
-        })
+        toml::from_str(&content).map_err(|e| SheetError::Config { message: format!("配置文件解析失败: {}", e) })
     }
 
     /// 生成默认配置文件内容
@@ -76,20 +66,17 @@ impl SheetConfig {
 
     /// 保存配置到文件
     pub fn save(&self, path: &Path) -> SheetResult<()> {
-        let content = toml::to_string_pretty(self).map_err(|e| SheetError::Config {
-            message: format!("配置序列化失败: {}", e),
-        })?;
+        let content = toml::to_string_pretty(self)
+            .map_err(|e| SheetError::Config { message: format!("配置序列化失败: {}", e) })?;
 
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| SheetError::Io {
-                path: parent.to_path_buf(),
-                message: format!("无法创建配置目录: {}", e),
-            })?;
+            std::fs::create_dir_all(parent)
+                .map_err(|e| SheetError::Io {
+                    path: parent.to_path_buf(), message: format!("无法创建配置目录: {}", e)
+                })?;
         }
 
-        std::fs::write(path, &content).map_err(|e| SheetError::Io {
-            path: path.to_path_buf(),
-            message: format!("无法写入配置文件: {}", e),
-        })
+        std::fs::write(path, &content)
+            .map_err(|e| SheetError::Io { path: path.to_path_buf(), message: format!("无法写入配置文件: {}", e) })
     }
 }

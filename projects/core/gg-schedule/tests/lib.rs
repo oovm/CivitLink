@@ -1,5 +1,5 @@
-use gg_schedule::prelude::*;
 use gg_ecs::World;
+use gg_schedule::prelude::*;
 
 fn result_system(_world: &mut World) -> gg_error::GResult<()> {
     Ok(())

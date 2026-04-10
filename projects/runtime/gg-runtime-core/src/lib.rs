@@ -445,7 +445,7 @@ impl Runtime {
             match self.script_engine.call_function("init", &mut self.host) {
                 VmResult::Ok | VmResult::Return(_) => {}
                 VmResult::Error { message, .. } => {
-                return Err(GError { kind: GErrorKind::Runtime, message: format!("Script init error: {}", message) });
+                    return Err(GError { kind: GErrorKind::Runtime, message: format!("Script init error: {}", message) });
                 }
             }
         }
