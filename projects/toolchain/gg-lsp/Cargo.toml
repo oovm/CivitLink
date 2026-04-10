@@ -1,0 +1,10 @@
+[package]
+name = "gg-lsp"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-manifest = { workspace = true }
