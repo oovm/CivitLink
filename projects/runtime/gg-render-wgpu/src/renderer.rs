@@ -266,7 +266,6 @@ impl WgpuRenderer {
         let texture_id = self.texture_cache.register_texture(texture);
 
         Ok(RenderTarget {
-            texture: self.texture_cache.get_texture(texture_id).unwrap().clone(),
             view,
             texture_id,
             width,

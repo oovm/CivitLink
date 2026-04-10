@@ -23,4 +23,4 @@ pub mod texture_cache;
 /// Uniform 缓冲区池模块
 pub mod uniform_pool;
 
-pub use renderer::WgpuRenderer;
+pub use renderer::{RenderTarget, WgpuRenderer};

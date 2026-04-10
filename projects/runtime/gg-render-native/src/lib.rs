@@ -1,23 +1,12 @@
 #![warn(missing_docs)]
 
-//! GG 引擎 WGPU 渲染后端
+//! GG 引擎原生渲染后端
 //!
-//! 基于 WGPU 实现跨平台 2D 图形渲染，
-//! 支持精灵绘制、文本渲染、矩形绘制和场景过渡动画。
+//! 基于平台原生 2D API 实现跨平台渲染，
+//! 专为编辑器场景优化，支持 CJK 文本渲染和原生窗口集成。
+//! 仅支持桌面平台（Windows、macOS、Linux）。
 
-/// 字形纹理图集模块
-pub mod glyph_atlas;
-/// 字形缓存模块
-pub mod glyph_cache;
-/// 渲染管线模块
-pub mod pipeline;
-/// WGPU 渲染器模块
+/// 原生渲染器模块
 pub mod renderer;
-/// 着色器源码模块
-pub mod shader;
-/// 纹理缓存模块
-pub mod texture_cache;
-/// Uniform 缓冲区池模块
-pub mod uniform_pool;
 
-pub use renderer::WgpuRenderer;
+pub use renderer::NativeRenderer;
