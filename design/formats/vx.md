@@ -8,7 +8,7 @@
 
 一个完整的 *.vx 文件结构如下：
 
-```vx
+```vue
 <template>
     <Layout style="flex-1">
         <Text class="title" style="text-xl font-bold">Hello GG Editor</Text>

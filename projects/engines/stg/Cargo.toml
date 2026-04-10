@@ -1,0 +1,16 @@
+[package]
+name = "gg-engine-stg"
+description = "STG (Shoot 'em up) game engine based on GG meta-engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gg-core = { path = "../../../crates/core" }
+gg-ecs = { path = "../../../crates/ecs" }
+gg-asset = { path = "../../../crates/asset" }
+gg-render = { path = "../../../crates/render" }
+gg-render-wgpu = { path = "../../../crates/render-wgpu" }
+gg-ui = { path = "../../../crates/ui" }
+gg-platform-desktop = { path = "../../../crates/platform-desktop" }
+wgpu = "0.16"
+winit = "0.28"
