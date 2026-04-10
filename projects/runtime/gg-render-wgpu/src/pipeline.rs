@@ -79,10 +79,11 @@ impl SpritePipeline {
     /// - `device` - wgpu 设备
     /// - `format` - 渲染目标纹理格式
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("sprite_shader"),
-            source: wgpu::ShaderSource::Wgsl(shader::SPRITE_SHADER.into()),
-        });
+        let shader_source = GpuShaderSource::from_naga(
+            gg_shader::builtin::builtin_sprite_shader()
+                .expect("内置精灵着色器编译失败")
+        );
+        let shader = shader_source.create_shader_module(device, "sprite_shader");
 
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("sprite_uniform_layout"),
@@ -122,8 +123,8 @@ impl SpritePipeline {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("sprite_pipeline_layout"),
-            bind_group_layouts: &[&uniform_layout, &texture_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&uniform_layout), Some(&texture_layout)],
+            immediate_size: 0,
         });
 
         let pipeline = create_render_pipeline(
@@ -221,10 +222,11 @@ impl TransitionPipeline {
     /// - `device` - wgpu 设备
     /// - `format` - 渲染目标纹理格式
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("transition_shader"),
-            source: wgpu::ShaderSource::Wgsl(shader::TRANSITION_SHADER.into()),
-        });
+        let shader_source = GpuShaderSource::from_naga(
+            gg_shader::builtin::builtin_transition_shader()
+                .expect("内置过渡着色器编译失败")
+        );
+        let shader = shader_source.create_shader_module(device, "transition_shader");
 
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("transition_uniform_layout"),
@@ -274,8 +276,8 @@ impl TransitionPipeline {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("transition_pipeline_layout"),
-            bind_group_layouts: &[&uniform_layout, &texture_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&uniform_layout), Some(&texture_layout)],
+            immediate_size: 0,
         });
 
         let pipeline = create_render_pipeline(
@@ -379,10 +381,11 @@ impl BatchSpritePipeline {
     /// - `device` - wgpu 设备
     /// - `format` - 渲染目标纹理格式
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("sprite_batch_shader"),
-            source: wgpu::ShaderSource::Wgsl(shader::SPRITE_BATCH_SHADER.into()),
-        });
+        let shader_source = GpuShaderSource::from_naga(
+            gg_shader::builtin::builtin_batch_sprite_shader()
+                .expect("内置批渲染精灵着色器编译失败")
+        );
+        let shader_module = shader_source.create_shader_module(device, "sprite_batch_shader");
 
         let texture_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("batch_sprite_texture_layout"),
@@ -408,8 +411,8 @@ impl BatchSpritePipeline {
 
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("batch_sprite_pipeline_layout"),
-            bind_group_layouts: &[&texture_layout],
-            push_constant_ranges: &[],
+            bind_group_layouts: &[Some(&texture_layout)],
+            immediate_size: 0,
         });
 
         let instance_size = std::mem::size_of::<BatchedSpriteInstance>() as wgpu::BufferAddress;
@@ -476,7 +479,7 @@ impl BatchSpritePipeline {
             },
             depth_stencil: None,
             multisample: wgpu::MultisampleState { count: 1, mask: !0, alpha_to_coverage_enabled: false },
-            multiview: None,
+            multiview_mask: None,
             cache: None,
         });
 
@@ -570,7 +573,7 @@ fn create_render_pipeline(
         },
         depth_stencil: None,
         multisample: wgpu::MultisampleState { count: 1, mask: !0, alpha_to_coverage_enabled: false },
-        multiview: None,
+        multiview_mask: None,
         cache: None,
     })
 }

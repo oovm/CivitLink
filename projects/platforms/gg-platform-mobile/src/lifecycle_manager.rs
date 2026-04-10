@@ -1,3 +1,5 @@
+use std::sync::Mutex;
+
 use gg_core::GResult;
 
 use crate::lifecycle::MobileLifecycle;
@@ -66,6 +68,80 @@ impl MobileLifecycle for MobileLifecycleManager {
         self.state = LifecycleState::Destroyed;
         Ok(())
     }
+}
+
+static LIFECYCLE_MANAGER: Mutex<Option<MobileLifecycleManager>> = Mutex::new(None);
+
+/// 获取或创建全局生命周期管理器
+///
+/// 返回全局 `MobileLifecycleManager` 实例的可变引用。
+/// 首次调用时自动创建实例。
+pub fn global_lifecycle_manager() -> &'static Mutex<Option<MobileLifecycleManager>> {
+    &LIFECYCLE_MANAGER
+}
+
+/// 初始化全局生命周期管理器
+///
+/// 供原生桥接层在应用启动时调用。
+pub fn init_lifecycle() {
+    if let Ok(mut guard) = LIFECYCLE_MANAGER.lock() {
+        if guard.is_none() {
+            *guard = Some(MobileLifecycleManager::new());
+        }
+    }
+}
+
+/// 通知应用暂停
+///
+/// 供原生桥接层（iOS `applicationDidEnterBackground` / Android `onPause`）调用。
+#[unsafe(no_mangle)]
+pub extern "C" fn gg_lifecycle_on_pause() {
+    if let Ok(mut guard) = LIFECYCLE_MANAGER.lock() {
+        if let Some(ref mut manager) = *guard {
+            let _ = manager.on_pause();
+        }
+    }
+}
+
+/// 通知应用恢复
+///
+/// 供原生桥接层（iOS `applicationWillEnterForeground` / Android `onResume`）调用。
+#[unsafe(no_mangle)]
+pub extern "C" fn gg_lifecycle_on_resume() {
+    if let Ok(mut guard) = LIFECYCLE_MANAGER.lock() {
+        if let Some(ref mut manager) = *guard {
+            let _ = manager.on_resume();
+        }
+    }
+}
+
+/// 通知应用销毁
+///
+/// 供原生桥接层（iOS `applicationWillTerminate` / Android `onDestroy`）调用。
+#[unsafe(no_mangle)]
+pub extern "C" fn gg_lifecycle_on_destroy() {
+    if let Ok(mut guard) = LIFECYCLE_MANAGER.lock() {
+        if let Some(ref mut manager) = *guard {
+            let _ = manager.on_destroy();
+        }
+    }
+}
+
+/// 获取当前生命周期状态
+///
+/// 返回状态码：0=Running, 1=Paused, 2=Destroyed, -1=未初始化
+#[unsafe(no_mangle)]
+pub extern "C" fn gg_lifecycle_get_state() -> i32 {
+    if let Ok(guard) = LIFECYCLE_MANAGER.lock() {
+        if let Some(ref manager) = *guard {
+            return match manager.state() {
+                LifecycleState::Running => 0,
+                LifecycleState::Paused => 1,
+                LifecycleState::Destroyed => 2,
+            };
+        }
+    }
+    -1
 }
 
 #[cfg(test)]

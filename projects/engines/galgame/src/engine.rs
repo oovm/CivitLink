@@ -10,16 +10,22 @@ use gg_asset::{AssetServer, Handle, ImageAsset};
 use gg_core::plugin::PluginManager;
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::{Entity, World};
+use gg_galgame_schema::components::SceneBackground;
 use gg_plugin_dialogue::plugin::DialoguePlugin;
-use gg_plugin_dialogue::schema::{ChoiceState, DeltaTime};
+use gg_plugin_dialogue::schema::{ChoiceState, DeltaTime, DialogueHistory};
 use gg_plugin_dialogue::typewriter::TypewriterState;
 use gg_plugin_portrait::plugin::PortraitPlugin;
+use gg_plugin_portrait::systems::PortraitRenderSystem;
 use gg_plugin_save::plugin::SavePlugin;
 use gg_plugin_scene_transition::plugin::SceneTransitionPlugin;
+use gg_plugin_scene_transition::systems::TransitionSystem;
 use gg_plugin_ui::{EventSystemResource, UiPlugin, UiTreeResource};
-use gg_render::{RenderContext, Renderer, SurfaceInfo, TextureId};
+use gg_render::{Color, DrawCommand, RenderContext, Renderer, SurfaceInfo, TextureId, Transform};
 use gg_render_wgpu::WgpuRenderer;
-use gg_ui::{LayoutEngine, UiEvent, UiRenderer, UiTree};
+use gg_ui::{
+    FlexAlign, FlexDirection, FontStyle, LayoutEngine, LayoutStyle, SizeValue, Style, UiEvent,
+    UiNodeData, UiNodeId, UiRenderer, UiTree,
+};
 use winit::event::{ElementState, Event, MouseButton};
 use winit::event_loop::EventLoop;
 
@@ -57,6 +63,16 @@ pub struct GalgameEngine {
     texture_map: HashMap<String, TextureId>,
     /// 纹理尺寸映射
     texture_sizes: HashMap<TextureId, [f32; 2]>,
+    /// 对话面板节点 ID
+    dialogue_panel_id: Option<UiNodeId>,
+    /// 说话者名称节点 ID
+    speaker_text_id: Option<UiNodeId>,
+    /// 对话文本节点 ID
+    dialogue_text_id: Option<UiNodeId>,
+    /// 选项按钮容器节点 ID
+    choice_container_id: Option<UiNodeId>,
+    /// 选项按钮节点 ID 列表
+    choice_button_ids: Vec<UiNodeId>,
 }
 
 impl GalgameEngine {
@@ -81,6 +97,11 @@ impl GalgameEngine {
             pending_ui_click: false,
             texture_map: HashMap::new(),
             texture_sizes: HashMap::new(),
+            dialogue_panel_id: None,
+            speaker_text_id: None,
+            dialogue_text_id: None,
+            choice_container_id: None,
+            choice_button_ids: Vec::new(),
         }
     }
 
@@ -99,6 +120,8 @@ impl GalgameEngine {
 
         self.plugin_manager.build_all(&mut self.world)?;
         self.plugin_manager.initialize_all()?;
+
+        self.build_dialogue_ui();
 
         Ok(())
     }
@@ -182,7 +205,12 @@ impl GalgameEngine {
             dt.secs = delta;
         }
 
-        self.world.run_systems()
+        self.world.run_systems()?;
+
+        self.update_dialogue_ui();
+        self.update_choice_buttons();
+
+        Ok(())
     }
 
     /// 处理输入事件
@@ -213,6 +241,9 @@ impl GalgameEngine {
     }
 
     /// 将鼠标点击事件分发到 UI 事件系统
+    ///
+    /// 先将点击事件分发到 UI 事件系统，然后检测是否点击了选项按钮。
+    /// 如果点击了选项按钮，设置 ChoiceState 的 selected_index 并停用选项。
     fn dispatch_click_to_ui(&mut self) {
         let tree = self.world.get_resource::<UiTreeResource>().map(|r| r.0.clone());
         if let Some(event_sys_res) = self.world.get_resource_mut::<EventSystemResource>() {
@@ -225,6 +256,229 @@ impl GalgameEngine {
                     tree,
                 );
             }
+        }
+
+        let click_x = self.mouse_position[0];
+        let click_y = self.mouse_position[1];
+
+        let button_layouts: Vec<(usize, f32, f32, f32, f32)> = self
+            .choice_button_ids
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &button_id)| {
+                let node = self.ui_tree.get(button_id)?;
+                let layout = node.layout_result?;
+                Some((i, layout.x, layout.y, layout.width, layout.height))
+            })
+            .collect();
+
+        for (i, x, y, w, h) in &button_layouts {
+            if click_x >= *x && click_x <= *x + *w && click_y >= *y && click_y <= *y + *h {
+                if let Some(choice_state) = self.world.get_resource_mut::<ChoiceState>() {
+                    choice_state.selected_index = Some(*i);
+                    choice_state.is_active = false;
+                }
+                return;
+            }
+        }
+    }
+
+    /// 构建对话 UI 布局
+    ///
+    /// 创建底部对话文本框和说话者名称的 UI 节点。
+    /// 布局结构为：根容器（纵向，底部对齐）→ 选项容器 → 对话面板（说话者 + 文本）。
+    fn build_dialogue_ui(&mut self) {
+        if self.ui_tree.root().is_none() {
+            let root_style = Style {
+                layout: LayoutStyle {
+                    direction: FlexDirection::Column,
+                    justify_content: FlexAlign::End,
+                    width: SizeValue::Percent(1.0),
+                    height: SizeValue::Percent(1.0),
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let root_id = self.ui_tree.create_node("root", root_style, UiNodeData::Container);
+            self.ui_tree.set_root(root_id);
+        }
+        let root_id = self.ui_tree.root().unwrap();
+
+        let choice_container_style = Style {
+            layout: LayoutStyle {
+                direction: FlexDirection::Column,
+                width: SizeValue::Percent(1.0),
+                height: SizeValue::Auto,
+                padding: 10.0,
+                gap: 5.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        let choice_container_id = self.ui_tree.create_node(
+            "choice_container",
+            choice_container_style,
+            UiNodeData::Container,
+        );
+        self.ui_tree.add_child(root_id, choice_container_id);
+        self.choice_container_id = Some(choice_container_id);
+
+        let panel_style = Style {
+            layout: LayoutStyle {
+                direction: FlexDirection::Column,
+                width: SizeValue::Percent(1.0),
+                height: SizeValue::Px(200.0),
+                padding: 10.0,
+                ..Default::default()
+            },
+            background_color: Some(Color::new(0.0, 0.0, 0.0, 0.7)),
+            ..Default::default()
+        };
+        let panel_id = self.ui_tree.create_node("dialogue_panel", panel_style, UiNodeData::Container);
+        self.ui_tree.add_child(root_id, panel_id);
+        self.dialogue_panel_id = Some(panel_id);
+
+        let speaker_style = Style {
+            layout: LayoutStyle {
+                width: SizeValue::Percent(1.0),
+                height: SizeValue::Px(30.0),
+                ..Default::default()
+            },
+            font: Some(FontStyle {
+                size: 20.0,
+                color: Color::new(1.0, 0.9, 0.3, 1.0),
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let speaker_id = self.ui_tree.create_node(
+            "speaker_name",
+            speaker_style,
+            UiNodeData::Text { content: String::new() },
+        );
+        self.ui_tree.add_child(panel_id, speaker_id);
+        self.speaker_text_id = Some(speaker_id);
+
+        let text_style = Style {
+            layout: LayoutStyle {
+                width: SizeValue::Percent(1.0),
+                height: SizeValue::Px(160.0),
+                ..Default::default()
+            },
+            font: Some(FontStyle {
+                size: 18.0,
+                color: Color::WHITE,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+        let text_id = self.ui_tree.create_node(
+            "dialogue_text",
+            text_style,
+            UiNodeData::Text { content: String::new() },
+        );
+        self.ui_tree.add_child(panel_id, text_id);
+        self.dialogue_text_id = Some(text_id);
+    }
+
+    /// 更新对话 UI
+    ///
+    /// 根据 TypewriterState 和 ChoiceState 更新对话文本框内容。
+    /// 当存在打字机文本或活跃选项时显示对话面板，否则隐藏。
+    fn update_dialogue_ui(&mut self) {
+        let typewriter_text = self
+            .world
+            .get_resource::<TypewriterState>()
+            .map(|t| t.current_text().to_string());
+        let has_choices = self
+            .world
+            .get_resource::<ChoiceState>()
+            .map(|c| c.is_active)
+            .unwrap_or(false);
+        let speaker_name = self
+            .world
+            .get_resource::<DialogueHistory>()
+            .and_then(|h| h.entries.last().map(|e| e.speaker_name.clone().unwrap_or_default()));
+
+        if let Some(text_id) = self.dialogue_text_id {
+            if let Some(ref text) = typewriter_text {
+                if let Some(node) = self.ui_tree.get_mut(text_id) {
+                    if let UiNodeData::Text { ref mut content } = node.data {
+                        *content = text.clone();
+                    }
+                }
+            }
+        }
+
+        if let Some(speaker_id) = self.speaker_text_id {
+            if let Some(node) = self.ui_tree.get_mut(speaker_id) {
+                if let UiNodeData::Text { ref mut content } = node.data {
+                    *content = speaker_name.unwrap_or_default();
+                }
+            }
+        }
+
+        if let Some(panel_id) = self.dialogue_panel_id {
+            let should_show = typewriter_text.is_some() || has_choices;
+            if let Some(node) = self.ui_tree.get_mut(panel_id) {
+                node.visible = should_show;
+            }
+        }
+    }
+
+    /// 更新选项按钮
+    ///
+    /// 根据 ChoiceState 动态创建或移除选项按钮。
+    /// 当选项不活跃时仅移除已有按钮，活跃时重建所有按钮。
+    fn update_choice_buttons(&mut self) {
+        let choice_state = self
+            .world
+            .get_resource::<ChoiceState>()
+            .map(|c| (c.is_active, c.choices.clone()));
+
+        let (is_active, choices) = match choice_state {
+            Some((active, ch)) => (active, ch),
+            None => (false, Vec::new()),
+        };
+
+        for &button_id in &self.choice_button_ids {
+            self.ui_tree.remove_node(button_id);
+        }
+        self.choice_button_ids.clear();
+
+        if let Some(container_id) = self.choice_container_id {
+            if let Some(node) = self.ui_tree.get_mut(container_id) {
+                node.visible = is_active;
+            }
+        }
+
+        if !is_active {
+            return;
+        }
+
+        let container_id = match self.choice_container_id {
+            Some(id) => id,
+            None => return,
+        };
+
+        for (i, choice) in choices.iter().enumerate() {
+            let button_style = Style {
+                layout: LayoutStyle {
+                    width: SizeValue::Px(300.0),
+                    height: SizeValue::Px(40.0),
+                    ..Default::default()
+                },
+                background_color: Some(Color::new(0.2, 0.2, 0.4, 0.9)),
+                ..Default::default()
+            };
+
+            let button_id = self.ui_tree.create_node(
+                format!("choice_{}", i),
+                button_style,
+                UiNodeData::Text { content: choice.text.clone() },
+            );
+            self.ui_tree.add_child(container_id, button_id);
+            self.choice_button_ids.push(button_id);
         }
     }
 
@@ -315,6 +569,37 @@ impl GalgameEngine {
         renderer.begin_frame()?;
 
         let mut context = RenderContext::new(renderer.surface_info().width, renderer.surface_info().height);
+
+        let entities: Vec<Entity> = self.world.entities().iter().copied().collect();
+        for entity in entities {
+            if let Some(bg) = self.world.get_component::<SceneBackground>(entity) {
+                if bg.texture_id != TextureId::INVALID {
+                    let surface_width = renderer.surface_info().width as f32;
+                    let surface_height = renderer.surface_info().height as f32;
+                    context.draw(DrawCommand::Sprite {
+                        texture_id: bg.texture_id,
+                        transform: Transform {
+                            position: [0.0, 0.0],
+                            scale: [1.0, 1.0],
+                            rotation: 0.0,
+                            z_index: -1.0,
+                        },
+                        size: [surface_width, surface_height],
+                        tint: Color::WHITE,
+                        clip_rect: None,
+                    });
+                }
+            }
+        }
+
+        let portrait_system = PortraitRenderSystem::new(
+            renderer.surface_info().width as f32,
+            renderer.surface_info().height as f32,
+        );
+        portrait_system.render_to_context(&self.world, &mut context)?;
+
+        let transition_system = TransitionSystem::new();
+        transition_system.render_to_context(&self.world, &mut context)?;
 
         LayoutEngine::compute(&mut self.ui_tree, renderer.surface_info().width as f32, renderer.surface_info().height as f32);
 
