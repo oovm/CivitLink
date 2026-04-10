@@ -1,19 +1,23 @@
-# gg-render-wgpu
+# gg-render-native
 
-**GG Game Engine 的 WGPU 渲染实现，负责游戏的图形渲染。**
+**GG Game Engine 的原生组件渲染实现，负责编辑器 UI 的渲染。**
 
 ## 📋 模块简介
 
-gg-render-wgpu 是 GG Game Engine 的 WGPU 渲染实现，负责游戏的图形渲染，提供基于 WGPU 的现代化渲染功能。
+gg-render-native 是 GG Game Engine 的原生组件渲染实现，负责编辑器 UI 的渲染，提供基于各平台原生 GUI 系统的渲染功能。
 
 ## ✨ 核心功能
 
-- **WGPU 集成**：基于 WGPU 的渲染实现
-- **渲染管道**：管理渲染管道和着色器
-- **纹理管理**：管理纹理和纹理缓存
-- \*\* glyph 缓存\*\*：优化文本渲染的字形缓存
-- **着色器系统**：支持自定义着色器
-- **性能优化**：优化渲染性能和资源使用
+- **原生 GUI 集成**：基于各平台原生 GUI 系统的渲染实现
+- **跨平台支持**：支持 Windows、macOS、iOS、Android、H5、微信小游戏等平台
+- **平台抽象**：处理不同平台原生 GUI 系统的差异
+- **与编辑器集成**：与 GG Editor 无缝集成
+- **性能优化**：优化原生 GUI 渲染性能
+
+## 🎮 UI 渲染区分
+
+- **Game UI**：使用 WGPU 自渲，由 gg-render-wgpu 模块负责
+- **Editor UI**：使用原生组件渲染（本模块负责），获得更好的性能和原生体验
 
 ## 🚀 使用方法
 
@@ -21,31 +25,29 @@ gg-render-wgpu 是 GG Game Engine 的 WGPU 渲染实现，负责游戏的图形�
 
 ```toml
 [dependencies]
-gg-render-wgpu = { path = "projects/runtime/gg-render-wgpu" }
+gg-render-native = { path = "projects/runtime/gg-render-native" }
 ```
 
 ### 基础示例
 
 ```rust
-use gg_render_wgpu::prelude::*;
+use gg_render_native::prelude::*;
 
 fn main() {
-    // 创建 WGPU 渲染器
-    let mut renderer = WgpuRenderer::new();
+    // 创建原生渲染器
+    let mut renderer = NativeRenderer::new();
     
     // 初始化渲染器
     renderer.initialize().unwrap();
     
-    // 创建表面
-    let surface = renderer.create_surface(800, 600);
+    // 创建编辑器窗口
+    let window = renderer.create_window(800, 600, "GG Editor");
     
     // 开始渲染
-    renderer.begin_frame(&surface);
+    renderer.begin_frame(&window);
     
-    // 绘制矩形
-    let rect = Rect::new(100.0, 100.0, 200.0, 150.0);
-    let color = Color::rgb(1.0, 0.0, 0.0);
-    renderer.draw_rect(rect, color);
+    // 绘制原生 UI 组件
+    renderer.draw_button(100.0, 100.0, 200.0, 50.0, "Click Me");
     
     // 结束渲染
     renderer.end_frame();
@@ -57,7 +59,7 @@ fn main() {
 - **gg-core**：核心功能和平台抽象
 - **gg-render**：渲染系统抽象
 - **gg-error**：错误处理系统
-- **wgpu**：WGPU 库
+- **原生 GUI 库**：各平台原生 GUI 系统
 
 ## 📖 相关文档
 

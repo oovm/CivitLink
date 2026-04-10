@@ -229,7 +229,7 @@ MetaFile({
     ],
     references: [
         Reference({
-            path: "scripts/game_manager.gscript",
+            path: "scripts/game_manager.v",
             entity_id: None,
             component: None,
             field: Some("start_scene"),

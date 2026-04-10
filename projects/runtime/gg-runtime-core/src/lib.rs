@@ -685,3 +685,93 @@ impl Runtime {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_engine_host_new() {
+        let host = EngineHost::new();
+        assert!(host.world().entities().is_empty());
+    }
+
+    #[test]
+    fn test_engine_host_world_access() {
+        let mut host = EngineHost::new();
+        let entity = host.world_mut().spawn().id();
+        assert!(host.world().contains_entity(entity));
+        assert_eq!(host.world().entities().len(), 1);
+    }
+
+    #[test]
+    fn test_engine_host_registry_access() {
+        let host = EngineHost::new();
+        assert!(!host.registry().is_registered("nonexistent"));
+    }
+
+    #[test]
+    fn test_frame_time_fields() {
+        let ft = FrameTime {
+            delta_seconds: 0.016,
+            fixed_delta_seconds: 0.02,
+            elapsed_seconds: 1.0,
+        };
+        assert!((ft.delta_seconds - 0.016).abs() < f32::EPSILON);
+        assert!((ft.fixed_delta_seconds - 0.02).abs() < f32::EPSILON);
+        assert!((ft.elapsed_seconds - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_input_events_empty() {
+        let events = InputEvents { events: vec![] };
+        assert!(events.events.is_empty());
+    }
+
+    #[test]
+    fn test_delta_timer_tick() {
+        let mut timer = DeltaTimer::new();
+        let delta = timer.tick();
+        assert!(delta.as_secs_f32() >= 0.0);
+    }
+
+    #[test]
+    fn test_delta_timer_elapsed() {
+        let mut timer = DeltaTimer::new();
+        timer.tick();
+        assert!(timer.elapsed().as_nanos() > 0);
+    }
+
+    #[test]
+    fn test_delta_timer_delta_seconds() {
+        let dur = Duration::from_millis(16);
+        let secs = DeltaTimer::delta_seconds(dur);
+        assert!((secs - 0.016).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_frame_limiter_new() {
+        let limiter = FrameLimiter::new(60);
+        assert_eq!(limiter.target_fps(), 60);
+    }
+
+    #[test]
+    fn test_frame_limiter_from_fps() {
+        let limiter = FrameLimiter::from_fps(30);
+        assert_eq!(limiter.target_fps(), 30);
+    }
+
+    #[test]
+    fn test_frame_limiter_target_frame_time() {
+        let limiter = FrameLimiter::new(60);
+        let expected = Duration::from_secs_f64(1.0 / 60.0);
+        assert!(limiter.target_frame_time() >= expected - Duration::from_micros(1));
+        assert!(limiter.target_frame_time() <= expected + Duration::from_micros(1));
+    }
+
+    #[test]
+    fn test_script_engine_new() {
+        let engine = ScriptEngine::new();
+        assert!(!engine.has_script());
+    }
+}

@@ -62,21 +62,21 @@ pub trait Platform {
 - **内置平台实现 (`gg-platforms`)**：官方维护的对主流平台的支持，如`desktop`（Windows/Linux/macOS）、`web`（WebAssembly）等。
 - **小程序平台实现 (`gg-platform-miniprogram`)**：为微信、支付宝等小程序环境提供通用适配层，封装平台特定API。
 
-## 插件分发新范式：WASI 与 `wit-component`
+## 插件分发新范式：gg vm/Valkyrie script
 
-为了让插件支持多语言开发并简化分发，gg 引擎插件系统采用**WASI (WebAssembly System Interface)** 和 **WIT (WebAssembly Interface Type)** 标准。
+为了让插件支持多语言开发并简化分发，gg 引擎插件系统采用**gg vm/Valkyrie script** 实现。WASM/WASI 已降级为运行时。
 
 ### 1. 简化分发逻辑
 
-传统原生插件（如`.dll`/`.so`）依赖具体指令集与操作系统。通过 `wit-component` 工具，可将任意语言的插件代码编译为**跨平台、沙箱化的`.wasm`组件**，实现"一次编译，处处运行"。
+传统原生插件（如`.dll`/`.so`）依赖具体指令集与操作系统。通过 gg vm/Valkyrie script，插件可以**跨平台、沙箱化**运行，实现"一次编写，处处运行"。
 
-### 2. 统一多语言接口
+### 2. 统一脚本接口
 
-使用WIT接口定义语言（IDL）精确描述插件与引擎宿主之间的契约。gg 引擎会发布一个官方WIT描述文件（如 `gg-plugin.wit`），第三方开发者只需基于此文件，通过 `wit-bindgen` 等工具生成对应语言的绑定代码（Rust, C/C++, Go等）进行插件开发。引擎在加载插件时，也通过此接口进行安全、高效的类型化调用。
+使用Valkyrie script语言编写插件，引擎会提供统一的API接口。第三方开发者只需基于官方API文档，编写Valkyrie脚本进行插件开发。引擎在加载插件时，通过安全的沙箱环境执行脚本。
 
 ### 3. 工具链集成
 
-`wit-component` 等工具链能够自动处理从`*.wit`文件到Wasm组件的生成。gg引擎的编译器流水线会集成这些工具，自动完成插件的组件化处理。
+gg引擎的编译器流水线会集成Valkyrie脚本编译工具，自动完成插件的脚本化处理。
 
 ## 实战案例：为gg引擎新增平台支持
 
@@ -91,12 +91,12 @@ pub trait Platform {
   4. **在清单中注册**：在 `Engine.toml` 中配置 `[[platform]]` 项，指向编译好的动态库。
   5. **运行发布**：`gg-cli build --platform alipay`。
 
-- **现代方式（基于WIT/WASI）**
-  1. **定义WIT接口**：在 `gg-platform.wit` 中定义平台插件的 `world`，包含 `build`, `package` 等函数。
-  2. **生成绑定代码**：使用 `wit-bindgen` 为Rust生成trait，或为其他语言生成接口。
-  3. **实现WIT定义的World**：在任何支持WASI的语言中，实现该 `world` 导出的所有函数。
-  4. **编译为Wasm组件**：使用对应工具链（如`cargo-component`）编译为`.wasm`组件。
-  5. **注册与运行**：gg引擎的工厂工具会加载并执行这些Wasm组件，通过WIT接口调度其功能。
+- **现代方式（基于gg vm/Valkyrie script）**
+  1. **编写Valkyrie脚本**：在 `gg-platform-alipay.vx` 中编写平台插件的实现，包含 `build`, `package` 等函数。
+  2. **使用统一API**：使用引擎提供的统一API接口，无需生成绑定代码。
+  3. **实现插件逻辑**：在Valkyrie脚本中实现平台插件的所有功能，适配支付宝API。
+  4. **注册与运行**：在 `Engine.toml` 中配置 `[[plugin]]` 项，指向编写的Valkyrie脚本。
+  5. **运行发布**：`gg-cli build --platform alipay`。
 
 ### 案例二：从Google Play到小米应用商城，如何编写插件？
 

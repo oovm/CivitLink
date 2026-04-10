@@ -515,6 +515,6 @@ zip -r my-galgame-game.zip my_galgame/
 - 引擎自动合并 DLC 内容
 
 #### Mod 分发
-- 独立 `.gg` 脚本文件
+- 独立 `.v` 脚本文件
 - 玩家放置到 `mods/` 目录
 - 虚拟机自动加载并执行

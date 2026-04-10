@@ -1,19 +1,24 @@
 # gg-render-wgpu
 
-**GG Game Engine 的 WGPU 渲染实现，负责游戏的图形渲染。**
+**GG Game Engine 的 WGPU 渲染实现，负责游戏内 UI 和图形的渲染。**
 
 ## 📋 模块简介
 
-gg-render-wgpu 是 GG Game Engine 的 WGPU 渲染实现，负责游戏的图形渲染，提供基于 WGPU 的现代化渲染功能。
+gg-render-wgpu 是 GG Game Engine 的 WGPU 渲染实现，负责游戏内 UI（如游戏菜单、HUD 等）和图形的渲染，提供基于 WGPU 的现代化渲染功能。
 
 ## ✨ 核心功能
 
 - **WGPU 集成**：基于 WGPU 的渲染实现
 - **渲染管道**：管理渲染管道和着色器
 - **纹理管理**：管理纹理和纹理缓存
-- \*\* glyph 缓存\*\*：优化文本渲染的字形缓存
+- **glyph 缓存**：优化文本渲染的字形缓存
 - **着色器系统**：支持自定义着色器
 - **性能优化**：优化渲染性能和资源使用
+
+## 🎮 UI 渲染区分
+
+- **Game UI**：使用 WGPU 自渲（本模块负责），确保与游戏渲染的一致性和性能
+- **Editor UI**：使用原生组件渲染，由 gg-render-native 模块负责
 
 ## 🚀 使用方法
 

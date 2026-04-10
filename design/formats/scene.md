@@ -105,7 +105,7 @@ SceneFile({
     ],
     scripts: [
         Script({
-            path: "assets/scripts/scene_manager.gscript",
+            path: "assets/scripts/scene_manager.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0002",
             enabled: true,
         }),
@@ -116,13 +116,13 @@ SceneFile({
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0001",
         }),
         Dependency({
-            path: "assets/scripts/scene_manager.gscript",
+            path: "assets/scripts/scene_manager.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0002",
         }),
     ],
     references: [
         Reference({
-            path: "assets/scripts/game_manager.gscript",
+            path: "assets/scripts/game_manager.v",
             field: Some("current_scene"),
         }),
     ],
@@ -399,12 +399,12 @@ SceneFile({
     ],
     scripts: [
         Script({
-            path: "assets/scripts/level_manager.gscript",
+            path: "assets/scripts/level_manager.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0006",
             enabled: true,
         }),
         Script({
-            path: "assets/scripts/enemy_spawner.gscript",
+            path: "assets/scripts/enemy_spawner.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0007",
             enabled: true,
         }),
@@ -419,11 +419,11 @@ SceneFile({
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0005",
         }),
         Dependency({
-            path: "assets/scripts/level_manager.gscript",
+            path: "assets/scripts/level_manager.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0006",
         }),
         Dependency({
-            path: "assets/scripts/enemy_spawner.gscript",
+            path: "assets/scripts/enemy_spawner.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0007",
         }),
         Dependency({

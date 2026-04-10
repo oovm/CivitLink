@@ -590,4 +590,30 @@ pub mod prelude {
         query::{QueryResult, WorldQuery},
         storage::{ComponentColumn, ComponentStorage},
     };
+    pub use gg_macros::Component;
+}
+
+#[cfg(test)]
+mod tests_component_derive {
+    use crate::*;
+
+    #[derive(Component, Debug, PartialEq)]
+    struct Health(f32);
+
+    #[derive(Component, Debug, PartialEq)]
+    struct Name(String);
+
+    #[test]
+    fn test_component_derive() {
+        let mut world = World::new();
+        let entity = world.spawn().id();
+        world.add_component(entity, Health(100.0)).unwrap();
+        world.add_component(entity, Name("Hero".to_string())).unwrap();
+
+        let health = world.get_component::<Health>(entity).unwrap();
+        assert_eq!(health.0, 100.0);
+
+        let name = world.get_component::<Name>(entity).unwrap();
+        assert_eq!(name.0, "Hero");
+    }
 }

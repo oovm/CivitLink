@@ -231,3 +231,46 @@ pub mod prelude {
     };
     pub use gg_macros::Reflect;
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::PartialReflect;
+    use crate::prelude::Reflect;
+
+    #[derive(Reflect, Clone)]
+    struct NamedStruct {
+        x: f32,
+        y: f32,
+    }
+
+    #[derive(Reflect, Clone)]
+    struct TupleStruct(f32, f32);
+
+    #[derive(Reflect, Clone)]
+    struct UnitStruct;
+
+    #[test]
+    fn test_named_struct_reflect() {
+        let s = NamedStruct { x: 1.0, y: 2.0 };
+        assert_eq!(s.field_names(), &["x", "y"]);
+        assert!(s.field("x").is_some());
+        assert!(s.field("y").is_some());
+        assert!(s.field("z").is_none());
+    }
+
+    #[test]
+    fn test_tuple_struct_reflect() {
+        let s = TupleStruct(1.0, 2.0);
+        assert_eq!(s.field_names(), &["0", "1"]);
+        assert!(s.field("0").is_some());
+        assert!(s.field("1").is_some());
+        assert!(s.field("2").is_none());
+    }
+
+    #[test]
+    fn test_unit_struct_reflect() {
+        let s = UnitStruct;
+        assert_eq!(s.field_names(), &[] as &[&str]);
+        assert!(s.field("x").is_none());
+    }
+}

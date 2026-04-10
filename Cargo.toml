@@ -124,6 +124,8 @@ gg-plugin-scene-transition = { path = "projects/plugins/gg-plugin-scene-transiti
 gg-plugin-save = { path = "projects/plugins/gg-plugin-save" }
 gg-plugin-tilemap = { path = "projects/plugins/gg-plugin-tilemap" }
 gg-plugin-spine = { path = "projects/plugins/gg-plugin-spine" }
+gg-plugin-ui = { path = "projects/plugins/gg-plugin-ui" }
+gg-plugin-ui = { path = "projects/plugins/gg-plugin-ui" }
 
 # gnostic gamer engines
 gg-galgame-schema = { path = "projects/engines/galgame-schema" }

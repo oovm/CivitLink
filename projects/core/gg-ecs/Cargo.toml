@@ -7,3 +7,4 @@ license = { workspace = true }
 
 [dependencies]
 gg-error = { workspace = true }
+gg-macros = { workspace = true }
