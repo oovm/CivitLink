@@ -1,10 +1,8 @@
 //! 立绘系统插件模块
 //! 实现 Plugin trait，负责立绘系统的初始化和关闭
 
-use gg_core::{
-    GResult,
-    plugin::{Plugin, PluginRegistrar},
-};
+use gg_core::plugin::{Plugin, PluginRegistrar};
+use gg_core::GResult;
 
 use crate::systems::{PortraitAnimationSystem, PortraitRenderSystem};
 
@@ -27,7 +25,10 @@ impl PortraitPlugin {
     /// - `screen_width` - 屏幕宽度
     /// - `screen_height` - 屏幕高度
     pub fn new(screen_width: f32, screen_height: f32) -> Self {
-        Self { screen_width, screen_height }
+        Self {
+            screen_width,
+            screen_height,
+        }
     }
 }
 
@@ -41,7 +42,10 @@ impl Plugin for PortraitPlugin {
     ///
     /// 注册立绘渲染系统和立绘动画系统。
     fn build(&self, registrar: &mut PluginRegistrar) {
-        registrar.register_system(Box::new(PortraitRenderSystem::new(self.screen_width, self.screen_height)));
+        registrar.register_system(Box::new(PortraitRenderSystem::new(
+            self.screen_width,
+            self.screen_height,
+        )));
         registrar.register_system(Box::new(PortraitAnimationSystem::new(1.0 / 60.0)));
     }
 

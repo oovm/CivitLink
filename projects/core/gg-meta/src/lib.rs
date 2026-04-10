@@ -104,145 +104,15 @@ impl MetaFile {
     /// 从文件读取元数据
     pub fn from_file(path: &Path) -> Result<Self, Box<dyn std::error::Error>> {
         let content = std::fs::read_to_string(path)?;
-        let von_value = parse(&content)?;
-        let meta = Self::from_von_value(&von_value)?;
+        let meta: Self = oak_von::from_str(&content)?;
         Ok(meta)
     }
 
     /// 写入元数据到文件
     pub fn to_file(&self, path: &Path) -> Result<(), Box<dyn std::error::Error>> {
-        let von_value = self.to_von_value()?;
-        let mut buffer = SourceBuffer::new();
-        von_value.to_source(&mut buffer);
-        let content = buffer.to_string();
+        let content = oak_von::to_string(self)?;
         std::fs::write(path, content)?;
         Ok(())
-    }
-
-    /// 从 VonValue 转换为 MetaFile
-    fn from_von_value(value: &VonValue) -> Result<Self, Box<dyn std::error::Error>> {
-        match value {
-            VonValue::Object(obj) => {
-                let mut version = String::new();
-                let mut asset = None;
-                let mut import_settings = None;
-                let mut dependencies = Vec::new();
-                let mut references = Vec::new();
-                let mut timestamp = String::new();
-                let mut hash = None;
-
-                for field in &obj.fields {
-                    match field.name.as_str() {
-                        "version" => {
-                            if let VonValue::String(s) = &field.value {
-                                version = s.value.clone();
-                            }
-                        }
-                        "asset" => {
-                            asset = Some(Asset::from_von_value(&field.value)?);
-                        }
-                        "import_settings" => {
-                            if let VonValue::Object(_) = &field.value {
-                                import_settings = Some(ImportSettings::from_von_value(&field.value)?);
-                            }
-                        }
-                        "dependencies" => {
-                            if let VonValue::Array(arr) = &field.value {
-                                for elem in &arr.elements {
-                                    dependencies.push(Dependency::from_von_value(elem)?);
-                                }
-                            }
-                        }
-                        "references" => {
-                            if let VonValue::Array(arr) = &field.value {
-                                for elem in &arr.elements {
-                                    references.push(Reference::from_von_value(elem)?);
-                                }
-                            }
-                        }
-                        "timestamp" => {
-                            if let VonValue::String(s) = &field.value {
-                                timestamp = s.value.clone();
-                            }
-                        }
-                        "hash" => {
-                            if let VonValue::String(s) = &field.value {
-                                hash = Some(s.value.clone());
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-
-                Ok(Self {
-                    version,
-                    asset: asset.ok_or("Missing asset field")?,
-                    import_settings,
-                    dependencies,
-                    references,
-                    timestamp,
-                    hash,
-                })
-            }
-            _ => Err("Expected object".into()),
-        }
-    }
-
-    /// 转换为 VonValue
-    fn to_von_value(&self) -> Result<VonValue, Box<dyn std::error::Error>> {
-        use oak_von::ast::{VonArray, VonField, VonNumber, VonObject, VonString};
-        
-        let mut fields = Vec::new();
-
-        fields.push(VonField {
-            name: "version".to_string(),
-            value: VonValue::String(VonString { value: self.version.clone(), span: (0..self.version.len()).into() }),
-            span: (0..0).into(),
-        });
-
-        fields.push(VonField { name: "asset".to_string(), value: self.asset.to_von_value()?, span: (0..0).into() });
-
-        if let Some(ref import_settings) = self.import_settings {
-            fields.push(VonField {
-                name: "import_settings".to_string(),
-                value: import_settings.to_von_value()?,
-                span: (0..0).into(),
-            });
-        }
-
-        fields.push(VonField {
-            name: "dependencies".to_string(),
-            value: VonValue::Array(VonArray {
-                elements: self.dependencies.iter().map(|d| d.to_von_value().unwrap()).collect(),
-                span: (0..0).into(),
-            }),
-            span: (0..0).into(),
-        });
-
-        fields.push(VonField {
-            name: "references".to_string(),
-            value: VonValue::Array(VonArray {
-                elements: self.references.iter().map(|r| r.to_von_value().unwrap()).collect(),
-                span: (0..0).into(),
-            }),
-            span: (0..0).into(),
-        });
-
-        fields.push(VonField {
-            name: "timestamp".to_string(),
-            value: VonValue::String(VonString { value: self.timestamp.clone(), span: (0..self.timestamp.len()).into() }),
-            span: (0..0).into(),
-        });
-
-        if let Some(ref hash) = self.hash {
-            fields.push(VonField {
-                name: "hash".to_string(),
-                value: VonValue::String(VonString { value: hash.clone(), span: (0..hash.len()).into() }),
-                span: (0..0).into(),
-            });
-        }
-
-        Ok(VonValue::Object(VonObject { fields, span: (0..0).into() }))
     }
 
     /// 添加依赖

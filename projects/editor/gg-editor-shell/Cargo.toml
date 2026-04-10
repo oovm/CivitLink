@@ -1,12 +1,10 @@
 [package]
 name = "gg-editor-shell"
-version = { workspace = true }
-edition = { workspace = true }
-authors = { workspace = true }
-license = { workspace = true }
+version = "0.1.0"
+edition = "2021"
 
 [dependencies]
-gg-core = { workspace = true }
-gg-ecs = { workspace = true }
-gg-render = { workspace = true }
-gg-ui = { workspace = true }
+gg-core = { path = "../../core/gg-core" }
+gg-ecs = { path = "../../core/gg-ecs" }
+gg-render = { path = "../../core/gg-render" }
+gg-ui = { path = "../../plugins/gg-ui" }
