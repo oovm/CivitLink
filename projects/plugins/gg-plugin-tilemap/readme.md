@@ -1,3 +1,12 @@
 # gg-plugin-tilemap
 
-Tilemap plugin for GG Game Engine.
+GAL游戏引擎的瓦片地图插件。
+
+## 功能
+
+- 支持瓦片地图创建和编辑
+- 提供瓦片地图渲染功能
+
+## 用法
+
+作为引擎插件使用，通过游戏配置启用。

@@ -1,3 +1,12 @@
 # gg-ui
 
-UI plugin for GG Game Engine.
+GAL游戏引擎的UI系统。
+
+## 功能
+
+- 提供游戏UI创建和管理
+- 支持UI布局和交互
+
+## 用法
+
+作为引擎内部组件使用，通过游戏代码调用。

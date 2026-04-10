@@ -1,14 +1,12 @@
-# GG Compiler AOT
+# gg-compiler-aot
 
-AOT (Ahead-of-Time) 编译器，用于将游戏脚本编译为字节码。
+GAL游戏引擎的AOT编译器。
 
 ## 功能
 
-- 提前编译游戏脚本
+- 预编译GAL游戏脚本
 - 优化运行时性能
-- 生成高效的字节码
 
-## 依赖
+## 用法
 
-- gg-core
-- gg-compiler-core
+作为引擎内部组件使用，不直接调用。

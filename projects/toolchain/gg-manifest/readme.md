@@ -1,3 +1,12 @@
 # gg-manifest
 
-Manifest tool for GG Game Engine.
+GAL游戏引擎的清单管理工具。
+
+## 功能
+
+- 管理游戏项目清单
+- 处理项目配置和依赖
+
+## 用法
+
+作为引擎内部组件使用，不直接调用。

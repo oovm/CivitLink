@@ -1,3 +1,12 @@
 # gg-bytecode
 
-Bytecode runtime for GG Game Engine.
+GAL游戏引擎的字节码系统。
+
+## 功能
+
+- 定义和管理字节码格式
+- 提供字节码执行功能
+
+## 用法
+
+作为引擎内部组件使用，不直接调用。

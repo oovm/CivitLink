@@ -1,16 +1,12 @@
-# GG Compiler Script
+# gg-compiler-script
 
-游戏脚本编译器，用于编译 Galgame 脚本。
+GAL游戏引擎的脚本编译器。
 
 ## 功能
 
-- 解析游戏脚本语法
-- 生成中间表示
-- 编译为字节码
+- 编译GAL游戏脚本
+- 生成可执行代码
 
-## 依赖
+## 用法
 
-- gg-core
-- gg-galgame-schema
-- serde
-- serde_json
+作为引擎内部组件使用，不直接调用。

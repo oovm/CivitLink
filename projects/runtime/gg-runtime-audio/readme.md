@@ -1,3 +1,12 @@
 # gg-runtime-audio
 
-Audio runtime for GG Game Engine.
+GAL游戏引擎的音频运行时。
+
+## 功能
+
+- 提供音频播放功能
+- 支持多种音频格式
+
+## 用法
+
+作为引擎内部组件使用，通过游戏代码调用。

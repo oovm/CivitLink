@@ -28,6 +28,7 @@ gg-error = { path = "projects/core/gg-error" }
 gg-ecs = { path = "projects/core/gg-ecs" }
 gg-asset = { path = "projects/core/gg-asset" }
 gg-reflection = { path = "projects/core/gg-reflection" }
+gg-schedule = { path = "projects/core/gg-schedule" }
 gg-render = { path = "projects/core/gg-render" }
 gg-render-wgpu = { path = "projects/runtime/gg-render-wgpu" }
 gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
@@ -42,6 +43,10 @@ oak-valkyrie = { path = "../oaks/examples/oak-valkyrie" }
 oak-core = { path = "../oaks/projects/oak-core" }
 gg-galgame-schema = { path = "projects/plugins/gg-galgame-schema" }
 gg-ui = { path = "projects/plugins/gg-ui" }
+gg-plugin-dialogue = { path = "projects/plugins/gg-plugin-dialogue" }
+gg-plugin-portrait = { path = "projects/plugins/gg-plugin-portrait" }
+gg-plugin-scene-transition = { path = "projects/plugins/gg-plugin-scene-transition" }
+gg-plugin-save = { path = "projects/plugins/gg-plugin-save" }
 gg-editor-lsp = { path = "projects/editor/gg-editor-lsp" }
 gg-editor-scene = { path = "projects/editor/gg-editor-scene" }
 gg-manifest = { path = "projects/toolchain/gg-manifest" }
@@ -55,3 +60,11 @@ gg-plugin-spine = { path = "projects/plugins/gg-plugin-spine" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 toml = "0.8"
+wgpu = "0.20"
+winit = "0.29"
+image = "0.25"
+ab_glyph = "0.20"
+bytemuck = "1.14"
+pollster = "0.3"
+cpal = "0.15"
+rodio = "0.17"

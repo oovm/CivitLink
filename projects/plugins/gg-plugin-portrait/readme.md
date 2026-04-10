@@ -1,3 +1,12 @@
 # gg-plugin-portrait
 
-Portrait plugin for GG Game Engine.
+GAL游戏引擎的立绘插件。
+
+## 功能
+
+- 管理游戏中的立绘资源
+- 提供立绘显示和动画功能
+
+## 用法
+
+作为引擎插件使用，通过游戏配置启用。

@@ -1,3 +1,12 @@
 # gg-plugin-save
 
-Save plugin for GG Game Engine.
+GAL游戏引擎的存档插件。
+
+## 功能
+
+- 管理游戏存档
+- 提供存档和读档功能
+
+## 用法
+
+作为引擎插件使用，通过游戏配置启用。

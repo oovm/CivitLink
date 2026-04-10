@@ -1,3 +1,12 @@
 # gg-factory
 
-Factory tool for GG Game Engine.
+GAL游戏引擎的工厂工具。
+
+## 功能
+
+- 提供对象创建和管理功能
+- 支持依赖注入
+
+## 用法
+
+作为引擎内部组件使用，不直接调用。
