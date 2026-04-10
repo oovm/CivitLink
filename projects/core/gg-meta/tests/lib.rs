@@ -22,6 +22,10 @@ fn test_create_meta_file() {
     // Write to file
     meta.to_file(&meta_path).unwrap();
 
+    // Read and print the generated VON content
+    let content = std::fs::read_to_string(&meta_path).unwrap();
+    println!("Generated VON content:\n{}", content);
+
     // Read back from file
     let read_meta = MetaFile::from_file(&meta_path).unwrap();
 
