@@ -84,7 +84,6 @@ fn main() -> gg_core::GResult<()> {
             VmResult::Error(e) => {
                 eprintln!("Script init error: {}", e);
             }
-            _ => {}
         }
     }
 

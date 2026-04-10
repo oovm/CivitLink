@@ -1,29 +1,29 @@
-- [ ] Plugin trait 包含 build 方法，接受 PluginRegistrar 参数
-- [ ] Plugin trait 包含 dependencies 方法，返回依赖插件名称列表
-- [ ] PluginRegistrar 能收集系统、资源和依赖信息
-- [ ] PluginRegistrar::apply 能将收集的注册信息统一应用到 World
-- [ ] PluginManager 能管理插件加载、依赖检查和生命周期
-- [ ] DialoguePlugin 在 build 中注册 DialogueSystem、ChoiceSystem、TypewriterSystem 和相关资源
-- [ ] PortraitPlugin 在 build 中注册 PortraitRenderSystem、PortraitAnimationSystem
-- [ ] SavePlugin 在 build 中注册存档相关系统和资源
-- [ ] SceneTransitionPlugin 在 build 中注册 TransitionSystem
-- [ ] CommandHandler::execute 接收 DialogueCommand 引用和 World 可变引用
-- [ ] PlayBgmHandler 从命令数据提取 asset_path/volume/fade_in_secs 写入 AudioControl
-- [ ] ShowPortraitHandler 从命令数据提取 character_id/expression/position 创建 PortraitState
-- [ ] SetVariableHandler 从命令数据提取 name/value 写入 GameVariables
-- [ ] WaitHandler 从命令数据提取 duration_secs 设置 WaitTimer
-- [ ] TypewriterState 实现 Component trait
-- [ ] DialogueSystem 处理新节点时创建 TypewriterState
-- [ ] TypewriterSystem 每帧更新 TypewriterState
-- [ ] 对话在打字机未完成时不推进到下一节点
-- [ ] WaitSystem 每帧更新 WaitTimer 倒计时
-- [ ] DialogueScript 结构定义 nodes/characters/variables 字段
-- [ ] DialogueScript::from_json 能从 JSON 字符串解析对话脚本
-- [ ] DialogueScriptLoader 能从文件加载对话脚本并创建 World 实体
-- [ ] gg-plugin-tilemap 定义 Tilemap、Tile、Tileset、TileCollisionState 类型
-- [ ] gg-plugin-tilemap 实现 TilemapRenderSystem 和 TileCollisionSystem
-- [ ] gg-plugin-tilemap 实现 TilemapPlugin 并注册到 workspace
-- [ ] gg-plugin-spine 定义 SpineSkeleton、SpineAnimationState、SpineData 类型
-- [ ] gg-plugin-spine 实现 SpineAnimationSystem 和 SpineRenderSystem
-- [ ] gg-plugin-spine 实现 SpinePlugin 并注册到 workspace
-- [ ] 所有新增的 public 结构体、枚举、方法、字段都有文档注释
+- [x] Plugin trait 包含 build 方法，接受 PluginRegistrar 参数
+- [x] Plugin trait 包含 dependencies 方法，返回依赖插件名称列表
+- [x] PluginRegistrar 能收集系统、资源和依赖信息
+- [x] PluginRegistrar::apply 能将收集的注册信息统一应用到 World
+- [x] PluginManager 能管理插件加载、依赖检查和生命周期
+- [x] DialoguePlugin 在 build 中注册 DialogueSystem、ChoiceSystem、TypewriterSystem 和相关资源
+- [x] PortraitPlugin 在 build 中注册 PortraitRenderSystem、PortraitAnimationSystem
+- [x] SavePlugin 在 build 中注册存档相关系统和资源
+- [x] SceneTransitionPlugin 在 build 中注册 TransitionSystem
+- [x] CommandHandler::execute 接收 DialogueCommand 引用和 World 可变引用
+- [x] PlayBgmHandler 从命令数据提取 asset_path/volume/fade_in_secs 写入 AudioControl
+- [x] ShowPortraitHandler 从命令数据提取 character_id/expression/position 创建 PortraitState
+- [x] SetVariableHandler 从命令数据提取 name/value 写入 GameVariables
+- [x] WaitHandler 从命令数据提取 duration_secs 设置 WaitTimer
+- [x] TypewriterState 实现 Component trait
+- [x] DialogueSystem 处理新节点时创建 TypewriterState
+- [x] TypewriterSystem 每帧更新 TypewriterState
+- [x] 对话在打字机未完成时不推进到下一节点
+- [x] WaitSystem 每帧更新 WaitTimer 倒计时
+- [x] DialogueScript 结构定义 nodes/characters/variables 字段
+- [x] DialogueScript::from_json 能从 JSON 字符串解析对话脚本
+- [x] DialogueScriptLoader 能从文件加载对话脚本并创建 World 实体
+- [x] gg-plugin-tilemap 定义 Tilemap、Tile、Tileset、TileCollisionState 类型
+- [x] gg-plugin-tilemap 实现 TilemapRenderSystem 和 TileCollisionSystem
+- [x] gg-plugin-tilemap 实现 TilemapPlugin 并注册到 workspace
+- [x] gg-plugin-spine 定义 SpineSkeleton、SpineAnimationState、SpineData 类型
+- [x] gg-plugin-spine 实现 SpineAnimationSystem 和 SpineRenderSystem
+- [x] gg-plugin-spine 实现 SpinePlugin 并注册到 workspace
+- [x] 所有新增的 public 结构体、枚举、方法、字段都有文档注释

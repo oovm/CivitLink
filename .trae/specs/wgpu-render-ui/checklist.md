@@ -1,23 +1,23 @@
-- [ ] gg-render 定义了 Renderer trait，包含 begin_frame/end_frame/draw/present/load_texture/resize 方法
-- [ ] gg-render 定义了 DrawCommand 枚举，包含 Sprite/Text/Rect/Transition 变体及完整绘制参数
-- [ ] gg-render 定义了 TextureId、TextureDescriptor、SurfaceInfo、WindowEvent 等核心类型
-- [ ] gg-render 移除了原有占位实现 RenderComponent/RenderSystem
-- [ ] gg-render-wgpu 实现了 WgpuRenderer，能初始化 winit 窗口和 wgpu 设备/队列/surface
-- [ ] gg-render-wgpu 能处理窗口事件（Resize/Close/FocusChange）
-- [ ] gg-render-wgpu 能加载 PNG/JPEG 图像并创建 GPU 纹理，返回 TextureId
-- [ ] gg-render-wgpu 能渲染 2D 精灵，支持 Z 排序、透明度混合、缩放和位置变换
-- [ ] gg-render-wgpu 能渲染文本，使用 ab_glyph 光栅化字形并维护字形纹理图集缓存
-- [ ] gg-render-wgpu 能渲染转场效果（淡入淡出、交叉溶解）
-- [ ] gg-render-wgpu 实现了完整的 Renderer trait
-- [ ] gg-render-wgpu 实现了主循环：事件处理 → 清除帧缓冲 → 执行 DrawCommand → 提交渲染 → 呈现
-- [ ] gg-ui 定义了 UiNode、UiTree、Style、LayoutResult 等核心类型
-- [ ] gg-ui 实现了弹性布局引擎（Flexbox），能正确计算节点位置和尺寸
-- [ ] gg-ui 实现了 Button 控件，支持文本标签、点击回调、悬停/按下状态
-- [ ] gg-ui 实现了 TextBox 控件，支持多行文本、自动换行
-- [ ] gg-ui 实现了 Panel 控件，支持背景色、边框、内边距
-- [ ] gg-ui 实现了事件系统，支持输入事件路由和事件冒泡
-- [ ] gg-ui 能将 UiNode 树转换为 DrawCommand 序列并通过 Renderer trait 提交渲染
-- [ ] gg-plugin-portrait 使用 Renderer trait 提交精灵绘制指令
-- [ ] gg-plugin-scene-transition 使用 DrawCommand::Transition 提交转场渲染指令
-- [ ] gg-galgame 能启动并打开窗口，显示背景/立绘/对话/转场
-- [ ] 所有新增的 public 结构体、枚举、方法、字段都有文档注释
+- [x] gg-render 定义了 Renderer trait，包含 begin_frame/end_frame/draw/present/load_texture/resize 方法
+- [x] gg-render 定义了 DrawCommand 枚举，包含 Sprite/Text/Rect/Transition 变体及完整绘制参数
+- [x] gg-render 定义了 TextureId、TextureDescriptor、SurfaceInfo、WindowEvent 等核心类型
+- [x] gg-render 移除了原有占位实现 RenderComponent/RenderSystem
+- [x] gg-render-wgpu 实现了 WgpuRenderer，能初始化 winit 窗口和 wgpu 设备/队列/surface
+- [x] gg-render-wgpu 能处理窗口事件（Resize/Close/FocusChange）
+- [x] gg-render-wgpu 能加载 PNG/JPEG 图像并创建 GPU 纹理，返回 TextureId
+- [x] gg-render-wgpu 能渲染 2D 精灵，支持 Z 排序、透明度混合、缩放和位置变换
+- [x] gg-render-wgpu 能渲染文本，使用 ab_glyph 光栅化字形并维护字形纹理图集缓存
+- [x] gg-render-wgpu 能渲染转场效果（淡入淡出、交叉溶解）
+- [x] gg-render-wgpu 实现了完整的 Renderer trait
+- [x] gg-render-wgpu 实现了主循环：事件处理 → 清除帧缓冲 → 执行 DrawCommand → 提交渲染 → 呈现
+- [x] gg-ui 定义了 UiNode、UiTree、Style、LayoutResult 等核心类型
+- [x] gg-ui 实现了弹性布局引擎（Flexbox），能正确计算节点位置和尺寸
+- [x] gg-ui 实现了 Button 控件，支持文本标签、点击回调、悬停/按下状态
+- [x] gg-ui 实现了 TextBox 控件，支持多行文本、自动换行
+- [x] gg-ui 实现了 Panel 控件，支持背景色、边框、内边距
+- [x] gg-ui 实现了事件系统，支持输入事件路由和事件冒泡
+- [x] gg-ui 能将 UiNode 树转换为 DrawCommand 序列并通过 Renderer trait 提交渲染
+- [x] gg-plugin-portrait 使用 Renderer trait 提交精灵绘制指令
+- [x] gg-plugin-scene-transition 使用 DrawCommand::Transition 提交转场渲染指令
+- [x] gg-galgame 能启动并打开窗口，显示背景/立绘/对话/转场
+- [x] 所有新增的 public 结构体、枚举、方法、字段都有文档注释

@@ -1,34 +1,34 @@
-- [ ] ServiceRegistry 支持按类型注册和查找服务（register/get/get_mut）
-- [ ] Command trait 定义了 execute/undo/description 方法
-- [ ] CommandManager 支持执行命令、撤销、重做，维护撤销/重做栈
-- [ ] EditorEvent 枚举包含 EntitySelected/EntityDeselected/PropertyChanged/FileChanged/SceneLoaded/SceneUnloaded/Custom 变体
-- [ ] EventBus 支持 subscribe/publish/process_pending 事件通信
-- [ ] EditorContext 提供对 ServiceRegistry/CommandManager/EventBus 的访问
-- [ ] EditorPlugin trait 定义了 name/initialize/shutdown 生命周期方法
-- [ ] EditorShell 包含 services/commands/events/plugins 字段，run() 时初始化所有插件
-- [ ] EditorPanel trait 新增 on_register/on_unregister 生命周期方法，render 签名改为接收 EditorContext
-- [ ] PanelLayoutHint 定义了面板位置/尺寸提示，EditorPanel 新增 layout_hint 方法
-- [ ] PanelContext 和 PanelData 已移除，所有面板迁移到使用 EditorContext
-- [ ] PropertyType 枚举包含 String/Int/Float/Bool/Enum/Color/AssetPath/Vec2/Custom 变体
-- [ ] PropertyDescriptor 描述属性的名称、类型、默认值和约束
-- [ ] ComponentDescriptor 描述组件的类型名、显示名和属性列表
-- [ ] DescriptorRegistry 支持注册和查询组件描述符
-- [ ] PropertyEditorFactory trait 和 PropertyEditorWidget trait 定义了属性编辑器的创建和交互接口
-- [ ] PropertyEditorRegistry 支持按属性类型查找和创建编辑器
-- [ ] 内置属性编辑器工厂覆盖 String/Numeric/Bool/Enum/Color/AssetPath 类型
-- [ ] PropertyBinding trait 支持从 ECS World 读写组件属性值
-- [ ] SetPropertyCommand 实现了 Command trait，支持属性修改的撤销/重做
-- [ ] InspectorPanel 使用 DescriptorRegistry 和 PropertyEditorRegistry 驱动属性展示
-- [ ] Galgame 组件描述符（DialogueNode/PortraitState/AudioControl/SceneBackground）已注册
-- [ ] 旧的 PropertyEditor trait 和硬编码编辑器已移除
-- [ ] SceneView trait 继承 EditorPanel，定义了场景生命周期和交互方法
-- [ ] ViewportState 提供视口偏移/缩放和坐标转换
-- [ ] BaseSceneView 实现了视口平移/缩放、实体选择、网格渲染基础功能
-- [ ] gg-editor-scene 已添加到 workspace
-- [ ] LSP 基础类型（Position/Range/Diagnostic/CompletionItem 等）已定义
-- [ ] LspTransport trait 定义了 send_request/send_notification 传输接口
-- [ ] LspClient 提供了 initialize/did_open/did_change/completion/hover/goto_definition 方法
-- [ ] DiagnosticCollector 支持收集、清除和查询诊断信息
-- [ ] gg-editor-lsp 已添加到 workspace
-- [ ] 所有现有编辑器面板已迁移到使用 EditorContext
-- [ ] 所有新增的 public 结构体、枚举、方法、字段都有文档注释
+- [x] ServiceRegistry 支持按类型注册和查找服务（register/get/get_mut）
+- [x] Command trait 定义了 execute/undo/description 方法
+- [x] CommandManager 支持执行命令、撤销、重做，维护撤销/重做栈
+- [x] EditorEvent 枚举包含 EntitySelected/EntityDeselected/PropertyChanged/FileChanged/SceneLoaded/SceneUnloaded/Custom 变体
+- [x] EventBus 支持 subscribe/publish/process_pending 事件通信
+- [x] EditorContext 提供对 ServiceRegistry/CommandManager/EventBus 的访问
+- [x] EditorPlugin trait 定义了 name/initialize/shutdown 生命周期方法
+- [x] EditorShell 包含 services/commands/events/plugins 字段，run() 时初始化所有插件
+- [x] EditorPanel trait 新增 on_register/on_unregister 生命周期方法，render 签名改为接收 EditorContext
+- [x] PanelLayoutHint 定义了面板位置/尺寸提示，EditorPanel 新增 layout_hint 方法
+- [x] PanelContext 和 PanelData 已移除，所有面板迁移到使用 EditorContext
+- [x] PropertyType 枚举包含 String/Int/Float/Bool/Enum/Color/AssetPath/Vec2/Custom 变体
+- [x] PropertyDescriptor 描述属性的名称、类型、默认值和约束
+- [x] ComponentDescriptor 描述组件的类型名、显示名和属性列表
+- [x] DescriptorRegistry 支持注册和查询组件描述符
+- [x] PropertyEditorFactory trait 和 PropertyEditorWidget trait 定义了属性编辑器的创建和交互接口
+- [x] PropertyEditorRegistry 支持按属性类型查找和创建编辑器
+- [x] 内置属性编辑器工厂覆盖 String/Numeric/Bool/Enum/Color/AssetPath 类型
+- [x] PropertyBinding trait 支持从 ECS World 读写组件属性值
+- [x] SetPropertyCommand 实现了 Command trait，支持属性修改的撤销/重做
+- [x] InspectorPanel 使用 DescriptorRegistry 和 PropertyEditorRegistry 驱动属性展示
+- [x] Galgame 组件描述符（DialogueNode/PortraitState/AudioControl/SceneBackground）已注册
+- [x] 旧的 PropertyEditor trait 和硬编码编辑器已移除
+- [x] SceneView trait 继承 EditorPanel，定义了场景生命周期和交互方法
+- [x] ViewportState 提供视口偏移/缩放和坐标转换
+- [x] BaseSceneView 实现了视口平移/缩放、实体选择、网格渲染基础功能
+- [x] gg-editor-scene 已添加到 workspace
+- [x] LSP 基础类型（Position/Range/Diagnostic/CompletionItem 等）已定义
+- [x] LspTransport trait 定义了 send_request/send_notification 传输接口
+- [x] LspClient 提供了 initialize/did_open/did_change/completion/hover/goto_definition 方法
+- [x] DiagnosticCollector 支持收集、清除和查询诊断信息
+- [x] gg-editor-lsp 已添加到 workspace
+- [x] 所有现有编辑器面板已迁移到使用 EditorContext
+- [x] 所有新增的 public 结构体、枚举、方法、字段都有文档注释

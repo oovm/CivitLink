@@ -21,19 +21,25 @@ impl SpinePlugin {
 }
 
 impl Plugin for SpinePlugin {
+    /// 返回插件名称
     fn name(&self) -> &str {
         "spine"
     }
 
+    /// 构建 Spine 动画插件
+    ///
+    /// 注册 Spine 动画更新系统和渲染系统。
     fn build(&self, registrar: &mut PluginRegistrar) {
         registrar.register_system(Box::new(SpineAnimationSystem::new(self.delta_secs)));
         registrar.register_system(Box::new(SpineRenderSystem::new()));
     }
 
+    /// 初始化 Spine 动画插件
     fn initialize(&self) -> GResult<()> {
         Ok(())
     }
 
+    /// 关闭 Spine 动画插件
     fn shutdown(&self) -> GResult<()> {
         Ok(())
     }

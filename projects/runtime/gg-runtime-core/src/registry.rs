@@ -4,7 +4,7 @@
 //! 脚本虚拟机和 WASM 沙箱通过注册表按名称操作组件。
 
 use gg_ecs::{Entity, World};
-use gg_ir::IrValue;
+use gg_bytecode::BytecodeValue;
 use std::collections::HashMap;
 
 /// 组件字段访问器 trait
@@ -13,10 +13,10 @@ use std::collections::HashMap;
 /// 用于脚本虚拟机通过名称动态访问组件属性。
 pub trait ComponentAccessor: Send + Sync {
     /// 获取组件字段值
-    fn get_field(&self, world: &World, entity: Entity, field: &str) -> Option<IrValue>;
+    fn get_field(&self, world: &World, entity: Entity, field: &str) -> Option<BytecodeValue>;
 
     /// 设置组件字段值
-    fn set_field(&self, world: &mut World, entity: Entity, field: &str, value: IrValue);
+    fn set_field(&self, world: &mut World, entity: Entity, field: &str, value: BytecodeValue);
 
     /// 添加默认组件到实体
     fn add_default(&self, world: &mut World, entity: Entity);
@@ -51,7 +51,7 @@ impl ComponentRegistry {
         entity: Entity,
         type_name: &str,
         field: &str,
-    ) -> Option<IrValue> {
+    ) -> Option<BytecodeValue> {
         self.accessors
             .get(type_name)
             .and_then(|a| a.get_field(world, entity, field))
@@ -64,7 +64,7 @@ impl ComponentRegistry {
         entity: Entity,
         type_name: &str,
         field: &str,
-        value: IrValue,
+        value: BytecodeValue,
     ) {
         if let Some(accessor) = self.accessors.get(type_name) {
             accessor.set_field(world, entity, field, value);

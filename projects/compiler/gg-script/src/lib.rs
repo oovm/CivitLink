@@ -274,4 +274,103 @@ mod tests {
         assert_eq!(ir_module.functions[0].name, "main");
         assert!(!ir_module.functions[0].instructions.is_empty());
     }
+
+    /// 端到端测试：源码 → IR → 优化 → 字节码 → 执行
+    #[test]
+    fn test_end_to_end_pipeline_arithmetic() {
+        use gg_bytecode::format::{BytecodeFunction, BytecodeInstruction, BytecodeModule, BytecodeValue};
+        use gg_bytecode::host::Host;
+        use gg_bytecode::interpreter::{BytecodeInterpreter, InterpretResult};
+
+        struct TestHost {
+            entities: Vec<u64>,
+            log: Vec<String>,
+        }
+
+        impl TestHost {
+            fn new() -> Self {
+                Self {
+                    entities: Vec::new(),
+                    log: Vec::new(),
+                }
+            }
+        }
+
+        impl Host for TestHost {
+            fn spawn_entity(&mut self) -> u64 {
+                let id = self.entities.len() as u64;
+                self.entities.push(id);
+                id
+            }
+
+            fn despawn_entity(&mut self, _entity_id: u64) {}
+
+            fn add_component(&mut self, entity_id: u64, component_type: &str, value: BytecodeValue) {
+                self.log.push(format!(
+                    "add_component({}, {}, {:?})",
+                    entity_id, component_type, value
+                ));
+            }
+
+            fn get_component_field(
+                &mut self,
+                _entity_id: u64,
+                _component_type: &str,
+                _field: &str,
+            ) -> Option<BytecodeValue> {
+                None
+            }
+
+            fn set_component_field(
+                &mut self,
+                entity_id: u64,
+                component_type: &str,
+                field: &str,
+                value: BytecodeValue,
+            ) {
+                self.log.push(format!(
+                    "set_component_field({}, {}, {}, {:?})",
+                    entity_id, component_type, field, value
+                ));
+            }
+
+            fn call_host_function(
+                &mut self,
+                name: &str,
+                args: Vec<BytecodeValue>,
+            ) -> Option<BytecodeValue> {
+                self.log.push(format!("call_host_function({}, {:?})", name, args));
+                match name {
+                    "print" => None,
+                    "spawn_entity" => {
+                        let id = self.entities.len() as u64;
+                        self.entities.push(id);
+                        Some(BytecodeValue::Entity(id))
+                    }
+                    _ => None,
+                }
+            }
+        }
+
+        let source = r#"
+            micro calc() {
+                let x = 10
+                let y = x + 5
+                print(y)
+            }
+        "#;
+
+        let compiler = ScriptCompiler::new();
+        let module = compiler.compile(source, "test").unwrap();
+
+        assert_eq!(module.functions.len(), 1);
+        assert_eq!(module.functions[0].name, "calc");
+
+        let mut interpreter = BytecodeInterpreter::new();
+        let mut host = TestHost::new();
+        let result = interpreter.execute(&module, "calc", &mut host);
+
+        assert!(matches!(result, InterpretResult::Ok | InterpretResult::Return(_)));
+        assert!(host.log.iter().any(|l| l.contains("call_host_function(print")));
+    }
 }

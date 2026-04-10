@@ -13,3 +13,9 @@ pub mod interpreter;
 pub mod reader;
 /// 字节码写入器
 pub mod writer;
+
+pub use format::{BytecodeFunction, BytecodeInstruction, BytecodeModule, BytecodeOpCode, BytecodeValue};
+pub use host::Host;
+pub use interpreter::{BytecodeInterpreter, InterpretResult, InterpreterFrame};
+pub use reader::BytecodeReader;
+pub use writer::BytecodeWriter;

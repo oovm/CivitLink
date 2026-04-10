@@ -225,6 +225,15 @@ impl AssetServer {
     pub fn file_system(&self) -> &dyn FileSystem {
         self.file_system.as_ref()
     }
+
+    /// 重新加载指定路径的资源
+    ///
+    /// 从缓存中移除旧资源，后续访问将触发重新加载。
+    /// 用于 HMR 热更新场景。
+    pub fn reload(&mut self, path: &str) -> GResult<()> {
+        self.cache.remove(path);
+        Ok(())
+    }
 }
 
 /// 资源 trait

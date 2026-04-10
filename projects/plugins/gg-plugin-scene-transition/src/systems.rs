@@ -2,7 +2,7 @@
 //! 实现转场系统，负责每帧更新转场进度并完成转场
 
 use gg_core::GResult;
-use gg_ecs::{Entity, System, World};
+use gg_ecs::{System, World};
 use gg_galgame_schema::components::{SlideDirection, TransitionType};
 use gg_render::{DrawCommand, RenderContext, TransitionKind};
 

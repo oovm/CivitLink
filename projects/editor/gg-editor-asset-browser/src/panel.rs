@@ -4,6 +4,7 @@
 use gg_core::GResult;
 use gg_ecs::Entity;
 use gg_editor_shell::{EditorContext, EditorPanel, PanelLayoutHint, PanelPosition};
+use gg_ui::UiTree;
 
 /// 资源类型枚举
 #[derive(Debug, Clone)]
@@ -144,8 +145,8 @@ impl EditorPanel for AssetBrowserPanel {
         self.visible = visible;
     }
 
-    /// 渲染面板
-    fn render(&mut self, _context: &mut EditorContext) -> GResult<()> {
+    /// 构建资源浏览器面板 UI 节点树
+    fn build_ui(&mut self, _context: &mut EditorContext, _ui_tree: &mut UiTree) -> GResult<()> {
         Ok(())
     }
 

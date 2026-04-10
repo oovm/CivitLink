@@ -33,10 +33,12 @@ impl SpineAnimationSystem {
 }
 
 impl System for SpineAnimationSystem {
+    /// 返回系统名称
     fn name(&self) -> &str {
         "spine_animation"
     }
 
+    /// 执行 Spine 动画更新系统逻辑
     fn execute(&mut self, world: &mut GgWorld) -> GResult<()> {
         let anim_entities: Vec<Entity> = world
             .query::<SpineAnimationState>()
@@ -87,10 +89,12 @@ impl SpineRenderSystem {
 }
 
 impl System for SpineRenderSystem {
+    /// 返回系统名称
     fn name(&self) -> &str {
         "spine_render"
     }
 
+    /// 执行 Spine 渲染系统逻辑
     fn execute(&mut self, _world: &mut GgWorld) -> GResult<()> {
         Ok(())
     }

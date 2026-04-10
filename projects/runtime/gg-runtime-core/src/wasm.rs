@@ -1,5 +1,5 @@
 use gg_core::GResult;
-use gg_ir::IrValue;
+use gg_bytecode::BytecodeValue;
 use std::path::Path;
 
 /// WASM 模块标识符
@@ -85,8 +85,8 @@ pub trait WasmRuntime {
         &mut self,
         instance_id: WasmInstanceId,
         name: &str,
-        args: &[IrValue],
-    ) -> GResult<Option<IrValue>>;
+        args: &[BytecodeValue],
+    ) -> GResult<Option<BytecodeValue>>;
 
     /// 获取 WASM 实例的线性内存
     fn get_memory(&self, instance_id: WasmInstanceId) -> Option<&[u8]>;
@@ -110,7 +110,7 @@ pub trait WasmHostFunctions {
     fn despawn_entity(&mut self, entity_id: u64);
 
     /// 添加组件
-    fn add_component(&mut self, entity_id: u64, component_type: &str, value: IrValue);
+    fn add_component(&mut self, entity_id: u64, component_type: &str, value: BytecodeValue);
 
     /// 获取组件字段
     fn get_component_field(
@@ -118,7 +118,7 @@ pub trait WasmHostFunctions {
         entity_id: u64,
         component_type: &str,
         field: &str,
-    ) -> Option<IrValue>;
+    ) -> Option<BytecodeValue>;
 
     /// 设置组件字段
     fn set_component_field(
@@ -126,11 +126,11 @@ pub trait WasmHostFunctions {
         entity_id: u64,
         component_type: &str,
         field: &str,
-        value: IrValue,
+        value: BytecodeValue,
     );
 
     /// 调用宿主函数
-    fn call_host_function(&mut self, name: &str, args: Vec<IrValue>) -> Option<IrValue>;
+    fn call_host_function(&mut self, name: &str, args: Vec<BytecodeValue>) -> Option<BytecodeValue>;
 }
 
 /// WASM 运行时错误类型

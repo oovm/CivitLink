@@ -8,11 +8,11 @@
   - [x] SubTask 1.5: 修改 `Plugin` trait，增加 `dependencies(&self) -> Vec<&str>` 方法（提供默认空实现）
   - [x] SubTask 1.6: 在 `gg-core::plugin` 中实现 `PluginManager`，管理插件加载、依赖检查、生命周期
 
-- [ ] Task 2: 适配现有插件到新 Plugin trait
-  - [ ] SubTask 2.1: 更新 `DialoguePlugin`：在 `build` 中注册 `DialogueSystem`、`ChoiceSystem`、`TypewriterSystem` 和 `DialogueHistory`、`GameVariables`、`ChoiceState` 资源
-  - [ ] SubTask 2.2: 更新 `PortraitPlugin`：在 `build` 中注册 `PortraitRenderSystem`、`PortraitAnimationSystem`
-  - [ ] SubTask 2.3: 更新 `SavePlugin`：在 `build` 中注册存档相关系统和资源
-  - [ ] SubTask 2.4: 更新 `SceneTransitionPlugin`：在 `build` 中注册 `TransitionSystem`
+- [x] Task 2: 适配现有插件到新 Plugin trait
+  - [x] SubTask 2.1: 更新 `DialoguePlugin`：在 `build` 中注册 `DialogueSystem`、`ChoiceSystem`、`TypewriterSystem` 和 `DialogueHistory`、`GameVariables`、`ChoiceState` 资源
+  - [x] SubTask 2.2: 更新 `PortraitPlugin`：在 `build` 中注册 `PortraitRenderSystem`、`PortraitAnimationSystem`
+  - [x] SubTask 2.3: 更新 `SavePlugin`：在 `build` 中注册存档相关系统和资源
+  - [x] SubTask 2.4: 更新 `SceneTransitionPlugin`：在 `build` 中注册 `TransitionSystem`
 
 - [x] Task 3: 重构对话系统命令处理器
   - [x] SubTask 3.1: 修改 `CommandHandler` trait 签名为 `execute(&self, command: &DialogueCommand, world: &mut World) -> GResult<()>`
@@ -27,18 +27,18 @@
   - [x] SubTask 3.10: 新增 `WaitTimer` 资源类型到 `gg-galgame-schema::resources`
   - [x] SubTask 3.11: 更新 `CommandDispatcher::dispatch` 传递 `DialogueCommand` 引用到处理器
 
-- [ ] Task 4: 集成打字机效果到对话系统
-  - [ ] SubTask 4.1: 将 `TypewriterState` 实现 `Component` trait
-  - [ ] SubTask 4.2: 在 `DialogueSystem::execute` 中，处理新节点时创建 `TypewriterState` 并插入 World
-  - [ ] SubTask 4.3: 新增 `TypewriterSystem`，每帧更新 `TypewriterState`，推进 `current_position`
-  - [ ] SubTask 4.4: 在 `DialogueSystem` 中检查 `TypewriterState::is_complete`，未完成时不推进到下一节点
-  - [ ] SubTask 4.5: 新增 `WaitSystem`，每帧更新 `WaitTimer`，倒计时完成后移除 `WaitTimer`
+- [x] Task 4: 集成打字机效果到对话系统
+  - [x] SubTask 4.1: 将 `TypewriterState` 实现 `Component` trait
+  - [x] SubTask 4.2: 在 `DialogueSystem::execute` 中，处理新节点时创建 `TypewriterState` 并插入 World
+  - [x] SubTask 4.3: 新增 `TypewriterSystem`，每帧更新 `TypewriterState`，推进 `current_position`
+  - [x] SubTask 4.4: 在 `DialogueSystem` 中检查 `TypewriterState::is_complete`，未完成时不推进到下一节点
+  - [x] SubTask 4.5: 新增 `WaitSystem`，每帧更新 `WaitTimer`，倒计时完成后移除 `WaitTimer`
 
-- [ ] Task 5: 实现对话脚本文件加载
-  - [ ] SubTask 5.1: 在 `gg-galgame-schema` 中定义 `DialogueScript` 结构（nodes、characters、variables 字段）
-  - [ ] SubTask 5.2: 实现 `DialogueScript::from_json` 方法，从 JSON 字符串解析对话脚本
-  - [ ] SubTask 5.3: 实现 `DialogueScriptLoader`，从文件路径加载对话脚本并创建 World 实体
-  - [ ] SubTask 5.4: 在 `DialoguePlugin::build` 中注册 `DialogueScriptLoader` 资源
+- [x] Task 5: 实现对话脚本文件加载
+  - [x] SubTask 5.1: 在 `gg-galgame-schema` 中定义 `DialogueScript` 结构（nodes、characters、variables 字段）
+  - [x] SubTask 5.2: 实现 `DialogueScript::from_json` 方法，从 JSON 字符串解析对话脚本
+  - [x] SubTask 5.3: 实现 `DialogueScriptLoader`，从文件路径加载对话脚本并创建 World 实体
+  - [x] SubTask 5.4: 在 `DialoguePlugin::build` 中注册 `DialogueScriptLoader` 资源
 
 - [x] Task 6: 创建 gg-plugin-tilemap 瓦片地图插件
   - [x] SubTask 6.1: 创建 `projects/plugins/gg-plugin-tilemap` 目录和 `Cargo.toml`

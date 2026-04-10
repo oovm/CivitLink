@@ -13,5 +13,9 @@ gg-plugin-dialogue = { path = "../plugins/gg-plugin-dialogue" }
 gg-plugin-portrait = { path = "../plugins/gg-plugin-portrait" }
 gg-plugin-scene-transition = { path = "../plugins/gg-plugin-scene-transition" }
 gg-plugin-save = { path = "../plugins/gg-plugin-save" }
+gg-render = { path = "../core/gg-render" }
+gg-render-wgpu = { path = "../runtime/gg-render-wgpu" }
+gg-ui = { path = "../plugins/gg-ui" }
+winit = "0.30"
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"

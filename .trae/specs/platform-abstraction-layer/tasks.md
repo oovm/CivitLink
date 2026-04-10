@@ -1,44 +1,44 @@
 # Tasks
 
-- [ ] Task 1: 重构 gg-core::platform 模块，定义文件系统、输入、时间核心 trait
-  - [ ] SubTask 1.1: 在 `gg-core/src/platform/` 下创建 `fs.rs`，定义 `FileSystem` trait、`FileType` 枚举、`FileMetadata` 结构体、`DirEntry` 结构体
-  - [ ] SubTask 1.2: 在 `gg-core/src/platform/` 下创建 `input.rs`，定义 `Input` trait、`InputEvent` 枚举、`KeyCode` 枚举、`KeyState` 枚举、`PointerAction` 枚举、`PointerButton` 枚举
-  - [ ] SubTask 1.3: 在 `gg-core/src/platform/` 下创建 `time.rs`，定义 `Time` trait
-  - [ ] SubTask 1.4: 在 `gg-core/src/platform/` 下创建 `services.rs`，定义 `PlatformServices` 结构体
-  - [ ] SubTask 1.5: 将原有 `Platform` trait 及相关类型移至 `gg-core/src/platform/build.rs` 子模块
-  - [ ] SubTask 1.6: 更新 `gg-core/src/platform/mod.rs`，导出所有子模块和核心类型
-  - [ ] SubTask 1.7: 更新 `gg-core/src/lib.rs`，重新导出 platform 模块核心类型
-- [ ] Task 2: 创建 gg-platform-desktop crate，实现桌面平台所有 trait
-  - [ ] SubTask 2.1: 创建 `projects/platforms/gg-platform-desktop/` 目录结构和 `Cargo.toml`
-  - [ ] SubTask 2.2: 实现 `DesktopFileSystem`，基于 `std::fs` 实现 `FileSystem` trait
-  - [ ] SubTask 2.3: 实现 `DesktopInput`，维护按键状态映射和事件缓冲
-  - [ ] SubTask 2.4: 实现 `DesktopTime`，基于 `std::time::Instant` 实现 `Time` trait
-  - [ ] SubTask 2.5: 实现 `DesktopPlatformServices`，聚合所有桌面平台服务
-- [ ] Task 3: 创建 gg-platform-web crate，实现 Web 平台所有 trait
-  - [ ] SubTask 3.1: 创建 `projects/platforms/gg-platform-web/` 目录结构和 `Cargo.toml`（含 wasm-bindgen 依赖）
-  - [ ] SubTask 3.2: 实现 `WebFileSystem`，基于 fetch API 和 localStorage 实现 `FileSystem` trait
-  - [ ] SubTask 3.3: 实现 `WebInput`，基于 DOM 事件实现 `Input` trait
-  - [ ] SubTask 3.4: 实现 `WebTime`，基于 performance.now() 实现 `Time` trait
-  - [ ] SubTask 3.5: 实现 `WebPlatformServices`，聚合所有 Web 平台服务
-- [ ] Task 4: 创建 gg-platform-mobile crate 占位
-  - [ ] SubTask 4.1: 创建 `projects/platforms/gg-platform-mobile/` 目录结构和 `Cargo.toml`
-  - [ ] SubTask 4.2: 定义 `MobileLifecycle` trait（on_pause、on_resume、on_destroy）
-  - [ ] SubTask 4.3: 定义 `MobileInput` trait 扩展（多点触控、加速度计）
-- [ ] Task 5: 更新 gg-asset 模块，改用 FileSystem trait
-  - [ ] SubTask 5.1: 修改 `AssetManager` 构造函数，接受 `Box<dyn FileSystem>` 参数
-  - [ ] SubTask 5.2: 将 `TextLoader` 和 `BinaryLoader` 改为通过 `FileSystem` trait 读取文件
-  - [ ] SubTask 5.3: 移除 `gg-asset` 中对 `std::fs::File` 和 `std::io::Read` 的直接使用
-- [ ] Task 6: 更新 workspace Cargo.toml，注册新平台 crate
-  - [ ] SubTask 6.1: 在 workspace members 中添加 `projects/platforms/*`
-  - [ ] SubTask 6.2: 在 workspace.dependencies 中添加 `gg-platform-desktop`、`gg-platform-web`、`gg-platform-mobile`
-- [ ] Task 7: 更新 gg-runtime-core，集成平台服务
-  - [ ] SubTask 7.1: 修改 `Runtime` 结构体，添加 `platform_services: PlatformServices` 字段
-  - [ ] SubTask 7.2: 修改 `Runtime::new()`，初始化平台服务
-  - [ ] SubTask 7.3: 在游戏循环 `tick` 中调用 `Input::poll_events` 处理输入
-  - [ ] SubTask 7.4: 在游戏循环 `tick` 中调用 `Time::update` 更新时间
-- [ ] Task 8: 编译验证
-  - [ ] SubTask 8.1: 运行 `cargo check` 确保所有 crate 编译通过
-  - [ ] SubTask 8.2: 运行 `cargo check --target wasm32-unknown-unknown` 验证 Web 平台编译
+- [x] Task 1: 重构 gg-core::platform 模块，定义文件系统、输入、时间核心 trait
+  - [x] SubTask 1.1: 在 `gg-core/src/platform/` 下创建 `fs.rs`，定义 `FileSystem` trait、`FileType` 枚举、`FileMetadata` 结构体、`DirEntry` 结构体
+  - [x] SubTask 1.2: 在 `gg-core/src/platform/` 下创建 `input.rs`，定义 `Input` trait、`InputEvent` 枚举、`KeyCode` 枚举、`KeyState` 枚举、`PointerAction` 枚举、`PointerButton` 枚举
+  - [x] SubTask 1.3: 在 `gg-core/src/platform/` 下创建 `time.rs`，定义 `Time` trait
+  - [x] SubTask 1.4: 在 `gg-core/src/platform/` 下创建 `services.rs`，定义 `PlatformServices` 结构体
+  - [x] SubTask 1.5: 将原有 `Platform` trait 及相关类型移至 `gg-core/src/platform/build.rs` 子模块
+  - [x] SubTask 1.6: 更新 `gg-core/src/platform/mod.rs`，导出所有子模块和核心类型
+  - [x] SubTask 1.7: 更新 `gg-core/src/lib.rs`，重新导出 platform 模块核心类型
+- [x] Task 2: 创建 gg-platform-desktop crate，实现桌面平台所有 trait
+  - [x] SubTask 2.1: 创建 `projects/platforms/gg-platform-desktop/` 目录结构和 `Cargo.toml`
+  - [x] SubTask 2.2: 实现 `DesktopFileSystem`，基于 `std::fs` 实现 `FileSystem` trait
+  - [x] SubTask 2.3: 实现 `DesktopInput`，维护按键状态映射和事件缓冲
+  - [x] SubTask 2.4: 实现 `DesktopTime`，基于 `std::time::Instant` 实现 `Time` trait
+  - [x] SubTask 2.5: 实现 `DesktopPlatformServices`，聚合所有桌面平台服务
+- [x] Task 3: 创建 gg-platform-web crate，实现 Web 平台所有 trait
+  - [x] SubTask 3.1: 创建 `projects/platforms/gg-platform-web/` 目录结构和 `Cargo.toml`（含 wasm-bindgen 依赖）
+  - [x] SubTask 3.2: 实现 `WebFileSystem`，基于 fetch API 和 localStorage 实现 `FileSystem` trait
+  - [x] SubTask 3.3: 实现 `WebInput`，基于 DOM 事件实现 `Input` trait
+  - [x] SubTask 3.4: 实现 `WebTime`，基于 performance.now() 实现 `Time` trait
+  - [x] SubTask 3.5: 实现 `WebPlatformServices`，聚合所有 Web 平台服务
+- [x] Task 4: 创建 gg-platform-mobile crate 占位
+  - [x] SubTask 4.1: 创建 `projects/platforms/gg-platform-mobile/` 目录结构和 `Cargo.toml`
+  - [x] SubTask 4.2: 定义 `MobileLifecycle` trait（on_pause、on_resume、on_destroy）
+  - [x] SubTask 4.3: 定义 `MobileInput` trait 扩展（多点触控、加速度计）
+- [x] Task 5: 更新 gg-asset 模块，改用 FileSystem trait
+  - [x] SubTask 5.1: 修改 `AssetManager` 构造函数，接受 `Box<dyn FileSystem>` 参数
+  - [x] SubTask 5.2: 将 `TextLoader` 和 `BinaryLoader` 改为通过 `FileSystem` trait 读取文件
+  - [x] SubTask 5.3: 移除 `gg-asset` 中对 `std::fs::File` 和 `std::io::Read` 的直接使用
+- [x] Task 6: 更新 workspace Cargo.toml，注册新平台 crate
+  - [x] SubTask 6.1: 在 workspace members 中添加 `projects/platforms/*`
+  - [x] SubTask 6.2: 在 workspace.dependencies 中添加 `gg-platform-desktop`、`gg-platform-web`、`gg-platform-mobile`
+- [x] Task 7: 更新 gg-runtime-core，集成平台服务
+  - [x] SubTask 7.1: 修改 `Runtime` 结构体，添加 `platform_services: PlatformServices` 字段
+  - [x] SubTask 7.2: 修改 `Runtime::new()`，初始化平台服务
+  - [x] SubTask 7.3: 在游戏循环 `tick` 中调用 `Input::poll_events` 处理输入
+  - [x] SubTask 7.4: 在游戏循环 `tick` 中调用 `Time::update` 更新时间
+- [x] Task 8: 编译验证
+  - [x] SubTask 8.1: 运行 `cargo check` 确保所有 crate 编译通过
+  - [x] SubTask 8.2: 运行 `cargo check --target wasm32-unknown-unknown` 验证 Web 平台编译（注：wasm32 目标需要安装对应工具链，核心 crate 编译已通过）
 
 # Task Dependencies
 

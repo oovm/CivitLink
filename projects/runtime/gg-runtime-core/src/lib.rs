@@ -32,8 +32,8 @@ use gg_asset::AssetServer;
 use gg_render::{Renderer, RenderContext};
 use gg_runtime_audio::{AudioEngine, AudioContext};
 use gg_script::ScriptLoader;
-use gg_ir::{IrModule, IrValue};
-use gg_vm::{Vm, Host, VmResult};
+use gg_bytecode::{Host, BytecodeValue, BytecodeModule};
+use gg_vm::{Vm, VmResult};
 use gg_platform_desktop::DesktopFileSystem;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -89,7 +89,7 @@ impl Host for EngineHost {
         self.world.despawn(entity_id as Entity).ok();
     }
 
-    fn add_component(&mut self, entity_id: u64, component_type: &str, _value: IrValue) {
+    fn add_component(&mut self, entity_id: u64, component_type: &str, _value: BytecodeValue) {
         self.registry.add_default(&mut self.world, entity_id as Entity, component_type);
     }
 
@@ -98,7 +98,7 @@ impl Host for EngineHost {
         entity_id: u64,
         component_type: &str,
         field: &str,
-    ) -> Option<IrValue> {
+    ) -> Option<BytecodeValue> {
         self.registry.get_field(&self.world, entity_id as Entity, component_type, field)
     }
 
@@ -107,36 +107,36 @@ impl Host for EngineHost {
         entity_id: u64,
         component_type: &str,
         field: &str,
-        value: IrValue,
+        value: BytecodeValue,
     ) {
         self.registry.set_field(&mut self.world, entity_id as Entity, component_type, field, value);
     }
 
-    fn call_host_function(&mut self, name: &str, args: Vec<IrValue>) -> Option<IrValue> {
+    fn call_host_function(&mut self, name: &str, args: Vec<BytecodeValue>) -> Option<BytecodeValue> {
         match name {
             "print" => {
                 for arg in &args {
                     match arg {
-                        IrValue::String(s) => println!("{}", s),
-                        IrValue::Int(i) => println!("{}", i),
-                        IrValue::Float(f) => println!("{}", f),
-                        IrValue::Bool(b) => println!("{}", b),
-                        IrValue::Entity(e) => println!("Entity({})", e),
-                        IrValue::Null => println!("null"),
+                        BytecodeValue::String(s) => println!("{}", s),
+                        BytecodeValue::Int(i) => println!("{}", i),
+                        BytecodeValue::Float(f) => println!("{}", f),
+                        BytecodeValue::Bool(b) => println!("{}", b),
+                        BytecodeValue::Entity(e) => println!("Entity({})", e),
+                        BytecodeValue::Null => println!("null"),
                     }
                 }
                 None
             }
             "spawn_entity" => {
                 let entity_id = self.spawn_entity();
-                Some(IrValue::Entity(entity_id))
+                Some(BytecodeValue::Entity(entity_id))
             }
             "add_component" => {
                 if args.len() >= 2 {
-                    if let (IrValue::Entity(entity_id), IrValue::String(component_type)) =
+                    if let (BytecodeValue::Entity(entity_id), BytecodeValue::String(component_type)) =
                         (&args[0], &args[1])
                     {
-                        self.add_component(*entity_id, component_type, IrValue::Null);
+                        self.add_component(*entity_id, component_type, BytecodeValue::Null);
                     }
                 }
                 None
@@ -144,9 +144,9 @@ impl Host for EngineHost {
             "set_field" => {
                 if args.len() >= 4 {
                     if let (
-                        IrValue::Entity(entity_id),
-                        IrValue::String(component_type),
-                        IrValue::String(field),
+                        BytecodeValue::Entity(entity_id),
+                        BytecodeValue::String(component_type),
+                        BytecodeValue::String(field),
                         value,
                     ) = (&args[0], &args[1], &args[2], args[3].clone())
                     {
@@ -157,7 +157,7 @@ impl Host for EngineHost {
             }
             "get_field" => {
                 if args.len() >= 3 {
-                    if let (IrValue::Entity(entity_id), IrValue::String(component_type), IrValue::String(field)) =
+                    if let (BytecodeValue::Entity(entity_id), BytecodeValue::String(component_type), BytecodeValue::String(field)) =
                         (&args[0], &args[1], &args[2])
                     {
                         return self.get_component_field(*entity_id, component_type, field);
@@ -177,8 +177,8 @@ impl Host for EngineHost {
 pub struct ScriptEngine {
     /// 脚本加载器
     loader: ScriptLoader,
-    /// 已编译的 IR 模块
-    module: Option<IrModule>,
+    /// 已编译的字节码模块
+    module: Option<BytecodeModule>,
     /// 虚拟机
     vm: Vm,
 }
@@ -228,9 +228,14 @@ impl ScriptEngine {
             .map_or(false, |m| m.find_function(name).is_some())
     }
 
-    /// 替换当前 IR 模块（用于 HMR 热更新）
-    pub fn replace_module(&mut self, module: IrModule) {
+    /// 替换当前字节码模块（用于 HMR 热更新）
+    pub fn replace_module(&mut self, module: BytecodeModule) {
         self.module = Some(module);
+    }
+
+    /// 获取当前字节码模块的引用
+    pub fn module(&self) -> Option<&BytecodeModule> {
+        self.module.as_ref()
     }
 }
 
@@ -404,7 +409,6 @@ impl Runtime {
                         message: format!("Script init error: {}", e),
                     });
                 }
-                _ => {}
             }
         }
 
@@ -454,8 +458,34 @@ impl Runtime {
 
         if let Some(ref mut hmr) = self.hmr_manager {
             if let Some(new_module) = hmr.process_script_reload() {
+                let old_module = self.script_engine.module().cloned();
                 self.script_engine.replace_module(new_module.clone());
-                hmr.confirm_script_reload(new_module);
+
+                if self.script_engine.has_function("on_hot_reload_in") {
+                    match self.script_engine.call_function("on_hot_reload_in", &mut self.host) {
+                        VmResult::Ok | VmResult::Return(_) => {
+                            hmr.confirm_script_reload(new_module);
+                        }
+                        VmResult::Error(e) => {
+                            eprintln!("HMR state migration failed: {}, rolling back", e);
+                            if let Some(old) = old_module {
+                                self.script_engine.replace_module(old);
+                            }
+                            return Ok(());
+                        }
+                    }
+                } else {
+                    hmr.confirm_script_reload(new_module);
+                }
+            }
+
+            let changed_assets = hmr.process_asset_reload();
+            for asset_path in &changed_assets {
+                if let Ok(()) = self.asset_server.reload(asset_path) {
+                    eprintln!("HMR: Asset reloaded: {}", asset_path);
+                } else {
+                    eprintln!("HMR: Failed to reload asset: {}", asset_path);
+                }
             }
         }
 
@@ -467,7 +497,6 @@ impl Runtime {
                 VmResult::Error(e) => {
                     eprintln!("Script update error: {}", e);
                 }
-                _ => {}
             }
         }
 

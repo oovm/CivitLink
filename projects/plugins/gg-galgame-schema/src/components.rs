@@ -2,6 +2,7 @@
 //! 定义 Galgame 引擎所需的所有 ECS 组件类型
 
 use gg_ecs::Component;
+use gg_render::TextureId;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

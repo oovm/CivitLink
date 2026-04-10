@@ -7,6 +7,7 @@
 use gg_core::GResult;
 use gg_editor_shell::panel::{PanelLayoutHint, PanelPosition};
 use gg_editor_shell::{EditorContext, EditorPanel};
+use gg_ui::UiTree;
 
 use crate::descriptor::{
     ComponentDescriptor, DescriptorRegistry, PropertyConstraints, PropertyDescriptor, PropertyType,
@@ -331,10 +332,8 @@ impl EditorPanel for InspectorPanel {
         // 面板注销时清理
     }
 
-    fn render(&mut self, _context: &mut EditorContext) -> GResult<()> {
-        // 渲染检查器面板 UI
-        // 通过描述符注册表获取当前选中实体组件的属性结构，
-        // 通过编辑器注册表创建对应的属性编辑器组件进行显示和编辑
+    /// 构建检查器面板 UI 节点树
+    fn build_ui(&mut self, _context: &mut EditorContext, _ui_tree: &mut UiTree) -> GResult<()> {
         Ok(())
     }
 

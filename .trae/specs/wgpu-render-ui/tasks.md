@@ -31,18 +31,18 @@
   - [x] SubTask 3.8: 实现 UI 渲染：将 UiNode 树转换为 DrawCommand 序列，通过 Renderer trait 提交
   - [x] SubTask 3.9: 在根 `Cargo.toml` 中添加 `gg-ui` 到 workspace
 
-- [ ] Task 4: 适配现有插件对接新渲染接口
-  - [ ] SubTask 4.1: 更新 `gg-plugin-portrait`：`PortraitRenderSystem` 使用 `Renderer` trait 提交精灵绘制指令
-  - [ ] SubTask 4.2: 更新 `gg-plugin-scene-transition`：转场系统使用 `DrawCommand::Transition` 提交渲染指令
-  - [ ] SubTask 4.3: 更新 `gg-galgame-schema`：确保组件类型与新的渲染管线参数兼容
-  - [ ] SubTask 4.4: 更新 `gg-editor-shell`：`EditorPanel::render` 操作 `UiNode` 树
+- [x] Task 4: 适配现有插件对接新渲染接口
+  - [x] SubTask 4.1: 更新 `gg-plugin-portrait`：`PortraitRenderSystem` 使用 `Renderer` trait 提交精灵绘制指令
+  - [x] SubTask 4.2: 更新 `gg-plugin-scene-transition`：转场系统使用 `DrawCommand::Transition` 提交渲染指令
+  - [x] SubTask 4.3: 更新 `gg-galgame-schema`：确保组件类型与新的渲染管线参数兼容
+  - [x] SubTask 4.4: 更新 `gg-editor-shell`：`EditorPanel::render` 操作 `UiNode` 树
 
-- [ ] Task 5: 集成到 Galgame 引擎并验证
-  - [ ] SubTask 5.1: 更新 `gg-galgame` 的 `Cargo.toml` 依赖，添加 `gg-render-wgpu` 和 `gg-ui`
-  - [ ] SubTask 5.2: 重写 `GalgameEngine::initialize`：创建 `WgpuRenderer`，初始化窗口
-  - [ ] SubTask 5.3: 重写 `GalgameEngine::run`：实现完整主循环（事件 → 逻辑 → 渲染 → 呈现）
-  - [ ] SubTask 5.4: 实现对话框 UI：使用 gg-ui 的 TextBox 和 Panel 渲染对话内容
-  - [ ] SubTask 5.5: 验证：运行 Galgame 引擎，确认窗口打开、背景/立绘/对话/转场正确渲染
+- [x] Task 5: 集成到 Galgame 引擎并验证
+  - [x] SubTask 5.1: 更新 `gg-galgame` 的 `Cargo.toml` 依赖，添加 `gg-render-wgpu` 和 `gg-ui`
+  - [x] SubTask 5.2: 重写 `GalgameEngine::initialize`：创建 `WgpuRenderer`，初始化窗口
+  - [x] SubTask 5.3: 重写 `GalgameEngine::run`：实现完整主循环（事件 → 逻辑 → 渲染 → 呈现）
+  - [x] SubTask 5.4: 实现对话框 UI：使用 gg-ui 的 TextBox 和 Panel 渲染对话内容
+  - [x] SubTask 5.5: 验证：运行 Galgame 引擎，确认窗口打开、背景/立绘/对话/转场正确渲染
 
 # Task Dependencies
 - Task 2 depends on Task 1（gg-render-wgpu 需要实现 gg-render 定义的 Renderer trait）

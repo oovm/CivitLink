@@ -1,14 +1,14 @@
 //! HMR 状态迁移模块
 //! 提供热替换过程中的状态快照和恢复能力
 
-use gg_ir::IrValue;
+use gg_bytecode::BytecodeValue;
 use std::collections::HashMap;
 
 /// 状态快照，用于 HMR 状态迁移
 #[derive(Debug, Clone, Default)]
 pub struct StateSnapshot {
     /// 全局变量状态
-    pub globals: HashMap<String, IrValue>,
+    pub globals: HashMap<String, BytecodeValue>,
 }
 
 /// 状态迁移器
@@ -24,7 +24,7 @@ impl StateMigrator {
     }
 
     /// 序列化当前状态到快照
-    pub fn capture(&mut self, globals: HashMap<String, IrValue>) {
+    pub fn capture(&mut self, globals: HashMap<String, BytecodeValue>) {
         self.snapshot = Some(StateSnapshot { globals });
     }
 

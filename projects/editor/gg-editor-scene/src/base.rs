@@ -5,6 +5,7 @@ use std::rc::Rc;
 
 use gg_core::GResult;
 use gg_editor_shell::{EditorContext, EditorEvent, EditorPanel, PanelLayoutHint, PanelPosition};
+use gg_ui::UiTree;
 
 use crate::view::SceneView;
 use crate::viewport::ViewportState;
@@ -140,7 +141,8 @@ impl EditorPanel for BaseSceneView {
         }));
     }
 
-    fn render(&mut self, context: &mut EditorContext) -> GResult<()> {
+    /// 构建场景视图面板 UI 节点树
+    fn build_ui(&mut self, context: &mut EditorContext, _ui_tree: &mut UiTree) -> GResult<()> {
         for entity in self.pending_select_events.drain(..) {
             context.events_mut().publish(EditorEvent::EntitySelected { entity });
         }

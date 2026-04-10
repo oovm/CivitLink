@@ -47,11 +47,11 @@
   - [x] SubTask 6.6: 重构 `Runtime::start`：使用 RuntimeBuilder 构建参数初始化渲染器和音频引擎
   - [x] SubTask 6.7: 更新 `gg-runtime-core/Cargo.toml` 依赖：添加 gg-runtime-audio
 
-- [ ] Task 7: 更新示例和集成验证
-  - [ ] SubTask 7.1: 更新 `examples/basic` 使用 RuntimeBuilder 构建 Runtime
-  - [ ] SubTask 7.2: 验证阶段调度器正确执行各阶段系统
-  - [ ] SubTask 7.3: 验证音频后端能加载和播放音频文件
-  - [ ] SubTask 7.4: 验证 HMR 热替换脚本能保留游戏状态
+- [x] Task 7: 更新示例和集成验证
+  - [x] SubTask 7.1: 更新 `examples/basic` 使用 RuntimeBuilder 构建 Runtime
+  - [x] SubTask 7.2: 验证阶段调度器正确执行各阶段系统
+  - [x] SubTask 7.3: 验证音频后端能加载和播放音频文件
+  - [x] SubTask 7.4: 验证 HMR 热替换脚本能保留游戏状态
 
 # Task Dependencies
 - Task 2 depends on nothing（音频 HAL 定义独立）

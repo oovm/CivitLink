@@ -21,10 +21,12 @@ impl TilemapRenderSystem {
 }
 
 impl System for TilemapRenderSystem {
+    /// 返回系统名称
     fn name(&self) -> &str {
         "tilemap_render"
     }
 
+    /// 执行瓦片地图渲染系统逻辑
     fn execute(&mut self, world: &mut GgWorld) -> GResult<()> {
         let tileset = match world.get_resource::<Tileset>() {
             Some(ts) => ts.clone(),
@@ -66,10 +68,12 @@ impl TileCollisionSystem {
 }
 
 impl System for TileCollisionSystem {
+    /// 返回系统名称
     fn name(&self) -> &str {
         "tile_collision"
     }
 
+    /// 执行瓦片碰撞检测系统逻辑
     fn execute(&mut self, world: &mut GgWorld) -> GResult<()> {
         let mut new_collisions = Vec::new();
 

@@ -262,7 +262,7 @@ impl CommandHandler for SetVariableHandler {
     fn execute(&self, command: &DialogueCommand, world: &mut World) -> GResult<()> {
         if let DialogueCommand::SetVariable { name, value } = command {
             let variables = world
-                .get_component_mut::<GameVariables>(0)
+                .get_resource_mut::<GameVariables>()
                 .ok_or_else(|| GError {
                     kind: GErrorKind::Ecs,
                     message: "GameVariables resource not found".to_string(),

@@ -42,7 +42,7 @@ impl SaveManager {
     pub fn save(world: &World, _slot: u32, screenshot: Option<Vec<u8>>) -> GResult<SaveData> {
         let current_node_id = {
             let history = world
-                .get_component::<DialogueHistory>(0)
+                .get_resource::<DialogueHistory>()
                 .ok_or_else(|| GError {
                     kind: GErrorKind::Ecs,
                     message: "DialogueHistory resource not found".to_string(),
@@ -52,7 +52,7 @@ impl SaveManager {
 
         let variables = {
             let game_vars = world
-                .get_component::<GameVariables>(0)
+                .get_resource::<GameVariables>()
                 .ok_or_else(|| GError {
                     kind: GErrorKind::Ecs,
                     message: "GameVariables resource not found".to_string(),
@@ -109,7 +109,7 @@ impl SaveManager {
     pub fn load(save_data: &SaveData, world: &mut World) -> GResult<()> {
         {
             let history = world
-                .get_component_mut::<DialogueHistory>(0)
+                .get_resource_mut::<DialogueHistory>()
                 .ok_or_else(|| GError {
                     kind: GErrorKind::Ecs,
                     message: "DialogueHistory resource not found".to_string(),
@@ -119,7 +119,7 @@ impl SaveManager {
 
         {
             let game_vars = world
-                .get_component_mut::<GameVariables>(0)
+                .get_resource_mut::<GameVariables>()
                 .ok_or_else(|| GError {
                     kind: GErrorKind::Ecs,
                     message: "GameVariables resource not found".to_string(),

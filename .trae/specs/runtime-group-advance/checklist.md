@@ -1,26 +1,26 @@
-- [ ] StageScheduler 定义了 Stage 枚举，包含 Startup/PreUpdate/Update/PostUpdate/Render/Exit 六个标准阶段
-- [ ] StageScheduler 支持系统注册到指定阶段，支持系统集（SystemSet）和执行顺序约束（before/after）
-- [ ] StageScheduler::tick 按阶段顺序执行系统，Startup 阶段仅执行一次
-- [ ] 插件可通过 Plugin::build 接口将系统注册到调度器的指定阶段
-- [ ] gg-runtime-audio 定义了 AudioEngine trait，包含 load_sound/play/stop/set_volume/pause/resume/update 方法
-- [ ] gg-runtime-audio 定义了 AudioCommand 枚举，包含 Play/Stop/SetVolume/Pause/Resume 变体及完整参数
-- [ ] gg-runtime-audio 定义了 SoundId 和 SoundDescriptor 类型
-- [ ] gg-runtime-audio 定义了 AudioContext 结构，能收集和提交音频命令
-- [ ] CpalAudioEngine 实现了 AudioEngine trait，能初始化 cpal 音频输出设备
-- [ ] CpalAudioEngine 能加载 WAV/OGG/MP3 音频文件并返回 SoundId
-- [ ] CpalAudioEngine 能播放、停止、暂停、恢复声音，支持音量控制和循环播放
-- [ ] HmrEvent 枚举定义了 ScriptChanged 和 AssetChanged 变体
-- [ ] HmrManager 能接收 HmrEvent 并执行脚本热替换，保留全局变量状态
-- [ ] HmrManager 能执行资源热替换，更新 AssetManager 缓存
-- [ ] HmrManager 实现了状态迁移钩子（on_hot_reload_out/on_hot_reload_in）
-- [ ] HmrManager 实现了热替换失败时的回滚机制
-- [ ] WasmRuntime trait 定义了 load_module/instantiate/call_function/get_memory 方法
-- [ ] WasmHostFunctions trait 定义了 WASM 模块可导入的宿主函数集合
-- [ ] WasmSandboxConfig 定义了内存限制、执行时间限制、允许的导入函数列表
-- [ ] RuntimeBuilder 提供了 builder 模式构建 Runtime，支持 renderer/audio_engine/hmr_enabled 方法
-- [ ] Runtime 持有 Box<dyn Renderer>、Option<Box<dyn AudioEngine>>、StageScheduler、Option<HmrManager>
-- [ ] ComponentRegistry 替代了 EngineHost 中硬编码的 Position/Velocity 组件类型
-- [ ] EngineHost 使用 ComponentRegistry 处理组件操作，不再硬编码组件类型
-- [ ] Runtime::tick 使用 StageScheduler 按阶段执行系统，集成 HMR 检查
-- [ ] examples/basic 使用 RuntimeBuilder 构建 Runtime
-- [ ] 所有新增的 public 结构体、枚举、方法、字段都有文档注释
+- [x] StageScheduler 定义了 Stage 枚举，包含 Startup/PreUpdate/Update/PostUpdate/Render/Exit 六个标准阶段
+- [x] StageScheduler 支持系统注册到指定阶段，支持系统集（SystemSet）和执行顺序约束（before/after）
+- [x] StageScheduler::tick 按阶段顺序执行系统，Startup 阶段仅执行一次
+- [x] 插件可通过 Plugin::build 接口将系统注册到调度器的指定阶段
+- [x] gg-runtime-audio 定义了 AudioEngine trait，包含 load_sound/play/stop/set_volume/pause/resume/update 方法
+- [x] gg-runtime-audio 定义了 AudioCommand 枚举，包含 Play/Stop/SetVolume/Pause/Resume 变体及完整参数
+- [x] gg-runtime-audio 定义了 SoundId 和 SoundDescriptor 类型
+- [x] gg-runtime-audio 定义了 AudioContext 结构，能收集和提交音频命令
+- [x] CpalAudioEngine 实现了 AudioEngine trait，能初始化 cpal 音频输出设备
+- [x] CpalAudioEngine 能加载 WAV/OGG/MP3 音频文件并返回 SoundId
+- [x] CpalAudioEngine 能播放、停止、暂停、恢复声音，支持音量控制和循环播放
+- [x] HmrEvent 枚举定义了 ScriptChanged 和 AssetChanged 变体
+- [x] HmrManager 能接收 HmrEvent 并执行脚本热替换，保留全局变量状态
+- [x] HmrManager 能执行资源热替换，更新 AssetManager 缓存
+- [x] HmrManager 实现了状态迁移钩子（on_hot_reload_out/on_hot_reload_in）
+- [x] HmrManager 实现了热替换失败时的回滚机制
+- [x] WasmRuntime trait 定义了 load_module/instantiate/call_function/get_memory 方法
+- [x] WasmHostFunctions trait 定义了 WASM 模块可导入的宿主函数集合
+- [x] WasmSandboxConfig 定义了内存限制、执行时间限制、允许的导入函数列表
+- [x] RuntimeBuilder 提供了 builder 模式构建 Runtime，支持 renderer/audio_engine/hmr_enabled 方法
+- [x] Runtime 持有 Box<dyn Renderer>、Option<Box<dyn AudioEngine>>、StageScheduler、Option<HmrManager>
+- [x] ComponentRegistry 替代了 EngineHost 中硬编码的 Position/Velocity 组件类型
+- [x] EngineHost 使用 ComponentRegistry 处理组件操作，不再硬编码组件类型
+- [x] Runtime::tick 使用 StageScheduler 按阶段执行系统，集成 HMR 检查
+- [x] examples/basic 使用 RuntimeBuilder 构建 Runtime
+- [x] 所有新增的 public 结构体、枚举、方法、字段都有文档注释

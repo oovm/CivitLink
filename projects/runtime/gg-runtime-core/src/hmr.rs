@@ -1,7 +1,7 @@
 //! HMR（热模块替换）模块
 //! 提供脚本和资源的运行时热替换能力
 
-use gg_ir::IrModule;
+use gg_bytecode::format::BytecodeModule;
 
 /// HMR 事件
 #[derive(Debug, Clone)]
@@ -10,8 +10,8 @@ pub enum HmrEvent {
     ScriptChanged {
         /// 模块名称
         module_name: String,
-        /// 新的 IR 模块
-        new_module: IrModule,
+        /// 新的字节码模块
+        new_module: BytecodeModule,
     },
     /// 资源文件变更
     AssetChanged {
@@ -40,7 +40,7 @@ pub struct HmrManager {
     /// 是否有资源变更待处理
     asset_dirty: bool,
     /// 上一次成功加载的脚本模块（用于回滚）
-    last_stable_module: Option<IrModule>,
+    last_stable_module: Option<BytecodeModule>,
     /// 已变更的资源路径列表
     changed_assets: Vec<String>,
 }
@@ -76,8 +76,8 @@ impl HmrManager {
     }
 
     /// 处理脚本热替换
-    /// 返回新的 IrModule（如果脚本有变更）
-    pub fn process_script_reload(&mut self) -> Option<IrModule> {
+    /// 返回新的 BytecodeModule（如果脚本有变更）
+    pub fn process_script_reload(&mut self) -> Option<BytecodeModule> {
         if !self.script_dirty {
             return None;
         }
@@ -129,12 +129,12 @@ impl HmrManager {
     }
 
     /// 确认脚本热替换成功
-    pub fn confirm_script_reload(&mut self, module: IrModule) {
+    pub fn confirm_script_reload(&mut self, module: BytecodeModule) {
         self.last_stable_module = Some(module);
     }
 
     /// 回滚脚本热替换
-    pub fn rollback_script_reload(&mut self) -> Option<IrModule> {
+    pub fn rollback_script_reload(&mut self) -> Option<BytecodeModule> {
         self.last_stable_module.clone()
     }
 

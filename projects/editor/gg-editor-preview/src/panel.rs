@@ -3,6 +3,7 @@
 
 use gg_core::GResult;
 use gg_editor_shell::{EditorContext, EditorPanel, PanelLayoutHint, PanelPosition};
+use gg_ui::UiTree;
 
 /// 实时预览面板
 ///
@@ -111,8 +112,8 @@ impl EditorPanel for PreviewPanel {
         self.visible = visible;
     }
 
-    /// 渲染面板
-    fn render(&mut self, _context: &mut EditorContext) -> GResult<()> {
+    /// 构建预览面板 UI 节点树
+    fn build_ui(&mut self, _context: &mut EditorContext, _ui_tree: &mut UiTree) -> GResult<()> {
         Ok(())
     }
 
