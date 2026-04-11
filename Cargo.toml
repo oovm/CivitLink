@@ -19,7 +19,6 @@ members = [
     "projects/toolchain/gg-tools",
     "projects/engines/*",
     "examples/basic",
-    "examples/galgame-editor",
     "examples/web-render-verify",
 ]
 exclude = ["projects/engines/stg"]
