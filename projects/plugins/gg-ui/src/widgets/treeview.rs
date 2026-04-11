@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     node::{UiNodeData, UiNodeId, UiTree},
-    style::{FlexAlign, FlexDirection, FontStyle, LayoutStyle, SizeValue, Style},
+    style::{FlexAlign, FlexDirection, FontStyle, LayoutStyle, Style},
     widget::Widget,
 };
 use gg_core::GResult;

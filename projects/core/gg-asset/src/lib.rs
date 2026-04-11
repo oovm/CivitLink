@@ -123,6 +123,12 @@ pub struct AssetCache {
     next_id: RwLock<u64>,
 }
 
+impl Default for AssetCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AssetCache {
     /// 创建空的资源缓存
     pub fn new() -> Self {
@@ -409,6 +415,12 @@ pub struct AssetServer {
     path_types: DashMap<String, TypeId>,
     /// 待处理的资源重载队列
     pending_reloads: Mutex<Vec<(String, TypeId)>>,
+}
+
+impl Default for AssetServer {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl AssetServer {

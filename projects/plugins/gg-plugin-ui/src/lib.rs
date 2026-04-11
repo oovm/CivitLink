@@ -6,6 +6,7 @@
 pub mod binding;
 pub mod focus;
 pub mod input_bridge;
+pub mod layout_system;
 pub mod texture_registry;
 
 use gg_core::{
@@ -22,6 +23,7 @@ use crate::{
     binding::{BindingRegistry, BindingResolver, BindingSystem, BindingValue, HashMapResolver},
     focus::FocusManager,
     input_bridge::{InputBridgeSystem, InputState},
+    layout_system::{DirtyFlags, UiLayoutSystem},
     texture_registry::TextureRegistry,
 };
 
@@ -78,8 +80,8 @@ impl Plugin for UiPlugin {
     /// 构建 UI 插件
     ///
     /// 注册以下资源和系统：
-    /// - 资源：UiTreeResource、EventSystemResource、FocusManager、BindingRegistry、InputState
-    /// - 系统：UiInputSystem、UiUpdateSystem、UiRenderSystem、BindingSystem、InputBridgeSystem
+    /// - 资源：UiTreeResource、EventSystemResource、FocusManager、BindingRegistry、InputState、DirtyFlags
+    /// - 系统：UiInputSystem、UiUpdateSystem、UiRenderSystem、BindingSystem、InputBridgeSystem、UiLayoutSystem
     fn build(&self, registrar: &mut PluginRegistrar) {
         registrar.insert_resource(UiTreeResource::new());
         registrar.insert_resource(EventSystemResource::new());
@@ -87,11 +89,13 @@ impl Plugin for UiPlugin {
         registrar.insert_resource(BindingRegistry::new());
         registrar.insert_resource(TextureRegistry::new());
         registrar.insert_resource(InputState::new());
+        registrar.insert_resource(DirtyFlags::new());
         registrar.register_system(Box::new(UiInputSystem));
         registrar.register_system(Box::new(UiUpdateSystem));
         registrar.register_system(Box::new(UiRenderSystem));
         registrar.register_system(Box::new(BindingSystem::new()));
         registrar.register_system(Box::new(InputBridgeSystem));
+        registrar.register_system(Box::new(UiLayoutSystem));
     }
 
     /// 返回插件依赖列表

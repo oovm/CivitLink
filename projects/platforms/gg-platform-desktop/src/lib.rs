@@ -18,6 +18,8 @@ pub mod thread;
 pub mod time;
 /// 桌面平台窗口实现
 pub mod window;
+/// 桌面平台窗口管理器
+pub mod window_manager;
 
 pub use fs::DesktopFileSystem;
 pub use input::DesktopInput;
@@ -27,5 +29,6 @@ pub use services::DesktopPlatformServices;
 pub use thread::DesktopThread;
 pub use time::DesktopTime;
 pub use window::DesktopWindow;
+pub use window_manager::DesktopWindowManager;
 
 mod runtime;

@@ -438,23 +438,8 @@ fn has_mobile_target(manifest: &EngineManifest) -> bool {
     manifest.platforms.iter().any(|p| is_mobile_target(&p.target))
 }
 
-/// 统计清单中不同平台类型的数量
-fn count_platform_types(manifest: &EngineManifest) -> usize {
-    let mut count = 0;
-    if has_desktop_target(manifest) {
-        count += 1;
-    }
-    if has_web_target(manifest) {
-        count += 1;
-    }
-    if has_mobile_target(manifest) {
-        count += 1;
-    }
-    count
-}
-
 /// 根据 GOM 类型生成系统注册代码
-fn generate_system_registration(gom: &str) -> String {
+pub fn generate_system_registration(gom: &str) -> String {
     if gom.is_empty() {
         return String::new();
     }
@@ -570,6 +555,7 @@ fn generate_editor_panel_code_app(manifest: &EngineManifest) -> String {
 /// 将引擎名称转换为 PascalCase 结构体名称
 ///
 /// 例如 "My Galgame" → "MyGalgameEngine"，"my-galgame" → "MyGalgameEngine"
+#[allow(dead_code)]
 fn name_to_struct_name(name: &str) -> String {
     let mut result = String::new();
     for word in name.split(|c: char| c.is_whitespace() || c == '-' || c == '_') {

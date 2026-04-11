@@ -128,6 +128,197 @@ impl PartialReflect for String {
     }
 }
 
+/// 枚举反射 trait，为枚举类型提供运行时变体查询和字段访问能力
+pub trait EnumReflect: PartialReflect {
+    /// 获取所有变体名称
+    fn variants(&self) -> &[&str];
+
+    /// 获取当前活跃变体的名称
+    fn variant_name(&self) -> &str;
+
+    /// 获取当前变体中指定索引字段的反射引用
+    fn field_at(&self, index: usize) -> Option<&dyn PartialReflect>;
+
+    /// 获取当前变体中指定索引字段的可变反射引用
+    fn field_at_mut(&mut self, index: usize) -> Option<&mut dyn PartialReflect>;
+
+    /// 获取当前变体的字段数量
+    fn field_count(&self) -> usize;
+
+    /// 尝试切换到指定名称的变体
+    ///
+    /// 如果变体名称有效，切换到该变体并返回 Ok(())，
+    /// 否则返回错误信息。
+    fn set_variant(&mut self, name: &str) -> Result<(), String>;
+}
+
+/// 列表反射 trait，为有序集合类型提供动态元素访问和修改能力
+pub trait ListReflect: PartialReflect {
+    /// 获取列表长度
+    fn len(&self) -> usize;
+
+    /// 判断列表是否为空
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// 获取指定索引处元素的反射引用
+    fn get(&self, index: usize) -> Option<&dyn PartialReflect>;
+
+    /// 获取指定索引处元素的可变反射引用
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn PartialReflect>;
+
+    /// 向列表末尾添加元素
+    fn push(&mut self, value: Box<dyn PartialReflect>);
+
+    /// 移除指定索引处的元素
+    fn remove(&mut self, index: usize) -> Option<Box<dyn PartialReflect>>;
+}
+
+/// 映射反射 trait，为键值对集合类型提供动态元素访问和修改能力
+pub trait MapReflect: PartialReflect {
+    /// 获取映射中的键值对数量
+    fn len(&self) -> usize;
+
+    /// 判断映射是否为空
+    fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// 根据键获取值的反射引用
+    fn get(&self, key: &str) -> Option<&dyn PartialReflect>;
+
+    /// 根据键获取值的可变反射引用
+    fn get_mut(&mut self, key: &str) -> Option<&mut dyn PartialReflect>;
+
+    /// 插入键值对
+    fn insert(&mut self, key: String, value: Box<dyn PartialReflect>);
+
+    /// 根据键移除键值对
+    fn remove(&mut self, key: &str) -> Option<Box<dyn PartialReflect>>;
+
+    /// 获取所有键的列表
+    fn keys(&self) -> Vec<String>;
+}
+
+impl<T: PartialReflect + Clone + 'static> PartialReflect for Vec<T> {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn type_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
+
+    fn clone_reflect(&self) -> Box<dyn PartialReflect> {
+        Box::new(self.clone())
+    }
+
+    fn try_assign(&mut self, source: &dyn PartialReflect) -> Result<(), String> {
+        if let Some(val) = source.as_any().downcast_ref::<Self>() {
+            *self = val.clone();
+            Ok(())
+        } else {
+            Err(format!(
+                "type mismatch: expected {}, got {}",
+                self.type_name(),
+                source.type_name()
+            ))
+        }
+    }
+}
+
+impl<T: PartialReflect + Clone + 'static> ListReflect for Vec<T> {
+    fn len(&self) -> usize {
+        self.as_slice().len()
+    }
+
+    fn get(&self, index: usize) -> Option<&dyn PartialReflect> {
+        self.as_slice().get(index).map(|v| v as &dyn PartialReflect)
+    }
+
+    fn get_mut(&mut self, index: usize) -> Option<&mut dyn PartialReflect> {
+        self.as_mut_slice().get_mut(index).map(|v| v as &mut dyn PartialReflect)
+    }
+
+    fn push(&mut self, value: Box<dyn PartialReflect>) {
+        if let Some(item) = value.as_any().downcast_ref::<T>() {
+            self.push(item.clone());
+        }
+    }
+
+    fn remove(&mut self, index: usize) -> Option<Box<dyn PartialReflect>> {
+        if index < self.len() {
+            Some(Box::new(self.remove(index)))
+        } else {
+            None
+        }
+    }
+}
+
+impl<V: PartialReflect + Clone + 'static> PartialReflect for HashMap<String, V> {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn type_name(&self) -> &'static str {
+        std::any::type_name::<Self>()
+    }
+
+    fn clone_reflect(&self) -> Box<dyn PartialReflect> {
+        Box::new(self.clone())
+    }
+
+    fn try_assign(&mut self, source: &dyn PartialReflect) -> Result<(), String> {
+        if let Some(val) = source.as_any().downcast_ref::<Self>() {
+            *self = val.clone();
+            Ok(())
+        } else {
+            Err(format!(
+                "type mismatch: expected {}, got {}",
+                self.type_name(),
+                source.type_name()
+            ))
+        }
+    }
+}
+
+impl<V: PartialReflect + Clone + 'static> MapReflect for HashMap<String, V> {
+    fn len(&self) -> usize {
+        HashMap::len(self)
+    }
+
+    fn get(&self, key: &str) -> Option<&dyn PartialReflect> {
+        HashMap::get(self, key).map(|v| v as &dyn PartialReflect)
+    }
+
+    fn get_mut(&mut self, key: &str) -> Option<&mut dyn PartialReflect> {
+        HashMap::get_mut(self, key).map(|v| v as &mut dyn PartialReflect)
+    }
+
+    fn insert(&mut self, key: String, value: Box<dyn PartialReflect>) {
+        if let Some(val) = value.as_any().downcast_ref::<V>() {
+            HashMap::insert(self, key, val.clone());
+        }
+    }
+
+    fn remove(&mut self, key: &str) -> Option<Box<dyn PartialReflect>> {
+        HashMap::remove(self, key).map(|v| Box::new(v) as Box<dyn PartialReflect>)
+    }
+
+    fn keys(&self) -> Vec<String> {
+        self.keys().cloned().collect()
+    }
+}
+
 /// 运行时类型信息
 pub struct TypeInfo {
     /// 类型 ID

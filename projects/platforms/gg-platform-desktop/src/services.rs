@@ -1,9 +1,8 @@
 use std::sync::Arc;
 
-use gg_core::platform::PlatformServices;
+use gg_core::platform::{PlatformServices, WindowConfig, WindowManager};
 
 use crate::{DesktopFileSystem, DesktopInput, DesktopThread, DesktopTime, DesktopWindow};
-use gg_core::platform::WindowConfig;
 
 /// 桌面平台服务工厂
 ///
@@ -38,6 +37,21 @@ impl DesktopPlatformServices {
             Box::new(DesktopTime::new()),
             Box::new(DesktopWindow::from_winit_window(window, window_config)),
             Box::new(DesktopThread::new()),
+        )
+    }
+
+    /// 使用窗口管理器创建桌面平台的平台服务
+    pub fn create_with_window_manager(
+        window_config: WindowConfig,
+        window_manager: Box<dyn WindowManager>,
+    ) -> PlatformServices {
+        PlatformServices::new_with_manager(
+            Box::new(DesktopFileSystem::new()),
+            Box::new(DesktopInput::new()),
+            Box::new(DesktopTime::new()),
+            Box::new(DesktopWindow::new(window_config)),
+            Box::new(DesktopThread::new()),
+            window_manager,
         )
     }
 }

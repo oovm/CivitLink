@@ -439,7 +439,7 @@ fn has_mobile_target(manifest: &EngineManifest) -> bool {
 }
 
 /// 根据 GOM 类型生成系统注册代码
-fn generate_system_registration(gom: &str) -> String {
+pub fn generate_system_registration(gom: &str) -> String {
     if gom.is_empty() {
         return String::new();
     }
@@ -467,7 +467,7 @@ fn generate_system_registration(gom: &str) -> String {
 }
 
 /// 根据 GOM 类型生成组件注册代码
-fn generate_component_registration(gom: &str) -> String {
+pub fn generate_component_registration(gom: &str) -> String {
     if gom.is_empty() {
         return String::new();
     }
@@ -497,7 +497,7 @@ fn generate_component_registration(gom: &str) -> String {
 }
 
 /// 生成资源加载器注册代码
-fn generate_asset_loader_registration() -> String {
+pub fn generate_asset_loader_registration() -> String {
     let lines = vec![
         "    app.register_loader::<gg_asset::loader::TextLoader>();",
         "    app.register_loader::<gg_asset::loader::BinaryLoader>();",
@@ -555,8 +555,7 @@ fn generate_editor_panel_code_app(manifest: &EngineManifest) -> String {
 /// 将引擎名称转换为 PascalCase 结构体名称
 ///
 /// 例如 "My Galgame" → "MyGalgameEngine"，"my-galgame" → "MyGalgameEngine"
-#[allow(dead_code)]
-fn name_to_struct_name(name: &str) -> String {
+pub fn name_to_struct_name(name: &str) -> String {
     let mut result = String::new();
     for word in name.split(|c: char| c.is_whitespace() || c == '-' || c == '_') {
         if word.is_empty() {
@@ -579,6 +578,6 @@ fn name_to_struct_name(name: &str) -> String {
 /// 将引擎名称转换为 Cargo 包名
 ///
 /// 例如 "My Galgame" → "my-galgame"
-fn name_to_package_name(name: &str) -> String {
+pub fn name_to_package_name(name: &str) -> String {
     name.to_lowercase().split(|c: char| c.is_whitespace()).filter(|s| !s.is_empty()).collect::<Vec<_>>().join("-")
 }
