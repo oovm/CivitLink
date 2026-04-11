@@ -80,6 +80,18 @@ micro init_game() {
         }
     });
     
+    # 加载预制体
+    let player_prefab = engine.load_prefab("assets/prefabs/player.prefab");
+    let npc_prefab = engine.load_prefab("assets/prefabs/npc.prefab");
+    
+    # 实例化预制体
+    let player = world.instantiate_prefab(player_prefab);
+    let npc = world.instantiate_prefab(npc_prefab);
+    
+    # 设置 NPC 位置
+    let npc_transform = npc.get_component("Transform");
+    npc_transform.position = [200, 100, 0];
+    
     # 创建对话实体
     let dialogue_entity = world.spawn();
     dialogue_entity.add_component("Dialogue", {

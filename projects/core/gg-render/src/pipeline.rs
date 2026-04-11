@@ -228,7 +228,7 @@ impl RenderPipeline for DefaultRenderPipeline {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Camera2D, Color, Rect, Transform, Viewport};
+    use crate::{Camera2D, Color, Rect, Viewport};
 
     #[test]
     fn test_viewport_full() {

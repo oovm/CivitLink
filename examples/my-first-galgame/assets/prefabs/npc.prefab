@@ -1,0 +1,52 @@
+PrefabFile({
+    version: "1.0",
+    prefab: Prefab({
+        name: "NPCPrefab",
+        description: "NPC character prefab",
+        is_variant: false,
+        base_prefab: None,
+    }),
+    entities: [
+        Entity({
+            id: 1,
+            name: "NPC",
+            parent_id: None,
+            components: [
+                Component({
+                    type: "Transform",
+                    properties: TransformProperties({
+                        position: [0, 0, 0],
+                        rotation: [0, 0, 0],
+                        scale: [1, 1, 1],
+                    }),
+                }),
+                Component({
+                    type: "SpriteRenderer",
+                    properties: SpriteRendererProperties({
+                        sprite: "assets/graphics/sprites/npc.png",
+                        sort_order: 0,
+                        flip_x: false,
+                        flip_y: false,
+                    }),
+                }),
+                Component({
+                    type: "NPC",
+                    properties: NPCProperties({
+                        name: "NPC",
+                        dialogues: ["Hello!", "How are you?", "Goodbye!"],
+                    }),
+                }),
+            ],
+        }),
+    ],
+    variants: [],
+    dependencies: [
+        Dependency({
+            path: "assets/graphics/sprites/npc.png",
+            guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0002",
+        }),
+    ],
+    references: [],
+    timestamp: "2026-04-11T10:00:00Z",
+    hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+})

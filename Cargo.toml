@@ -63,6 +63,7 @@ naga = { version = "29.0.1", features = ["wgsl-in", "wgsl-out"] }
 piet-common = "0.7"
 kurbo = "0.11"
 ttf-parser = "0.24"
+gilrs = "0.11"
 
 # gnostic gamer modules
 gg-core = { path = "projects/core/gg-core" }

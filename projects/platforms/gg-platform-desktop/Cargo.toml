@@ -8,3 +8,4 @@ license = { workspace = true }
 [dependencies]
 gg-core = { workspace = true }
 winit = { workspace = true }
+gilrs = { workspace = true }

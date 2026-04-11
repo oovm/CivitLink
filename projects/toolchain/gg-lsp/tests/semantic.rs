@@ -1,6 +1,5 @@
 use gg_lsp::semantic::{
-    DiagnosticSeverity, SemanticAnalyzer, SemanticDiagnostic, SemanticResult, Symbol, SymbolKind,
-    SymbolTable,
+    DiagnosticSeverity, SemanticAnalyzer, Symbol, SymbolKind, SymbolTable,
 };
 
 #[test]

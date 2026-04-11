@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+#![allow(clippy::type_complexity)]
 
 //! GG 引擎资源管理模块
 //! 提供异步资源加载、并发安全缓存和类型安全的资源句柄功能
@@ -1109,13 +1110,13 @@ mod tests {
 
     #[test]
     fn test_asset_watcher_creation() {
-        let watcher = AssetWatcher::new();
+        let mut watcher = AssetWatcher::new();
         assert!(watcher.poll_changes().is_empty());
     }
 
     #[test]
     fn test_asset_watcher_default() {
-        let watcher = AssetWatcher::default();
+        let mut watcher = AssetWatcher::default();
         assert!(watcher.poll_changes().is_empty());
     }
 

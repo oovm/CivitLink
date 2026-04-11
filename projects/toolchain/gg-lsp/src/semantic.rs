@@ -441,23 +441,23 @@ fn extract_identifier_at(line: &str, column: usize) -> Option<String> {
 
 /// 判断标识符所在行是否为声明行。
 fn is_declaration_line(line: &str, ident: &str) -> bool {
-    let prefixes = ["let ", "let mut ", "const ", "micro ", "namespace ", "fn "];
-    for prefix in &prefixes {
+    let decl_prefixes = ["let ", "let mut ", "const ", "micro ", "namespace ", "fn "];
+    for prefix in &decl_prefixes {
         if let Some(rest) = line.strip_prefix(prefix) {
             if rest.trim_start().starts_with(ident) {
                 return true;
             }
-        }
-    }
-    if line.contains('(') && line.contains(')') {
-        if let Some(start) = line.find('(') {
-            if let Some(end) = line.find(')') {
-                let params = &line[start + 1..end];
-                for param in params.split(',') {
-                    let trimmed = param.trim();
-                    let name_part = trimmed.split(':').next().unwrap_or(trimmed).trim();
-                    if name_part == ident {
-                        return true;
+            if line.contains('(') && line.contains(')') {
+                if let Some(start) = line.find('(') {
+                    if let Some(end) = line.find(')') {
+                        let params = &line[start + 1..end];
+                        for param in params.split(',') {
+                            let trimmed = param.trim();
+                            let name_part = trimmed.split(':').next().unwrap_or(trimmed).trim();
+                            if name_part == ident {
+                                return true;
+                            }
+                        }
                     }
                 }
             }

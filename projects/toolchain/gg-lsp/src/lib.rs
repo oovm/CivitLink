@@ -21,12 +21,11 @@ pub use semantic::{
     SymbolKind, SymbolTable,
 };
 
-use core::range::Range;
-use oak_core::tree::RedNode;
-
 #[cfg(feature = "lsp")]
 use {
+    core::range::Range,
     futures::Future,
+    oak_core::tree::RedNode,
     oak_lsp::service::LanguageService,
     oak_lsp::types::Hover as LspHover,
     oak_vfs::Vfs,
