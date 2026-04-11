@@ -22,6 +22,21 @@ pub trait VxComponent: Send + Sync + 'static {
     
     /// 销毁组件
     fn destroy(&mut self, world: &mut World, entity: Entity);
+    
+    /// 判断是否有脏标记
+    fn is_dirty(&self) -> bool;
+    
+    /// 清除所有脏标记
+    fn clear_dirty(&mut self);
+    
+    /// 获取当前脏标记
+    fn get_dirty_flags(&self) -> DirtyFlag;
+    
+    /// 标记指定脏标记
+    fn mark_dirty(&mut self, flag: DirtyFlag);
+    
+    /// 获取 UsageHints
+    fn usage_hints(&self) -> UsageHints;
 }
 ```
 
@@ -50,6 +65,18 @@ impl GuiRuntime {
     
     /// 处理事件
     pub fn handle_event(&mut self, world: &mut World, event: &Event) -> GResult<()>;
+    
+    /// 接收外部事件并标记脏节点
+    pub fn process_event(&mut self, event: &GuiEvent);
+    
+    /// 仅在存在脏节点时执行重绘
+    pub fn commit_render(&mut self);
+    
+    /// 手动标记节点为脏
+    pub fn mark_dirty(&mut self, component_id: &str, flag: DirtyFlag);
+    
+    /// 检查是否有脏组件
+    pub fn has_dirty_components(&self) -> bool;
 }
 ```
 
@@ -235,6 +262,372 @@ impl Style {
     
     /// 合并样式
     pub fn merge(&mut self, other: &Style);
+}
+```
+
+### 1.6 DirtyFlag 系统
+
+`DirtyFlag` 是编辑器 UI 的位标志系统，用于追踪组件的变化状态，实现按需更新。
+
+**DirtyFlag 常量：**
+
+| 常量 | 值 | 描述 |
+|------|---|------|
+| `NONE` | `0b00000` | 无脏标记 |
+| `LAYOUT` | `0b00001` | 布局脏，需要重新计算布局 |
+| `STYLE` | `0b00010` | 样式脏，需要重新应用样式 |
+| `CONTENT` | `0b00100` | 内容脏，需要重新生成网格 |
+| `TRANSFORM` | `0b01000` | 变换脏，需要重新计算变换矩阵 |
+| `ALL` | `0b01111` | 所有脏标记 |
+
+**位运算支持：**
+
+```rust
+bitflags! {
+    pub struct DirtyFlag: u8 {
+        const NONE     = 0b00000;
+        const LAYOUT   = 0b00001;
+        const STYLE    = 0b00010;
+        const CONTENT  = 0b00100;
+        const TRANSFORM = 0b01000;
+        const ALL      = 0b01111;
+    }
+}
+
+impl DirtyFlag {
+    /// 判断是否包含指定标记
+    pub fn contains(&self, flag: DirtyFlag) -> bool;
+
+    /// 插入指定标记
+    pub fn insert(&mut self, flag: DirtyFlag);
+
+    /// 移除指定标记
+    pub fn remove(&mut self, flag: DirtyFlag);
+
+    /// 判断是否为空
+    pub fn is_empty(&self) -> bool;
+
+    /// 判断是否有任何标记
+    pub fn is_any(&self) -> bool;
+}
+```
+
+**使用示例：**
+
+```rust
+let mut flag = DirtyFlag::NONE;
+flag.insert(DirtyFlag::LAYOUT);
+flag.insert(DirtyFlag::CONTENT);
+
+if flag.contains(DirtyFlag::LAYOUT) {
+    // 重新计算布局
+}
+
+flag.remove(DirtyFlag::LAYOUT);
+flag.clear_dirty();
+```
+
+### 1.7 UsageHints 系统
+
+`UsageHints` 系统允许 UI 元素声明需要 GPU 驱动的变换类型，通过 uniform 传入着色器执行变换，避免 CPU 侧重建顶点数据。
+
+**UsageHint 枚举：**
+
+| 枚举值 | 描述 | GPU 变换方式 |
+|-------|------|------------|
+| `TransformOffset` | 位移偏移 | 顶点着色器中叠加偏移向量 |
+| `ColorTint` | 颜色调色 | 片段着色器中乘以调色值 |
+| `Opacity` | 透明度 | 片段着色器中乘以透明度系数 |
+| `ScaleTransform` | 缩放变换 | 顶点着色器中应用缩放矩阵 |
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum UsageHint {
+    TransformOffset,
+    ColorTint,
+    Opacity,
+    ScaleTransform,
+}
+
+pub struct UsageHints {
+    hints: HashSet<UsageHint>,
+}
+
+impl UsageHints {
+    /// 创建空的 UsageHints
+    pub fn new() -> Self;
+
+    /// 添加 hint
+    pub fn add(&mut self, hint: UsageHint);
+
+    /// 移除 hint
+    pub fn remove(&mut self, hint: UsageHint);
+
+    /// 判断是否包含指定 hint
+    pub fn contains(&self, hint: UsageHint) -> bool;
+
+    /// 获取所有 hints
+    pub fn iter(&self) -> impl Iterator<Item = &UsageHint>;
+}
+```
+
+**GpuTransformUniform 结构体：**
+
+```rust
+#[derive(Debug, Clone, Copy)]
+#[repr(C)]
+pub struct GpuTransformUniform {
+    /// 位移偏移 (UsageHint::TransformOffset)
+    pub transform_offset: Vec2,
+    /// 颜色调色 (UsageHint::ColorTint)
+    pub color_tint: Vec4,
+    /// 透明度 (UsageHint::Opacity)
+    pub opacity: f32,
+    /// 缩放变换 (UsageHint::ScaleTransform)
+    pub scale_transform: Vec2,
+}
+```
+
+**UsageHintsManager 管理器：**
+
+```rust
+pub struct UsageHintsManager {
+    /// 元素 ID 到 UsageHints 的映射
+    hints_map: HashMap<String, UsageHints>,
+    /// GPU uniform 数据
+    uniform_data: Vec<GpuTransformUniform>,
+    /// 是否有脏数据需要更新
+    dirty: bool,
+}
+
+impl UsageHintsManager {
+    /// 创建新的管理器
+    pub fn new() -> Self;
+
+    /// 注册元素的 UsageHints
+    pub fn register(&mut self, element_id: &str, hints: UsageHints);
+
+    /// 注销元素的 UsageHints
+    pub fn unregister(&mut self, element_id: &str);
+
+    /// 更新元素的变换数据
+    pub fn update_transform(&mut self, element_id: &str, uniform: GpuTransformUniform);
+
+    /// 获取所有 uniform 数据
+    pub fn uniform_data(&self) -> &[GpuTransformUniform];
+
+    /// 判断是否有脏数据
+    pub fn is_dirty(&self) -> bool;
+
+    /// 清除脏标记
+    pub fn clear_dirty(&mut self);
+}
+```
+
+### 1.8 Uber-Shader 系统
+
+`EditorUiUberShader` 是编辑器 UI 的超级着色器系统，将所有 UI 元素类型合并为单次 Draw Call 提交。
+
+**UberShaderMode 枚举：**
+
+| 枚举值 | 值 | 描述 |
+|-------|---|------|
+| `Rect` | `0` | 矩形填充，用于面板、按钮背景等 |
+| `Text` | `1` | SDF 文字渲染，用于文本元素 |
+| `Icon` | `2` | 图标渲染，用于矢量图标 |
+| `Image` | `3` | 图片渲染，用于位图元素 |
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u32)]
+pub enum UberShaderMode {
+    Rect = 0,
+    Text = 1,
+    Icon = 2,
+    Image = 3,
+}
+```
+
+**TextureAtlas 纹理图集：**
+
+```rust
+pub struct TextureAtlas {
+    /// 图集纹理
+    texture: Handle<TextureAsset>,
+    /// 图集尺寸
+    size: (u32, u32),
+    /// 区域映射：名称 → (UV 偏移, UV 尺寸)
+    regions: HashMap<String, (Vec2, Vec2)>,
+}
+
+impl TextureAtlas {
+    /// 创建新的纹理图集
+    pub fn new(size: (u32, u32)) -> Self;
+
+    /// 添加区域
+    pub fn add_region(&mut self, name: &str, offset: Vec2, size: Vec2);
+
+    /// 获取区域的 UV 坐标
+    pub fn get_uv(&self, name: &str) -> Option<(Vec2, Vec2)>;
+
+    /// 获取图集纹理
+    pub fn texture(&self) -> &Handle<TextureAsset>;
+}
+```
+
+**EditorUiUberShader 管理器：**
+
+```rust
+pub struct EditorUiUberShader {
+    /// 着色器程序
+    shader: Handle<ShaderAsset>,
+    /// 纹理图集
+    atlas: TextureAtlas,
+    /// 当前 Draw Call 的 uniform 缓冲区
+    uniform_buffer: Vec<u8>,
+}
+
+impl EditorUiUberShader {
+    /// 创建新的 Uber-Shader
+    pub fn new(shader: Handle<ShaderAsset>, atlas_size: (u32, u32)) -> Self;
+
+    /// 添加矩形绘制命令
+    pub fn draw_rect(&mut self, rect: &Rect, color: Vec4);
+
+    /// 添加文字绘制命令
+    pub fn draw_text(&mut self, text: &TextInfo, atlas_region: &str);
+
+    /// 添加图标绘制命令
+    pub fn draw_icon(&mut self, icon: &IconInfo, atlas_region: &str);
+
+    /// 添加图片绘制命令
+    pub fn draw_image(&mut self, image: &ImageInfo, atlas_region: &str);
+
+    /// 提交所有绘制命令为单次 Draw Call
+    pub fn commit(&mut self, renderer: &mut dyn Renderer);
+
+    /// 重置绘制命令
+    pub fn reset(&mut self);
+}
+```
+
+### 1.9 Flexbox 布局引擎
+
+`FlexLayoutEngine` 是编辑器 UI 的 Flexbox 布局引擎，自行实现 CSS Flexbox 核心算法，不依赖外部 yoga crate。
+
+**LayoutStyle 结构体：**
+
+```rust
+#[derive(Debug, Clone)]
+pub struct LayoutStyle {
+    pub flex_direction: FlexDirection,
+    pub justify_content: JustifyContent,
+    pub align_items: AlignItems,
+    pub align_self: Option<AlignSelf>,
+    pub align_content: AlignContent,
+    pub flex_wrap: FlexWrap,
+    pub gap: (f32, f32),
+    pub flex_grow: f32,
+    pub flex_shrink: f32,
+    pub flex_basis: Length,
+    pub padding: (f32, f32, f32, f32),
+    pub margin: (f32, f32, f32, f32),
+    pub width: Length,
+    pub height: Length,
+    pub min_width: Length,
+    pub min_height: Length,
+    pub max_width: Length,
+    pub max_height: Length,
+    pub position_type: PositionType,
+    pub left: Length,
+    pub right: Length,
+    pub top: Length,
+    pub bottom: Length,
+}
+```
+
+**LayoutResult 结构体：**
+
+```rust
+#[derive(Debug, Clone, Copy)]
+pub struct LayoutResult {
+    /// 元素的最终 X 坐标
+    pub x: f32,
+    /// 元素的最终 Y 坐标
+    pub y: f32,
+    /// 元素的最终宽度
+    pub width: f32,
+    /// 元素的最终高度
+    pub height: f32,
+}
+```
+
+**LayoutNode 结构体：**
+
+```rust
+#[derive(Debug, Clone)]
+pub struct LayoutNode {
+    /// 节点的布局样式
+    pub style: LayoutStyle,
+    /// 节点的布局结果
+    pub result: LayoutResult,
+    /// 子节点 ID 列表
+    pub children: Vec<String>,
+    /// 父节点 ID
+    pub parent: Option<String>,
+    /// 是否为脏节点
+    pub dirty: bool,
+}
+```
+
+**FlexLayoutEngine 引擎：**
+
+```rust
+pub struct FlexLayoutEngine {
+    /// 节点映射
+    nodes: HashMap<String, LayoutNode>,
+    /// 脏节点集合
+    dirty_nodes: HashSet<String>,
+}
+
+impl FlexLayoutEngine {
+    /// 创建新的布局引擎
+    pub fn new() -> Self;
+
+    /// 添加节点
+    pub fn add_node(&mut self, id: &str, style: LayoutStyle, parent: Option<&str>);
+
+    /// 移除节点
+    pub fn remove_node(&mut self, id: &str);
+
+    /// 更新节点样式
+    pub fn update_style(&mut self, id: &str, style: LayoutStyle);
+
+    /// 标记节点为脏
+    pub fn mark_dirty(&mut self, id: &str);
+
+    /// 执行布局计算（仅重算脏节点）
+    pub fn compute(&mut self, available_width: f32, available_height: f32);
+
+    /// 获取节点的布局结果
+    pub fn get_result(&self, id: &str) -> Option<&LayoutResult>;
+
+    /// 判断是否有脏节点
+    pub fn has_dirty_nodes(&self) -> bool;
+}
+```
+
+**UssStyleMapper 映射器：**
+
+```rust
+pub struct UssStyleMapper;
+
+impl UssStyleMapper {
+    /// 将 USS 样式属性映射为 LayoutStyle
+    pub fn map(style: &Style) -> LayoutStyle;
+
+    /// 将单个 USS 属性映射为布局属性
+    pub fn map_property(property: &str, value: &StyleValue) -> Option<LayoutProperty>;
 }
 ```
 
@@ -493,6 +886,117 @@ pub struct AnimationCurve {
     pub keyframes: Vec<Keyframe>,
     pub looped: bool,
     pub speed: f32,
+}
+```
+
+### 2.6 Canvas 合并-重建模式
+
+Game UI 的 Canvas 采用合并-重建（Merge-Rebuild）渲染模式，每帧将 Canvas 下的 UI 网格动态合并后提交 GPU 渲染。
+
+**CanvasDirtyFlag 位标志：**
+
+| 标志 | 值 | 描述 |
+|------|---|------|
+| `VERTICES` | `0b001` | 顶点数据脏，需要重建网格 |
+| `MATERIAL` | `0b010` | 材质数据脏，需要重新分组 |
+| `LAYOUT` | `0b100` | 布局数据脏，需要重新计算布局 |
+
+```rust
+bitflags! {
+    pub struct CanvasDirtyFlag: u8 {
+        const VERTICES = 0b001;
+        const MATERIAL = 0b010;
+        const LAYOUT   = 0b100;
+    }
+}
+```
+
+**CanvasRenderMode 枚举：**
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CanvasRenderMode {
+    /// 屏幕空间覆盖模式
+    ScreenSpaceOverlay,
+    /// 屏幕空间相机模式
+    ScreenSpaceCamera,
+    /// 世界空间模式
+    WorldSpace,
+}
+```
+
+**CanvasElement 结构体：**
+
+```rust
+#[derive(Debug, Clone)]
+pub struct CanvasElement {
+    /// 元素 ID
+    pub id: String,
+    /// 元素的网格数据
+    pub mesh: MeshData,
+    /// 元素的材质
+    pub material: Handle<MaterialAsset>,
+    /// 元素的纹理
+    pub texture: Handle<TextureAsset>,
+    /// 元素的脏标记
+    pub dirty_flags: CanvasDirtyFlag,
+    /// 元素的排序顺序
+    pub sort_order: i32,
+}
+```
+
+**CanvasBatch 结构体：**
+
+```rust
+#[derive(Debug, Clone)]
+pub struct CanvasBatch {
+    /// 批次中的元素 ID 列表
+    pub element_ids: Vec<String>,
+    /// 合并后的网格数据
+    pub merged_mesh: MeshData,
+    /// 批次使用的材质
+    pub material: Handle<MaterialAsset>,
+    /// 批次使用的纹理
+    pub texture: Handle<TextureAsset>,
+    /// 批次的顶点数量
+    pub vertex_count: u32,
+    /// 批次的索引数量
+    pub index_count: u32,
+}
+```
+
+**CanvasRebuilder 结构体：**
+
+```rust
+pub struct CanvasRebuilder {
+    /// 当前帧的批次列表
+    batches: Vec<CanvasBatch>,
+    /// 是否需要重建
+    needs_rebuild: bool,
+}
+
+impl CanvasRebuilder {
+    /// 创建新的重建器
+    pub fn new() -> Self;
+
+    /// 标记需要重建
+    pub fn mark_for_rebuild(&mut self, flag: CanvasDirtyFlag);
+
+    /// 执行网格重建
+    pub fn rebuild(&mut self, elements: &[CanvasElement]) -> &[CanvasBatch];
+
+    /// 动静分离：将频繁变化的元素与静态元素分离
+    pub fn separate_dynamic_elements(
+        &mut self,
+        canvas: &Canvas,
+        threshold: f32,
+    ) -> SeparationResult;
+
+    /// 判断是否需要重建
+    pub fn needs_rebuild(&self) -> bool;
+
+    /// 获取当前批次
+    pub fn batches(&self) -> &[CanvasBatch];
 }
 ```
 

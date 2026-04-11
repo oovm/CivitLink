@@ -747,6 +747,195 @@ Canvas 将 UI 元素提交给 GPU 渲染的流程如下：
 4. **裁剪与遮罩**：通过 gg_ui_clip_rect uniform 实现矩形裁剪，UiMask 组件通过模板缓冲实现遮罩
 5. **渲染顺序**：Canvas 按 sort_order 排序，同一 Canvas 内按兄弟节点顺序渲染
 
+### Game UI 合并-重建模式
+
+Game UI 采用合并-重建（Merge-Rebuild）渲染模式，每帧将 Canvas 下的 UI 网格动态合并为临时大网格后提交 GPU 渲染。
+
+**工作原理：**
+
+1. **动态合并**：每帧 Canvas 收集所有 `CanvasRenderer` 的网格数据，按材质和纹理分组后合并为临时大网格
+2. **材质/纹理分组**：相同材质和纹理的 UI 元素网格合并到同一批次，不同材质/纹理的元素分为不同批次
+3. **脏标记触发重建**：任何 UI 属性变化（位置、颜色、纹理等）触发 `SetVerticesDirty` 或 `SetMaterialDirty`，导致整个 Canvas 重建网格
+4. **全量重建**：与 Editor UI 的局部更新不同，Game UI 在脏标记触发时重建整个 Canvas 的合并网格
+
+**合并-重建流程：**
+
+```
+每帧渲染：
+  Canvas → 收集所有 CanvasRenderer 网格
+    → 按材质/纹理分组
+    → 合并为临时大网格
+    → 提交 GPU 渲染
+    → 丢弃临时网格
+
+属性变化：
+  UI 元素属性变化 → SetVerticesDirty / SetMaterialDirty
+    → Canvas 标记为脏
+    → 下一帧重建整个合并网格
+```
+
+**与保留模式的对比：**
+
+| 特性 | 合并-重建模式（Game UI） | 保留模式（Editor UI） |
+|------|------------------------|---------------------|
+| 网格生命周期 | 每帧临时构建 | 持久化跨帧保留 |
+| 更新策略 | 全量重建 | 局部更新 |
+| 内存分配 | 每帧分配临时对象 | 预分配，零 GC |
+| 适用场景 | 复杂动画、3D 空间 UI | 静态或低频更新的编辑器界面 |
+
+### 动静分离策略
+
+Canvas 动静分离是 Game UI 的重要优化手段，将频繁变化的 UI 元素与静态 UI 元素分离到不同的 Canvas，避免静态元素参与每帧重建。
+
+**核心思想：**
+
+- **频繁变化的 UI**（动态血条、计时器、动画元素等）放置在动态 Canvas 中，每帧执行网格重建
+- **静态 UI**（背景面板、标签文本、装饰元素等）放置在静态 Canvas 中，不参与每帧重建
+- 静态 Canvas 仅在自身元素发生变化时才触发重建，其余帧直接复用上次的合并网格
+
+**分离策略：**
+
+1. **手动分离**：开发者在编辑器中将 UI 元素分配到不同的 Canvas
+2. **自动分离**：`CanvasRebuilder.separate_dynamic_elements()` 方法根据元素的脏标记频率自动建议分离方案
+
+**CanvasRebuilder 分离方法：**
+
+```rust
+impl CanvasRebuilder {
+    pub fn separate_dynamic_elements(
+        &mut self,
+        canvas: &Canvas,
+        threshold: f32
+    ) -> SeparationResult {
+        let mut dynamic_elements = Vec::new();
+        let mut static_elements = Vec::new();
+
+        for element in canvas.elements() {
+            if element.dirty_frequency() > threshold {
+                dynamic_elements.push(element.id());
+            } else {
+                static_elements.push(element.id());
+            }
+        }
+
+        SeparationResult {
+            dynamic_elements,
+            static_elements,
+        }
+    }
+}
+```
+
+**性能收益：**
+
+- 静态 Canvas 跳过每帧重建，CPU 开销接近于零
+- 动态 Canvas 仅包含少量频繁变化的元素，重建开销大幅降低
+- 整体 Draw Call 数量可能增加（多个 Canvas），但 CPU 端重建开销显著减少
+
+### 脏标记重建机制
+
+Canvas 使用 `CanvasDirtyFlag` 脏标记系统追踪 UI 元素的变化状态，实现按需重建。
+
+**CanvasDirtyFlag 位标志：**
+
+| 标志 | 值 | 描述 |
+|------|---|------|
+| `VERTICES` | `0b001` | 顶点数据脏，需要重建网格 |
+| `MATERIAL` | `0b010` | 材质数据脏，需要重新分组 |
+| `LAYOUT` | `0b100` | 布局数据脏，需要重新计算布局 |
+
+**脏标记触发机制：**
+
+- UI 元素的位置、大小、颜色等属性变化时，自动设置 `VERTICES` 脏标记
+- UI 元素的材质、纹理变化时，自动设置 `MATERIAL` 脏标记
+- UI 元素的布局属性变化时，自动设置 `LAYOUT` 脏标记
+
+**重建流程：**
+
+1. Canvas 在每帧开始时检查所有元素的脏标记
+2. 仅重建有脏标记的元素对应的网格
+3. 重建完成后清除所有脏标记
+4. 无脏标记的 Canvas 跳过重建
+
+```rust
+bitflags! {
+    pub struct CanvasDirtyFlag: u8 {
+        const VERTICES = 0b001;
+        const MATERIAL = 0b010;
+        const LAYOUT   = 0b100;
+    }
+}
+```
+
+### Canvas 批处理调试工具
+
+`CanvasBatchDebugger` 是 Game UI 的批处理调试工具，帮助开发者分析和优化 Canvas 的渲染性能。
+
+**功能：**
+
+1. **批处理信息记录**：记录每帧的批处理信息，包括：
+   - Draw Call 数量和详情
+   - 网格合并情况（哪些元素成功合并）
+   - 未合并原因分析（材质不同、纹理不同、层级中断等）
+
+2. **脏标记频率追踪**：追踪每个元素的脏标记触发频率，当超过 50% 的元素频繁变脏时，建议进行动静分离
+
+3. **调试报告生成**：生成包含以下内容的调试报告：
+   - 每帧 Draw Call 数量趋势
+   - 网格重建频率统计
+   - 动静分离建议
+   - 批处理优化建议
+
+**CanvasBatchDebugger 结构：**
+
+```rust
+pub struct CanvasBatchDebugger {
+    frame_records: Vec<FrameBatchRecord>,
+    dirty_frequency_map: HashMap<ElementId, f32>,
+    enabled: bool,
+}
+
+pub struct FrameBatchRecord {
+    frame_index: u32,
+    draw_call_count: u32,
+    batch_details: Vec<BatchDetail>,
+    unmerged_reasons: Vec<UnmergedReason>,
+}
+
+pub struct BatchDetail {
+    element_ids: Vec<ElementId>,
+    vertex_count: u32,
+    material_hash: u64,
+}
+
+pub enum UnmergedReason {
+    DifferentMaterial,
+    DifferentTexture,
+    LayerInterrupt,
+    MaskBoundary,
+}
+```
+
+**使用方式：**
+
+```rust
+let mut debugger = CanvasBatchDebugger::new();
+debugger.enable(true);
+
+// 每帧记录
+debugger.record_frame(&canvas);
+
+// 生成报告
+let report = debugger.generate_report();
+println!("{}", report);
+
+// 获取动静分离建议
+let suggestions = debugger.separation_suggestions(0.5);
+for suggestion in suggestions {
+    println!("建议将 {:?} 分离到动态 Canvas", suggestion.element_ids);
+}
+```
+
 ### UI 着色器示例
 
 #### SDF 文字着色器示例

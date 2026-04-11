@@ -17,6 +17,10 @@ pub mod styles;
 pub mod state;
 /// Flexbox 布局引擎模块
 pub mod layout;
+/// Uber-Shader 模块
+pub mod uber_shader;
+/// UsageHints GPU 驱动变换模块
+pub mod usage_hints;
 
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 use std::sync::{Arc, RwLock};
@@ -168,6 +172,11 @@ pub trait VxComponent: Send + Sync {
 
     /// 标记指定脏标记，默认为空操作
     fn mark_dirty(&mut self, _flag: DirtyFlag) {}
+
+    /// 获取组件的 UsageHints，指示哪些属性变化由 GPU 处理
+    fn usage_hints(&self) -> usage_hints::UsageHints {
+        usage_hints::UsageHints::NONE
+    }
 }
 
 /// 动态 VX 组件，由 VxDocument 转换而来
@@ -184,6 +193,8 @@ pub struct DynamicVxComponent {
     lifecycle: ComponentLifecycle,
     /// 脏标记位标志
     dirty_flags: DirtyFlag,
+    /// UsageHints 标志，指示哪些属性变化由 GPU 处理
+    hints: usage_hints::UsageHints,
 }
 
 impl DynamicVxComponent {
@@ -196,6 +207,7 @@ impl DynamicVxComponent {
             script_source: None,
             lifecycle: ComponentLifecycle::Created,
             dirty_flags: DirtyFlag::NONE,
+            hints: usage_hints::UsageHints::NONE,
         }
     }
 
@@ -213,6 +225,7 @@ impl DynamicVxComponent {
             script_source,
             lifecycle: ComponentLifecycle::Created,
             dirty_flags: DirtyFlag::NONE,
+            hints: usage_hints::UsageHints::NONE,
         }
     }
 
@@ -280,6 +293,10 @@ impl VxComponent for DynamicVxComponent {
 
     fn mark_dirty(&mut self, flag: DirtyFlag) {
         self.dirty_flags |= flag;
+    }
+
+    fn usage_hints(&self) -> usage_hints::UsageHints {
+        self.hints
     }
 }
 
@@ -583,6 +600,14 @@ impl VxComponent for ComponentWrapper {
     fn mark_dirty(&mut self, flag: DirtyFlag) {
         if let Ok(mut comp) = self.inner.write() {
             comp.mark_dirty(flag);
+        }
+    }
+
+    fn usage_hints(&self) -> usage_hints::UsageHints {
+        if let Ok(comp) = self.inner.read() {
+            comp.usage_hints()
+        } else {
+            usage_hints::UsageHints::NONE
         }
     }
 }

@@ -416,6 +416,258 @@ DOM 树 → 布局计算 → 样式计算 → 绘制命令 → 独立渲染器
 | Screen Space | 支持（默认） | 支持 |
 | 帧率 | 跟随编辑器刷新率 | 跟随游戏帧率 |
 
+### 保留模式渲染架构
+
+Editor UI 采用保留模式（Retained Mode）渲染，所有 UI 数据在初始化阶段持久化到 GPU 缓冲区，运行时仅对变化部分进行局部更新。
+
+**核心原则：**
+
+- 所有 VisualElement 的网格数据在初始化时写入 GPU 持久化顶点缓冲区，而非每帧重新生成
+- 后续修改仅局部更新对应区段，通过 `GpuBufferPool` + `GpuBufferRegion` 机制定位并更新变化区域
+- 渲染过程零堆内存分配，所有中间数据使用预分配内存池，避免 GC 压力
+- 静止状态下渲染开销接近于零，仅在有变化时产生极小的 GPU 写入开销
+
+**渲染流程：**
+
+```
+初始化阶段：
+  VisualElement 树 → 生成网格 → 写入 GpuBufferPool → 获得 GpuBufferRegion
+
+运行时更新：
+  属性变化 → 定位 GpuBufferRegion → copy_from_slice 局部更新 → 提交渲染
+```
+
+**与即时模式的对比：**
+
+| 特性 | 保留模式（Editor UI） | 即时模式 |
+|------|---------------------|---------|
+| 数据生命周期 | 持久化，跨帧保留 | 每帧重新提交 |
+| 更新策略 | 局部更新变化部分 | 全量重新提交 |
+| 内存分配 | 预分配，零 GC | 每帧分配临时对象 |
+| 静止开销 | 接近零 | 每帧均有开销 |
+
+### 预分配 GPU 缓冲区
+
+`GpuBufferPool` 是 Editor UI 渲染系统的内存管理核心，负责管理所有 UI 元素的顶点和索引数据。
+
+**工作原理：**
+
+1. **初始化预分配**：在渲染器初始化时，`GpuBufferPool` 预分配大型顶点和索引缓冲区，默认容量为 65536 个顶点，避免运行时动态分配
+2. **区域分配**：每个 VisualElement 在初始化时通过 `GpuBufferPool::allocate()` 获得一个 `GpuBufferRegion`，记录该元素在缓冲区中的偏移量和大小
+3. **局部更新**：当元素属性变化时，通过 `GpuBufferRegion` 定位缓冲区中的对应区段，使用 `copy_from_slice` 直接写入预分配 `Vec` 的对应区段，无需重新分配内存
+4. **高效清除**：`clear()` 操作仅重置 cursor 和 regions 映射，不释放底层 `Vec` 的内存，使得下一帧可以复用已分配的内存空间
+
+**GpuBufferPool 结构：**
+
+```rust
+pub struct GpuBufferPool {
+    vertices: Vec<Vertex>,
+    indices: Vec<u32>,
+    vertex_cursor: usize,
+    index_cursor: usize,
+    regions: HashMap<ElementId, GpuBufferRegion>,
+}
+
+pub struct GpuBufferRegion {
+    vertex_offset: usize,
+    vertex_count: usize,
+    index_offset: usize,
+    index_count: usize,
+}
+```
+
+**内存生命周期：**
+
+```
+初始化 → 预分配 Vec[65536] → cursor = 0
+  ↓
+元素注册 → allocate() → 返回 GpuBufferRegion → cursor 前进
+  ↓
+属性更新 → copy_from_slice(region) → 原地修改 Vec 区段
+  ↓
+帧结束 → clear() → cursor = 0, regions.clear() → Vec 内存保留
+```
+
+### Uber-Shader 机制
+
+Editor UI 使用超级着色器（Uber-Shader）将所有 UI 元素类型合并为单次 Draw Call 提交，极大降低 GPU 状态切换开销。
+
+**EditorUiUberShader 工作原理：**
+
+1. **统一着色器**：`EditorUiUberShader` 通过 `uniform mode` 开关控制不同渲染模式，支持以下模式：
+   - `Rect = 0`：矩形填充，用于面板、按钮背景等
+   - `Text = 1`：SDF 文字渲染，用于文本元素
+   - `Icon = 2`：图标渲染，用于矢量图标
+   - `Image = 3`：图片渲染，用于位图元素
+
+2. **纹理图集**：所有纹理（图标、图片等）打包为统一纹理图集（`TextureAtlas`，默认 2048x2048），通过 UV 偏移采样不同区域，避免纹理切换导致的 Draw Call 中断
+
+3. **单次提交**：所有 UI 元素合并为 1 次 Draw Call 提交，GPU 根据 `uniform mode` 在片段着色器中分支执行不同的渲染逻辑
+
+**着色器伪代码：**
+
+```gs
+shader EditorUiUberShader by UiUnlit {
+    mode: u32 = 0
+    atlas: texture = "white"
+
+    fragment(
+        @location(0) uv: vec2,
+        @location(1) mode: u32
+    ) -> @location(0) vec4 {
+        if mode == 0 {
+            return uniforms.rect_color
+        } else if mode == 1 {
+            let dist = texture_sample(uniforms.atlas, uv).r
+            return vec4(uniforms.text_color.rgb, smoothstep(0.4, 0.6, dist))
+        } else if mode == 2 {
+            return texture_sample(uniforms.atlas, uv)
+        } else {
+            return texture_sample(uniforms.atlas, uv) * uniforms.tint_color
+        }
+    }
+}
+```
+
+**TextureAtlas 布局：**
+
+```
+┌──────────────────────────────────┐
+│  图标区域    │  图片区域          │
+│  (0,0)→      │  (1024,0)→        │
+│              │                   │
+├──────────────┼───────────────────┤
+│  SDF 字体    │  保留区域          │
+│  (0,1024)→   │  (1024,1024)→     │
+│              │                   │
+└──────────────────────────────────┘
+         2048 x 2048
+```
+
+### UsageHints GPU 驱动变换
+
+`UsageHints` 机制允许 UI 元素的位移、颜色、透明度、缩放等变换通过 uniform 传入着色器，由 GPU 执行变换，CPU 不需要重新生成顶点数据。
+
+**UsageHint 枚举：**
+
+| 枚举值 | 描述 | GPU 变换方式 |
+|-------|------|------------|
+| `TransformOffset` | 位移偏移 | 顶点着色器中叠加偏移向量 |
+| `ColorTint` | 颜色调色 | 片段着色器中乘以调色值 |
+| `Opacity` | 透明度 | 片段着色器中乘以透明度系数 |
+| `ScaleTransform` | 缩放变换 | 顶点着色器中应用缩放矩阵 |
+
+**工作流程：**
+
+1. UI 元素声明自身需要的 `UsageHint` 集合
+2. `UsageHintsManager` 收集所有元素的 hints，生成 `GpuTransformUniform` 数据
+3. 着色器通过 uniform 接收变换参数，在 GPU 端执行变换
+4. CPU 仅更新 uniform 数据（几个 float），不重新生成顶点网格
+
+**优势：**
+
+- 位移动画：仅修改 `TransformOffset` 的 `(x, y)` 值，无需重建顶点缓冲区
+- 颜色过渡：仅修改 `ColorTint` 的 `(r, g, b, a)` 值
+- 透明度淡入淡出：仅修改 `Opacity` 的单个 float 值
+- 缩放动画：仅修改 `ScaleTransform` 的 `(sx, sy)` 值
+
+**UsageHintsManager 结构：**
+
+```rust
+pub struct UsageHintsManager {
+    hints_map: HashMap<ElementId, UsageHints>,
+    uniform_data: Vec<GpuTransformUniform>,
+    dirty: bool,
+}
+
+pub struct GpuTransformUniform {
+    transform_offset: Vec2,
+    color_tint: Vec4,
+    opacity: f32,
+    scale_transform: Vec2,
+}
+```
+
+### Yoga/Flexbox 布局引擎
+
+Editor UI 使用自行实现的 Flexbox 核心算法作为布局引擎，不依赖外部 yoga crate，确保引擎的自包含性和可维护性。
+
+**FlexLayoutEngine 工作原理：**
+
+1. **自实现 Flexbox 算法**：`FlexLayoutEngine` 完整实现了 CSS Flexbox 规范的核心算法，支持以下属性：
+   - `flex-direction`：主轴方向（row、column、row-reverse、column-reverse）
+   - `justify-content`：主轴对齐（flex-start、flex-end、center、space-between、space-around、space-evenly）
+   - `align-items` / `align-self`：交叉轴对齐
+   - `flex-wrap`：换行方式（nowrap、wrap、wrap-reverse）
+   - `gap`：子元素间距
+   - `flex-grow` / `flex-shrink` / `flex-basis`：弹性伸缩
+
+2. **脏标记触发布局重算**：当元素的样式或尺寸发生变化时，仅将该节点及其父级链标记为脏节点，布局引擎仅重算脏节点及其影响的子树，避免全量重算
+
+3. **静止时不重算**：当没有任何脏节点时，布局引擎跳过计算，上次计算结果持续有效，实现零开销的静止状态
+
+4. **USS 样式映射**：USS 样式属性通过 `UssStyleMapper` 映射为 `LayoutStyle` 结构体，供布局引擎使用
+
+**布局流程：**
+
+```
+USS 样式 → UssStyleMapper → LayoutStyle → FlexLayoutEngine → LayoutResult
+                                                         ↑
+                                                    脏标记触发
+```
+
+**核心数据结构：**
+
+```rust
+pub struct FlexLayoutEngine {
+    nodes: HashMap<ElementId, LayoutNode>,
+    dirty_nodes: HashSet<ElementId>,
+}
+
+pub struct LayoutNode {
+    style: LayoutStyle,
+    result: LayoutResult,
+    children: Vec<ElementId>,
+    parent: Option<ElementId>,
+}
+
+pub struct LayoutStyle {
+    flex_direction: FlexDirection,
+    justify_content: JustifyContent,
+    align_items: AlignItems,
+    flex_wrap: FlexWrap,
+    gap: (f32, f32),
+    flex_grow: f32,
+    flex_shrink: f32,
+    flex_basis: Length,
+    padding: (f32, f32, f32, f32),
+    margin: (f32, f32, f32, f32),
+    width: Length,
+    height: Length,
+    min_width: Length,
+    min_height: Length,
+    max_width: Length,
+    max_height: Length,
+}
+
+pub struct LayoutResult {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+}
+```
+
+**脏标记传播机制：**
+
+```
+子节点样式变化 → 标记自身为脏 → 向上传播至父级链
+  ↓
+FlexLayoutEngine::compute()
+  ↓
+仅重算脏节点及其子树 → 清除脏标记 → 静止等待下次变化
+```
+
 ## 组件导入与导出
 
 ### 导入组件

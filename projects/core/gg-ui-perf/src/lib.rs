@@ -13,6 +13,12 @@ use std::time::Instant;
 use gg_error::GResult;
 
 /// 性能优化策略
+///
+/// 已弃用，请使用 [`EditorUiOptimization`] 或 [`GameUiOptimization`] 替代
+#[deprecated(
+    since = "0.2.0",
+    note = "请使用 EditorUiOptimization 或 GameUiOptimization 替代"
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OptimizationStrategy {
     /// 批处理
@@ -27,6 +33,36 @@ pub enum OptimizationStrategy {
     LazyLoading,
     /// 资源压缩
     ResourceCompression,
+}
+
+/// Editor UI 专用优化策略
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EditorUiOptimization {
+    /// 预分配 GPU 缓冲区
+    PreallocatedBuffers,
+    /// 脏标记局部更新
+    DirtyFlagPartialUpdate,
+    /// Uber-Shader 合批
+    UberShaderBatching,
+    /// UsageHints GPU 变换
+    UsageHintsGpuTransform,
+    /// 保留模式渲染
+    RetainedModeRendering,
+}
+
+/// Game UI 专用优化策略
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GameUiOptimization {
+    /// Canvas 动静分离
+    CanvasStaticDynamicSeparation,
+    /// 脏标记重建
+    DirtyFlagRebuild,
+    /// 动态批处理
+    DynamicBatching,
+    /// 内存池减少 GC
+    MemoryPoolGcReduction,
+    /// 合并-重建模式
+    MergeRebuildMode,
 }
 
 /// 性能统计
@@ -425,6 +461,154 @@ impl<T> MemoryPool<T> {
     }
 }
 
+/// Editor UI 优化器
+///
+/// 专门针对编辑器 UI 场景的优化器，管理 Editor UI 专用优化策略的启用和执行
+pub struct EditorUiOptimizer {
+    /// 启用的策略列表
+    enabled_strategies: Vec<EditorUiOptimization>,
+    /// 性能统计
+    stats: PerformanceStats,
+}
+
+impl EditorUiOptimizer {
+    /// 创建新的 Editor UI 优化器，默认启用所有 Editor UI 策略
+    pub fn new() -> Self {
+        Self {
+            enabled_strategies: vec![
+                EditorUiOptimization::PreallocatedBuffers,
+                EditorUiOptimization::DirtyFlagPartialUpdate,
+                EditorUiOptimization::UberShaderBatching,
+                EditorUiOptimization::UsageHintsGpuTransform,
+                EditorUiOptimization::RetainedModeRendering,
+            ],
+            stats: PerformanceStats::default(),
+        }
+    }
+
+    /// 启用指定的 Editor UI 优化策略
+    pub fn enable(&mut self, strategy: EditorUiOptimization) {
+        if !self.enabled_strategies.contains(&strategy) {
+            self.enabled_strategies.push(strategy);
+        }
+    }
+
+    /// 禁用指定的 Editor UI 优化策略
+    pub fn disable(&mut self, strategy: EditorUiOptimization) {
+        self.enabled_strategies.retain(|&s| s != strategy);
+    }
+
+    /// 执行 Editor UI 优化
+    pub fn optimize(&mut self) -> GResult<()> {
+        if self.enabled_strategies.contains(&EditorUiOptimization::PreallocatedBuffers) {
+            // 预分配 GPU 缓冲区优化逻辑
+        }
+        if self.enabled_strategies.contains(&EditorUiOptimization::DirtyFlagPartialUpdate) {
+            // 脏标记局部更新优化逻辑
+        }
+        if self.enabled_strategies.contains(&EditorUiOptimization::UberShaderBatching) {
+            // Uber-Shader 合批优化逻辑
+        }
+        if self.enabled_strategies.contains(&EditorUiOptimization::UsageHintsGpuTransform) {
+            // UsageHints GPU 变换优化逻辑
+        }
+        if self.enabled_strategies.contains(&EditorUiOptimization::RetainedModeRendering) {
+            // 保留模式渲染优化逻辑
+        }
+        Ok(())
+    }
+
+    /// 更新性能统计
+    pub fn update_stats(&mut self, stats: PerformanceStats) {
+        self.stats = stats;
+    }
+
+    /// 获取性能统计
+    pub fn get_stats(&self) -> &PerformanceStats {
+        &self.stats
+    }
+}
+
+impl Default for EditorUiOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Game UI 优化器
+///
+/// 专门针对游戏 UI 场景的优化器，管理 Game UI 专用优化策略的启用和执行
+pub struct GameUiOptimizer {
+    /// 启用的策略列表
+    enabled_strategies: Vec<GameUiOptimization>,
+    /// 性能统计
+    stats: PerformanceStats,
+}
+
+impl GameUiOptimizer {
+    /// 创建新的 Game UI 优化器，默认启用所有 Game UI 策略
+    pub fn new() -> Self {
+        Self {
+            enabled_strategies: vec![
+                GameUiOptimization::CanvasStaticDynamicSeparation,
+                GameUiOptimization::DirtyFlagRebuild,
+                GameUiOptimization::DynamicBatching,
+                GameUiOptimization::MemoryPoolGcReduction,
+                GameUiOptimization::MergeRebuildMode,
+            ],
+            stats: PerformanceStats::default(),
+        }
+    }
+
+    /// 启用指定的 Game UI 优化策略
+    pub fn enable(&mut self, strategy: GameUiOptimization) {
+        if !self.enabled_strategies.contains(&strategy) {
+            self.enabled_strategies.push(strategy);
+        }
+    }
+
+    /// 禁用指定的 Game UI 优化策略
+    pub fn disable(&mut self, strategy: GameUiOptimization) {
+        self.enabled_strategies.retain(|&s| s != strategy);
+    }
+
+    /// 执行 Game UI 优化
+    pub fn optimize(&mut self) -> GResult<()> {
+        if self.enabled_strategies.contains(&GameUiOptimization::CanvasStaticDynamicSeparation) {
+            // Canvas 动静分离优化逻辑
+        }
+        if self.enabled_strategies.contains(&GameUiOptimization::DirtyFlagRebuild) {
+            // 脏标记重建优化逻辑
+        }
+        if self.enabled_strategies.contains(&GameUiOptimization::DynamicBatching) {
+            // 动态批处理优化逻辑
+        }
+        if self.enabled_strategies.contains(&GameUiOptimization::MemoryPoolGcReduction) {
+            // 内存池减少 GC 优化逻辑
+        }
+        if self.enabled_strategies.contains(&GameUiOptimization::MergeRebuildMode) {
+            // 合并-重建模式优化逻辑
+        }
+        Ok(())
+    }
+
+    /// 更新性能统计
+    pub fn update_stats(&mut self, stats: PerformanceStats) {
+        self.stats = stats;
+    }
+
+    /// 获取性能统计
+    pub fn get_stats(&self) -> &PerformanceStats {
+        &self.stats
+    }
+}
+
+impl Default for GameUiOptimizer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// 性能优化器
 pub struct PerformanceOptimizer {
     /// 批处理管理器
@@ -437,8 +621,10 @@ pub struct PerformanceOptimizer {
     memory_pool: MemoryPool<Vec<f32>>,
     /// 性能统计
     performance_stats: PerformanceStats,
-    /// 启用的优化策略
-    enabled_strategies: Vec<OptimizationStrategy>,
+    /// Editor UI 优化器
+    editor_optimizer: EditorUiOptimizer,
+    /// Game UI 优化器
+    game_optimizer: GameUiOptimizer,
 }
 
 impl PerformanceOptimizer {
@@ -446,88 +632,48 @@ impl PerformanceOptimizer {
     pub fn new() -> Self {
         Self {
             batching_manager: BatchingManager::new(100),
-            cache_manager: CacheManager::new(1024 * 1024 * 100), // 100MB
+            cache_manager: CacheManager::new(1024 * 1024 * 100),
             multi_thread_manager: MultiThreadManager::new(num_cpus::get()),
             memory_pool: MemoryPool::new(1000, || Vec::with_capacity(1024)),
             performance_stats: PerformanceStats::default(),
-            enabled_strategies: vec![
-                OptimizationStrategy::Batching,
-                OptimizationStrategy::Caching,
-                OptimizationStrategy::MultiThreading,
-                OptimizationStrategy::MemoryPooling,
-            ],
+            editor_optimizer: EditorUiOptimizer::new(),
+            game_optimizer: GameUiOptimizer::new(),
         }
-    }
-
-    /// 启用优化策略
-    pub fn enable_strategy(&mut self, strategy: OptimizationStrategy) {
-        if !self.enabled_strategies.contains(&strategy) {
-            self.enabled_strategies.push(strategy);
-        }
-    }
-
-    /// 禁用优化策略
-    pub fn disable_strategy(&mut self, strategy: OptimizationStrategy) {
-        self.enabled_strategies.retain(|&s| s != strategy);
     }
 
     /// 执行批处理优化
     pub fn optimize_batching(&mut self, commands: Vec<RenderCommand>) -> GResult<()> {
-        if self.enabled_strategies.contains(&OptimizationStrategy::Batching) {
-            for command in commands {
-                self.batching_manager.add_render_command(command);
-            }
-            self.batching_manager.execute_batches()?;
+        for command in commands {
+            self.batching_manager.add_render_command(command);
         }
-        Ok(())
+        self.batching_manager.execute_batches()
     }
 
     /// 执行缓存优化
     pub fn optimize_caching(&mut self, key: &str, data: Vec<u8>) -> GResult<Arc<Mutex<CacheItem<Vec<u8>>>>> {
-        if self.enabled_strategies.contains(&OptimizationStrategy::Caching) {
-            if let Some(item) = self.cache_manager.get(key) {
-                Ok(item)
-            } else {
-                self.cache_manager.put(key.to_string(), data, data.len())
-            }
+        if let Some(item) = self.cache_manager.get(key) {
+            Ok(item)
         } else {
-            Ok(Arc::new(Mutex::new(CacheItem {
-                data,
-                size: data.len(),
-                last_accessed: Instant::now(),
-                ref_count: 1,
-            })))
+            let size = data.len();
+            self.cache_manager.put(key.to_string(), data, size)
         }
     }
 
     /// 执行多线程优化
     pub fn optimize_multi_threading(&self, tasks: Vec<Box<dyn FnOnce() + Send + 'static>>) {
-        if self.enabled_strategies.contains(&OptimizationStrategy::MultiThreading) {
-            for task in tasks {
-                self.multi_thread_manager.add_task(task);
-            }
-        } else {
-            // 单线程执行
-            for task in tasks {
-                task();
-            }
+        for task in tasks {
+            self.multi_thread_manager.add_task(task);
         }
     }
 
     /// 执行内存池优化
     pub fn optimize_memory_pooling(&mut self) -> Vec<f32> {
-        if self.enabled_strategies.contains(&OptimizationStrategy::MemoryPooling) {
-            self.memory_pool.acquire()
-        } else {
-            Vec::with_capacity(1024)
-        }
+        self.memory_pool.acquire()
     }
 
     /// 释放内存池对象
     pub fn release_memory_pool_object(&mut self, obj: Vec<f32>) {
-        if self.enabled_strategies.contains(&OptimizationStrategy::MemoryPooling) {
-            self.memory_pool.release(obj);
-        }
+        self.memory_pool.release(obj);
     }
 
     /// 更新性能统计
@@ -540,25 +686,34 @@ impl PerformanceOptimizer {
         &self.performance_stats
     }
 
-    /// 优化编辑器UI性能
+    /// 优化编辑器UI性能，委托给 Editor UI 优化器执行
     pub fn optimize_editor_ui(&mut self) -> GResult<()> {
-        // 编辑器UI性能优化策略
-        // 1. 使用批处理减少绘制调用
-        // 2. 使用缓存减少重复计算
-        // 3. 使用多线程处理复杂计算
-        // 4. 使用内存池减少内存分配
-        Ok(())
+        self.editor_optimizer.optimize()
     }
 
-    /// 优化游戏UI性能
+    /// 优化游戏UI性能，委托给 Game UI 优化器执行
     pub fn optimize_game_ui(&mut self) -> GResult<()> {
-        // 游戏UI性能优化策略
-        // 1. 使用批处理减少绘制调用
-        // 2. 使用缓存减少重复计算
-        // 3. 使用多线程处理复杂计算
-        // 4. 使用内存池减少内存分配
-        // 5. 实现动静分离，减少重建开销
-        Ok(())
+        self.game_optimizer.optimize()
+    }
+
+    /// 获取 Editor UI 优化器的不可变引用
+    pub fn editor_optimizer(&self) -> &EditorUiOptimizer {
+        &self.editor_optimizer
+    }
+
+    /// 获取 Game UI 优化器的不可变引用
+    pub fn game_optimizer(&self) -> &GameUiOptimizer {
+        &self.game_optimizer
+    }
+
+    /// 获取 Editor UI 优化器的可变引用
+    pub fn editor_optimizer_mut(&mut self) -> &mut EditorUiOptimizer {
+        &mut self.editor_optimizer
+    }
+
+    /// 获取 Game UI 优化器的可变引用
+    pub fn game_optimizer_mut(&mut self) -> &mut GameUiOptimizer {
+        &mut self.game_optimizer
     }
 }
 
@@ -979,6 +1134,248 @@ impl CanvasRebuilder {
     }
 }
 
+/// 批处理合并结果
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BatchMergeResult {
+    /// 成功合并
+    Merged,
+    /// 材质不同，无法合并
+    MaterialDifferent,
+    /// 纹理不同，无法合并
+    TextureDifferent,
+    /// 渲染顺序被中断
+    SortOrderInterrupted,
+}
+
+/// 单个 Canvas 的批处理信息
+#[derive(Debug, Clone)]
+pub struct CanvasBatchInfo {
+    /// Canvas ID
+    pub canvas_id: String,
+    /// 总 Draw Call 数量
+    pub total_draw_calls: u32,
+    /// 总批次数
+    pub total_batches: u32,
+    /// 总元素数量
+    pub total_elements: usize,
+    /// 每个元素的合并结果
+    pub merge_results: Vec<(String, BatchMergeResult)>,
+    /// 是否为静态 Canvas
+    pub is_static: bool,
+}
+
+/// 动静分离建议
+#[derive(Debug, Clone)]
+pub struct DynamicSeparationSuggestion {
+    /// 建议分离的元素 ID
+    pub element_id: String,
+    /// 当前所在 Canvas ID
+    pub parent_canvas_id: String,
+    /// 分离原因
+    pub reason: String,
+    /// 脏标记频率（0.0~1.0）
+    pub dirty_frequency: f32,
+}
+
+/// 批处理调试器
+pub struct CanvasBatchDebugger {
+    /// 所有 Canvas 的批处理信息
+    pub canvas_infos: Vec<CanvasBatchInfo>,
+    /// 动静分离建议
+    pub suggestions: Vec<DynamicSeparationSuggestion>,
+    /// 元素 ID → 最近 N 帧的脏标记历史
+    pub dirty_history: HashMap<String, Vec<bool>>,
+    /// 历史窗口大小（默认 60 帧）
+    pub history_window: usize,
+}
+
+impl CanvasBatchDebugger {
+    /// 创建新的批处理调试器
+    pub fn new() -> Self {
+        Self {
+            canvas_infos: Vec::new(),
+            suggestions: Vec::new(),
+            dirty_history: HashMap::new(),
+            history_window: 60,
+        }
+    }
+
+    /// 记录一帧的批处理信息，接收所有 Canvas 的 CanvasRebuilder 引用
+    pub fn record_frame(&mut self, rebuilders: &[&CanvasRebuilder]) {
+        self.canvas_infos.clear();
+
+        for rebuilder in rebuilders {
+            let total_draw_calls: u32 = rebuilder.batches.iter().map(|b| b.draw_call_count).sum();
+            let total_batches = rebuilder.batches.len() as u32;
+            let total_elements = rebuilder.elements.len();
+            let merge_results = Self::compute_merge_results(rebuilder);
+
+            for element in &rebuilder.elements {
+                let is_dirty = !element.dirty_flags.is_empty();
+                let history = self.dirty_history.entry(element.id.clone()).or_default();
+                history.push(is_dirty);
+                if history.len() > self.history_window {
+                    history.remove(0);
+                }
+            }
+
+            self.canvas_infos.push(CanvasBatchInfo {
+                canvas_id: rebuilder.canvas_id.clone(),
+                total_draw_calls,
+                total_batches,
+                total_elements,
+                merge_results,
+                is_static: rebuilder.is_static,
+            });
+        }
+    }
+
+    /// 分析所有 Canvas 的批处理数据，生成动静分离建议。
+    /// 规则：如果元素在最近 N 帧中脏标记频率超过 50%，建议分离到独立 Canvas
+    pub fn analyze(&self) -> Vec<DynamicSeparationSuggestion> {
+        let mut result = Vec::new();
+
+        for canvas_info in &self.canvas_infos {
+            for (element_id, _) in &canvas_info.merge_results {
+                if let Some(history) = self.dirty_history.get(element_id) {
+                    if history.is_empty() {
+                        continue;
+                    }
+                    let dirty_count = history.iter().filter(|&&d| d).count();
+                    let frequency = dirty_count as f32 / history.len() as f32;
+                    if frequency > 0.5 {
+                        result.push(DynamicSeparationSuggestion {
+                            element_id: element_id.clone(),
+                            parent_canvas_id: canvas_info.canvas_id.clone(),
+                            reason: format!(
+                                "元素脏标记频率 {:.1}% 超过阈值 50%，建议分离到独立动态 Canvas",
+                                frequency * 100.0
+                            ),
+                            dirty_frequency: frequency,
+                        });
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    /// 获取指定 Canvas 的批处理信息
+    pub fn get_canvas_info(&self, canvas_id: &str) -> Option<&CanvasBatchInfo> {
+        self.canvas_infos.iter().find(|info| info.canvas_id == canvas_id)
+    }
+
+    /// 生成调试报告，包含每个 Canvas 的 Draw Call 数量、批处理合并情况、未合并原因、动静分离建议
+    pub fn generate_report(&self) -> String {
+        let mut report = String::new();
+
+        report.push_str("=== Canvas Batch Debug Report ===\n\n");
+
+        for canvas_info in &self.canvas_infos {
+            report.push_str(&format!("Canvas: {}\n", canvas_info.canvas_id));
+            report.push_str(&format!(
+                "  Static: {}\n",
+                if canvas_info.is_static { "Yes" } else { "No" }
+            ));
+            report.push_str(&format!("  Draw Calls: {}\n", canvas_info.total_draw_calls));
+            report.push_str(&format!("  Batches: {}\n", canvas_info.total_batches));
+            report.push_str(&format!("  Elements: {}\n", canvas_info.total_elements));
+
+            report.push_str("  Merge Results:\n");
+            for (element_id, merge_result) in &canvas_info.merge_results {
+                let label = match merge_result {
+                    BatchMergeResult::Merged => "Merged",
+                    BatchMergeResult::MaterialDifferent => "Material Different",
+                    BatchMergeResult::TextureDifferent => "Texture Different",
+                    BatchMergeResult::SortOrderInterrupted => "Sort Order Interrupted",
+                };
+                report.push_str(&format!("    {} -> {}\n", element_id, label));
+            }
+
+            report.push('\n');
+        }
+
+        let suggestions = self.analyze();
+        if suggestions.is_empty() {
+            report.push_str("No dynamic separation suggestions.\n");
+        } else {
+            report.push_str("=== Dynamic Separation Suggestions ===\n\n");
+            for suggestion in &suggestions {
+                report.push_str(&format!("Element: {}\n", suggestion.element_id));
+                report.push_str(&format!("  Canvas: {}\n", suggestion.parent_canvas_id));
+                report.push_str(&format!("  Reason: {}\n", suggestion.reason));
+                report.push_str(&format!(
+                    "  Dirty Frequency: {:.1}%\n",
+                    suggestion.dirty_frequency * 100.0
+                ));
+                report.push('\n');
+            }
+        }
+
+        report
+    }
+
+    /// 计算每个元素的合并结果
+    fn compute_merge_results(rebuilder: &CanvasRebuilder) -> Vec<(String, BatchMergeResult)> {
+        let mut results = Vec::new();
+        let elements = &rebuilder.elements;
+
+        for element in elements {
+            let element_key = (element.material_id, element.texture_id);
+            let same_group_count = elements
+                .iter()
+                .filter(|e| (e.material_id, e.texture_id) == element_key)
+                .count();
+
+            if same_group_count > 1 {
+                let group_sort_orders: Vec<i32> = elements
+                    .iter()
+                    .filter(|e| (e.material_id, e.texture_id) == element_key)
+                    .map(|e| e.sort_order)
+                    .collect();
+
+                let min_sort = *group_sort_orders.iter().min().unwrap_or(&element.sort_order);
+                let max_sort = *group_sort_orders.iter().max().unwrap_or(&element.sort_order);
+
+                let has_interrupt = elements
+                    .iter()
+                    .filter(|e| (e.material_id, e.texture_id) != element_key)
+                    .any(|other| other.sort_order >= min_sort && other.sort_order <= max_sort);
+
+                if has_interrupt {
+                    results.push((element.id.clone(), BatchMergeResult::SortOrderInterrupted));
+                } else {
+                    results.push((element.id.clone(), BatchMergeResult::Merged));
+                }
+            } else {
+                let has_same_material_diff_texture = elements
+                    .iter()
+                    .any(|e| e.material_id == element.material_id && e.texture_id != element.texture_id);
+                let has_diff_material = elements
+                    .iter()
+                    .any(|e| e.material_id != element.material_id);
+
+                if has_same_material_diff_texture {
+                    results.push((element.id.clone(), BatchMergeResult::TextureDifferent));
+                } else if has_diff_material {
+                    results.push((element.id.clone(), BatchMergeResult::MaterialDifferent));
+                } else {
+                    results.push((element.id.clone(), BatchMergeResult::Merged));
+                }
+            }
+        }
+
+        results
+    }
+}
+
+impl Default for CanvasBatchDebugger {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// 性能优化模块
 pub mod perf {
     use super::*;
@@ -1011,5 +1408,15 @@ pub mod perf {
     /// 创建内存池
     pub fn create_memory_pool<T>(max_pool_size: usize, create_fn: impl Fn() -> T + 'static) -> MemoryPool<T> {
         MemoryPool::new(max_pool_size, create_fn)
+    }
+
+    /// 创建 Editor UI 优化器
+    pub fn create_editor_ui_optimizer() -> EditorUiOptimizer {
+        EditorUiOptimizer::new()
+    }
+
+    /// 创建 Game UI 优化器
+    pub fn create_game_ui_optimizer() -> GameUiOptimizer {
+        GameUiOptimizer::new()
     }
 }

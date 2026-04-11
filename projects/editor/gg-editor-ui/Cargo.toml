@@ -8,6 +8,7 @@ license = { workspace = true }
 
 [dependencies]
 oak-voc = { workspace = true }
+gg-error = { workspace = true }
 
 [features]
 default = []
