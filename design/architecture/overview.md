@@ -27,7 +27,7 @@ graph TD
     subgraph B1[具体游戏引擎组件]
         B1_1[Galgame插件 静态链接]
         B1_2[STG插件 静态链接]
-        B1_3[基础UI插件 静态链接]
+        B1_3[Game UI System 插件 静态链接]
         B1_4[内置编辑器（可选）]
         B1_5[运行时（ECS调度器）]
     end
@@ -113,8 +113,8 @@ graph TD
 
 - **文件系统抽象**：统一接口访问各平台存储
 - **输入抽象**：统一处理按键、鼠标/触摸、游戏手柄等事件
-- **渲染抽象**：基于 `wgpu` 统一图形渲染（游戏渲染和游戏 UI 渲染）
-- **GUI 抽象**：统一处理各平台原生 GUI 系统（编辑器 UI 渲染）
+- **渲染抽象**：基于 `wgpu` 统一图形渲染，服务游戏渲染和 Game UI System（Canvas + GPU 渲染）
+- **GUI 抽象**：仅服务 Editor UI Toolkit，处理各平台原生 GUI 系统差异（独立渲染器）
 - **音频抽象**：统一播放控制，支持常见格式
 - **时间与线程抽象**：统一获取系统时间、休眠、线程生成
 - **动态链接与虚拟机支持**：确保 gg 虚拟机能在目标平台运行
@@ -136,10 +136,10 @@ graph TD
 
 - **core/**: 核心抽象与基础类型，包括共享数据结构、错误类型、HAL 接口定义、ECS 核心实现和统一资产处理框架
 - **compiler/**: 编译器相关模块，包括编译流水线图调度器、转换器 trait、脚本语言前端、AOT 编译后端、\*.widget 文件编译器和可移植字节码定义/解释器
-- **editor/**: 跨平台 GUI 开发框架，包括 GUI 框架核心、GUI 编译器、GUI 运行时、基础 GUI 组件库和可视化 GUI 设计器
+- **editor/**: Editor UI Toolkit，包括 GUI 框架核心、GUI 编译器、GUI 运行时、基础 GUI 组件库和可视化 GUI 设计器，仅用于编辑器界面开发
 - **runtime/**: 运行时相关模块，包括系统调度器、宿主服务接口、HMR 状态迁移、渲染后端抽象、GUI 运行时抽象、音频后端抽象和脚本运行时（包含 Valkyrie 脚本系统）
 - **platforms/**: 平台特定胶水层，包括 Windows/macOS/Linux、WebAssembly/WebGL 和 iOS/Android（预留）
-- **plugins/**: 官方提供的领域专用插件模块，包括视觉小说/对话系统插件、瓦片地图与碰撞插件、Spine 骨骼动画支持和通用 UI 系统
+- **plugins/**: 官方提供的领域专用插件模块，包括视觉小说/对话系统插件、瓦片地图与碰撞插件、Spine 骨骼动画支持和 Game UI System（游戏运行时 UI，基于 ECS + Canvas 体系）
 - **examples/**: 示例，展示如何使用 gg 引擎定制各环节
 
 ## gg 引擎架构分层图
@@ -156,7 +156,8 @@ graph TD
     B -->|依赖| C
     
     subgraph A1[游戏开发者视角组件]
-        A1_1[GG Editor 跨平台 GUI 开发框架 + *.widget 文件支持]
+        A1_1[GG Editor UI Toolkit + *.vx 文件支持（仅编辑器界面）]
+        A1_1b[Game UI System + *.gameui 文件支持（游戏运行时 UI）]
         A1_2[游戏运行时 gg-runtime-core + 领域系统]
         A1_3[Mod / DLC 沙盒 VM + 资产覆盖层]
     end
@@ -238,11 +239,11 @@ entity NPC {
 
 因此，**定义GOM就是定义一半的游戏引擎**。元引擎提供了高度可扩展的GOM编辑器，允许引擎开发者可视化地设计组件、事件流，并自动获得编辑器和运行时的支持。
 
-## GG Editor - 跨平台 GUI 开发框架
+## GG Editor UI Toolkit
 
 ### 定位与目标
 
-GG Editor 重新定位为跨平台 GUI 开发框架，主要用于编辑器界面的开发，采用原生渲染方式以获得更好的性能和原生体验。游戏内的 UI（如游戏菜单、HUD 等）仍使用 WGPU 自渲，确保与游戏渲染的一致性和性能。
+GG Editor UI Toolkit 是 GG Editor 专用的声明式 UI 框架，基于文档对象模型（DOM），借鉴 Web 前端设计理念，仅用于编辑器界面开发。它拥有独立渲染器，直接在图形设备层上工作，默认绘制在游戏画面最上层。游戏内的 UI（如游戏菜单、HUD 等）使用独立的 Game UI System，基于 ECS + Canvas 体系，确保与游戏渲染的一致性和对 3D 空间 UI、着色器特效的支持。
 
 ### \*.widget 文件格式
 
@@ -265,16 +266,16 @@ GG Editor 使用类似 Vue 的 \*.widget 文件格式，包含三个部分：
 
 ### 架构组成
 
-1. **编译器**：将 \*.widget 文件编译为平台特定的 GUI 代码
-   - 解析 \*.widget 文件结构
+1. **编译器**：编译 *.widget 文件为 Editor UI Toolkit 的平台特定代码
+   - 解析 *.widget 文件结构
    - 编译 <template> 部分为平台特定的 GUI 代码
    - 编译 <script> 部分为 Valkyrie 脚本
    - 编译 <style> 部分为 GG Renderer 可处理的样式
-2. **运行时**：跨平台 GUI 运行时，支持在各大平台上以原生形式运行
+2. **运行时**：Editor UI 运行时，仅用于编辑器 UI 渲染
    - 平台抽象层：处理不同平台原生 GUI 系统的差异
-   - 原生 GUI 渲染：使用各平台的原生 GUI 系统
+   - 原生 GUI 渲染：使用各平台的原生 GUI 系统（仅针对编辑器 UI）
    - 与游戏引擎集成：与 ECS 架构无缝集成
-3. **编辑器**：可视化编辑 \*.widget 文件
+3. **编辑器**：可视化编辑 *.widget 文件
    - 语法高亮和代码提示
    - 实时预览
    - 热更新支持
@@ -297,6 +298,44 @@ GG Editor 与游戏引擎的 ECS 架构无缝集成，GUI 系统可以：
 - 访问游戏世界的实体和组件
 - 响应游戏事件
 - 触发游戏逻辑
+
+## Game UI System - 游戏运行时 UI 系统
+
+### 定位与目标
+
+Game UI System 是游戏运行时专用的 UI 框架，基于 ECS/GameObject 体系，类似 Unity uGUI。每个 UI 元素（按钮、图片、文字等）都是一个 Entity，挂载着 UiCanvas、UiImage、UiText 等组件，完全遵循 ECS 工作流。所有 UI 元素必须在 UiCanvas 组件下，Canvas 负责批量处理并提交给 GPU 渲染。
+
+### 核心特性
+
+- **基于 ECS**：UI 元素作为 Entity 存在于 ECS 世界中，可响应游戏事件，与游戏逻辑无缝集成
+- **Canvas 管理**：Canvas 负责批量处理 UI 元素并提交给 GPU 渲染，支持 Batch 合批优化
+- **3D 空间融合**：Canvas 可设置为 WorldSpace 模式，让 UI 像普通 3D 物体一样存在于游戏世界中（角色头顶血条、VR/AR 界面等）
+- **着色器支持**：UI 元素可通过 UiMaterial 引用 *.shader 文件，支持特效、动画和后处理
+- **动画系统**：与 *.animation 文件集成，支持 UI 元素的变换动画、颜色动画和自定义属性动画
+
+### *.prefab 文件格式
+
+Game UI System 使用 *.prefab 文件格式（RON 格式），包含 Canvas 配置、Entity 层级、UI 组件属性和着色器引用。详见 [Game UI 文件格式规范](/formats/gameui)。
+
+### Canvas 渲染模式
+
+| 模式 | 描述 | 适用场景 |
+|------|------|---------|
+| ScreenSpace | UI 绘制在屏幕最上层，不随相机移动 | 游戏 HUD、主菜单 |
+| WorldSpace | UI 存在于 3D 世界中，像普通 3D 物体 | 角色头顶血条、VR/AR 界面 |
+| CameraSpace | UI 跟随相机但保持固定距离 | 准星、提示信息 |
+
+### 与 Editor UI Toolkit 的边界
+
+| 对比维度 | Editor UI Toolkit (*.widget) | Game UI System (*.prefab) |
+|---------|-------------------------|--------------------------|
+| 用途 | 编辑器界面 | 游戏运行时 UI |
+| 技术体系 | DOM 模型，声明式 | ECS/GameObject，组件式 |
+| 渲染方式 | 独立渲染器 | Canvas + GPU 渲染 |
+| 样式管理 | USS 样式系统 | 组件内联属性 |
+| 3D 空间 | 不支持 | 支持 WorldSpace 模式 |
+| 着色器 | 不支持 | 支持 UiMaterial |
+| 动画 | CSS 过渡 | *.animation 动画系统 |
 
 ## 设计原则
 

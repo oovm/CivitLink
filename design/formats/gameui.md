@@ -1,8 +1,8 @@
-# *.gameui 文件格式规范
+# *.prefab 文件格式规范
 
 ## 概述
 
-*.gameui 文件是 GG 游戏引擎用于存储游戏运行时 UI 的文件格式，基于 ECS/GameObject + Canvas 体系，类似 Unity uGUI。每个 UI 元素都是一个 Entity，通过挂载不同的 UI 组件来实现丰富的界面功能。
+*.prefab 文件是 GG 游戏引擎用于存储游戏运行时 UI 的文件格式，基于 ECS/GameObject + Canvas 体系，类似 Unity uGUI。每个 UI 元素都是一个 Entity，通过挂载不同的 UI 组件来实现丰富的界面功能。
 
 核心设计原则：
 
@@ -11,11 +11,11 @@
 - **RectTransform 布局**：UI 元素使用 UiRectTransform 替代普通 Transform，支持锚点、轴心等布局特性
 - **3D 空间支持**：通过 WorldSpace 模式，UI 可存在于 3D 世界中，支持着色器特效和复杂动画
 
-> **重要声明**：*.gameui 仅用于游戏运行时 UI。编辑器界面请使用 *.vx 文件（DOM 模型），两者体系完全不同，不可混用。
+> **重要声明**：*.prefab 仅用于游戏运行时 UI。编辑器界面请使用 *.widget 文件（DOM 模型），两者体系完全不同，不可混用。
 
 ## 文件结构
 
-一个完整的 *.gameui 文件是一个 RON 格式的文本文件，用于描述游戏运行时 UI 的结构和属性。
+一个完整的 *.prefab 文件是一个 RON 格式的文本文件，用于描述游戏运行时 UI 的结构和属性。
 
 ### 基本结构
 
@@ -135,7 +135,7 @@ GameUiFile({
 
 ## Canvas 配置结构
 
-UiCanvas 是所有 UI 元素的根容器，决定 UI 的渲染方式和空间关系。每个 *.gameui 文件必须包含一个根 UiCanvas 实体。
+UiCanvas 是所有 UI 元素的根容器，决定 UI 的渲染方式和空间关系。每个 *.prefab 文件必须包含一个根 UiCanvas 实体。
 
 ### ScreenSpace 模式
 
@@ -227,7 +227,7 @@ CameraSpace 额外属性说明：
 
 ### UiCanvas（必须组件）
 
-UiCanvas 是所有 UI 的根容器组件，每个 *.gameui 文件的根实体必须挂载此组件。
+UiCanvas 是所有 UI 的根容器组件，每个 *.prefab 文件的根实体必须挂载此组件。
 
 ```ron
 Component({
@@ -696,7 +696,7 @@ MaterialFile({
 
 ## Game UI 动画系统
 
-Game UI 与 *.anim 文件无缝集成，动画轨道目标为 UI 组件属性，实现 UI 动画效果。
+Game UI 与 *.animation 文件无缝集成，动画轨道目标为 UI 组件属性，实现 UI 动画效果。
 
 ### 动画轨道目标
 
@@ -1627,14 +1627,14 @@ GameUiFile({
 
 ### 明确声明
 
-- **\*.gameui** 仅用于游戏运行时 UI，基于 ECS/GameObject + Canvas 体系
-- **\*.vx** 仅用于编辑器界面，基于 DOM 模型
+- **\*.prefab** 仅用于游戏运行时 UI，基于 ECS/GameObject + Canvas 体系
+- **\*.widget** 仅用于编辑器界面，基于 DOM 模型
 
 两者体系完全不同，不可混用。
 
 ### 对比表
 
-| 特性 | *.gameui | *.vx |
+| 特性 | *.prefab | *.widget |
 |------|----------|------|
 | 用途 | 游戏运行时 UI | 编辑器界面 |
 | 体系 | ECS/GameObject + Canvas | DOM 模型 |
@@ -1642,7 +1642,7 @@ GameUiFile({
 | 渲染 | GPU 渲染，着色器驱动 | WebView 渲染 |
 | 3D 空间 | 支持（WorldSpace 模式） | 不支持 |
 | 着色器特效 | 支持（UiMaterial/UiCustom） | 不支持 |
-| 动画 | *.anim 集成，关键帧动画 | CSS Transition/Animation |
+| 动画 | *.animation 集成，关键帧动画 | CSS Transition/Animation |
 | 交互 | UiButton/UiToggle/UiSlider | DOM 事件 |
 | 性能 | 高性能，适合复杂游戏 UI | 适合工具界面，开发效率高 |
 | 自适应 | reference_resolution + match_mode | 响应式布局 |
@@ -1650,7 +1650,7 @@ GameUiFile({
 
 ## 最佳实践
 
-1. **Canvas 组织**：每个独立的 UI 界面使用一个 *.gameui 文件，避免单个文件过于庞大。
+1. **Canvas 组织**：每个独立的 UI 界面使用一个 *.prefab 文件，避免单个文件过于庞大。
 2. **层次结构**：保持实体层次结构清晰，Canvas → Panel → Element，避免过深的嵌套。
 3. **锚点使用**：合理使用锚点实现自适应布局，避免硬编码像素位置。
 4. **图集合并**：将频繁使用的 UI 纹理合并为图集，减少 Draw Call。
@@ -1659,11 +1659,11 @@ GameUiFile({
 7. **动画性能**：UI 动画尽量使用 UiImage.color 和 UiRectTransform.offset 等轻量属性，避免频繁修改 UiText.text。
 8. **依赖管理**：定期检查并清理无效的依赖关系。
 9. **哈希计算**：使用 SHA1 算法计算 Game UI 文件的哈希值。
-10. **版本控制**：将 *.gameui 文件纳入版本控制系统，确保团队协作时的一致性。
+10. **版本控制**：将 *.prefab 文件纳入版本控制系统，确保团队协作时的一致性。
 
 ## 总结
 
-*.gameui 文件格式为 GG 游戏引擎提供了一种统一、有效的方式来管理游戏运行时 UI。通过基于 ECS 的组件体系、Canvas 渲染模式、UiRectTransform 布局系统，以及与 UiMaterial 和 *.anim 的深度集成，它解决了游戏运行时 UI 的构建、渲染和动画问题。
+*.prefab 文件格式为 GG 游戏引擎提供了一种统一、有效的方式来管理游戏运行时 UI。通过基于 ECS 的组件体系、Canvas 渲染模式、UiRectTransform 布局系统，以及与 UiMaterial 和 *.animation 的深度集成，它解决了游戏运行时 UI 的构建、渲染和动画问题。
 
 这种设计使得 GG 游戏引擎能够：
 
@@ -1672,6 +1672,6 @@ GameUiFile({
 - 通过 UiRectTransform 实现灵活的自适应布局
 - 通过 UiMaterial 和自定义着色器实现丰富的 UI 特效
 - 与动画系统无缝集成，支持 UI 专用缓动函数
-- 与编辑器 UI（*.vx）明确分离，各司其职
+- 与编辑器 UI（*.widget）明确分离，各司其职
 
 Game UI 系统是 GG 游戏引擎中重要的组成部分，为游戏开发者提供了一种高效、灵活的方式来构建和管理游戏运行时界面。

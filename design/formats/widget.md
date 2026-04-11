@@ -1,14 +1,14 @@
-# *.vx Editor UI Toolkit 文件格式规范
+# *.widget Editor UI Toolkit 文件格式规范
 
 ## 概述
 
-*.vx 文件是 GG Editor UI Toolkit 使用的文件格式，仅用于编辑器界面开发。类似于 Vue 的单文件组件格式，包含 `<template>`、`<script>` 和 `<style>` 三个主要部分。
+*.widget 文件是 GG Editor UI Toolkit 使用的文件格式，仅用于编辑器界面开发。类似于 Vue 的单文件组件格式，包含 `<template>`、`<script>` 和 `<style>` 三个主要部分。
 
-> **重要声明**：*.vx 文件仅用于编辑器界面开发，不可用于游戏运行时。游戏运行时 UI 请使用 *.gameui 文件格式（基于 ECS + Canvas 体系）。
+> **重要声明**：*.widget 文件仅用于编辑器界面开发，不可用于游戏运行时。游戏运行时 UI 请使用 *.prefab 文件格式（基于 ECS + Canvas 体系）。
 
 ## 文件结构
 
-一个完整的 *.vx 文件结构如下：
+一个完整的 *.widget 文件结构如下：
 
 ```vue
 <template>
@@ -802,11 +802,11 @@ DOM 树 → 布局计算 → 样式计算 → 绘制命令 → 独立渲染器
 
 ### 核心原则
 
-*.vx 文件仅用于 Editor UI，不可用于游戏运行时。两者使用完全不同的技术体系和渲染架构。
+*.widget 文件仅用于 Editor UI，不可用于游戏运行时。两者使用完全不同的技术体系和渲染架构。
 
 ### 格式对照
 
-| 特性 | *.vx（Editor UI） | *.gameui（Game UI） |
+| 特性 | *.widget（Editor UI） | *.prefab（Game UI） |
 |------|-------------------|---------------------|
 | 用途 | 编辑器界面开发 | 游戏运行时 UI |
 | 技术体系 | DOM + USS + 独立渲染器 | ECS + Canvas |
@@ -824,12 +824,12 @@ DOM 树 → 布局计算 → 样式计算 → 绘制命令 → 独立渲染器
 
 ### 不可混用规则
 
-1. *.vx 文件中不可引用 *.gameui 组件
-2. *.gameui 文件中不可引用 *.vx 组件
+1. *.widget 文件中不可引用 *.prefab 组件
+2. *.prefab 文件中不可引用 *.widget 组件
 3. Editor UI 和 Game UI 不共享渲染上下文
 4. Editor UI 的样式变量和主题系统不适用于 Game UI
-5. 编辑器专用组件（InspectorPanel、HierarchyView 等）仅在 *.vx 中可用
+5. 编辑器专用组件（InspectorPanel、HierarchyView 等）仅在 *.widget 中可用
 
 ## 总结
 
-*.vx 文件格式为 GG Editor UI Toolkit 提供了一种统一、直观的方式来开发编辑器界面。通过结合 ValkyrieX 模板、Valkyrie 脚本和 USS 样式系统，开发者可以快速构建出美观、响应式的编辑器界面。*.vx 文件仅用于编辑器界面开发，游戏运行时 UI 请使用 *.gameui 文件格式。
+*.widget 文件格式为 GG Editor UI Toolkit 提供了一种统一、直观的方式来开发编辑器界面。通过结合 ValkyrieX 模板、Valkyrie 脚本和 USS 样式系统，开发者可以快速构建出美观、响应式的编辑器界面。*.widget 文件仅用于编辑器界面开发，游戏运行时 UI 请使用 *.prefab 文件格式。

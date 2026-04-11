@@ -287,8 +287,12 @@ Phong 着色器是一种传统的光照模型着色器，适用于一些风格�
 
 ### 2. UI 渲染
 
-- **界面渲染**：使用 Unlit 着色器渲染游戏界面，获得更清晰的 UI 效果。
-- **HUD 渲染**：使用 Unlit 着色器渲染游戏 HUD，如血条、雷达等。
+UI 渲染使用专用的 UI 着色器类型，详见 [UI 着色器](#ui-着色器) 章节。
+
+- **基础 UI 元素**：使用 UiUnlit 着色器渲染按钮、面板、图标等普通 UI 元素，支持纹理采样和颜色混合，不接受光照影响。
+- **文字渲染**：使用 UiSdf 着色器渲染 UiText 组件，基于 SDF 技术实现高质量文字渲染，支持任意缩放不模糊、描边、阴影、发光等效果。
+- **UI 特效**：使用 UiCustom 自定义着色器实现溶解、闪烁、扭曲、波纹等特殊 UI 效果。
+- **HUD 渲染**：使用 UiUnlit 着色器渲染游戏 HUD，如血条、雷达等。
 
 ### 3. 计算密集型任务
 
@@ -666,6 +670,200 @@ gg shader compile --target hlsl assets/shaders/standard.shader assets/shaders/st
 
 # 编译为 GLSL
 gg shader compile --target glsl assets/shaders/standard.shader assets/shaders/standard.glsl
+```
+
+## UI 着色器
+
+### UI 专用着色器类型
+
+GG 引擎提供三种 UI 专用着色器类型，用于满足不同场景的 UI 渲染需求：
+
+- **UiUnlit**：基础 UI 渲染着色器，不接受光照，支持纹理采样和颜色混合。适用于普通 UI 元素（按钮、面板、图标等）。
+  - 内置属性：_MainTex（主纹理）、_Color（颜色）
+  - 内置 uniforms：gg_ui_matrix（UI 变换矩阵）、gg_ui_clip_rect（裁剪矩形）
+  - 渲染状态：blend_mode = "alpha", depth_test = false, depth_write = false, cull_mode = "none"
+
+- **UiSdf**：SDF（Signed Distance Field）文字渲染着色器，用于高质量文字渲染，支持任意缩放不模糊、描边、阴影、发光等效果。适用于 UiText 组件。
+  - 内置属性：_MainTex（SDF 纹理图集）、_Color（文字颜色）
+  - SDF 专用属性：_OutlineColor（描边颜色）、_OutlineWidth（描边宽度）、_ShadowColor（阴影颜色）、_ShadowOffset（阴影偏移）、_GlowColor（发光颜色）、_GlowOuter（发光外半径）
+  - 内置 uniforms：同 UiUnlit + gg_sdf_params（SDF 参数：smooth_min, smooth_max, scale）
+
+- **UiCustom**：自定义 UI 着色器，开发者可自由编写顶点和片段着色器，用于实现特殊 UI 效果（溶解、闪烁、扭曲、波纹等）。适用于需要特效的 UI 元素。
+  - 自定义属性和 uniforms 由开发者定义
+  - 必须包含 gg_ui_matrix 和 gg_ui_clip_rect uniforms
+
+### 着色器类型声明语法
+
+在 gs 语言中，UI 着色器使用 `by UiUnlit`、`by UiSdf`、`by UiCustom` 声明：
+
+```gs
+#? Basic UI shader
+shader UiButtonShader by UiUnlit {
+    _MainTex: texture = "white"
+    _Color: color = [1, 1, 1, 1]
+    
+    render_queue = "transparent"
+    
+    render_states {
+        cull_mode = "none"
+        blend_mode = "alpha"
+        depth_test = false
+        depth_write = false
+    }
+    
+    vertex(
+        @location(0) position: vec2,
+        @location(1) uv: vec2
+    ) -> @builtin(position) vec4 {
+        let clip_rect = uniforms.gg_ui_clip_rect
+        let pos = uniforms.gg_ui_matrix * vec4(position, 0.0, 1.0)
+        return pos
+    }
+    
+    fragment(
+        @location(0) uv: vec2
+    ) -> @location(0) vec4 {
+        let tex = texture_sample(uniforms._MainTex, uv)
+        let color = tex * uniforms._Color
+        return color
+    }
+    
+    uniforms {
+        gg_ui_matrix: mat44
+        gg_ui_clip_rect: vec4
+        _MainTex: tex2
+        _Color: vec4
+    }
+}
+```
+
+### Canvas 渲染管线
+
+Canvas 将 UI 元素提交给 GPU 渲染的流程如下：
+
+1. **Batch 合批**：Canvas 将使用相同材质和着色器的 UI 元素合并为一个 DrawCall，减少 GPU 状态切换
+2. **DrawCall 优化**：相同层级的 UI 元素按深度排序，相同材质的连续元素合并渲染
+3. **SDF 文字渲染**：UiText 使用 SDF 纹理图集，通过 UiSdf 着色器渲染，支持任意缩放不模糊
+4. **裁剪与遮罩**：通过 gg_ui_clip_rect uniform 实现矩形裁剪，UiMask 组件通过模板缓冲实现遮罩
+5. **渲染顺序**：Canvas 按 sort_order 排序，同一 Canvas 内按兄弟节点顺序渲染
+
+### UI 着色器示例
+
+#### SDF 文字着色器示例
+
+```gs
+#? SDF text rendering shader
+shader UiSdfTextShader by UiSdf {
+    _MainTex: texture = "white"
+    _Color: color = [1, 1, 1, 1]
+    _OutlineColor: color = [0, 0, 0, 1]
+    _OutlineWidth: f32 = 0.1 @range(0.0, 0.5)
+    _ShadowColor: color = [0, 0, 0, 0.5]
+    _ShadowOffset: vec2 = [1, -1]
+    
+    render_queue = "transparent"
+    
+    render_states {
+        cull_mode = "none"
+        blend_mode = "alpha"
+        depth_test = false
+        depth_write = false
+    }
+    
+    fragment(
+        @location(0) uv: vec2
+    ) -> @location(0) vec4 {
+        let dist = texture_sample(uniforms._MainTex, uv).r
+        let smooth_min = uniforms.gg_sdf_params.x
+        let smooth_max = uniforms.gg_sdf_params.y
+        
+        let outline_dist = smooth_min - uniforms._OutlineWidth
+        let body_alpha = smoothstep(smooth_min, smooth_max, dist)
+        let outline_alpha = smoothstep(outline_dist, smooth_min, dist)
+        
+        let shadow_uv = uv - uniforms._ShadowOffset / uniforms.gg_sdf_params.z
+        let shadow_dist = texture_sample(uniforms._MainTex, shadow_uv).r
+        let shadow_alpha = smoothstep(smooth_min, smooth_max, shadow_dist) * uniforms._ShadowColor.a
+        
+        let color = mix(uniforms._OutlineColor, uniforms._Color, body_alpha)
+        let alpha = max(outline_alpha, shadow_alpha)
+        
+        return vec4(color.rgb, alpha)
+    }
+    
+    uniforms {
+        gg_ui_matrix: mat44
+        gg_ui_clip_rect: vec4
+        gg_sdf_params: vec3
+        _MainTex: tex2
+        _Color: vec4
+        _OutlineColor: vec4
+        _OutlineWidth: f32
+        _ShadowColor: vec4
+        _ShadowOffset: vec2
+    }
+}
+```
+
+#### 溶解特效着色器示例
+
+```gs
+#? UI dissolve effect shader
+shader UiDissolveShader by UiCustom {
+    _MainTex: texture = "white"
+    _Color: color = [1, 1, 1, 1]
+    _NoiseTex: texture = "white"
+    _DissolveThreshold: f32 = 0.0 @range(0.0, 1.0)
+    _EdgeColor: color = [1, 0.5, 0, 1]
+    _EdgeWidth: f32 = 0.05 @range(0.0, 0.2)
+    
+    render_queue = "transparent"
+    
+    render_states {
+        cull_mode = "none"
+        blend_mode = "alpha"
+        depth_test = false
+        depth_write = false
+    }
+    
+    vertex(
+        @location(0) position: vec2,
+        @location(1) uv: vec2
+    ) -> @builtin(position) vec4 {
+        return uniforms.gg_ui_matrix * vec4(position, 0.0, 1.0)
+    }
+    
+    fragment(
+        @location(0) uv: vec2
+    ) -> @location(0) vec4 {
+        let noise = texture_sample(uniforms._NoiseTex, uv).r
+        let tex = texture_sample(uniforms._MainTex, uv)
+        
+        if noise < uniforms._DissolveThreshold {
+            discard
+        }
+        
+        let edge = smoothstep(
+            uniforms._DissolveThreshold,
+            uniforms._DissolveThreshold + uniforms._EdgeWidth,
+            noise
+        )
+        
+        let color = mix(uniforms._EdgeColor, tex * uniforms._Color, edge)
+        return vec4(color.rgb, color.a)
+    }
+    
+    uniforms {
+        gg_ui_matrix: mat44
+        gg_ui_clip_rect: vec4
+        _MainTex: tex2
+        _NoiseTex: tex2
+        _Color: vec4
+        _DissolveThreshold: f32
+        _EdgeColor: vec4
+        _EdgeWidth: f32
+    }
+}
 ```
 
 ## 总结
