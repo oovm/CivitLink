@@ -500,14 +500,10 @@ impl EditorPanel for InspectorPanel {
             selection_changed = true;
         }
 
-        if !selection_changed {
-            return Ok(());
-        }
+        let root_id = ui_tree.create_node("inspector_root", Style::default(), UiNodeData::Container);
+        ui_tree.set_root(root_id);
 
         if let Some(_entity) = self.selected_entity {
-            let root_id = ui_tree.create_node("inspector_root", Style::default(), UiNodeData::Container);
-            ui_tree.set_root(root_id);
-
             for component_desc in self.descriptor_registry.component_descriptors() {
                 let section_id = ui_tree.create_node(
                     format!("section_{}", component_desc.type_name),
@@ -550,6 +546,13 @@ impl EditorPanel for InspectorPanel {
 
             let world = &mut context.world_mut().ecs_world;
             self.read_property_values(world);
+        } else {
+            let no_selection_id = ui_tree.create_node(
+                "no_selection",
+                Style::default(),
+                UiNodeData::Text { content: "No selection".to_string() },
+            );
+            ui_tree.add_child(root_id, no_selection_id);
         }
 
         Ok(())

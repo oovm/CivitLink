@@ -211,10 +211,15 @@ impl EditorShell {
     /// 将布局结果应用到面板根节点，对每个面板子树进行 Flexbox 布局计算，
     /// 最后添加区域分隔条 UI 节点。
     pub fn tick(&mut self) -> GResult<()> {
+        println!("=== Tick started ===");
+        
         let pending_events = self.events.process_pending();
+        println!("Processed {} pending events", pending_events.len());
+        
         for window_id in self.window_service.drain_pending_focus() {
             self.events.publish(EditorEvent::WindowFocused { window_id });
         }
+        
         for event in &pending_events {
             let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events, &mut self.world);
             for panel in &mut self.panels {
@@ -227,21 +232,33 @@ impl EditorShell {
             Style::new(),
             UiNodeData::Container,
         );
+        println!("Created editor root node: {}", editor_root_id);
 
         let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events, &mut self.world);
         self.panel_root_nodes.clear();
 
-        for panel in &mut self.panels {
+        println!("Processing {} panels", self.panels.len());
+        for (i, panel) in self.panels.iter_mut().enumerate() {
+            println!("Processing panel {}: {} (visible: {})", i, panel.name(), panel.is_visible());
             if panel.is_visible() {
                 let root_before = self.ui_tree.root();
-                panel.build_ui(&mut context, &mut self.ui_tree)?;
+                println!("  UI tree root before build: {:?}", root_before);
+                
+                match panel.build_ui(&mut context, &mut self.ui_tree) {
+                    Ok(_) => println!("  Build UI successful"),
+                    Err(e) => println!("  Build UI failed: {:?}", e),
+                }
+                
                 let root_after = self.ui_tree.root();
+                println!("  UI tree root after build: {:?}", root_after);
 
                 if root_after != root_before {
                     if let Some(panel_root_id) = root_after {
                         if panel_root_id != editor_root_id {
+                            println!("  Adding panel root {} to editor root {}", panel_root_id, editor_root_id);
                             self.ui_tree.add_child(editor_root_id, panel_root_id);
                             self.panel_root_nodes.push((panel.name().to_string(), panel_root_id));
+                            println!("  Panel root nodes: {:?}", self.panel_root_nodes);
                         }
                     }
                 }
@@ -249,6 +266,7 @@ impl EditorShell {
         }
 
         self.ui_tree.set_root(editor_root_id);
+        println!("Set editor root to: {}", editor_root_id);
 
         if let Some(node) = self.ui_tree.get_mut(editor_root_id) {
             node.layout_result = Some(LayoutResult::new(
@@ -257,20 +275,28 @@ impl EditorShell {
                 self.window_size.0 as f32,
                 self.window_size.1 as f32,
             ));
+            println!("Set layout for editor root: {}x{}", self.window_size.0, self.window_size.1);
         }
 
         let panel_layouts = self
             .docking_layout
             .compute(&self.panels, self.window_size.0 as f32, self.window_size.1 as f32);
+        println!("Computed {} panel layouts", panel_layouts.len());
 
-        for layout in &panel_layouts {
+        for (i, layout) in panel_layouts.iter().enumerate() {
+            println!("Layout {}: {} at ({}, {}) size {}x{}", i, layout.name, layout.x, layout.y, layout.width, layout.height);
+            
             if let Some((_, node_id)) = self.panel_root_nodes.iter().find(|(name, _)| name == &layout.name) {
+                println!("  Found node {} for panel {}", node_id, layout.name);
+                
                 LayoutEngine::compute_subtree(
                     &mut self.ui_tree,
                     *node_id,
                     layout.width,
                     layout.height,
                 );
+                println!("  Computed subtree layout for node {}", node_id);
+                
                 if let Some(node) = self.ui_tree.get_mut(*node_id) {
                     node.layout_result = Some(LayoutResult::new(
                         layout.x,
@@ -278,6 +304,7 @@ impl EditorShell {
                         layout.width,
                         layout.height,
                     ));
+                    println!("  Set layout for node {}: ({}, {}) size {}x{}", node_id, layout.x, layout.y, layout.width, layout.height);
                 }
             }
         }
@@ -288,6 +315,7 @@ impl EditorShell {
         let win_h = self.window_size.1 as f32;
         let bottom_height = self.docking_layout.bottom.as_ref().map(|b| b.size).unwrap_or(0.0);
 
+        println!("Adding split regions");
         for split in &self.docking_layout.splits {
             let (x, y, w, h) = match split.region {
                 DockRegion::Left => {
@@ -318,8 +346,10 @@ impl EditorShell {
             if let Some(node) = self.ui_tree.get_mut(split_node_id) {
                 node.layout_result = Some(LayoutResult::new(x, y, w, h));
             }
+            println!("Added split {} at ({}, {}) size {}x{}", region_name, x, y, w, h);
         }
 
+        println!("=== Tick completed ===");
         Ok(())
     }
 

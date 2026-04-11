@@ -1,5 +1,5 @@
 //! 字形缓存模块
-//!
+//! 
 //! 使用 `ab_glyph` 库光栅化字形，并将结果缓存到纹理图集中。
 
 use ab_glyph::{Font, FontArc, Glyph};
@@ -12,7 +12,7 @@ use crate::{
 };
 
 /// 字形信息
-///
+/// 
 /// 描述一个已光栅化字形在纹理图集中的位置和属性。
 #[derive(Debug, Clone, Copy)]
 pub struct GlyphInfo {
@@ -33,11 +33,11 @@ impl From<AtlasGlyphPlacement> for GlyphInfo {
 }
 
 /// 字形缓存
-///
+/// 
 /// 使用 `ab_glyph` 库光栅化字形，并将结果缓存到纹理图集中。
 /// 支持动态加载字体和按需光栅化字形。
-///
-/// 创建后需要通过 [`GlyphCache::load_font`] 加载字体才能渲染文本。
+/// 
+/// 创建后会自动加载内置的 Noto Sans 字体。
 pub struct GlyphCache {
     /// 当前字体
     font: Option<FontArc>,
@@ -45,14 +45,21 @@ pub struct GlyphCache {
     atlas: GlyphAtlas,
 }
 
+/// 内置默认字体数据 (Noto Sans)
+const NOTO_SANS_FONT_DATA: &[u8] = include_bytes!("../../../../assets/fonts/NotoSans-Regular.ttf");
+
 impl GlyphCache {
     /// 创建新的字形缓存
+    /// 
+    /// 自动加载内置的 Noto Sans 字体。
     pub fn new() -> Self {
-        Self { font: None, atlas: GlyphAtlas::new() }
+        let mut cache = Self { font: None, atlas: GlyphAtlas::new() };
+        cache.load_font(NOTO_SANS_FONT_DATA.to_vec());
+        cache
     }
 
     /// 从字节数据加载字体
-    ///
+    /// 
     /// 加载成功后会清空已有的字形缓存。
     pub fn load_font(&mut self, data: Vec<u8>) {
         if let Ok(font) = FontArc::try_from_vec(data) {
@@ -62,7 +69,7 @@ impl GlyphCache {
     }
 
     /// 获取或光栅化字形
-    ///
+    /// 
     /// 如果字形已缓存则直接返回缓存信息，
     /// 否则使用 `ab_glyph` 光栅化字形并放入纹理图集。
     pub fn get_or_rasterize(
