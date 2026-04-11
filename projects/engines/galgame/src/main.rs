@@ -56,7 +56,14 @@ fn main() -> GResult<()> {
 
 /// 运行编辑器模式
 ///
-/// 当前为占位实现，后续将实现完整的编辑器面板。
+/// 创建 EditorShell，注册场景视图、属性检查器和资源浏览器面板，
+/// 然后启动 winit 桌面事件循环。
 fn run_editor_mode() -> GResult<()> {
-    Ok(())
+    let mut shell = gg_editor_shell::EditorShell::new();
+
+    shell.register_panel(Box::new(gg_editor_scene::BaseSceneView::new()));
+    shell.register_panel(Box::new(gg_editor_inspector::InspectorPanel::new()));
+    shell.register_panel(Box::new(gg_editor_asset_browser::AssetBrowserPanel::new()));
+
+    shell.run_with_renderer()
 }

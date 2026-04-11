@@ -277,7 +277,8 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
             discard;
         }
         let color = border_color * ring_alpha + uniforms.fill_color.rgb * fill_alpha;
-        return vec4f(color, final_alpha * max(uniforms.fill_color.a, ring_alpha > 0.0 ? 1.0 : 0.0));
+        let border_flag = select(0.0, 1.0, ring_alpha > 0.0);
+        return vec4f(color, final_alpha * max(uniforms.fill_color.a, border_flag));
     } else {
         let alpha = 1.0 - smoothstep(-aa_width, aa_width, d);
         if (alpha <= 0.0) {

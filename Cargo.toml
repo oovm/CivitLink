@@ -15,6 +15,7 @@ members = [
     "projects/toolchain/*",
     "projects/engines/*",
     "examples/basic",
+    "examples/galgame-editor",
     "examples/web-render-verify",
 ]
 exclude = ["projects/engines/stg"]
@@ -33,7 +34,7 @@ serde_json = "1.0.0"
 toml = "1.1.0"
 
 # 图形和渲染
-wgpu = { version = "29.0.1", default-features = false, features = ["naga-ir", "wgsl"] }
+wgpu = { version = "29.0.1", default-features = false, features = ["naga-ir", "wgsl", "dx12", "vulkan"] }
 winit = "0.30.0"
 image = "0.25.0"
 ab_glyph = "0.2.0"
@@ -60,6 +61,7 @@ cranelift-module = "0.130.0"
 cranelift-object = "0.130.0"
 cranelift-codegen = "0.130.0"
 target-lexicon = "0.13.0"
+rustc-hash = { version = "1.1", default-features = false }
 
 # 异步和并发
 tokio = { version = "1.0.0", features = ["full"] }

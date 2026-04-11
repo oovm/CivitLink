@@ -1,0 +1,14 @@
+[package]
+name = "gg-galgame-editor-example"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-editor-shell = { workspace = true }
+gg-editor-render = { workspace = true }
+gg-editor-scene = { workspace = true }
+gg-editor-inspector = { workspace = true }
+gg-editor-asset-browser = { workspace = true }
+gg-core = { workspace = true }

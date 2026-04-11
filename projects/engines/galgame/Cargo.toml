@@ -19,6 +19,10 @@ gg-render = { workspace = true }
 gg-render-wgpu = { workspace = true }
 gg-ui = { workspace = true }
 gg-editor-shell = { workspace = true }
+gg-editor-render = { workspace = true }
+gg-editor-scene = { workspace = true }
+gg-editor-inspector = { workspace = true }
+gg-editor-asset-browser = { workspace = true }
 winit = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
