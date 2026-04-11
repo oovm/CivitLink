@@ -6,6 +6,7 @@
 //! 用于处理游戏资源的元数据文件
 
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::Path;
 use uuid::Uuid;
 
@@ -135,4 +136,348 @@ impl MetaFile {
 /// 生成新的GUID
 pub fn generate_guid() -> String {
     Uuid::now_v7().to_string()
+}
+
+/// 元数据生成器
+///
+/// 自动为项目目录中的资源文件生成 .meta 文件。
+/// 支持递归目录扫描、按扩展名自动检测资源类型和增量生成。
+pub struct MetaGenerator {
+    /// 扩展名到资源类型的映射表
+    type_map: HashMap<&'static str, &'static str>,
+}
+
+/// 获取默认的扩展名到资源类型映射表
+fn default_type_map() -> HashMap<&'static str, &'static str> {
+    let mut map = HashMap::new();
+
+    map.insert("png", "Texture");
+    map.insert("jpg", "Texture");
+    map.insert("jpeg", "Texture");
+    map.insert("bmp", "Texture");
+    map.insert("webp", "Texture");
+
+    map.insert("wav", "Audio");
+    map.insert("mp3", "Audio");
+    map.insert("ogg", "Audio");
+    map.insert("flac", "Audio");
+
+    map.insert("ttf", "Font");
+    map.insert("otf", "Font");
+    map.insert("woff", "Font");
+    map.insert("woff2", "Font");
+
+    map.insert("v", "Script");
+    map.insert("vx", "Script");
+    map.insert("gscript", "Script");
+
+    map.insert("glsl", "Shader");
+    map.insert("vert", "Shader");
+    map.insert("frag", "Shader");
+    map.insert("gs", "Shader");
+
+    map.insert("scene", "Scene");
+
+    map.insert("prefab", "Prefab");
+
+    map.insert("toml", "Config");
+    map.insert("json", "Config");
+    map.insert("yaml", "Config");
+    map.insert("yml", "Config");
+
+    map.insert("anim", "Animation");
+
+    map.insert("spine", "Spine");
+    map.insert("atlas", "Spine");
+
+    map.insert("xlsx", "Sheet");
+    map.insert("csv", "Sheet");
+    map.insert("tsv", "Sheet");
+
+    map
+}
+
+impl MetaGenerator {
+    /// 创建新的元数据生成器，使用默认扩展名映射
+    pub fn new() -> Self {
+        Self {
+            type_map: default_type_map(),
+        }
+    }
+
+    /// 注册自定义扩展名映射
+    ///
+    /// # 参数
+    ///
+    /// - `extension` - 文件扩展名（不含点号），如 "png"
+    /// - `asset_type` - 资源类型名称，如 "Texture"
+    pub fn register_type(&mut self, extension: &'static str, asset_type: &'static str) {
+        self.type_map.insert(extension, asset_type);
+    }
+
+    /// 根据文件扩展名获取资源类型
+    ///
+    /// 如果扩展名未在映射表中注册，返回 "Unknown"。
+    pub fn get_asset_type(&self, extension: &str) -> &'static str {
+        self.type_map.get(extension).copied().unwrap_or("Unknown")
+    }
+
+    /// 为指定目录生成 .meta 文件
+    ///
+    /// # 参数
+    ///
+    /// - `path` - 目标目录路径
+    /// - `recursive` - 是否递归处理子目录
+    ///
+    /// # 返回值
+    ///
+    /// 成功时返回生成的 .meta 文件数量
+    pub fn generate_for_directory(
+        &self,
+        path: &Path,
+        recursive: bool,
+    ) -> Result<usize, Box<dyn std::error::Error>> {
+        let mut count = 0usize;
+
+        for entry in std::fs::read_dir(path)? {
+            let entry = entry?;
+            let entry_path = entry.path();
+
+            if entry_path.is_dir() {
+                if recursive {
+                    count += self.generate_for_directory(&entry_path, true)?;
+                }
+            }
+            else if entry_path.is_file() {
+                let is_meta = entry_path
+                    .extension()
+                    .is_some_and(|ext| ext == "meta");
+
+                if !is_meta {
+                    if self.generate_for_file(&entry_path)? {
+                        count += 1;
+                    }
+                }
+            }
+        }
+
+        Ok(count)
+    }
+
+    /// 为指定文件生成 .meta 文件
+    ///
+    /// 如果该文件已有对应的 .meta 文件，则跳过（增量生成）。
+    ///
+    /// # 参数
+    ///
+    /// - `path` - 目标文件路径
+    ///
+    /// # 返回值
+    ///
+    /// 成功时返回 true（已生成），false（已存在，跳过）
+    pub fn generate_for_file(&self, path: &Path) -> Result<bool, Box<dyn std::error::Error>> {
+        let meta_path = {
+            let original_ext = path.extension().map(|e| e.to_string_lossy().to_string());
+            match original_ext {
+                Some(ext) => path.with_extension(format!("{}.meta", ext)),
+                None => path.with_extension("meta"),
+            }
+        };
+
+        if meta_path.exists() {
+            return Ok(false);
+        }
+
+        let extension = path
+            .extension()
+            .map(|e| e.to_string_lossy().to_lowercase())
+            .unwrap_or_default();
+
+        let asset_type = self.get_asset_type(&extension);
+        let metadata = std::fs::metadata(path)?;
+        let size = metadata.len();
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let asset_path = path.to_string_lossy().replace('\\', "/");
+
+        let meta = MetaFile::new(asset_type, &asset_path, &name, size);
+        meta.to_file(&meta_path)?;
+
+        Ok(true)
+    }
+}
+
+/// 预导入模块
+pub mod prelude {
+    /// 元数据生成器
+    pub use crate::MetaGenerator;
+    /// 元数据文件结构
+    pub use crate::MetaFile;
+    /// 资源信息
+    pub use crate::Asset;
+    /// 导入设置
+    pub use crate::ImportSettings;
+    /// 依赖关系
+    pub use crate::Dependency;
+    /// 引用关系
+    pub use crate::Reference;
+    /// 生成新的GUID
+    pub use crate::generate_guid;
+}
+
+#[cfg(test)]
+mod tests_meta_generator {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_default_type_map() {
+        let gen = MetaGenerator::new();
+
+        assert_eq!(gen.get_asset_type("png"), "Texture");
+        assert_eq!(gen.get_asset_type("jpg"), "Texture");
+        assert_eq!(gen.get_asset_type("jpeg"), "Texture");
+        assert_eq!(gen.get_asset_type("bmp"), "Texture");
+        assert_eq!(gen.get_asset_type("webp"), "Texture");
+
+        assert_eq!(gen.get_asset_type("wav"), "Audio");
+        assert_eq!(gen.get_asset_type("mp3"), "Audio");
+        assert_eq!(gen.get_asset_type("ogg"), "Audio");
+        assert_eq!(gen.get_asset_type("flac"), "Audio");
+
+        assert_eq!(gen.get_asset_type("ttf"), "Font");
+        assert_eq!(gen.get_asset_type("otf"), "Font");
+        assert_eq!(gen.get_asset_type("woff"), "Font");
+        assert_eq!(gen.get_asset_type("woff2"), "Font");
+
+        assert_eq!(gen.get_asset_type("v"), "Script");
+        assert_eq!(gen.get_asset_type("vx"), "Script");
+        assert_eq!(gen.get_asset_type("gscript"), "Script");
+
+        assert_eq!(gen.get_asset_type("glsl"), "Shader");
+        assert_eq!(gen.get_asset_type("vert"), "Shader");
+        assert_eq!(gen.get_asset_type("frag"), "Shader");
+        assert_eq!(gen.get_asset_type("gs"), "Shader");
+
+        assert_eq!(gen.get_asset_type("scene"), "Scene");
+        assert_eq!(gen.get_asset_type("prefab"), "Prefab");
+
+        assert_eq!(gen.get_asset_type("toml"), "Config");
+        assert_eq!(gen.get_asset_type("json"), "Config");
+        assert_eq!(gen.get_asset_type("yaml"), "Config");
+        assert_eq!(gen.get_asset_type("yml"), "Config");
+
+        assert_eq!(gen.get_asset_type("anim"), "Animation");
+
+        assert_eq!(gen.get_asset_type("spine"), "Spine");
+        assert_eq!(gen.get_asset_type("atlas"), "Spine");
+
+        assert_eq!(gen.get_asset_type("xlsx"), "Sheet");
+        assert_eq!(gen.get_asset_type("csv"), "Sheet");
+        assert_eq!(gen.get_asset_type("tsv"), "Sheet");
+    }
+
+    #[test]
+    fn test_register_type() {
+        let mut gen = MetaGenerator::new();
+
+        assert_eq!(gen.get_asset_type("custom"), "Unknown");
+
+        gen.register_type("custom", "CustomType");
+        assert_eq!(gen.get_asset_type("custom"), "CustomType");
+    }
+
+    #[test]
+    fn test_get_asset_type_unknown() {
+        let gen = MetaGenerator::new();
+        assert_eq!(gen.get_asset_type("xyz"), "Unknown");
+        assert_eq!(gen.get_asset_type(""), "Unknown");
+    }
+
+    #[test]
+    fn test_generate_for_file_creates_meta() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("test.png");
+        fs::write(&file_path, b"fake png data").unwrap();
+
+        let gen = MetaGenerator::new();
+        let result = gen.generate_for_file(&file_path).unwrap();
+
+        assert!(result);
+
+        let meta_path = dir.path().join("test.png.meta");
+        assert!(meta_path.exists());
+
+        let meta = MetaFile::from_file(&meta_path).unwrap();
+        assert_eq!(meta.asset.r#type, "Texture");
+        assert_eq!(meta.asset.name, "test.png");
+        assert_eq!(meta.asset.size, 13);
+    }
+
+    #[test]
+    fn test_generate_for_file_skips_existing() {
+        let dir = tempfile::tempdir().unwrap();
+        let file_path = dir.path().join("test.wav");
+        fs::write(&file_path, b"fake audio").unwrap();
+
+        let gen = MetaGenerator::new();
+
+        let first = gen.generate_for_file(&file_path).unwrap();
+        assert!(first);
+
+        let second = gen.generate_for_file(&file_path).unwrap();
+        assert!(!second);
+    }
+
+    #[test]
+    fn test_generate_for_directory_recursive() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let sub_dir = dir.path().join("subdir");
+        fs::create_dir(&sub_dir).unwrap();
+
+        fs::write(dir.path().join("top.png"), b"img").unwrap();
+        fs::write(sub_dir.join("nested.wav"), b"audio").unwrap();
+        fs::write(sub_dir.join("data.toml"), b"config").unwrap();
+
+        let gen = MetaGenerator::new();
+        let count = gen.generate_for_directory(dir.path(), true).unwrap();
+
+        assert_eq!(count, 3);
+        assert!(dir.path().join("top.png.meta").exists());
+        assert!(sub_dir.join("nested.wav.meta").exists());
+        assert!(sub_dir.join("data.toml.meta").exists());
+    }
+
+    #[test]
+    fn test_generate_for_directory_non_recursive() {
+        let dir = tempfile::tempdir().unwrap();
+
+        let sub_dir = dir.path().join("subdir");
+        fs::create_dir(&sub_dir).unwrap();
+
+        fs::write(dir.path().join("top.png"), b"img").unwrap();
+        fs::write(sub_dir.join("nested.wav"), b"audio").unwrap();
+
+        let gen = MetaGenerator::new();
+        let count = gen.generate_for_directory(dir.path(), false).unwrap();
+
+        assert_eq!(count, 1);
+        assert!(dir.path().join("top.png.meta").exists());
+        assert!(!sub_dir.join("nested.wav.meta").exists());
+    }
+
+    #[test]
+    fn test_generate_for_directory_skips_meta_files() {
+        let dir = tempfile::tempdir().unwrap();
+
+        fs::write(dir.path().join("existing.meta"), b"meta content").unwrap();
+
+        let gen = MetaGenerator::new();
+        let count = gen.generate_for_directory(dir.path(), false).unwrap();
+
+        assert_eq!(count, 0);
+    }
 }

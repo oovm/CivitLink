@@ -62,7 +62,10 @@ impl MobileInputImpl {
                     _ => {}
                 }
             }
-            InputEvent::Gamepad { .. } => {}
+            InputEvent::GamepadButton { .. } => {}
+            InputEvent::GamepadAxis { .. } => {}
+            InputEvent::GamepadConnected { .. } => {}
+            InputEvent::GamepadDisconnected { .. } => {}
         }
         self.event_buffer.push(event);
     }

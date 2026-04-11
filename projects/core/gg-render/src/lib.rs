@@ -5,6 +5,8 @@
 pub mod color;
 /// 绘制命令
 pub mod command;
+/// 渲染管线与渲染通道
+pub mod pipeline;
 /// 矩形区域
 pub mod rect;
 /// 渲染器 trait 与渲染上下文
@@ -18,8 +20,9 @@ pub mod transform;
 
 pub use color::Color;
 pub use command::{DrawCommand, TransitionKind};
+pub use pipeline::{DefaultRenderPipeline, DrawFilter, RenderPass, RenderPipeline, RenderTarget};
 pub use rect::Rect;
-pub use renderer::{Camera, RenderContext, Renderer};
+pub use renderer::{Camera, Camera2D, RenderContext, Renderer, Viewport};
 pub use surface::{SurfaceInfo, WindowEvent};
 pub use texture::{PixelFormat, TextureDescriptor, TextureId};
 pub use transform::Transform;
@@ -31,8 +34,9 @@ pub mod prelude {
     pub use crate::{
         color::Color,
         command::{DrawCommand, TransitionKind},
+        pipeline::{DefaultRenderPipeline, DrawFilter, RenderPass, RenderPipeline, RenderTarget},
         rect::Rect,
-        renderer::{Camera, RenderContext, Renderer},
+        renderer::{Camera, Camera2D, RenderContext, Renderer, Viewport},
         surface::{SurfaceInfo, WindowEvent},
         texture::{PixelFormat, TextureDescriptor, TextureId},
         transform::Transform,

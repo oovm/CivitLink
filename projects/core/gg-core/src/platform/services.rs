@@ -3,7 +3,7 @@
 //! 平台服务聚合
 //! 将文件系统、输入、时间、窗口和线程服务统一管理
 
-use super::{fs::FileSystem, input::Input, thread::RuntimeThread, time::Time, window::Window};
+use super::{fs::FileSystem, input::Input, thread::RuntimeThread, time::Time, window::Window, window_manager::WindowManager};
 
 /// 平台服务集合
 ///
@@ -16,10 +16,12 @@ pub struct PlatformServices {
     pub input: Box<dyn Input>,
     /// 时间服务
     pub time: Box<dyn Time>,
-    /// 窗口服务
+    /// 窗口服务（主窗口）
     pub window: Box<dyn Window>,
     /// 线程服务
     pub runtime_thread: Box<dyn RuntimeThread>,
+    /// 窗口管理器
+    pub window_manager: Option<Box<dyn WindowManager>>,
 }
 
 impl PlatformServices {
@@ -31,6 +33,18 @@ impl PlatformServices {
         window: Box<dyn Window>,
         runtime_thread: Box<dyn RuntimeThread>,
     ) -> Self {
-        Self { file_system, input, time, window, runtime_thread }
+        Self { file_system, input, time, window, runtime_thread, window_manager: None }
+    }
+
+    /// 创建包含窗口管理器的平台服务实例
+    pub fn new_with_manager(
+        file_system: Box<dyn FileSystem>,
+        input: Box<dyn Input>,
+        time: Box<dyn Time>,
+        window: Box<dyn Window>,
+        runtime_thread: Box<dyn RuntimeThread>,
+        window_manager: Box<dyn WindowManager>,
+    ) -> Self {
+        Self { file_system, input, time, window, runtime_thread, window_manager: Some(window_manager) }
     }
 }

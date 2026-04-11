@@ -8,6 +8,21 @@ use winit::{event::Event, event_loop::EventLoop, window::{Window, WindowAttribut
 
 use crate::{font_manager::FontManager, texture_cache::NativeTextureCache};
 
+/// 离屏渲染目标
+///
+/// 用于将渲染结果输出到内存中的像素缓冲区，而非窗口表面。
+/// 适用于编辑器缩略图预览等需要将渲染结果作为纹理使用的场景。
+pub struct NativeRenderTarget {
+    /// RGBA8 格式像素缓冲区
+    pub pixels: Vec<u8>,
+    /// 宽度（像素）
+    pub width: u32,
+    /// 高度（像素）
+    pub height: u32,
+    /// 关联的纹理标识符，可用于精灵绘制命令中的纹理引用
+    pub texture_id: TextureId,
+}
+
 /// 原生渲染器
 ///
 /// 基于平台原生 2D 图形 API（Direct2D/CoreGraphics/Cairo）实现的渲染器，
@@ -146,6 +161,231 @@ impl NativeRenderer {
     /// 获取窗口的引用
     pub fn window(&self) -> &Arc<Window> {
         &self.window
+    }
+
+    /// 创建离屏渲染目标
+    ///
+    /// 分配指定尺寸的 RGBA8 像素缓冲区，并注册到纹理缓存中。
+    /// 返回的渲染目标可用于 [`NativeRenderer::draw_to_target`] 进行离屏渲染，
+    /// 渲染结果可通过 [`NativeRenderTarget::texture_id`] 作为精灵纹理使用。
+    ///
+    /// # 参数
+    ///
+    /// - `width` - 渲染目标宽度（像素）
+    /// - `height` - 渲染目标高度（像素）
+    pub fn create_render_target(&mut self, width: u32, height: u32) -> NativeRenderTarget {
+        let pixel_count = width as usize * height as usize;
+        let pixels = vec![0u8; pixel_count * 4];
+        let texture_id = self.texture_cache.register_raw_texture(
+            width as usize,
+            height as usize,
+            pixels.clone(),
+        );
+        NativeRenderTarget {
+            pixels,
+            width,
+            height,
+            texture_id,
+        }
+    }
+
+    /// 渲染到离屏目标
+    ///
+    /// 将渲染上下文中的绘制命令渲染到指定的离屏渲染目标，
+    /// 而非窗口表面。渲染完成后像素数据存储在目标的 `pixels` 字段中，
+    /// 同时更新纹理缓存中关联的纹理数据。
+    ///
+    /// # 参数
+    ///
+    /// - `target` - 离屏渲染目标
+    /// - `context` - 渲染上下文
+    pub fn draw_to_target(&mut self, target: &mut NativeRenderTarget, context: &RenderContext) -> GResult<()> {
+        let width = target.width as usize;
+        let height = target.height as usize;
+
+        if width == 0 || height == 0 {
+            return Ok(());
+        }
+
+        let mut bitmap_target = self.device.bitmap_target(width, height, 1.0).map_err(|e| GError {
+            kind: GErrorKind::Platform,
+            message: format!("无法创建位图渲染目标: {}", e),
+        })?;
+
+        let mut rc = bitmap_target.render_context();
+
+        rc.clear(kurbo::Rect::new(0.0, 0.0, width as f64, height as f64), piet_common::Color::BLACK);
+
+        if let Some(camera) = context.camera() {
+            rc.transform(
+                Affine::translate((-camera.position[0] as f64, -camera.position[1] as f64))
+                    * Affine::rotate(camera.rotation as f64)
+                    * Affine::scale(camera.zoom as f64),
+            );
+        }
+
+        if let Some(clip_rect) = context.clip_rect() {
+            rc.clip(kurbo::Rect::new(
+                clip_rect.x as f64,
+                clip_rect.y as f64,
+                (clip_rect.x + clip_rect.width) as f64,
+                (clip_rect.y + clip_rect.height) as f64,
+            ));
+        }
+
+        for cmd in context.commands() {
+            match cmd {
+                DrawCommand::Sprite {
+                    texture_id,
+                    transform,
+                    size,
+                    tint,
+                    clip_rect: sprite_clip,
+                } => {
+                    if let Some(sprite_clip) = sprite_clip {
+                        rc.save().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法保存渲染状态: {}", e) })?;
+                        rc.clip(kurbo::Rect::new(
+                            sprite_clip.x as f64,
+                            sprite_clip.y as f64,
+                            (sprite_clip.x + sprite_clip.width) as f64,
+                            (sprite_clip.y + sprite_clip.height) as f64,
+                        ));
+                        Self::draw_sprite(&mut rc, &mut self.texture_cache, *texture_id, transform, size, tint)?;
+                        rc.restore().map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("无法恢复渲染状态: {}", e) })?;
+                    } else {
+                        Self::draw_sprite(&mut rc, &mut self.texture_cache, *texture_id, transform, size, tint)?;
+                    }
+                }
+                DrawCommand::Text {
+                    text,
+                    position,
+                    font_size,
+                    color,
+                    max_width,
+                } => {
+                    Self::draw_text(&mut rc, &self.font_manager, text, position, *font_size, color, *max_width)?;
+                }
+                DrawCommand::Rect {
+                    rect,
+                    color,
+                    corner_radius,
+                } => {
+                    Self::draw_rect(&mut rc, rect, color, *corner_radius);
+                }
+                DrawCommand::Line {
+                    start,
+                    end,
+                    color,
+                    width,
+                } => {
+                    Self::draw_line(&mut rc, start, end, color, *width);
+                }
+                DrawCommand::Circle {
+                    center,
+                    radius,
+                    color,
+                    filled,
+                    border_width,
+                    border_color,
+                } => {
+                    Self::draw_circle(&mut rc, center, *radius, color, *filled, *border_width, border_color);
+                }
+                DrawCommand::Ellipse {
+                    center,
+                    radii,
+                    color,
+                    filled,
+                    border_width,
+                    border_color,
+                } => {
+                    Self::draw_ellipse(&mut rc, center, radii, color, *filled, *border_width, border_color);
+                }
+                DrawCommand::Transition {
+                    old_texture,
+                    new_texture,
+                    progress,
+                    kind,
+                } => {
+                    Self::draw_transition(
+                        &mut rc,
+                        &mut self.texture_cache,
+                        *old_texture,
+                        *new_texture,
+                        *progress,
+                        *kind,
+                        target.width,
+                        target.height,
+                    )?;
+                }
+            }
+        }
+
+        rc.finish().map_err(|e| GError { kind: GErrorKind::Platform, message: format!("无法完成渲染: {}", e) })?;
+
+        drop(rc);
+
+        let pixel_count = width * height;
+        let mut raw_pixels = vec![0u8; pixel_count * 4];
+        bitmap_target.copy_raw_pixels(ImageFormat::RgbaPremul, &mut raw_pixels).map_err(|e| GError {
+            kind: GErrorKind::Platform,
+            message: format!("无法获取像素数据: {}", e),
+        })?;
+
+        target.pixels = Self::premultiply_to_straight_alpha(&raw_pixels);
+
+        self.texture_cache.register_raw_texture(
+            width,
+            height,
+            target.pixels.clone(),
+        );
+
+        Ok(())
+    }
+
+    /// 将渲染目标转换为纹理数据并注册到纹理缓存
+    ///
+    /// 将离屏渲染目标的像素数据转换为直通 alpha 格式，
+    /// 并注册到纹理缓存中，返回新的纹理标识符。
+    /// 注册后的纹理可在精灵绘制命令中使用。
+    ///
+    /// # 参数
+    ///
+    /// - `target` - 离屏渲染目标
+    ///
+    /// # 返回值
+    ///
+    /// 成功时返回新注册的纹理标识符
+    pub fn target_to_texture_data(&mut self, target: &NativeRenderTarget) -> TextureId {
+        self.texture_cache.register_raw_texture(
+            target.width as usize,
+            target.height as usize,
+            target.pixels.clone(),
+        )
+    }
+
+    /// 将 RGBA 预乘 alpha 像素数据转换为直通 alpha 格式
+    ///
+    /// piet 的 `copy_raw_pixels` 输出预乘 alpha 格式，
+    /// 而 `NativeTextureCache` 的 `make_image` 使用 `RgbaSeparate`（直通 alpha）格式。
+    fn premultiply_to_straight_alpha(premul: &[u8]) -> Vec<u8> {
+        let mut result = vec![0u8; premul.len()];
+        for (i, pixel) in premul.chunks_exact(4).enumerate() {
+            let r = pixel[0] as f32 / 255.0;
+            let g = pixel[1] as f32 / 255.0;
+            let b = pixel[2] as f32 / 255.0;
+            let a = pixel[3] as f32 / 255.0;
+
+            let r_straight = if a > 0.0 { (r / a).min(1.0) } else { 0.0 };
+            let g_straight = if a > 0.0 { (g / a).min(1.0) } else { 0.0 };
+            let b_straight = if a > 0.0 { (b / a).min(1.0) } else { 0.0 };
+
+            let offset = i * 4;
+            result[offset] = (r_straight * 255.0) as u8;
+            result[offset + 1] = (g_straight * 255.0) as u8;
+            result[offset + 2] = (b_straight * 255.0) as u8;
+            result[offset + 3] = pixel[3];
+        }
+        result
     }
 
     /// 获取字体管理器的可变引用

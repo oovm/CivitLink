@@ -6,18 +6,24 @@
 //! 支持动态渲染后端、音频后端、HMR 热更新和组件注册表。
 
 pub mod app;
+pub mod attached_runtime;
 pub mod builder;
+pub mod debug_wire;
 pub mod hmr;
 pub mod hmr_state;
+pub mod in_process_wire;
 pub mod plugin;
 pub mod registry;
 pub mod scheduler;
 pub mod stage;
 
 pub use app::{App, RuntimePlugin};
+pub use attached_runtime::{AttachedRuntime, AttachedRuntimeState};
 pub use builder::RuntimeBuilder;
+pub use debug_wire::{DebugWire, DebugWireError, RuntimeCommand, RuntimeState, WireMessage};
 pub use hmr::{HmrEvent, HmrManager, HmrMigrationResult};
 pub use hmr_state::{StateMigrator, StateSnapshot};
+pub use in_process_wire::{InProcessDebugWire, InProcessDebugWireEditor};
 pub use plugin::{PluginConfig, PluginId, PluginManager};
 pub use registry::{ComponentAccessor, ComponentRegistry};
 pub use scheduler::StageScheduler;
@@ -544,6 +550,40 @@ impl Runtime {
         }
 
         self.running = false;
+    }
+
+    /// 创建附着式运行时
+    ///
+    /// 基于当前 Runtime 的配置创建一个隔离的附着式运行时实例，
+    /// 使用全新的 ECS 世界和 HMR 管理器，共享相同的渲染后端和平台服务配置。
+    /// 返回 (AttachedRuntime, InProcessDebugWireEditor) 元组，
+    /// 编辑器端通过 InProcessDebugWireEditor 发送控制命令和 HMR 事件。
+    pub fn attach(&self) -> GResult<(attached_runtime::AttachedRuntime, in_process_wire::InProcessDebugWireEditor)> {
+        let (editor_wire, runtime_wire) = in_process_wire::InProcessDebugWire::new_pair();
+
+        let surface_width = self.renderer.as_ref().map(|r| r.surface_info().width).unwrap_or(800);
+        let surface_height = self.renderer.as_ref().map(|r| r.surface_info().height).unwrap_or(600);
+
+        let attached_runtime = Runtime {
+            script_engine: ScriptEngine::new(),
+            host: EngineHost::new(),
+            stage_scheduler: StageScheduler::new(),
+            asset_server: AssetServer::new(),
+            renderer: None,
+            render_context: RenderContext::new(surface_width, surface_height),
+            audio_engine: None,
+            audio_context: AudioContext::new(),
+            platform_services: gg_core::platform::PlatformServices::new(),
+            hmr_manager: Some(HmrManager::new()),
+            plugins: Vec::new(),
+            plugin_manager: plugin::PluginManager::new(),
+            running: false,
+            delta_timer: DeltaTimer::new(),
+            frame_limiter: FrameLimiter::new(self.frame_limiter.target_fps()),
+        };
+
+        let attached = attached_runtime::AttachedRuntime::new(attached_runtime, runtime_wire);
+        Ok((attached, editor_wire))
     }
 
     /// 运行游戏循环

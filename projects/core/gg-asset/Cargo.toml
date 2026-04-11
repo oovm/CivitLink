@@ -10,3 +10,4 @@ ab_glyph = { workspace = true }
 dashmap = { workspace = true }
 image = { workspace = true }
 tokio = { workspace = true }
+notify = { workspace = true }

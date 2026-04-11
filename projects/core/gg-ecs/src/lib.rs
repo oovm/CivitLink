@@ -21,6 +21,7 @@ use archetype::{ArchetypeGraph, ArchetypeId};
 pub use entity::{Entity, EntityAllocator, EntityLocation};
 use gg_error::{GError, GErrorKind, GResult};
 pub use gg_macros::Component;
+pub use gg_macros::Resource;
 
 pub use entity::Entity as EntityType;
 
@@ -689,6 +690,26 @@ mod tests_add_component_raw {
         let vel = world.get_component::<Velocity>(entity).unwrap();
         assert_eq!(vel.dx, 0.5);
         assert_eq!(vel.dy, 0.3);
+    }
+}
+
+#[cfg(test)]
+mod tests_resource_derive {
+    use crate::*;
+
+    #[derive(Resource, Debug, PartialEq)]
+    struct GameTime {
+        delta: f32,
+        elapsed: f32,
+    }
+
+    #[test]
+    fn test_resource_derive() {
+        let mut world = World::new();
+        world.insert_resource(GameTime { delta: 0.016, elapsed: 0.0 });
+
+        let time = world.get_resource::<GameTime>().unwrap();
+        assert_eq!(time.delta, 0.016);
     }
 }
 

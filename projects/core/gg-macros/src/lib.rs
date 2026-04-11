@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 
 //! GG 引擎过程宏模块
-//! 提供 `#[derive(Reflect)]` 和 `#[derive(Component)]` 等派生宏
+//! 提供 `#[derive(Reflect)]`、`#[derive(Component)]` 和 `#[derive(Resource)]` 等派生宏
 
 use proc_macro::TokenStream;
 use quote::quote;
@@ -166,5 +166,14 @@ pub fn derive_reflect(input: TokenStream) -> TokenStream {
 /// 此宏不生成 impl 块，仅作为语义标记用于文档目的和未来扩展性。
 #[proc_macro_derive(Component)]
 pub fn derive_component(_input: TokenStream) -> TokenStream {
+    TokenStream::new()
+}
+
+/// 为类型派生 `Resource` trait
+///
+/// 由于 `Resource` 使用 blanket impl（任何满足 `Any + Send + Sync` 的类型自动成为资源），
+/// 此宏不生成 impl 块，仅作为语义标记用于文档目的和未来扩展性。
+#[proc_macro_derive(Resource)]
+pub fn derive_resource(_input: TokenStream) -> TokenStream {
     TokenStream::new()
 }

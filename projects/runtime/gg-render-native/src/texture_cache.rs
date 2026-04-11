@@ -149,6 +149,24 @@ impl NativeTextureCache {
         self.piet_images.get(&id)
     }
 
+    /// 注册原始像素数据为纹理
+    ///
+    /// 将 RGBA 像素数据直接注册到缓存中，返回新的纹理标识符。
+    /// 适用于离屏渲染目标等场景，将渲染结果作为纹理使用。
+    ///
+    /// # 参数
+    ///
+    /// - `width` - 像素宽度
+    /// - `height` - 像素高度
+    /// - `data` - RGBA 像素数据
+    pub fn register_raw_texture(&mut self, width: usize, height: usize, data: Vec<u8>) -> TextureId {
+        let id = TextureId::new(self.next_id);
+        self.next_id += 1;
+        self.raw_textures.insert(id, RawTexture { width, height, data });
+        self.piet_images.remove(&id);
+        id
+    }
+
     /// 使所有缓存的 piet 图像失效
     ///
     /// 在新帧开始时调用，确保图像与当前渲染上下文兼容。

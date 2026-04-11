@@ -175,6 +175,62 @@ pub enum PointerButton {
     Other(u8),
 }
 
+/// 手柄标识符
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GamepadId(pub u32);
+
+/// 手柄按钮
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GamepadButton {
+    /// 南方按钮（Xbox A / PlayStation Cross）
+    South,
+    /// 东方按钮（Xbox B / PlayStation Circle）
+    East,
+    /// 西方按钮（Xbox X / PlayStation Square）
+    West,
+    /// 北方按钮（Xbox Y / PlayStation Triangle）
+    North,
+    /// 开始按钮
+    Start,
+    /// 返回按钮
+    Back,
+    /// 导航按钮（Xbox / PlayStation Home）
+    Guide,
+    /// 左摇杆按下
+    LeftThumb,
+    /// 右摇杆按下
+    RightThumb,
+    /// 左肩键（LB / L1）
+    LeftShoulder,
+    /// 右肩键（RB / R1）
+    RightShoulder,
+    /// 方向键上
+    DPadUp,
+    /// 方向键下
+    DPadDown,
+    /// 方向键左
+    DPadLeft,
+    /// 方向键右
+    DPadRight,
+}
+
+/// 手柄轴
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GamepadAxis {
+    /// 左摇杆 X 轴
+    LeftStickX,
+    /// 左摇杆 Y 轴
+    LeftStickY,
+    /// 右摇杆 X 轴
+    RightStickX,
+    /// 右摇杆 Y 轴
+    RightStickY,
+    /// 左扳机（LT / L2）
+    LeftTrigger,
+    /// 右扳机（RT / R2）
+    RightTrigger,
+}
+
 /// 输入事件
 #[derive(Debug, Clone, PartialEq)]
 pub enum InputEvent {
@@ -194,14 +250,35 @@ pub enum InputEvent {
         /// 按下的按钮
         button: Option<PointerButton>,
     },
-    /// 手柄事件
-    Gamepad {
-        /// 手柄 ID
-        id: u32,
-        /// 按钮编号
-        button: u32,
+    /// 手柄按钮事件
+    GamepadButton {
+        /// 手柄标识符
+        id: GamepadId,
+        /// 手柄按钮
+        button: GamepadButton,
         /// 按钮状态
         state: KeyState,
+    },
+    /// 手柄轴事件
+    GamepadAxis {
+        /// 手柄标识符
+        id: GamepadId,
+        /// 手柄轴
+        axis: GamepadAxis,
+        /// 轴值
+        value: f32,
+    },
+    /// 手柄连接事件
+    GamepadConnected {
+        /// 手柄标识符
+        id: GamepadId,
+        /// 手柄名称
+        name: String,
+    },
+    /// 手柄断开事件
+    GamepadDisconnected {
+        /// 手柄标识符
+        id: GamepadId,
     },
 }
 
@@ -218,4 +295,19 @@ pub trait Input {
 
     /// 获取指针当前位置
     fn pointer_position(&self) -> (f32, f32);
+
+    /// 检查指定手柄按钮是否处于按下状态
+    fn is_gamepad_button_pressed(&self, _id: GamepadId, _button: GamepadButton) -> bool {
+        false
+    }
+
+    /// 获取指定手柄轴的当前值
+    fn gamepad_axis_value(&self, _id: GamepadId, _axis: GamepadAxis) -> f32 {
+        0.0
+    }
+
+    /// 获取当前连接的手柄标识符列表
+    fn connected_gamepads(&self) -> Vec<GamepadId> {
+        Vec::new()
+    }
 }

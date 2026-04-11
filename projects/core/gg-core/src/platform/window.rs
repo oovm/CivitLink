@@ -3,6 +3,15 @@
 //! 窗口/显示抽象层
 //! 提供跨平台的窗口管理接口
 
+use crate::GResult;
+
+/// 窗口唯一标识符
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct WindowId(
+    /// 内部 ID 值
+    pub u64
+);
+
 /// 窗口事件
 #[derive(Debug, Clone, PartialEq)]
 pub enum WindowEvent {
@@ -19,6 +28,27 @@ pub enum WindowEvent {
     Focused,
     /// 窗口失去焦点
     Unfocused,
+    /// 新窗口已创建
+    WindowCreated {
+        /// 新窗口的 ID
+        id: WindowId,
+    },
+    /// 窗口已销毁
+    WindowDestroyed {
+        /// 被销毁窗口的 ID
+        id: WindowId,
+    },
+}
+
+/// 窗口管理器事件
+///
+/// 携带窗口 ID 标识事件来源窗口。
+#[derive(Debug, Clone, PartialEq)]
+pub struct WindowManagerEvent {
+    /// 事件来源窗口 ID
+    pub window_id: WindowId,
+    /// 窗口事件
+    pub event: WindowEvent,
 }
 
 /// 窗口配置
@@ -65,4 +95,24 @@ pub trait Window: Send + Sync + 'static {
 
     /// 检查窗口是否应该关闭
     fn should_close(&self) -> bool;
+}
+
+/// 窗口管理器 trait
+///
+/// 支持创建、销毁和查询多个窗口，为编辑器多面板布局提供基础设施。
+pub trait WindowManager: Send + Sync + 'static {
+    /// 创建新窗口，返回窗口 ID
+    fn create_window(&mut self, config: WindowConfig) -> WindowId;
+
+    /// 销毁指定窗口
+    fn destroy_window(&mut self, id: WindowId) -> GResult<()>;
+
+    /// 获取指定窗口的可变引用
+    fn get_window(&mut self, id: WindowId) -> Option<&mut dyn Window>;
+
+    /// 轮询所有窗口事件
+    fn poll_events(&mut self) -> Vec<WindowManagerEvent>;
+
+    /// 获取管理的窗口数量
+    fn window_count(&self) -> usize;
 }

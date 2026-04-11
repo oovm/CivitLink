@@ -15,5 +15,6 @@ pub mod renderer;
 pub mod texture_cache;
 
 pub use font_manager::FontManager;
+pub use renderer::NativeRenderTarget;
 pub use renderer::NativeRenderer;
 pub use texture_cache::NativeTextureCache;

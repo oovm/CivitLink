@@ -1,0 +1,102 @@
+# Platformer 游戏脚本
+# 使用 Valkyrie 脚本实现平台游戏逻辑
+
+using gg::engine;
+using gg::input;
+using gg::physics;
+using gg::graphics;
+using gg::collision;
+
+# 游戏对象
+let player = null;
+let platforms = [];
+let collectibles = [];
+
+# 游戏状态
+let game_running = true;
+
+# 初始化游戏
+micro init_game() {
+    # 加载场景
+    engine.load_scene("platformer");
+    
+    # 设置背景
+    graphics.set_background("assets/backgrounds/bg_level1.png");
+    
+    # 创建玩家
+    player = engine.create_entity();
+    player.add_component("Sprite", { texture: "assets/sprites/player.png" });
+    player.add_component("Transform", { x: 100, y: 100, width: 50, height: 50 });
+    player.add_component("Rigidbody", { gravity: 9.8, mass: 1 });
+    player.add_component("Collider", { type: "box" });
+    
+    # 创建平台
+    let platform = engine.create_entity();
+    platform.add_component("Sprite", { texture: "assets/sprites/platform.png" });
+    platform.add_component("Transform", { x: 0, y: 300, width: 800, height: 50 });
+    platform.add_component("Collider", { type: "box", is_static: true });
+    platforms.push(platform);
+    
+    # 创建 collectible
+    let collectible = engine.create_entity();
+    collectible.add_component("Sprite", { texture: "assets/sprites/collectible.png" });
+    collectible.add_component("Transform", { x: 200, y: 250, width: 30, height: 30 });
+    collectible.add_component("Collider", { type: "box" });
+    collectibles.push(collectible);
+}
+
+# 处理输入
+micro handle_input() {
+    if (input.is_key_down("Left")) {
+        player.get_component("Rigidbody").velocity.x = -5;
+    } else if (input.is_key_down("Right")) {
+        player.get_component("Rigidbody").velocity.x = 5;
+    } else {
+        player.get_component("Rigidbody").velocity.x = 0;
+    }
+    
+    if (input.is_key_pressed("Space")) {
+        # 检查是否在地面上
+        if (player.get_component("Rigidbody").is_grounded) {
+            player.get_component("Rigidbody").velocity.y = -15;
+        }
+    }
+}
+
+# 处理碰撞
+micro handle_collision() {
+    # 玩家与平台碰撞
+    foreach (platform in platforms) {
+        if (collision.check(player, platform)) {
+            player.get_component("Rigidbody").is_grounded = true;
+        }
+    }
+    
+    # 玩家与 collectible 碰撞
+    foreach (collectible in collectibles) {
+        if (collision.check(player, collectible)) {
+            engine.destroy_entity(collectible);
+            # 从数组中移除
+            collectibles = collectibles.filter((c) => c != collectible);
+        }
+    }
+}
+
+# 游戏更新函数
+micro update(delta_time: Float) {
+    if (game_running) {
+        handle_input();
+        handle_collision();
+    }
+}
+
+# 游戏渲染函数
+micro render() {
+    graphics.clear();
+    # 引擎会自动渲染所有实体
+}
+
+# 初始化并启动游戏
+init_game();
+engine.set_update_fn(update);
+engine.set_render_fn(render);

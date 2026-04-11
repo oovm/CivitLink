@@ -52,6 +52,232 @@ impl Default for Camera {
     }
 }
 
+/// 视口矩形
+///
+/// 定义渲染目标中的矩形区域，使用归一化坐标（0.0~1.0）。
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Viewport {
+    /// 视口左下角 X 坐标（归一化）
+    pub x: f32,
+    /// 视口左下角 Y 坐标（归一化）
+    pub y: f32,
+    /// 视口宽度（归一化）
+    pub width: f32,
+    /// 视口高度（归一化）
+    pub height: f32,
+}
+
+impl Viewport {
+    /// 全屏视口
+    pub const FULL: Self = Self { x: 0.0, y: 0.0, width: 1.0, height: 1.0 };
+
+    /// 创建全屏视口
+    pub fn new() -> Self {
+        Self::FULL
+    }
+
+    /// 创建指定区域的视口
+    ///
+    /// # 参数
+    ///
+    /// - `x` - 左下角 X 坐标（归一化）
+    /// - `y` - 左下角 Y 坐标（归一化）
+    /// - `width` - 宽度（归一化）
+    /// - `height` - 高度（归一化）
+    pub fn with_rect(x: f32, y: f32, width: f32, height: f32) -> Self {
+        Self { x, y, width, height }
+    }
+}
+
+impl Default for Viewport {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// 2D 增强相机
+///
+/// 扩展基础 [`Camera`] 的功能，支持视口裁剪和正交尺寸控制。
+/// 可用于编辑器中的多视口渲染或分屏游戏。
+#[derive(Debug, Clone, PartialEq)]
+pub struct Camera2D {
+    /// 相机位置 `[x, y]`，世界坐标中的偏移
+    pub position: [f32; 2],
+    /// 缩放倍数，`1.0` 为原始大小
+    pub zoom: f32,
+    /// 旋转角度（弧度）
+    pub rotation: f32,
+    /// 渲染视口（归一化坐标）
+    pub viewport: Viewport,
+    /// 正交尺寸（世界单位）
+    ///
+    /// 当 `ortho_size > 0` 时，使用正交尺寸计算投影矩阵，
+    /// 相机可见高度为 `ortho_size * 2` 世界单位。
+    /// 当 `ortho_size == 0` 时，使用像素对齐模式（1:1 映射）。
+    pub ortho_size: f32,
+}
+
+impl Camera2D {
+    /// 创建默认 2D 相机
+    ///
+    /// 位于原点，无缩放无旋转，全屏视口，正交尺寸为 0（像素对齐）。
+    pub fn new() -> Self {
+        Self { position: [0.0, 0.0], zoom: 1.0, rotation: 0.0, viewport: Viewport::FULL, ortho_size: 0.0 }
+    }
+
+    /// 设置相机位置
+    ///
+    /// # 参数
+    ///
+    /// - `x` - X 坐标
+    /// - `y` - Y 坐标
+    pub fn with_position(mut self, x: f32, y: f32) -> Self {
+        self.position = [x, y];
+        self
+    }
+
+    /// 设置缩放倍数
+    ///
+    /// # 参数
+    ///
+    /// - `zoom` - 缩放倍数
+    pub fn with_zoom(mut self, zoom: f32) -> Self {
+        self.zoom = zoom;
+        self
+    }
+
+    /// 设置旋转角度
+    ///
+    /// # 参数
+    ///
+    /// - `rotation` - 旋转角度（弧度）
+    pub fn with_rotation(mut self, rotation: f32) -> Self {
+        self.rotation = rotation;
+        self
+    }
+
+    /// 设置渲染视口
+    ///
+    /// # 参数
+    ///
+    /// - `viewport` - 视口矩形
+    pub fn with_viewport(mut self, viewport: Viewport) -> Self {
+        self.viewport = viewport;
+        self
+    }
+
+    /// 设置渲染视口为指定区域
+    ///
+    /// # 参数
+    ///
+    /// - `x` - 左下角 X 坐标（归一化）
+    /// - `y` - 左下角 Y 坐标（归一化）
+    /// - `w` - 宽度（归一化）
+    /// - `h` - 高度（归一化）
+    pub fn with_viewport_rect(mut self, x: f32, y: f32, w: f32, h: f32) -> Self {
+        self.viewport = Viewport::with_rect(x, y, w, h);
+        self
+    }
+
+    /// 设置正交尺寸
+    ///
+    /// # 参数
+    ///
+    /// - `size` - 正交尺寸（世界单位），可见高度为 `size * 2`
+    pub fn with_ortho_size(mut self, size: f32) -> Self {
+        self.ortho_size = size;
+        self
+    }
+
+    /// 计算视图投影矩阵
+    ///
+    /// 根据相机参数和渲染表面尺寸计算 4x4 视图投影矩阵。
+    /// 矩阵采用列主序存储，原点在左上角，Y 轴向下。
+    ///
+    /// # 参数
+    ///
+    /// - `surface_width` - 渲染表面宽度（像素）
+    /// - `surface_height` - 渲染表面高度（像素）
+    pub fn view_projection(&self, surface_width: f32, surface_height: f32) -> [[f32; 4]; 4] {
+        let projection = if self.ortho_size > 0.0 {
+            let scale = surface_height / (self.ortho_size * 2.0);
+            orthographic(surface_width / scale, surface_height / scale)
+        } else {
+            orthographic(surface_width, surface_height)
+        };
+
+        let half_w = surface_width * 0.5;
+        let half_h = surface_height * 0.5;
+
+        let view_t = translate(-self.position[0], -self.position[1]);
+        let view_r = rotate(-self.rotation);
+        let view_s = scale(self.zoom, self.zoom);
+        let center_t = translate(half_w, half_h);
+        let center_t_inv = translate(-half_w, -half_h);
+
+        let view = mat4_mul(
+            &center_t,
+            &mat4_mul(&view_r, &mat4_mul(&view_s, &mat4_mul(&center_t_inv, &view_t))),
+        );
+
+        let vp_viewport = translate(self.viewport.x * surface_width, self.viewport.y * surface_height);
+        let vs_viewport = scale(self.viewport.width, self.viewport.height);
+
+        mat4_mul(&mat4_mul(&vp_viewport, &vs_viewport), &mat4_mul(&projection, &view))
+    }
+}
+
+impl Default for Camera2D {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl From<Camera> for Camera2D {
+    fn from(camera: Camera) -> Self {
+        Self { position: camera.position, zoom: camera.zoom, rotation: camera.rotation, viewport: Viewport::FULL, ortho_size: 0.0 }
+    }
+}
+
+/// 计算正交投影矩阵
+///
+/// 原点在左上角，X 轴向右，Y 轴向下，Z 轴范围 `[0, 1]`。
+fn orthographic(width: f32, height: f32) -> [[f32; 4]; 4] {
+    [
+        [2.0 / width, 0.0, 0.0, 0.0],
+        [0.0, -2.0 / height, 0.0, 0.0],
+        [0.0, 0.0, 0.5, 0.0],
+        [-1.0, 1.0, 0.5, 1.0],
+    ]
+}
+
+/// 计算平移矩阵
+fn translate(tx: f32, ty: f32) -> [[f32; 4]; 4] {
+    [[1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [tx, ty, 0.0, 1.0]]
+}
+
+/// 计算旋转矩阵
+fn rotate(angle: f32) -> [[f32; 4]; 4] {
+    let (s, c) = (angle.sin(), angle.cos());
+    [[c, s, 0.0, 0.0], [-s, c, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+}
+
+/// 计算缩放矩阵
+fn scale(sx: f32, sy: f32) -> [[f32; 4]; 4] {
+    [[sx, 0.0, 0.0, 0.0], [0.0, sy, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 1.0]]
+}
+
+/// 4x4 矩阵乘法（列主序）
+fn mat4_mul(a: &[[f32; 4]; 4], b: &[[f32; 4]; 4]) -> [[f32; 4]; 4] {
+    let mut result = [[0.0f32; 4]; 4];
+    for i in 0..4 {
+        for j in 0..4 {
+            result[i][j] = a[i][0] * b[0][j] + a[i][1] * b[1][j] + a[i][2] * b[2][j] + a[i][3] * b[3][j];
+        }
+    }
+    result
+}
+
 /// 渲染上下文
 ///
 /// 收集一帧中所有的绘制命令，并传递给渲染器执行。

@@ -1,0 +1,68 @@
+# Galgame 游戏脚本
+# 使用 Valkyrie 脚本实现对话系统
+
+using gg::engine;
+using gg::ui;
+
+# 定义游戏状态
+let current_node = "start";
+
+# 对话节点处理函数
+micro handle_node(node: String) {
+    match (node) {
+        case "start" => {
+            ui.show_message("这是一个晴朗的早晨...");
+            current_node = "start_d1";
+        },
+        case "start_d1" => {
+            ui.set_speaker("heroine");
+            ui.show_message("早上好！");
+            ui.show_portrait("heroine", "smile", "center");
+            current_node = "start_d2";
+        },
+        case "start_d2" => {
+            ui.set_speaker("");
+            ui.show_message("你要怎么回应？");
+            ui.show_choices([
+                { text: "早上好！", next: "start_good" },
+                { text: "你是谁？", next: "start_who" }
+            ]);
+        },
+        case "start_good" => {
+            ui.set_speaker("heroine");
+            ui.show_message("嗯，早上好！");
+            current_node = "start_end";
+        },
+        case "start_who" => {
+            ui.set_speaker("heroine");
+            ui.show_message("我是...你不记得我了吗？");
+            current_node = "start_end";
+        },
+        case "start_end" => {
+            ui.set_speaker("");
+            ui.show_message("故事才刚刚开始...");
+        },
+        case _ => {
+            console.log("Unknown node: " + node);
+        }
+    }
+}
+
+# 处理选择
+micro handle_choice(choice_index: Int) {
+    if (current_node == "start_d2") {
+        match (choice_index) {
+            case 0 => current_node = "start_good";
+            case 1 => current_node = "start_who";
+            case _ => console.log("Invalid choice index: " + choice_index);
+        }
+    }
+}
+
+# 游戏更新函数
+micro update(delta_time: Float) {
+    handle_node(current_node);
+}
+
+# 注册游戏循环
+engine.set_update_fn(update);
