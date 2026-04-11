@@ -10,36 +10,36 @@
 
 ### 基本结构
 
-```ron
-// 资源元数据文件
-MetaFile({
+```von
+# 资源元数据文件
+MetaFile {
     version: "1.0",
-    asset: Asset({
+    asset: Asset {
         guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0000",
         type: "Texture",
-        import_settings: ImportSettings({
+        import_settings: ImportSettings {
             compression: "high",
             max_size: 2048,
             format: "RGBA32",
-        }),
-    }),
+        },
+    },
     dependencies: [
-        Dependency({
+        Dependency {
             path: "textures/common/background.jpg",
             guid: "a1b2c3d4-5e6f-7g8h-9i0j-k1l2m3n4o5p6",
-        }),
+        },
     ],
     references: [
-        Reference({
+        Reference {
             path: "scenes/main.scene",
-            entity_id: Some(123),
-            component: Some("SpriteRenderer"),
-            field: Some("texture"),
-        }),
+            entity_id: 123,
+            component: "SpriteRenderer",
+            field: "texture",
+        },
     ],
     timestamp: "2026-04-10T12:00:00Z",
     hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-})
+}
 ```
 
 ## 字段详细说明
@@ -80,57 +80,57 @@ MetaFile({
 
 ### 纹理资源 (Texture)
 
-```ron
-Asset({
+```von
+Asset {
     type: "Texture",
-    import_settings: ImportSettings({
+    import_settings: ImportSettings {
         compression: "high",
         max_size: 2048,
         format: "RGBA32",
         generate_mipmaps: true,
         wrap_mode: "clamp",
         filter_mode: "bilinear",
-    }),
-})
+    },
+}
 ```
 
 ### 音频资源 (Audio)
 
-```ron
-Asset({
+```von
+Asset {
     type: "Audio",
-    import_settings: ImportSettings({
+    import_settings: ImportSettings {
         compression: "vorbis",
         quality: 0.8,
         loop: false,
         streaming: false,
-    }),
-})
+    },
+}
 ```
 
 ### 脚本资源 (Script)
 
-```ron
-Asset({
+```von
+Asset {
     type: "Script",
-    import_settings: ImportSettings({
+    import_settings: ImportSettings {
         compile: true,
         optimize: "size",
         target: "web",
-    }),
-})
+    },
+}
 ```
 
 ### 场景资源 (Scene)
 
-```ron
-Asset({
+```von
+Asset {
     type: "Scene",
-    import_settings: ImportSettings({
+    import_settings: ImportSettings {
         load_async: true,
         preload_resources: true,
-    }),
-})
+    },
+}
 ```
 
 ## 使用场景
@@ -167,77 +167,77 @@ Asset({
 
 ### 纹理资源的 .meta 文件
 
-```ron
-// 纹理资源元数据
-MetaFile({
+```von
+# 纹理资源元数据
+MetaFile {
     version: "1.0",
-    asset: Asset({
+    asset: Asset {
         guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0000",
         type: "Texture",
-        import_settings: ImportSettings({
+        import_settings: ImportSettings {
             compression: "high",
             max_size: 2048,
             format: "RGBA32",
             generate_mipmaps: true,
             wrap_mode: "clamp",
             filter_mode: "bilinear",
-        }),
-    }),
+        },
+    },
     dependencies: [],
     references: [
-        Reference({
+        Reference {
             path: "scenes/main.scene",
-            entity_id: Some(123),
-            component: Some("SpriteRenderer"),
-            field: Some("texture"),
-        }),
-        Reference({
+            entity_id: 123,
+            component: "SpriteRenderer",
+            field: "texture",
+        },
+        Reference {
             path: "scenes/menu.scene",
-            entity_id: Some(456),
-            component: Some("BackgroundRenderer"),
-            field: Some("texture"),
-        }),
+            entity_id: 456,
+            component: "BackgroundRenderer",
+            field: "texture",
+        },
     ],
     timestamp: "2026-04-10T12:00:00Z",
     hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-})
+}
 ```
 
 ### 场景资源的 .meta 文件
 
-```ron
-// 场景资源元数据
-MetaFile({
+```von
+# 场景资源元数据
+MetaFile {
     version: "1.0",
-    asset: Asset({
+    asset: Asset {
         guid: "a1b2c3d4-5e6f-7g8h-9i0j-k1l2m3n4o5p6",
         type: "Scene",
-        import_settings: ImportSettings({
+        import_settings: ImportSettings {
             load_async: true,
             preload_resources: true,
-        }),
-    }),
+        },
+    },
     dependencies: [
-        Dependency({
+        Dependency {
             path: "textures/background.jpg",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0000",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "audio/bgm.mp3",
             guid: "9a8b7c6d-5e4f-3g2h-1i0j-k9l8m7n6o5p4",
-        }),
+        },
     ],
     references: [
-        Reference({
+        Reference {
             path: "scripts/game_manager.v",
-            entity_id: None,
-            component: None,
-            field: Some("start_scene"),
-        }),
+            entity_id: null,
+            component: null,
+            field: "start_scene",
+        },
     ],
     timestamp: "2026-04-10T12:30:00Z",
     hash: "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
-})
+}
 ```
 
 ## 总结

@@ -10,137 +10,137 @@
 
 ### 基本结构
 
-```ron
-// 动画文件
-AnimationFile({
+```von
+# 动画文件
+AnimationFile {
     version: "1.0",
-    animation: Animation({
+    animation: Animation {
         name: "IdleAnimation",
         description: "Idle animation for character",
         duration: 2.0,
         loop: true,
         speed: 1.0,
         blend_time: 0.1,
-    }),
+    },
     tracks: [
-        Track({
+        Track {
             name: "Transform",
             target: "transform",
             keyframes: [
-                Keyframe({
+                Keyframe {
                     time: 0.0,
-                    properties: Properties({
+                    properties: Properties {
                         position: [0, 0, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
+                    },
                     easing: "linear",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 1.0,
-                    properties: Properties({
+                    properties: Properties {
                         position: [0, 0.1, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
+                    },
                     easing: "ease_in_out",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 2.0,
-                    properties: Properties({
+                    properties: Properties {
                         position: [0, 0, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
+                    },
                     easing: "ease_in_out",
-                }),
+                },
             ],
-        }),
-        Track({
+        },
+        Track {
             name: "SpriteRenderer",
             target: "sprite_renderer",
             keyframes: [
-                Keyframe({
+                Keyframe {
                     time: 0.0,
-                    properties: Properties({
+                    properties: Properties {
                         sprite: "assets/textures/idle_01.png",
-                    }),
+                    },
                     easing: "step",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 0.5,
-                    properties: Properties({
+                    properties: Properties {
                         sprite: "assets/textures/idle_02.png",
-                    }),
+                    },
                     easing: "step",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 1.0,
-                    properties: Properties({
+                    properties: Properties {
                         sprite: "assets/textures/idle_03.png",
-                    }),
+                    },
                     easing: "step",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 1.5,
-                    properties: Properties({
+                    properties: Properties {
                         sprite: "assets/textures/idle_02.png",
-                    }),
+                    },
                     easing: "step",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 2.0,
-                    properties: Properties({
+                    properties: Properties {
                         sprite: "assets/textures/idle_01.png",
-                    }),
+                    },
                     easing: "step",
-                }),
+                },
             ],
-        }),
+        },
     ],
     events: [
-        Event({
+        Event {
             time: 0.5,
             name: "footstep",
-            params: Params({
+            params: Params {
                 sound: "assets/audio/footstep.wav",
-            }),
-        }),
-        Event({
+            },
+        },
+        Event {
             time: 1.5,
             name: "footstep",
-            params: Params({
+            params: Params {
                 sound: "assets/audio/footstep.wav",
-            }),
-        }),
+            },
+        },
     ],
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/textures/idle_01.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0001",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/textures/idle_02.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0002",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/textures/idle_03.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0003",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/audio/footstep.wav",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0004",
-        }),
+        },
     ],
     references: [
-        Reference({
+        Reference {
             path: "assets/prefabs/character.prefab",
             field: "animations",
-        }),
+        },
     ],
     timestamp: "2026-04-10T12:00:00Z",
     hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-})
+}
 ```
 
 ## 字段详细说明
@@ -259,245 +259,245 @@ AnimationFile({
 
 ### 角色行走动画示例
 
-```ron
-// 角色行走动画示例
-AnimationFile({
+```von
+# 角色行走动画示例
+AnimationFile {
     version: "1.0",
-    animation: Animation({
+    animation: Animation {
         name: "WalkAnimation",
         description: "Walking animation for character",
         duration: 1.0,
         loop: true,
         speed: 1.0,
         blend_time: 0.1,
-    }),
+    },
     tracks: [
-        Track({
+        Track {
             name: "Transform",
             target: "transform",
             keyframes: [
-                Keyframe({
+                Keyframe {
                     time: 0.0,
-                    properties: Properties({
+                    properties: Properties {
                         position: [0, 0, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
+                    },
                     easing: "linear",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 0.25,
-                    properties: Properties({
+                    properties: Properties {
                         position: [0.5, 0, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
+                    },
                     easing: "linear",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 0.5,
-                    properties: Properties({
+                    properties: Properties {
                         position: [1.0, 0, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
+                    },
                     easing: "linear",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 0.75,
-                    properties: Properties({
+                    properties: Properties {
                         position: [1.5, 0, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
+                    },
                     easing: "linear",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 1.0,
-                    properties: Properties({
+                    properties: Properties {
                         position: [2.0, 0, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
+                    },
                     easing: "linear",
-                }),
+                },
             ],
-        }),
-        Track({
+        },
+        Track {
             name: "SpriteRenderer",
             target: "sprite_renderer",
             keyframes: [
-                Keyframe({
+                Keyframe {
                     time: 0.0,
-                    properties: Properties({
+                    properties: Properties {
                         sprite: "assets/textures/walk_01.png",
-                    }),
+                    },
                     easing: "step",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 0.25,
-                    properties: Properties({
+                    properties: Properties {
                         sprite: "assets/textures/walk_02.png",
-                    }),
+                    },
                     easing: "step",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 0.5,
-                    properties: Properties({
+                    properties: Properties {
                         sprite: "assets/textures/walk_03.png",
-                    }),
+                    },
                     easing: "step",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 0.75,
-                    properties: Properties({
+                    properties: Properties {
                         sprite: "assets/textures/walk_04.png",
-                    }),
+                    },
                     easing: "step",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 1.0,
-                    properties: Properties({
+                    properties: Properties {
                         sprite: "assets/textures/walk_01.png",
-                    }),
+                    },
                     easing: "step",
-                }),
+                },
             ],
-        }),
+        },
     ],
     events: [
-        Event({
+        Event {
             time: 0.25,
             name: "footstep",
-            params: Params({
+            params: Params {
                 sound: "assets/audio/footstep.wav",
-            }),
-        }),
-        Event({
+            },
+        },
+        Event {
             time: 0.75,
             name: "footstep",
-            params: Params({
+            params: Params {
                 sound: "assets/audio/footstep.wav",
-            }),
-        }),
+            },
+        },
     ],
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/textures/walk_01.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0006",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/textures/walk_02.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0007",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/textures/walk_03.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0008",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/textures/walk_04.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0009",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/audio/footstep.wav",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0010",
-        }),
+        },
     ],
     references: [],
     timestamp: "2026-04-10T12:00:00Z",
     hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-})
+}
 ```
 
 ### UI 按钮动画示例
 
-```ron
-// UI 按钮动画示例
-AnimationFile({
+```von
+# UI 按钮动画示例
+AnimationFile {
     version: "1.0",
-    animation: Animation({
+    animation: Animation {
         name: "ButtonClickAnimation",
         description: "Button click animation",
         duration: 0.2,
         loop: false,
         speed: 1.0,
         blend_time: 0.05,
-    }),
+    },
     tracks: [
-        Track({
+        Track {
             name: "Transform",
             target: "transform",
             keyframes: [
-                Keyframe({
+                Keyframe {
                     time: 0.0,
-                    properties: Properties({
+                    properties: Properties {
                         scale: [1, 1, 1],
-                    }),
+                    },
                     easing: "ease_in_out",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 0.1,
-                    properties: Properties({
+                    properties: Properties {
                         scale: [0.9, 0.9, 1],
-                    }),
+                    },
                     easing: "ease_in_out",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 0.2,
-                    properties: Properties({
+                    properties: Properties {
                         scale: [1, 1, 1],
-                    }),
+                    },
                     easing: "ease_in_out",
-                }),
+                },
             ],
-        }),
-        Track({
+        },
+        Track {
             name: "SpriteRenderer",
             target: "sprite_renderer",
             keyframes: [
-                Keyframe({
+                Keyframe {
                     time: 0.0,
-                    properties: Properties({
+                    properties: Properties {
                         color: [1, 1, 1, 1],
-                    }),
+                    },
                     easing: "ease_in_out",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 0.1,
-                    properties: Properties({
+                    properties: Properties {
                         color: [0.8, 0.8, 0.8, 1],
-                    }),
+                    },
                     easing: "ease_in_out",
-                }),
-                Keyframe({
+                },
+                Keyframe {
                     time: 0.2,
-                    properties: Properties({
+                    properties: Properties {
                         color: [1, 1, 1, 1],
-                    }),
+                    },
                     easing: "ease_in_out",
-                }),
+                },
             ],
-        }),
+        },
     ],
     events: [
-        Event({
+        Event {
             time: 0.1,
             name: "click_sound",
-            params: Params({
+            params: Params {
                 sound: "assets/audio/button_click.wav",
-            }),
-        }),
+            },
+        },
     ],
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/audio/button_click.wav",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0012",
-        }),
+        },
     ],
     references: [],
     timestamp: "2026-04-10T12:30:00Z",
     hash: "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
-})
+}
 ```
 
 ## 总结

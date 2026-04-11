@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GG Config",
+  "scopeName": "source.gg-config",
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.gg-config",
+      "match": "//.*$",
+      "captures": {
+        "0": {
+          "name": "comment.line.double-slash.gg-config"
+        }
+      }
+    },
+    {
+      "name": "keyword.control.gg-config",
+      "match": "\b(ConfigFile|Config|Settings|GameSettings|AudioSettings|InputSettings|KeyboardMapping|GamepadMapping|GraphicsSettings|NetworkSettings|DebugSettings|Resolution)\b",
+      "captures": {
+        "0": {
+          "name": "keyword.control.gg-config"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.double.gg-config",
+      "match": '"([^"\\]|\\.)*"',
+      "captures": {
+        "0": {
+          "name": "string.quoted.double.gg-config"
+        }
+      }
+    },
+    {
+      "name": "constant.numeric.gg-config",
+      "match": "\b\d+(\.\d+)?\b",
+      "captures": {
+        "0": {
+          "name": "constant.numeric.gg-config"
+        }
+      }
+    },
+    {
+      "name": "constant.language.gg-config",
+      "match": "\b(true|false|None|Some)\b",
+      "captures": {
+        "0": {
+          "name": "constant.language.gg-config"
+        }
+      }
+    },
+    {
+      "name": "entity.name.type.gg-config",
+      "match": "\b(name|description|platform|profile|title|version|company|copyright|default_scene|fps_target|resolution|width|height|fullscreen|vsync|master_volume|music_volume|sfx_volume|ambient_volume|move_forward|move_backward|move_left|move_right|jump|attack|interact|pause|quality|shadow_quality|anti_aliasing|texture_quality|anisotropic_filtering|bloom|depth_of_field|motion_blur|max_players|server_port|client_port|ping_timeout|reconnect_attempts|enabled|show_fps|show_hud|show_colliders|show_navmesh|console_enabled|log_level|bandwidth_limit)\b",
+      "captures": {
+        "0": {
+          "name": "entity.name.type.gg-config"
+        }
+      }
+    },
+    {
+      "name": "punctuation.bracket.gg-config",
+      "match": "[\{\}\[\]()]",
+      "captures": {
+        "0": {
+          "name": "punctuation.bracket.gg-config"
+        }
+      }
+    },
+    {
+      "name": "punctuation.separator.gg-config",
+      "match": ",",
+      "captures": {
+        "0": {
+          "name": "punctuation.separator.gg-config"
+        }
+      }
+    }
+  ]
+}

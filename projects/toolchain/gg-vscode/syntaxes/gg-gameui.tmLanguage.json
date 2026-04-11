@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GG GameUI",
+  "scopeName": "source.gg-gameui",
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.gg-gameui",
+      "match": "//.*$",
+      "captures": {
+        "0": {
+          "name": "comment.line.double-slash.gg-gameui"
+        }
+      }
+    },
+    {
+      "name": "keyword.control.gg-gameui",
+      "match": "\b(GameUiFile|GameUi|Entity|Component|UiCanvas|UiCanvasProperties|UiRectTransform|UiRectTransformProperties|UiImage|UiImageProperties|UiText|UiTextProperties|UiButton|UiButtonProperties|ColorBlock|UiMask|UiMaskProperties|UiLayout|UiLayoutProperties|UiScrollRect|UiScrollRectProperties|UiToggle|UiToggleProperties|UiSlider|UiSliderProperties|UiProgressBar|UiProgressBarProperties|UiRawImage|UiRawImageProperties)\b",
+      "captures": {
+        "0": {
+          "name": "keyword.control.gg-gameui"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.double.gg-gameui",
+      "match": '"([^"\\]|\\.)*"',
+      "captures": {
+        "0": {
+          "name": "string.quoted.double.gg-gameui"
+        }
+      }
+    },
+    {
+      "name": "constant.numeric.gg-gameui",
+      "match": "\b\d+(\.\d+)?\b",
+      "captures": {
+        "0": {
+          "name": "constant.numeric.gg-gameui"
+        }
+      }
+    },
+    {
+      "name": "constant.language.gg-gameui",
+      "match": "\b(true|false|None|Some|ScreenSpace|WorldSpace|CameraSpace|Simple|Sliced|Tiled|Filled|Horizontal|Vertical|Radial90|Radial180|Radial360|Normal|Bold|Italic|BoldItalic|TopLeft|TopCenter|TopRight|MiddleLeft|MiddleCenter|MiddleRight|BottomLeft|BottomCenter|BottomRight|Wrap|Truncate|Overflow|None|ColorTint|SpriteSwap|Animation|Flexible|FixedColumnCount|FixedRowCount|Unrestricted|Elastic|Clamped|LeftToRight|RightToLeft|BottomToTop|TopToBottom|Direct|Smooth)\b",
+      "captures": {
+        "0": {
+          "name": "constant.language.gg-gameui"
+        }
+      }
+    },
+    {
+      "name": "entity.name.type.gg-gameui",
+      "match": "\b(version|gameui|name|description|canvas_mode|entities|id|parent_id|components|type|properties|canvas_mode|sort_order|reference_resolution|match_mode|pixel_perfect|width|height|distance|event_camera|sorting_layer|sorting_order|anchor_min|anchor_max|offset_min|offset_max|pivot|size_delta|sprite|color|material|image_type|fill_method|fill_amount|preserve_aspect|text|font|font_size|font_style|alignment|overflow|line_spacing|interactable|transition|target_graphic|colors|normal_color|highlighted_color|pressed_color|disabled_color|fade_duration|on_click|show_mask_graphic|layout_type|padding|spacing|child_alignment|constraint|constraint_count|horizontal|vertical|movement_type|elasticity|scroll_sensitivity|content|viewport|is_on|group|on_value_changed|value|min_value|max_value|whole_numbers|direction|fill_rect|texture|uv_rect|dependencies|path|guid|references|field|timestamp|hash)\b",
+      "captures": {
+        "0": {
+          "name": "entity.name.type.gg-gameui"
+        }
+      }
+    },
+    {
+      "name": "punctuation.bracket.gg-gameui",
+      "match": "[\{\}\[\]()]",
+      "captures": {
+        "0": {
+          "name": "punctuation.bracket.gg-gameui"
+        }
+      }
+    },
+    {
+      "name": "punctuation.separator.gg-gameui",
+      "match": ",",
+      "captures": {
+        "0": {
+          "name": "punctuation.separator.gg-gameui"
+        }
+      }
+    }
+  ]
+}

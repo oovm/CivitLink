@@ -1,10 +1,11 @@
 [package]
 name = "gg-ui-perf"
-version = "0.1.0"
-edition = "2021"
+version = { workspace = true }
+edition = { workspace = true }
 description = "GG Engine UI Performance Optimization"
-license = "MIT"
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
-gg-error = { path = "../gg-error" }
-num_cpus = "1.16.0"
+gg-error = { workspace = true }
+num_cpus = { workspace = true }

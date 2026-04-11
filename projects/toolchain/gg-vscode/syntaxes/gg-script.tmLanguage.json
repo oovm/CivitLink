@@ -1,0 +1,116 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GG Script",
+  "scopeName": "source.gg-script",
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.gg-script",
+      "match": "//.*$",
+      "captures": {
+        "0": {
+          "name": "comment.line.double-slash.gg-script"
+        }
+      }
+    },
+    {
+      "name": "comment.block.gg-script",
+      "begin": "/\*",
+      "end": "\*/",
+      "captures": {
+        "0": {
+          "name": "comment.block.gg-script"
+        }
+      }
+    },
+    {
+      "name": "keyword.control.gg-script",
+      "match": "\b(func|var|let|const|if|else|elif|for|while|do|switch|case|default|break|continue|return|import|export|class|struct|interface|enum|namespace|public|private|protected|static|final|abstract|override)\b",
+      "captures": {
+        "0": {
+          "name": "keyword.control.gg-script"
+        }
+      }
+    },
+    {
+      "name": "constant.language.gg-script",
+      "match": "\b(true|false|null|undefined|this|super|self)\b",
+      "captures": {
+        "0": {
+          "name": "constant.language.gg-script"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.single.gg-script",
+      "match": "'([^'\\]|\\.)*'",
+      "captures": {
+        "0": {
+          "name": "string.quoted.single.gg-script"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.double.gg-script",
+      "match": '"([^"\\]|\\.)*"',
+      "captures": {
+        "0": {
+          "name": "string.quoted.double.gg-script"
+        }
+      }
+    },
+    {
+      "name": "constant.numeric.gg-script",
+      "match": "\b\d+(\.\d+)?\b",
+      "captures": {
+        "0": {
+          "name": "constant.numeric.gg-script"
+        }
+      }
+    },
+    {
+      "name": "entity.name.function.gg-script",
+      "match": "\b\w+(?=\s*\()",
+      "captures": {
+        "0": {
+          "name": "entity.name.function.gg-script"
+        }
+      }
+    },
+    {
+      "name": "entity.name.class.gg-script",
+      "match": "\bclass\s+\w+\b",
+      "captures": {
+        "1": {
+          "name": "entity.name.class.gg-script"
+        }
+      }
+    },
+    {
+      "name": "punctuation.bracket.gg-script",
+      "match": "[\{\}\[\]()]",
+      "captures": {
+        "0": {
+          "name": "punctuation.bracket.gg-script"
+        }
+      }
+    },
+    {
+      "name": "punctuation.separator.gg-script",
+      "match": ",",
+      "captures": {
+        "0": {
+          "name": "punctuation.separator.gg-script"
+        }
+      }
+    },
+    {
+      "name": "punctuation.terminator.gg-script",
+      "match": ";",
+      "captures": {
+        "0": {
+          "name": "punctuation.terminator.gg-script"
+        }
+      }
+    }
+  ]
+}

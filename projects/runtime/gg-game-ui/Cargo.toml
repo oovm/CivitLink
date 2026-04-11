@@ -1,14 +1,15 @@
 [package]
 name = "gg-game-ui"
-version = "0.1.0"
-edition = "2021"
+version = { workspace = true }
+edition = { workspace = true }
 description = "GG Game UI system based on GameObject and Component"
-license = "MIT"
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
-gg-ecs = { path = "../../core/gg-ecs" }
-gg-error = { path = "../../core/gg-error" }
-gg-render = { path = "../../core/gg-render" }
+gg-ecs = { workspace = true }
+gg-error = { workspace = true }
+gg-render = { workspace = true }
 
 [features]
 default = []

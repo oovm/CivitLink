@@ -10,86 +10,86 @@
 
 ### 基本结构
 
-```ron
-// 材质文件
-MaterialFile({
+```von
+# 材质文件
+MaterialFile {
     version: "1.0",
-    material: Material({
+    material: Material {
         name: "StandardMaterial",
         description: "Standard PBR material",
         shader: "assets/shaders/standard.shader",
         type: "PBR",
         is_variant: false,
-        material_base: None,
-    }),
-    properties: Properties({
-        albedo: TextureProperty({
+        material_base: null,
+    },
+    properties: Properties {
+        albedo: TextureProperty {
             type: "texture",
             value: "assets/textures/albedo.png",
             tilling: [1, 1],
             offset: [0, 0],
-        }),
-        normal: TextureProperty({
+        },
+        normal: TextureProperty {
             type: "texture",
             value: "assets/textures/normal.png",
             tilling: [1, 1],
             offset: [0, 0],
-        }),
-        metallic: FloatProperty({
+        },
+        metallic: FloatProperty {
             type: "float",
             value: 0.5,
-        }),
-        roughness: FloatProperty({
+        },
+        roughness: FloatProperty {
             type: "float",
             value: 0.5,
-        }),
-        specular: FloatProperty({
+        },
+        specular: FloatProperty {
             type: "float",
             value: 0.5,
-        }),
-        emissive: ColorProperty({
+        },
+        emissive: ColorProperty {
             type: "color",
             value: [0, 0, 0, 1],
-        }),
-        opacity: FloatProperty({
+        },
+        opacity: FloatProperty {
             type: "float",
             value: 1.0,
-        }),
-    }),
-    render_states: RenderStates({
+        },
+    },
+    render_states: RenderStates {
         cull_mode: "back",
         blend_mode: "opaque",
         depth_test: true,
         depth_write: true,
         wireframe: false,
-    }),
-    tags: Tags({
+    },
+    tags: Tags {
         render_queue: "opaque",
         light_mode: "standard",
-    }),
+    },
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/shaders/standard.shader",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0001",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/textures/albedo.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0002",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/textures/normal.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0003",
-        }),
+        },
     ],
     references: [
-        Reference({
+        Reference {
             path: "assets/meshes/ground.obj",
             field: "material",
-        }),
+        },
     ],
     timestamp: "2026-04-10T12:00:00Z",
     hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-})
+}
 ```
 
 ## 字段详细说明
@@ -157,90 +157,90 @@ MaterialFile({
 
 PBR (Physically Based Rendering) 材质是一种基于物理原理的材质类型，提供更真实的渲染效果。
 
-```ron
-Material({
+```von
+Material {
     type: "PBR",
     is_variant: false,
-    material_base: None,
-}),
-Properties({
-    albedo: TextureProperty({
+    material_base: null,
+}
+Properties {
+    albedo: TextureProperty {
         type: "texture",
         value: "assets/textures/albedo.png",
-    }),
-    normal: TextureProperty({
+    },
+    normal: TextureProperty {
         type: "texture",
         value: "assets/textures/normal.png",
-    }),
-    metallic: FloatProperty({
+    },
+    metallic: FloatProperty {
         type: "float",
         value: 0.5,
-    }),
-    roughness: FloatProperty({
+    },
+    roughness: FloatProperty {
         type: "float",
         value: 0.5,
-    }),
-    specular: FloatProperty({
+    },
+    specular: FloatProperty {
         type: "float",
         value: 0.5,
-    }),
-    emissive: ColorProperty({
+    },
+    emissive: ColorProperty {
         type: "color",
         value: [0, 0, 0, 1],
-    }),
-})
+    },
+}
 ```
 
 ### 2. Unlit 材质
 
 Unlit 材质是一种不接受光照的材质类型，适用于UI元素、特效等。
 
-```ron
-Material({
+```von
+Material {
     type: "Unlit",
     is_variant: false,
-    material_base: None,
-}),
-Properties({
-    color: ColorProperty({
+    material_base: null,
+}
+Properties {
+    color: ColorProperty {
         type: "color",
         value: [1, 1, 1, 1],
-    }),
-    texture: TextureProperty({
+    },
+    texture: TextureProperty {
         type: "texture",
         value: "assets/textures/ui.png",
-    }),
-})
+    },
+}
 ```
 
 ### 3. Phong 材质
 
 Phong 材质是一种传统的光照模型材质，适用于一些风格化的游戏。
 
-```ron
-Material({
+```von
+Material {
     type: "Phong",
     is_variant: false,
-    material_base: None,
-}),
-Properties({
-    diffuse: ColorProperty({
+    material_base: null,
+}
+Properties {
+    diffuse: ColorProperty {
         type: "color",
         value: [0.8, 0.8, 0.8, 1],
-    }),
-    specular: ColorProperty({
+    },
+    specular: ColorProperty {
         type: "color",
         value: [1, 1, 1, 1],
-    }),
-    shininess: FloatProperty({
+    },
+    shininess: FloatProperty {
         type: "float",
         value: 32,
-    }),
-    emissive: ColorProperty({
+    },
+    emissive: ColorProperty {
         type: "color",
         value: [0, 0, 0, 1],
-    }),
-})
+    },
+}
 ```
 
 ## 使用场景
@@ -276,176 +276,176 @@ Properties({
 
 ### PBR 材质示例
 
-```ron
-// PBR 材质示例
-MaterialFile({
+```von
+# PBR 材质示例
+MaterialFile {
     version: "1.0",
-    material: Material({
+    material: Material {
         name: "CharacterMaterial",
         description: "PBR material for characters",
         shader: "assets/shaders/standard.shader",
         type: "PBR",
         is_variant: false,
-        material_base: None,
-    }),
-    properties: Properties({
-        albedo: TextureProperty({
+        material_base: null,
+    },
+    properties: Properties {
+        albedo: TextureProperty {
             type: "texture",
             value: "assets/textures/character_albedo.png",
             tilling: [1, 1],
             offset: [0, 0],
-        }),
-        normal: TextureProperty({
+        },
+        normal: TextureProperty {
             type: "texture",
             value: "assets/textures/character_normal.png",
             tilling: [1, 1],
             offset: [0, 0],
-        }),
-        metallic: FloatProperty({
+        },
+        metallic: FloatProperty {
             type: "float",
             value: 0.2,
-        }),
-        roughness: FloatProperty({
+        },
+        roughness: FloatProperty {
             type: "float",
             value: 0.8,
-        }),
-        specular: FloatProperty({
+        },
+        specular: FloatProperty {
             type: "float",
             value: 0.5,
-        }),
-        emissive: ColorProperty({
+        },
+        emissive: ColorProperty {
             type: "color",
             value: [0, 0, 0, 1],
-        }),
-        opacity: FloatProperty({
+        },
+        opacity: FloatProperty {
             type: "float",
             value: 1.0,
-        }),
-    }),
-    render_states: RenderStates({
+        },
+    },
+    render_states: RenderStates {
         cull_mode: "back",
         blend_mode: "opaque",
         depth_test: true,
         depth_write: true,
         wireframe: false,
-    }),
-    tags: Tags({
+    },
+    tags: Tags {
         render_queue: "opaque",
         light_mode: "standard",
-    }),
+    },
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/shaders/standard.shader",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0005",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/textures/character_albedo.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0006",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/textures/character_normal.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0007",
-        }),
+        },
     ],
     references: [],
     timestamp: "2026-04-10T12:00:00Z",
     hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-})
+}
 ```
 
 ### UI 材质示例
 
-```ron
-// UI 材质示例
-MaterialFile({
+```von
+# UI 材质示例
+MaterialFile {
     version: "1.0",
-    material: Material({
+    material: Material {
         name: "UIMaterial",
         description: "Material for UI elements",
         shader: "assets/shaders/ui.shader",
         type: "Unlit",
         is_variant: false,
-        material_base: None,
-    }),
-    properties: Properties({
-        color: ColorProperty({
+        material_base: null,
+    },
+    properties: Properties {
+        color: ColorProperty {
             type: "color",
             value: [1, 1, 1, 1],
-        }),
-        texture: TextureProperty({
+        },
+        texture: TextureProperty {
             type: "texture",
             value: "assets/textures/ui_atlas.png",
             tilling: [1, 1],
             offset: [0, 0],
-        }),
-    }),
-    render_states: RenderStates({
+        },
+    },
+    render_states: RenderStates {
         cull_mode: "none",
         blend_mode: "alpha",
         depth_test: false,
         depth_write: false,
         wireframe: false,
-    }),
-    tags: Tags({
+    },
+    tags: Tags {
         render_queue: "transparent",
         light_mode: "unlit",
-    }),
+    },
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/shaders/ui.shader",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0009",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/textures/ui_atlas.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0010",
-        }),
+        },
     ],
     references: [],
     timestamp: "2026-04-10T12:30:00Z",
     hash: "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
-})
+}
 ```
 
 ### 材质变体示例
 
-```ron
-// 材质变体示例
-MaterialFile({
+```von
+# 材质变体示例
+MaterialFile {
     version: "1.0",
-    material: Material({
+    material: Material {
         name: "CharacterMaterial_Gold",
         description: "Gold variant of character material",
         shader: "assets/shaders/standard.shader",
         type: "PBR",
         is_variant: true,
-        material_base: Some("018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0004"),
-    }),
-    properties: Properties({
-        albedo: TextureProperty({
+        material_base: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0004",
+    },
+    properties: Properties {
+        albedo: TextureProperty {
             type: "texture",
             value: "assets/textures/character_albedo_gold.png",
             tilling: [1, 1],
             offset: [0, 0],
-        }),
-        metallic: FloatProperty({
+        },
+        metallic: FloatProperty {
             type: "float",
             value: 0.9,
-        }),
-        roughness: FloatProperty({
+        },
+        roughness: FloatProperty {
             type: "float",
             value: 0.2,
-        }),
-    }),
+        },
+    },
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/textures/character_albedo_gold.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0012",
-        }),
+        },
     ],
     references: [],
     timestamp: "2026-04-10T13:00:00Z",
     hash: "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
-})
+}
 ```
 
 ## 总结

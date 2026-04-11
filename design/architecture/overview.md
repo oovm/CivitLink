@@ -157,7 +157,7 @@ graph TD
     
     subgraph A1[游戏开发者视角组件]
         A1_1[GG Editor UI Toolkit + *.vx 文件支持（仅编辑器界面）]
-        A1_1b[Game UI System + *.gameui 文件支持（游戏运行时 UI）]
+        A1_1b[Game UI System + *.prefab 文件支持（游戏运行时 UI）]
         A1_2[游戏运行时 gg-runtime-core + 领域系统]
         A1_3[Mod / DLC 沙盒 VM + 资产覆盖层]
     end
@@ -266,8 +266,8 @@ GG Editor 使用类似 Vue 的 \*.widget 文件格式，包含三个部分：
 
 ### 架构组成
 
-1. **编译器**：编译 *.widget 文件为 Editor UI Toolkit 的平台特定代码
-   - 解析 *.widget 文件结构
+1. **编译器**：编译 *.vx 文件为 Editor UI Toolkit 的平台特定代码
+   - 解析 *.vx 文件结构
    - 编译 <template> 部分为平台特定的 GUI 代码
    - 编译 <script> 部分为 Valkyrie 脚本
    - 编译 <style> 部分为 GG Renderer 可处理的样式
@@ -275,7 +275,7 @@ GG Editor 使用类似 Vue 的 \*.widget 文件格式，包含三个部分：
    - 平台抽象层：处理不同平台原生 GUI 系统的差异
    - 原生 GUI 渲染：使用各平台的原生 GUI 系统（仅针对编辑器 UI）
    - 与游戏引擎集成：与 ECS 架构无缝集成
-3. **编辑器**：可视化编辑 *.widget 文件
+3. **编辑器**：可视化编辑 *.vx 文件
    - 语法高亮和代码提示
    - 实时预览
    - 热更新支持
@@ -311,11 +311,11 @@ Game UI System 是游戏运行时专用的 UI 框架，基于 ECS/GameObject 体
 - **Canvas 管理**：Canvas 负责批量处理 UI 元素并提交给 GPU 渲染，支持 Batch 合批优化
 - **3D 空间融合**：Canvas 可设置为 WorldSpace 模式，让 UI 像普通 3D 物体一样存在于游戏世界中（角色头顶血条、VR/AR 界面等）
 - **着色器支持**：UI 元素可通过 UiMaterial 引用 *.shader 文件，支持特效、动画和后处理
-- **动画系统**：与 *.animation 文件集成，支持 UI 元素的变换动画、颜色动画和自定义属性动画
+- **动画系统**：与 *.anim 文件集成，支持 UI 元素的变换动画、颜色动画和自定义属性动画
 
 ### *.prefab 文件格式
 
-Game UI System 使用 *.prefab 文件格式（RON 格式），包含 Canvas 配置、Entity 层级、UI 组件属性和着色器引用。详见 [Game UI 文件格式规范](/formats/gameui)。
+Game UI System 使用 *.prefab 文件格式（RON 格式），包含 Canvas 配置、Entity 层级、UI 组件属性和着色器引用。详见 [Game UI 文件格式规范](/formats/prefab)。
 
 ### Canvas 渲染模式
 
@@ -327,7 +327,7 @@ Game UI System 使用 *.prefab 文件格式（RON 格式），包含 Canvas 配�
 
 ### 与 Editor UI Toolkit 的边界
 
-| 对比维度 | Editor UI Toolkit (*.widget) | Game UI System (*.prefab) |
+| 对比维度 | Editor UI Toolkit (*.vx) | Game UI System (*.prefab) |
 |---------|-------------------------|--------------------------|
 | 用途 | 编辑器界面 | 游戏运行时 UI |
 | 技术体系 | DOM 模型，声明式 | ECS/GameObject，组件式 |
@@ -335,7 +335,7 @@ Game UI System 使用 *.prefab 文件格式（RON 格式），包含 Canvas 配�
 | 样式管理 | USS 样式系统 | 组件内联属性 |
 | 3D 空间 | 不支持 | 支持 WorldSpace 模式 |
 | 着色器 | 不支持 | 支持 UiMaterial |
-| 动画 | CSS 过渡 | *.animation 动画系统 |
+| 动画 | CSS 过渡 | *.anim 动画系统 |
 
 ## 设计原则
 

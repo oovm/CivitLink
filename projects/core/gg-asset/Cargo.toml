@@ -1,10 +1,11 @@
 [package]
 name = "gg-asset"
-version = "0.1.0"
-edition = "2021"
+version = { workspace = true }
+edition = { workspace = true }
 description = "GG Engine Asset Management System"
-license = "MIT"
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
-gg-ecs = { path = "../gg-ecs" }
-gg-error = { path = "../gg-error" }
+gg-ecs = { workspace = true }
+gg-error = { workspace = true }

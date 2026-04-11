@@ -10,39 +10,39 @@
 
 ### 基本结构
 
-```ron
-// 配置文件
-ConfigFile({
+```von
+# 配置文件
+ConfigFile {
     version: "1.0",
-    config: Config({
+    config: Config {
         name: "GameConfig",
         description: "Main game configuration",
         platform: "all",
         profile: "default",
-    }),
-    settings: Settings({
-        game: GameSettings({
+    },
+    settings: Settings {
+        game: GameSettings {
             title: "My Game",
             version: "1.0.0",
             company: "Game Studio",
             copyright: "© 2026 Game Studio",
             default_scene: "assets/scenes/main.scene",
             fps_target: 60,
-            resolution: Resolution({
+            resolution: Resolution {
                 width: 1920,
                 height: 1080,
                 fullscreen: false,
                 vsync: true,
-            }),
-        }),
-        audio: AudioSettings({
+            },
+        },
+        audio: AudioSettings {
             master_volume: 0.8,
             music_volume: 0.7,
             sfx_volume: 0.9,
             ambient_volume: 0.6,
-        }),
-        input: InputSettings({
-            keyboard: KeyboardMapping({
+        },
+        input: InputSettings {
+            keyboard: KeyboardMapping {
                 move_forward: "W",
                 move_backward: "S",
                 move_left: "A",
@@ -51,8 +51,8 @@ ConfigFile({
                 attack: "LeftMouseButton",
                 interact: "E",
                 pause: "Escape",
-            }),
-            gamepad: GamepadMapping({
+            },
+            gamepad: GamepadMapping {
                 move_forward: "LeftStickUp",
                 move_backward: "LeftStickDown",
                 move_left: "LeftStickLeft",
@@ -61,9 +61,9 @@ ConfigFile({
                 attack: "X",
                 interact: "B",
                 pause: "Start",
-            }),
-        }),
-        graphics: GraphicsSettings({
+            },
+        },
+        graphics: GraphicsSettings {
             quality: "high",
             shadow_quality: "medium",
             anti_aliasing: "msaa_4x",
@@ -72,33 +72,33 @@ ConfigFile({
             bloom: true,
             depth_of_field: true,
             motion_blur: false,
-        }),
-        network: NetworkSettings({
+        },
+        network: NetworkSettings {
             max_players: 4,
             server_port: 7777,
             client_port: 7778,
             ping_timeout: 3000,
             reconnect_attempts: 3,
-        }),
-        debug: DebugSettings({
+        },
+        debug: DebugSettings {
             enabled: false,
             show_fps: true,
             show_hud: true,
             show_colliders: false,
             show_navmesh: false,
             console_enabled: true,
-        }),
-    }),
+        },
+    },
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/scenes/main.scene",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0001",
-        }),
+        },
     ],
     references: [],
     timestamp: "2026-04-10T12:00:00Z",
     hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-})
+}
 ```
 
 ## 字段详细说明
@@ -247,39 +247,39 @@ ConfigFile({
 
 ### 全局配置示例
 
-```ron
-// 全局配置示例
-ConfigFile({
+```von
+# 全局配置示例
+ConfigFile {
     version: "1.0",
-    config: Config({
+    config: Config {
         name: "GlobalConfig",
         description: "Global game configuration",
         platform: "all",
         profile: "default",
-    }),
-    settings: Settings({
-        game: GameSettings({
+    },
+    settings: Settings {
+        game: GameSettings {
             title: "Adventure Game",
             version: "1.0.0",
             company: "Adventure Studio",
             copyright: "© 2026 Adventure Studio",
             default_scene: "assets/scenes/main.scene",
             fps_target: 60,
-            resolution: Resolution({
+            resolution: Resolution {
                 width: 1920,
                 height: 1080,
                 fullscreen: false,
                 vsync: true,
-            }),
-        }),
-        audio: AudioSettings({
+            },
+        },
+        audio: AudioSettings {
             master_volume: 0.8,
             music_volume: 0.7,
             sfx_volume: 0.9,
             ambient_volume: 0.6,
-        }),
-        input: InputSettings({
-            keyboard: KeyboardMapping({
+        },
+        input: InputSettings {
+            keyboard: KeyboardMapping {
                 move_forward: "W",
                 move_backward: "S",
                 move_left: "A",
@@ -291,8 +291,8 @@ ConfigFile({
                 inventory: "I",
                 map: "M",
                 character: "C",
-            }),
-            gamepad: GamepadMapping({
+            },
+            gamepad: GamepadMapping {
                 move_forward: "LeftStickUp",
                 move_backward: "LeftStickDown",
                 move_left: "LeftStickLeft",
@@ -304,9 +304,9 @@ ConfigFile({
                 inventory: "Y",
                 map: "Back",
                 character: "RightShoulder",
-            }),
-        }),
-        graphics: GraphicsSettings({
+            },
+        },
+        graphics: GraphicsSettings {
             quality: "high",
             shadow_quality: "medium",
             anti_aliasing: "msaa_4x",
@@ -317,16 +317,16 @@ ConfigFile({
             motion_blur: false,
             ambient_occlusion: true,
             dynamic_lighting: true,
-        }),
-        network: NetworkSettings({
+        },
+        network: NetworkSettings {
             max_players: 4,
             server_port: 7777,
             client_port: 7778,
             ping_timeout: 3000,
             reconnect_attempts: 3,
             bandwidth_limit: 1024,
-        }),
-        debug: DebugSettings({
+        },
+        debug: DebugSettings {
             enabled: false,
             show_fps: true,
             show_hud: true,
@@ -334,43 +334,43 @@ ConfigFile({
             show_navmesh: false,
             console_enabled: true,
             log_level: "info",
-        }),
-    }),
+        },
+    },
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/scenes/main.scene",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0003",
-        }),
+        },
     ],
     references: [],
     timestamp: "2026-04-10T12:00:00Z",
     hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-})
+}
 ```
 
 ### 低配置示例
 
-```ron
-// 低配置示例
-ConfigFile({
+```von
+# 低配置示例
+ConfigFile {
     version: "1.0",
-    config: Config({
+    config: Config {
         name: "LowConfig",
         description: "Low performance configuration",
         platform: "all",
         profile: "low",
-    }),
-    settings: Settings({
-        game: GameSettings({
+    },
+    settings: Settings {
+        game: GameSettings {
             fps_target: 30,
-            resolution: Resolution({
+            resolution: Resolution {
                 width: 1280,
                 height: 720,
                 fullscreen: false,
                 vsync: false,
-            }),
-        }),
-        graphics: GraphicsSettings({
+            },
+        },
+        graphics: GraphicsSettings {
             quality: "low",
             shadow_quality: "off",
             anti_aliasing: "off",
@@ -381,13 +381,13 @@ ConfigFile({
             motion_blur: false,
             ambient_occlusion: false,
             dynamic_lighting: false,
-        }),
-    }),
+        },
+    },
     dependencies: [],
     references: [],
     timestamp: "2026-04-10T12:30:00Z",
     hash: "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
-})
+}
 ```
 
 ## 总结

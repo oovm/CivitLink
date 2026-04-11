@@ -1,0 +1,116 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GG Shader",
+  "scopeName": "source.gg-shader",
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.gg-shader",
+      "match": "//.*$",
+      "captures": {
+        "0": {
+          "name": "comment.line.double-slash.gg-shader"
+        }
+      }
+    },
+    {
+      "name": "comment.block.gg-shader",
+      "begin": "/\*",
+      "end": "\*/",
+      "captures": {
+        "0": {
+          "name": "comment.block.gg-shader"
+        }
+      }
+    },
+    {
+      "name": "keyword.control.gg-shader",
+      "match": "\b(shader|vertex|fragment|uniform|varying|attribute|const|precision|highp|mediump|lowp|if|else|for|while|do|break|continue|return)\b",
+      "captures": {
+        "0": {
+          "name": "keyword.control.gg-shader"
+        }
+      }
+    },
+    {
+      "name": "constant.language.gg-shader",
+      "match": "\b(true|false|PI|TAU|E)\b",
+      "captures": {
+        "0": {
+          "name": "constant.language.gg-shader"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.single.gg-shader",
+      "match": "'([^'\\]|\\.)*'",
+      "captures": {
+        "0": {
+          "name": "string.quoted.single.gg-shader"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.double.gg-shader",
+      "match": '"([^"\\]|\\.)*"',
+      "captures": {
+        "0": {
+          "name": "string.quoted.double.gg-shader"
+        }
+      }
+    },
+    {
+      "name": "constant.numeric.gg-shader",
+      "match": "\b\d+(\.\d+)?\b",
+      "captures": {
+        "0": {
+          "name": "constant.numeric.gg-shader"
+        }
+      }
+    },
+    {
+      "name": "entity.name.function.gg-shader",
+      "match": "\b\w+(?=\s*\()",
+      "captures": {
+        "0": {
+          "name": "entity.name.function.gg-shader"
+        }
+      }
+    },
+    {
+      "name": "entity.name.type.gg-shader",
+      "match": "\b(vec2|vec3|vec4|mat2|mat3|mat4|float|int|bool|sampler2D|sampler3D|samplerCube)\b",
+      "captures": {
+        "0": {
+          "name": "entity.name.type.gg-shader"
+        }
+      }
+    },
+    {
+      "name": "punctuation.bracket.gg-shader",
+      "match": "[\{\}\[\]()]",
+      "captures": {
+        "0": {
+          "name": "punctuation.bracket.gg-shader"
+        }
+      }
+    },
+    {
+      "name": "punctuation.separator.gg-shader",
+      "match": ",",
+      "captures": {
+        "0": {
+          "name": "punctuation.separator.gg-shader"
+        }
+      }
+    },
+    {
+      "name": "punctuation.terminator.gg-shader",
+      "match": ";",
+      "captures": {
+        "0": {
+          "name": "punctuation.terminator.gg-shader"
+        }
+      }
+    }
+  ]
+}

@@ -115,6 +115,53 @@ graph TD
 
 ---
 
+## 平台抽象层 (Platform Abstraction Layer)
+
+平台抽象层屏蔽操作系统和运行环境的差异，为上层提供统一接口，确保引擎代码无需关心具体平台实现。
+
+### 职责
+
+- 职责概述
+平台抽象层负责屏蔽底层平台差异，为上层提供统一的系统接口，包含文件系统、输入、渲染、GUI、音频、时间与线程等子模块。
+
+### 平台抽象层职责
+
+平台抽象层屏蔽操作系统和运行环境的差异，为上层提供统一接口，包含以下子模块：
+
+- **文件系统抽象**：统一接口访问各平台存储
+- **输入抽象**：统一处理按键、鼠标/触摸、游戏手柄等事件
+- **渲染抽象**：基于 `wgpu` 统一图形渲染，服务游戏渲染和 Game UI System。Game UI 基于 ECS + Canvas 体系，Canvas 负责批量处理 UI 元素并提交给 GPU 渲染，支持 3D 空间 UI（WorldSpace 模式）和着色器特效。详见 [Game UI System](/formats/prefab)。
+- **GUI 抽象**：仅服务 Editor UI Toolkit，处理各平台原生 GUI 系统差异。Editor UI 使用独立渲染器，基于 DOM 模型，不与游戏 ECS 世界交互。详见 [Editor UI Toolkit](/formats/widget)。
+- **音频抽象**：统一播放控制，支持常见格式
+- **时间与线程抽象**：统一获取系统时间、休眠、线程生成
+- **动态链接与虚拟机支持**：确保 gg 虚拟机能在目标平台运行
+
+### 与其他层的交互
+- 向上：为运行时层和元引擎框架层提供平台无关的统一接口
+- 向下：直接与各平台原生 API 交互
+
+---
+
+## Game UI System 渲染管线
+
+Game UI System 的渲染管线在架构层级中的位置如下：
+
+1. **元引擎框架层**：提供 ECS 核心（gg-ecs）和资源系统（gg-asset），Game UI 的 Entity 和组件基于此构建
+2. **运行时层**：
+   - **Canvas 系统**：管理 UI Canvas 的生命周期、Batch 合批和 DrawCall 提交
+   - **UI 渲染器**：将 Canvas 的 DrawCall 转换为 wgpu 渲染命令，通过渲染抽象层提交给 GPU
+   - **UI 着色器**：UiUnlit、UiSdf、UiCustom 着色器在 GPU 上执行，支持 UI 特效
+3. **平台抽象层**：渲染抽象（wgpu）负责将 UI 渲染命令提交给目标平台的图形 API
+
+Game UI 渲染流程：
+```
+ECS 世界 → UiCanvas 组件 → Canvas Batch 合批 → DrawCall 队列 → 渲染抽象层(wgpu) → GPU
+```
+
+注意：Editor UI Toolkit 使用独立的渲染管线，不经过 ECS 世界和 Canvas 系统，而是通过 GUI 抽象层直接渲染。
+
+---
+
 ## 层级间依赖关系
 
 ```mermaid

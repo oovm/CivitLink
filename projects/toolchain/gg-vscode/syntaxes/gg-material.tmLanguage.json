@@ -1,0 +1,79 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "GG Material",
+  "scopeName": "source.gg-material",
+  "patterns": [
+    {
+      "name": "comment.line.double-slash.gg-material",
+      "match": "//.*$",
+      "captures": {
+        "0": {
+          "name": "comment.line.double-slash.gg-material"
+        }
+      }
+    },
+    {
+      "name": "keyword.control.gg-material",
+      "match": "\b(MaterialFile|Material|TextureProperty|FloatProperty|ColorProperty|RenderStates|Tags|Dependency|Reference)\b",
+      "captures": {
+        "0": {
+          "name": "keyword.control.gg-material"
+        }
+      }
+    },
+    {
+      "name": "string.quoted.double.gg-material",
+      "match": '"([^"\\]|\\.)*"',
+      "captures": {
+        "0": {
+          "name": "string.quoted.double.gg-material"
+        }
+      }
+    },
+    {
+      "name": "constant.numeric.gg-material",
+      "match": "\b\d+(\.\d+)?\b",
+      "captures": {
+        "0": {
+          "name": "constant.numeric.gg-material"
+        }
+      }
+    },
+    {
+      "name": "constant.language.gg-material",
+      "match": "\b(true|false|None|Some|PBR|Unlit|Phong|back|front|none|opaque|alpha|additive|transparent|overlay|standard|unlit)\b",
+      "captures": {
+        "0": {
+          "name": "constant.language.gg-material"
+        }
+      }
+    },
+    {
+      "name": "entity.name.type.gg-material",
+      "match": "\b(version|material|name|description|shader|type|is_variant|material_base|properties|albedo|normal|metallic|roughness|specular|emissive|opacity|type|value|tilling|offset|render_states|cull_mode|blend_mode|depth_test|depth_write|wireframe|tags|render_queue|light_mode|dependencies|path|guid|references|field|timestamp|hash)\b",
+      "captures": {
+        "0": {
+          "name": "entity.name.type.gg-material"
+        }
+      }
+    },
+    {
+      "name": "punctuation.bracket.gg-material",
+      "match": "[\{\}\[\]()]",
+      "captures": {
+        "0": {
+          "name": "punctuation.bracket.gg-material"
+        }
+      }
+    },
+    {
+      "name": "punctuation.separator.gg-material",
+      "match": ",",
+      "captures": {
+        "0": {
+          "name": "punctuation.separator.gg-material"
+        }
+      }
+    }
+  ]
+}

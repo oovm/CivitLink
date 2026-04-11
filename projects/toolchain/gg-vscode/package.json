@@ -1,0 +1,224 @@
+{
+  "name": "gg-vscode",
+  "displayName": "GG Game Engine",
+  "description": "VS Code extension for GG Game Engine",
+  "version": "1.0.0",
+  "publisher": "gg-game-engine",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Linters",
+    "Debuggers"
+  ],
+  "activationEvents": [
+    "onLanguage:gg-animation",
+    "onLanguage:gg-config",
+    "onLanguage:gg-material",
+    "onLanguage:gg-meta",
+    "onLanguage:gg-prefab",
+    "onLanguage:gg-scene",
+    "onLanguage:gg-script",
+    "onLanguage:gg-shader",
+    "onLanguage:gg-widget",
+    "onLanguage:gg-galgame"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "gg-animation",
+        "extensions": [
+          ".animation"
+        ],
+        "aliases": [
+          "GG Animation"
+        ]
+      },
+      {
+        "id": "gg-config",
+        "extensions": [
+          ".config"
+        ],
+        "aliases": [
+          "GG Config"
+        ]
+      },
+      {
+        "id": "gg-material",
+        "extensions": [
+          ".material"
+        ],
+        "aliases": [
+          "GG Material"
+        ]
+      },
+      {
+        "id": "gg-meta",
+        "extensions": [
+          ".meta"
+        ],
+        "aliases": [
+          "GG Meta"
+        ]
+      },
+      {
+        "id": "gg-prefab",
+        "extensions": [
+          ".prefab"
+        ],
+        "aliases": [
+          "GG Prefab"
+        ]
+      },
+      {
+        "id": "gg-scene",
+        "extensions": [
+          ".scene"
+        ],
+        "aliases": [
+          "GG Scene"
+        ]
+      },
+      {
+        "id": "gg-script",
+        "extensions": [
+          ".script"
+        ],
+        "aliases": [
+          "GG Script"
+        ]
+      },
+      {
+        "id": "gg-shader",
+        "extensions": [
+          ".shader"
+        ],
+        "aliases": [
+          "GG Shader"
+        ]
+      },
+      {
+        "id": "gg-widget",
+        "extensions": [
+          ".widget"
+        ],
+        "aliases": [
+          "GG Widget"
+        ]
+      },
+      {
+        "id": "gg-galgame",
+        "extensions": [
+          ".galgame"
+        ],
+        "aliases": [
+          "GG Galgame"
+        ]
+      }
+    ],
+    "grammars": [
+      {
+        "language": "gg-animation",
+        "scopeName": "source.gg-animation",
+        "path": "./syntaxes/gg-animation.tmLanguage.json"
+      },
+      {
+        "language": "gg-config",
+        "scopeName": "source.gg-config",
+        "path": "./syntaxes/gg-config.tmLanguage.json"
+      },
+      {
+        "language": "gg-material",
+        "scopeName": "source.gg-material",
+        "path": "./syntaxes/gg-material.tmLanguage.json"
+      },
+      {
+        "language": "gg-meta",
+        "scopeName": "source.gg-meta",
+        "path": "./syntaxes/gg-meta.tmLanguage.json"
+      },
+      {
+        "language": "gg-prefab",
+        "scopeName": "source.gg-prefab",
+        "path": "./syntaxes/gg-prefab.tmLanguage.json"
+      },
+      {
+        "language": "gg-scene",
+        "scopeName": "source.gg-scene",
+        "path": "./syntaxes/gg-scene.tmLanguage.json"
+      },
+      {
+        "language": "gg-script",
+        "scopeName": "source.gg-script",
+        "path": "./syntaxes/gg-script.tmLanguage.json"
+      },
+      {
+        "language": "gg-shader",
+        "scopeName": "source.gg-shader",
+        "path": "./syntaxes/gg-shader.tmLanguage.json"
+      },
+      {
+        "language": "gg-widget",
+        "scopeName": "source.gg-widget",
+        "path": "./syntaxes/gg-widget.tmLanguage.json"
+      },
+      {
+        "language": "gg-galgame",
+        "scopeName": "source.gg-galgame",
+        "path": "./syntaxes/gg-galgame.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "gg-vscode.helloWorld",
+        "title": "Hello World",
+        "category": "GG Game Engine"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "GG Game Engine",
+      "properties": {
+        "gg-vscode.enableSyntaxHighlighting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable syntax highlighting for GG Game Engine files"
+        },
+        "gg-vscode.enableLSP": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Language Server Protocol (LSP) integration"
+        },
+        "gg-vscode.enableMCP": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable Model Context Protocol (MCP) integration"
+        },
+        "gg-vscode.lspPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the GG LSP executable"
+        },
+        "gg-vscode.mcpPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the GG MCP executable"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.115.0",
+    "typescript": "^5.0.0"
+  }
+}
