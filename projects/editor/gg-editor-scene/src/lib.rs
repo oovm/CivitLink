@@ -8,7 +8,7 @@ pub mod components;
 pub mod view;
 pub mod viewport;
 
-pub use base::{BaseSceneView, SceneEntity, SceneEntityKind};
+pub use base::{BaseSceneView, GizmoState, SceneEntity, SceneEntityKind, SelectionBox, TransformGizmo};
 pub use components::{RectRenderer, SpriteRenderer, Transform2D};
 pub use view::SceneView;
 pub use viewport::ViewportState;

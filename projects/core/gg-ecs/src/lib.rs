@@ -20,8 +20,7 @@ use std::{
 use archetype::{ArchetypeGraph, ArchetypeId};
 pub use entity::{Entity, EntityAllocator, EntityLocation};
 use gg_error::{GError, GErrorKind, GResult};
-pub use gg_macros::Component;
-pub use gg_macros::Resource;
+pub use gg_macros::{Component, Resource};
 
 pub use entity::Entity as EntityType;
 
@@ -315,7 +314,8 @@ impl World {
         if has_component {
             let archetype = self.archetype_graph.get_mut(old_archetype_id).unwrap();
             archetype.add_component_raw(location.row, component, type_id);
-        } else {
+        }
+        else {
             let mut new_types =
                 self.archetype_graph.get(old_archetype_id).map(|a| a.component_types().clone()).unwrap_or_default();
             new_types.insert(type_id);
@@ -601,6 +601,3 @@ pub mod prelude {
         storage::{ComponentColumn, ComponentStorage},
     };
 }
-
-
-

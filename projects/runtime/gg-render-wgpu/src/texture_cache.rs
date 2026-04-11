@@ -164,6 +164,22 @@ impl TextureCache {
         self.textures.get(&id)
     }
 
+    /// 移除指定标识符的纹理
+    ///
+    /// 从缓存中移除纹理并返回所有权。
+    /// 移除后该标识符不再有效，相关的绑定组也将失效。
+    ///
+    /// # 参数
+    ///
+    /// - `id` - 纹理标识符
+    ///
+    /// # 返回值
+    ///
+    /// 如果找到则返回纹理对象，否则返回 `None`
+    pub fn remove(&mut self, id: TextureId) -> Option<wgpu::Texture> {
+        self.textures.remove(&id)
+    }
+
     /// 获取纹理的原始 wgpu 纹理对象
     ///
     /// 通过纹理标识符获取对应的 wgpu 纹理引用。

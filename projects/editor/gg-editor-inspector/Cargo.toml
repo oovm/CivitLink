@@ -9,7 +9,6 @@ license = { workspace = true }
 gg-core = { workspace = true }
 gg-ecs = { workspace = true }
 gg-world = { workspace = true }
-gg-galgame-schema = { workspace = true }
 gg-editor-shell = { workspace = true }
 gg-ui = { workspace = true }
 gg-reflection = { workspace = true }

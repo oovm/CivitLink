@@ -1,0 +1,550 @@
+# YAML 风格 DSL
+# 数据驱动的 Galgame 脚本格式
+
+metadata:
+  title: 星光学院的秘密
+  author: 灵之镜工作室
+  version: 1.0.0
+
+characters:
+  player:
+    name: 主角
+    color: "#88c8ff"
+  sakura:
+    name: 樱井美咲
+    color: "#ffb7c5"
+  ren:
+    name: 黑崎莲
+    color: "#7b68ee"
+  yuki:
+    name: 白雪悠希
+    color: "#e6e6fa"
+
+variables:
+  sakura_affection: 0
+  ren_affection: 0
+  yuki_affection: 0
+  trust_points: 0
+  clues_found: 0
+  knows_secret: false
+
+# ============================================
+# 序章
+# ============================================
+
+nodes:
+  prologue:
+    type: scene
+    background: images/bg/school_gate_sunset.png
+    transition:
+      type: fade
+      duration: 1.5
+    music:
+      file: audio/bgm/mystery_theme.mp3
+      volume: 0.6
+    next: prologue_text_1
+
+  prologue_text_1:
+    type: text
+    content: |
+      星光学院，这所历史悠久的名校，隐藏着不为人知的秘密。
+      
+      我转学到这里已经一周了，却总觉得有什么不对劲。
+    next: prologue_thinking
+
+  prologue_thinking:
+    type: dialogue
+    character: player
+    expression: thinking
+    content: （奇怪...那个旧校舍，为什么总是锁着？）
+    effect:
+      type: flash
+      duration: 0.3
+    next: sakura_appears
+
+  sakura_appears:
+    type: character
+    action: show
+    character: sakura
+    sprite: curious
+    position: left
+    transition: slide_left
+    next: sakura_greeting
+
+  sakura_greeting:
+    type: dialogue
+    character: sakura
+    content: 新同学！你在看什么呢？
+    next: player_response
+
+  player_response:
+    type: dialogue
+    character: player
+    expression: surprised
+    content: 啊，樱井同学...没什么，只是在发呆。
+    next: sakura_invite
+
+  sakura_invite:
+    type: dialogue
+    character: sakura
+    expression: smile
+    content: 你的表情可不像在发呆哦。对了，放学后学生会有个活动，要来吗？
+    next: first_choice
+
+  first_choice:
+    type: choice
+    options:
+      - text: 好啊，我去看看
+        next: accept_student_council
+        effects:
+          - variable: sakura_affection
+            operation: add
+            value: 1
+          - variable: trust_points
+            operation: add
+            value: 1
+      - text: 抱歉，我还有事
+        next: decline_student_council
+        effects:
+          - variable: sakura_affection
+            operation: add
+            value: -1
+      - text: 学生会有什么活动？
+        next: ask_about_activity
+
+  # ============================================
+  # 分支：接受邀请
+  # ============================================
+
+  accept_student_council:
+    type: dialogue
+    character: sakura
+    expression: happy
+    content: 太好了！那放学后见！
+    effects:
+      - type: character_sprite
+        character: sakura
+        sprite: happy
+    next: after_school_choice
+
+  # ============================================
+  # 分支：拒绝邀请
+  # ============================================
+
+  decline_student_council:
+    type: dialogue
+    character: sakura
+    expression: disappointed
+    content: 这样啊...那下次有机会再说吧。
+    next: decline_character_hide
+
+  decline_character_hide:
+    type: character
+    action: hide
+    character: sakura
+    transition: slide_left_out
+    next: decline_player_thinking
+
+  decline_player_thinking:
+    type: dialogue
+    character: player
+    expression: thinking
+    content: （她的表情...好像有些失落。）
+    next: after_school_choice
+
+  # ============================================
+  # 分支：询问活动
+  # ============================================
+
+  ask_about_activity:
+    type: dialogue
+    character: sakura
+    expression: mysterious
+    content: 嘿嘿，这是秘密哦。来了你就知道了~
+    next: player_curious
+
+  player_curious:
+    type: dialogue
+    character: player
+    expression: suspicious
+    content: （秘密？）
+    next: after_school_choice
+
+  # ============================================
+  # 放学后选择
+  # ============================================
+
+  after_school_choice:
+    type: scene
+    background: images/bg/classroom_afternoon.png
+    transition:
+      type: fade
+      duration: 1.0
+    next: ren_appears
+
+  ren_appears:
+    type: character
+    action: show
+    character: ren
+    sprite: cool
+    position: right
+    transition: slide_right
+    next: ren_greeting
+
+  ren_greeting:
+    type: dialogue
+    character: ren
+    content: 喂，新来的。要不要跟我去个地方？
+    next: player_question
+
+  player_question:
+    type: dialogue
+    character: player
+    expression: surprised
+    content: 黑崎同学？去哪里？
+    next: ren_invite
+
+  ren_invite:
+    type: dialogue
+    character: ren
+    expression: smirk
+    content: 旧校舍。我知道怎么进去。
+    next: second_choice
+
+  second_choice:
+    type: choice
+    options:
+      - text: 跟樱井去学生会
+        next: route_student_council
+        condition:
+          variable: sakura_affection
+          operator: ">="
+          value: 0
+        effects:
+          - variable: school_route
+            operation: set
+            value: true
+      - text: 跟黑崎去旧校舍
+        next: route_old_building
+        effects:
+          - variable: school_route
+            operation: set
+            value: true
+          - variable: ren_affection
+            operation: add
+            value: 2
+      - text: 回家
+        next: route_home
+        effects:
+          - variable: home_route
+            operation: set
+            value: true
+
+  # ============================================
+  # 路线跳转
+  # ============================================
+
+  route_student_council:
+    type: dialogue
+    character: player
+    expression: thinking
+    content: （还是先去学生会看看吧。）
+    next: route_student_council_2
+
+  route_student_council_2:
+    type: dialogue
+    character: ren
+    expression: disappointed
+    content: 切，无聊。
+    next: route_student_council_3
+
+  route_student_council_3:
+    type: character
+    action: hide
+    character: ren
+    transition: slide_right_out
+    next: load_chapter1_school
+
+  load_chapter1_school:
+    type: call
+    script: chapter1_school.yaml
+    next: end
+
+  route_old_building:
+    type: dialogue
+    character: player
+    expression: curious
+    content: （旧校舍...也许能发现什么。）
+    next: route_old_building_2
+
+  route_old_building_2:
+    type: dialogue
+    character: ren
+    expression: smirk
+    content: 明智的选择。
+    next: load_chapter1_old_building
+
+  load_chapter1_old_building:
+    type: call
+    script: chapter1_old_building.yaml
+    next: end
+
+  route_home:
+    type: dialogue
+    character: player
+    expression: thinking
+    content: （今天还是先回家吧。）
+    next: route_home_2
+
+  route_home_2:
+    type: dialogue
+    character: ren
+    expression: shrug
+    content: 随你便。
+    next: load_chapter1_home
+
+  load_chapter1_home:
+    type: call
+    script: chapter1_home.yaml
+    next: end
+
+  # ============================================
+  # 学生会线
+  # ============================================
+
+  student_council_entrance:
+    type: scene
+    background: images/bg/student_council_room.png
+    transition:
+      type: fade
+      duration: 1.0
+    music:
+      file: audio/bgm/peaceful_theme.mp3
+      volume: 0.5
+    next: sakura_welcome
+
+  sakura_welcome:
+    type: character
+    action: show
+    character: sakura
+    sprite: smile
+    position: center
+    next: sakura_welcome_text
+
+  sakura_welcome_text:
+    type: dialogue
+    character: sakura
+    content: 欢迎来到学生会！
+    next: yuki_appears
+
+  yuki_appears:
+    type: character
+    action: show
+    character: yuki
+    sprite: gentle
+    position: left
+    transition: slide_left
+    next: yuki_welcome
+
+  yuki_welcome:
+    type: dialogue
+    character: yuki
+    content: 啊，新同学也来了。欢迎欢迎。
+    next: player_notice
+
+  player_notice:
+    type: dialogue
+    character: player
+    expression: curious
+    content: 白雪同学也在啊。
+    next: yuki_introduce
+
+  yuki_introduce:
+    type: dialogue
+    character: yuki
+    expression: smile
+    content: 我是学生会的书记。樱井是副会长。
+    next: sakura_proud
+
+  sakura_proud:
+    type: dialogue
+    character: sakura
+    expression: proud
+    content: 没错！我们学生会可是学校的重要组织！
+    next: player_thinking
+
+  player_thinking:
+    type: dialogue
+    character: player
+    expression: thinking
+    content: （学生会...应该能了解到一些学校的事情。）
+    next: yuki_request
+
+  yuki_request:
+    type: dialogue
+    character: yuki
+    expression: serious
+    content: 对了，新同学，有件事想请你帮忙。
+    next: help_choice
+
+  help_choice:
+    type: choice
+    options:
+      - text: 什么事？
+        next: ask_for_help
+        effects:
+          - variable: yuki_affection
+            operation: add
+            value: 1
+          - variable: trust_points
+            operation: add
+            value: 2
+      - text: 我很忙...
+        next: refuse_help
+        effects:
+          - variable: yuki_affection
+            operation: add
+            value: -1
+          - variable: sakura_affection
+            operation: add
+            value: -1
+
+  # ============================================
+  # 结局判定
+  # ============================================
+
+  endings:
+    type: branch
+    branches:
+      - condition:
+          variable: ending_type
+          operator: "=="
+          value: public
+        next: public_truth_ending
+      - condition:
+          variable: ending_type
+          operator: "=="
+          value: restore
+        next: restore_memory_ending
+      - condition:
+          variable: ending_type
+          operator: "=="
+          value: investigate
+        next: true_ending
+    default: normal_ending
+
+  # ============================================
+  # 樱井美咲结局
+  # ============================================
+
+  sakura_good_ending:
+    type: scene
+    background: images/bg/cherry_blossom.png
+    transition:
+      type: fade
+      duration: 1.5
+    music:
+      file: audio/bgm/romantic_theme.mp3
+      volume: 0.6
+    next: sakura_confession_1
+
+  sakura_confession_1:
+    type: character
+    action: show
+    character: sakura
+    sprite: blush
+    position: center
+    next: sakura_confession_2
+
+  sakura_confession_2:
+    type: dialogue
+    character: sakura
+    content: 那个...我有话想对你说。
+    next: player_curious_2
+
+  player_curious_2:
+    type: dialogue
+    character: player
+    expression: curious
+    content: 什么事？
+    next: sakura_confession_3
+
+  sakura_confession_3:
+    type: dialogue
+    character: sakura
+    expression: shy
+    content: |
+      这段时间...谢谢你一直陪在我身边。
+      
+      我...我好像...
+    next: player_question_2
+
+  player_question_2:
+    type: dialogue
+    character: player
+    expression: surprised
+    content: ？
+    next: sakura_confession_4
+
+  sakura_confession_4:
+    type: dialogue
+    character: sakura
+    expression: determined
+    content: 我喜欢你！
+    effect:
+      type: heart_float
+      duration: 1.0
+    next: player_response_2
+
+  player_response_2:
+    type: dialogue
+    character: player
+    expression: blush
+    content: 樱井同学...
+    next: sakura_happy
+
+  sakura_happy:
+    type: dialogue
+    character: sakura
+    expression: happy
+    content: 以后...请多多指教了！
+    next: sakura_ending_text
+
+  sakura_ending_text:
+    type: ending
+    title: 樱井美咲结局：樱花之约
+    content: |
+      你与樱井美咲成为了恋人。
+      在樱花树下，你们许下了永远的约定。
+    next: show_stats
+
+  # ============================================
+  # 游戏统计
+  # ============================================
+
+  show_stats:
+    type: stats
+    title: 游戏统计
+    variables:
+      - name: 樱井美咲好感度
+        variable: sakura_affection
+      - name: 黑崎莲好感度
+        variable: ren_affection
+      - name: 白雪悠希好感度
+        variable: yuki_affection
+      - name: 信任点数
+        variable: trust_points
+      - name: 发现线索
+        variable: clues_found
+    footer: |
+      ---
+      
+      感谢游玩《星光学院的秘密》！
+      
+      如果想要体验其他结局，请尝试不同的选择路径。
+    next: title_screen
+
+  title_screen:
+    type: call
+    function: show_title_screen
+    next: end

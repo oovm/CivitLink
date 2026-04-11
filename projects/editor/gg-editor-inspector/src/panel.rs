@@ -8,21 +8,21 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use gg_core::GResult;
 use gg_ecs::World;
 use gg_editor_shell::{
-    EditorContext, EditorEvent, EditorPanel,
+    DragData, EditorContext, EditorEvent, EditorPanel,
     panel::{PanelLayoutHint, PanelPosition},
 };
-use gg_ui::{Style, UiNodeData, UiTree};
 use gg_render::Color;
+use gg_ui::{Style, UiNodeData, UiNodeId, UiTree};
 
 use crate::{
     binding::{PropertyBinding, ReflectionPropertyBinding},
     descriptor::{ComponentDescriptor, DescriptorRegistry, PropertyConstraints, PropertyDescriptor, PropertyType},
     editor::{
-        AssetPathEditorFactory, BoolEditorFactory, ColorEditorFactory, EnumEditorFactory, NumericEditorFactory,
-        PropertyEditorRegistry, PropertyEditorWidget, StringEditorFactory,
+        ArrayEditorFactory, AssetPathEditorFactory, BoolEditorFactory, ColorEditorFactory, EntityRefEditorFactory,
+        EnumEditorFactory, MapEditorFactory, NumericEditorFactory, PropertyEditorRegistry, PropertyEditorWidget,
+        RectEditorFactory, StringEditorFactory, StructEditorFactory, Vec2EditorFactory, Vec3EditorFactory, Vec4EditorFactory,
     },
 };
 
@@ -63,6 +63,8 @@ pub struct InspectorPanel {
     incoming_deselected: Rc<RefCell<bool>>,
     /// 当前实体的活跃属性条目列表
     active_entries: Vec<ActivePropertyEntry>,
+    /// 组件折叠状态
+    component_fold_states: std::collections::HashMap<String, bool>,
 }
 
 impl InspectorPanel {
@@ -78,6 +80,14 @@ impl InspectorPanel {
         editor_registry.register_factory(Box::new(EnumEditorFactory));
         editor_registry.register_factory(Box::new(ColorEditorFactory));
         editor_registry.register_factory(Box::new(AssetPathEditorFactory));
+        editor_registry.register_factory(Box::new(Vec2EditorFactory));
+        editor_registry.register_factory(Box::new(Vec3EditorFactory));
+        editor_registry.register_factory(Box::new(Vec4EditorFactory));
+        editor_registry.register_factory(Box::new(RectEditorFactory));
+        editor_registry.register_factory(Box::new(EntityRefEditorFactory));
+        editor_registry.register_factory(Box::new(StructEditorFactory));
+        editor_registry.register_factory(Box::new(ArrayEditorFactory));
+        editor_registry.register_factory(Box::new(MapEditorFactory));
 
         let mut panel = Self {
             visible: true,
@@ -87,6 +97,7 @@ impl InspectorPanel {
             incoming_selected: Rc::new(RefCell::new(None)),
             incoming_deselected: Rc::new(RefCell::new(false)),
             active_entries: Vec::new(),
+            component_fold_states: std::collections::HashMap::new(),
         };
         panel.register_default_descriptors();
         panel
@@ -127,6 +138,12 @@ impl InspectorPanel {
         &self.active_entries
     }
 
+    /// 切换组件折叠状态
+    pub fn toggle_component_fold(&mut self, type_name: &str) {
+        let current = self.component_fold_states.get(type_name).copied().unwrap_or(false);
+        self.component_fold_states.insert(type_name.to_string(), !current);
+    }
+
     /// 提交待处理的属性变更
     ///
     /// 遍历所有活跃属性条目，检查编辑器是否被修改，
@@ -142,13 +159,7 @@ impl InspectorPanel {
             .active_entries
             .iter()
             .filter(|entry| entry.editor.is_modified())
-            .map(|entry| {
-                (
-                    entry.component_type.clone(),
-                    entry.property_name.clone(),
-                    entry.editor.get_value(),
-                )
-            })
+            .map(|entry| (entry.component_type.clone(), entry.property_name.clone(), entry.editor.get_value()))
             .collect();
 
         for (component_type, property_name, new_value) in pending {
@@ -187,10 +198,8 @@ impl InspectorPanel {
         let command = crate::binding::SetPropertyCommand::new(binding, entity, new_value.clone(), description);
         context.execute_command(Box::new(command));
 
-        if let Some(entry) = self
-            .active_entries
-            .iter_mut()
-            .find(|e| e.component_type == component_type && e.property_name == property_name)
+        if let Some(entry) =
+            self.active_entries.iter_mut().find(|e| e.component_type == component_type && e.property_name == property_name)
         {
             entry.editor.set_value(&new_value);
         }
@@ -209,14 +218,9 @@ impl InspectorPanel {
 
         for entry in &mut self.active_entries {
             let value = entry.binding.read(world, entity).or_else(|| {
-                self.descriptor_registry
-                    .get_component(&entry.component_type)
-                    .and_then(|desc| {
-                        desc.properties
-                            .iter()
-                            .find(|p| p.name == entry.property_name)
-                            .and_then(|p| p.default_value.clone())
-                    })
+                self.descriptor_registry.get_component(&entry.component_type).and_then(|desc| {
+                    desc.properties.iter().find(|p| p.name == entry.property_name).and_then(|p| p.default_value.clone())
+                })
             });
             if let Some(v) = value {
                 entry.editor.set_value(&v);
@@ -467,10 +471,8 @@ impl EditorPanel for InspectorPanel {
         match event {
             EditorEvent::PropertyChanged { entity, component, property } => {
                 if self.selected_entity == Some(*entity) {
-                    if let Some(entry) = self
-                        .active_entries
-                        .iter_mut()
-                        .find(|e| e.component_type == *component && e.property_name == *property)
+                    if let Some(entry) =
+                        self.active_entries.iter_mut().find(|e| e.component_type == *component && e.property_name == *property)
                     {
                         let world = &mut context.world_mut().ecs_world;
                         if let Some(value) = entry.binding.read(world, *entity) {
@@ -479,11 +481,76 @@ impl EditorPanel for InspectorPanel {
                     }
                 }
             }
+            EditorEvent::DragEnd { data, .. } => {
+                if let Some(entity) = self.selected_entity {
+                    match data {
+                        DragData::AssetPath(path) => {
+                            for entry in &mut self.active_entries {
+                                let is_asset_path = self
+                                    .descriptor_registry
+                                    .get_component(&entry.component_type)
+                                    .and_then(|desc| desc.properties.iter().find(|p| p.name == entry.property_name))
+                                    .map(|p| matches!(p.property_type, PropertyType::AssetPath(_)))
+                                    .unwrap_or(false);
+
+                                if is_asset_path {
+                                    let binding = Box::new(ReflectionPropertyBinding::new(
+                                        entry.component_type.clone(),
+                                        entry.property_name.clone(),
+                                    ));
+                                    let description = format!("拖拽设置 {}.{}", entry.component_type, entry.property_name);
+                                    let command =
+                                        crate::binding::SetPropertyCommand::new(binding, entity, path.clone(), description);
+                                    context.execute_command(Box::new(command));
+                                    entry.editor.set_value(path);
+                                    break;
+                                }
+                            }
+                        }
+                        DragData::MultiAsset(paths) => {
+                            if let Some(first_path) = paths.first() {
+                                for entry in &mut self.active_entries {
+                                    let is_asset_path = self
+                                        .descriptor_registry
+                                        .get_component(&entry.component_type)
+                                        .and_then(|desc| desc.properties.iter().find(|p| p.name == entry.property_name))
+                                        .map(|p| matches!(p.property_type, PropertyType::AssetPath(_)))
+                                        .unwrap_or(false);
+
+                                    if is_asset_path {
+                                        let binding = Box::new(ReflectionPropertyBinding::new(
+                                            entry.component_type.clone(),
+                                            entry.property_name.clone(),
+                                        ));
+                                        let description = format!("拖拽设置 {}.{}", entry.component_type, entry.property_name);
+                                        let command = crate::binding::SetPropertyCommand::new(
+                                            binding,
+                                            entity,
+                                            first_path.clone(),
+                                            description,
+                                        );
+                                        context.execute_command(Box::new(command));
+                                        entry.editor.set_value(first_path);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        DragData::Entity(_) | DragData::Custom { .. } => {}
+                    }
+                }
+            }
+            EditorEvent::Custom { name, .. } => {
+                if name.starts_with("ComponentHeader:") {
+                    let type_name = &name["ComponentHeader:".len()..];
+                    self.toggle_component_fold(type_name);
+                }
+            }
             _ => {}
         }
     }
 
-    fn build_ui(&mut self, context: &mut EditorContext, ui_tree: &mut UiTree) -> GResult<()> {
+    fn build_ui(&mut self, context: &mut EditorContext, ui_tree: &mut UiTree) -> Option<UiNodeId> {
         self.apply_pending_changes(context);
 
         let mut selection_changed = false;
@@ -501,8 +568,11 @@ impl EditorPanel for InspectorPanel {
             selection_changed = true;
         }
 
-        let root_id = ui_tree.create_node("inspector_root", Style::new().with_background_color(Color::new(0.12, 0.12, 0.14, 1.0)), UiNodeData::Container);
-        ui_tree.set_root(root_id);
+        let root_id = ui_tree.create_node(
+            "inspector_root",
+            Style::new().with_background_color(Color::new(0.12, 0.12, 0.14, 1.0)),
+            UiNodeData::Container,
+        );
 
         if let Some(_entity) = self.selected_entity {
             for component_desc in self.descriptor_registry.component_descriptors() {
@@ -516,47 +586,49 @@ impl EditorPanel for InspectorPanel {
                 let header_id = ui_tree.create_node(
                     format!("header_{}", component_desc.type_name),
                     Style::default(),
-                    UiNodeData::Text { content: component_desc.display_name.clone() },
+                    UiNodeData::Custom { kind: format!("ComponentHeader:{}", component_desc.type_name) },
                 );
                 ui_tree.add_child(section_id, header_id);
 
-                for property in &component_desc.properties {
-                    if let Some(editor) = self.editor_registry.create_editor(&property.property_type) {
-                        let prop_id = crate::controls::create_property_control(
-                            &property.property_type,
-                            &property.display_name,
-                            property.constraints.as_ref(),
-                            ui_tree,
-                        );
-                        ui_tree.add_child(section_id, prop_id);
+                let is_folded = self.component_fold_states.get(&component_desc.type_name).copied().unwrap_or(false);
 
-                        let binding = Box::new(ReflectionPropertyBinding::new(
-                            component_desc.type_name.clone(),
-                            property.name.clone(),
-                        ));
+                if !is_folded {
+                    for property in &component_desc.properties {
+                        if let Some(editor) = self.editor_registry.create_editor(&property.property_type) {
+                            let prop_id = crate::controls::create_property_control(
+                                &property.property_type,
+                                &property.display_name,
+                                property.constraints.as_ref(),
+                                ui_tree,
+                            );
+                            ui_tree.add_child(section_id, prop_id);
 
-                        self.active_entries.push(ActivePropertyEntry {
-                            component_type: component_desc.type_name.clone(),
-                            property_name: property.name.clone(),
-                            binding,
-                            editor,
-                        });
+                            let binding = Box::new(ReflectionPropertyBinding::new(
+                                component_desc.type_name.clone(),
+                                property.name.clone(),
+                            ));
+
+                            self.active_entries.push(ActivePropertyEntry {
+                                component_type: component_desc.type_name.clone(),
+                                property_name: property.name.clone(),
+                                binding,
+                                editor,
+                            });
+                        }
                     }
                 }
             }
 
             let world = &mut context.world_mut().ecs_world;
             self.read_property_values(world);
-        } else {
-            let no_selection_id = ui_tree.create_node(
-                "no_selection",
-                Style::default(),
-                UiNodeData::Text { content: "No selection".to_string() },
-            );
+        }
+        else {
+            let no_selection_id =
+                ui_tree.create_node("no_selection", Style::default(), UiNodeData::Text { content: "No selection".to_string() });
             ui_tree.add_child(root_id, no_selection_id);
         }
 
-        Ok(())
+        Some(root_id)
     }
 
     fn layout_hint(&self) -> PanelLayoutHint {

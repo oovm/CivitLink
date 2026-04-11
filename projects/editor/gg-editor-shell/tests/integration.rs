@@ -2,13 +2,11 @@
 //!
 //! 验证 WinitWindowService、ShortcutRegistry、EventBus 和 CommandManager 的核心功能。
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use gg_editor_shell::{
-    Command, CommandManager, EditorContext, EditorEvent, EventBus, Key, ModifierState,
-    PendingWindowCreate, ServiceRegistry, ShortcutKey, ShortcutRegistry, WindowId, WindowService,
-    WinitWindowService,
+    Command, CommandManager, EditorContext, EditorEvent, EventBus, Key, ModifierState, PendingWindowCreate, ServiceRegistry,
+    ShortcutKey, ShortcutRegistry, WindowId, WindowService, WinitWindowService,
 };
 use gg_world::GameWorld;
 
@@ -73,11 +71,7 @@ fn test_shortcut_registry_register_find() {
 
     registry.register(ShortcutKey::new(Key::Z).with_ctrl(), "undo".to_string());
 
-    let ctrl_modifier = ModifierState {
-        ctrl: true,
-        shift: false,
-        alt: false,
-    };
+    let ctrl_modifier = ModifierState { ctrl: true, shift: false, alt: false };
     let result = registry.find_command(&Key::Z, &ctrl_modifier);
     assert_eq!(result, Some("undo"));
 
@@ -131,8 +125,7 @@ fn test_command_manager_undo_redo() {
 
     let cmd = Box::new(CounterCommand { value: 42 });
     {
-        let mut context =
-            EditorContext::new(&mut services, &mut commands, &mut events, &mut world);
+        let mut context = EditorContext::new(&mut services, &mut commands, &mut events, &mut world);
         context.execute_command(cmd);
     }
 
@@ -140,8 +133,7 @@ fn test_command_manager_undo_redo() {
     assert!(!commands.can_redo());
 
     {
-        let mut context =
-            EditorContext::new(&mut services, &mut commands, &mut events, &mut world);
+        let mut context = EditorContext::new(&mut services, &mut commands, &mut events, &mut world);
         context.undo_command().unwrap();
     }
 
@@ -149,8 +141,7 @@ fn test_command_manager_undo_redo() {
     assert!(commands.can_redo());
 
     {
-        let mut context =
-            EditorContext::new(&mut services, &mut commands, &mut events, &mut world);
+        let mut context = EditorContext::new(&mut services, &mut commands, &mut events, &mut world);
         context.redo_command().unwrap();
     }
 

@@ -24,4 +24,4 @@ gg-sheet watch     # 启用监听模式
 - `calamine`: Excel 文件解析
 - `csv`: CSV 文件处理
 - `gg-core`: 核心类型定义
-- `gg-compiler-core`: 编译器核心接口
+- `gg-compiler`: 编译器核心接口

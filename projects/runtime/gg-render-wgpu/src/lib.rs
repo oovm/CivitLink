@@ -10,17 +10,24 @@
 pub mod glyph_atlas;
 /// 字形缓存模块
 pub mod glyph_cache;
+/// 实例缓冲区池模块
+pub mod instance_pool;
 /// 渲染管线模块
 pub mod pipeline;
+/// 后处理管线模块
+pub mod post_process;
+/// 渲染性能分析工具模块
+pub mod profiler;
 /// WGPU 渲染器模块
 pub mod renderer;
-/// 着色器源码模块
-pub mod shader;
 /// 精灵批渲染模块
 pub mod sprite_batch;
+/// 运行时纹理图集模块
+pub mod texture_atlas;
 /// 纹理缓存模块
 pub mod texture_cache;
 /// Uniform 缓冲区池模块
 pub mod uniform_pool;
 
-pub use renderer::{RenderTarget, WgpuRenderer};
+pub use glyph_cache::FontFallbackChain;
+pub use renderer::{RenderTarget, RenderTargetPool, WgpuRenderer};

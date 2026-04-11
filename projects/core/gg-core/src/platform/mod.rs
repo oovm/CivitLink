@@ -13,7 +13,9 @@ pub mod time;
 pub mod window;
 pub mod window_manager;
 
-pub use build::{BuildConfig, GenerateContext, PackageContext, Platform, RunContext};
+pub use build::{
+    BuildConfig, BuildProfile, DeviceInfo, EnvironmentReport, GenerateContext, PackageContext, Platform, RunContext, ToolStatus,
+};
 pub use fs::{DirEntry, FileMetadata, FileSystem, FileType};
 pub use input::{GamepadAxis, GamepadButton, GamepadId, Input, InputEvent, KeyCode, KeyState, PointerAction, PointerButton};
 pub use runtime::RuntimePlatform;

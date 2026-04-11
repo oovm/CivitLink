@@ -1,5 +1,5 @@
-use gg_world::{ComponentData, EntityData, GameWorld, SceneData, SceneDeserializer, SceneSerializer, WorldData};
 use gg_reflection::{PartialReflect, ReflectionRegistry};
+use gg_world::{ComponentData, EntityData, GameWorld, SceneData, SceneDeserializer, SceneSerializer, WorldData};
 use std::any::Any;
 
 mod tests {
@@ -52,7 +52,8 @@ mod tests {
             if let Some(val) = source.as_any().downcast_ref::<Self>() {
                 *self = val.clone();
                 Ok(())
-            } else {
+            }
+            else {
                 Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
             }
         }
@@ -82,7 +83,8 @@ mod tests {
             if let Some(val) = source.as_any().downcast_ref::<Self>() {
                 *self = val.clone();
                 Ok(())
-            } else {
+            }
+            else {
                 Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
             }
         }
@@ -135,10 +137,14 @@ mod tests {
         let entity_data = &scene_data.entities[0];
         assert_eq!(entity_data.components.len(), 2);
 
-        let type_names: Vec<&str> = entity_data.components.iter().map(|c| {
-            let short = c.type_name.rsplit("::").next().unwrap_or(&c.type_name);
-            short
-        }).collect();
+        let type_names: Vec<&str> = entity_data
+            .components
+            .iter()
+            .map(|c| {
+                let short = c.type_name.rsplit("::").next().unwrap_or(&c.type_name);
+                short
+            })
+            .collect();
         assert!(type_names.contains(&"TestPosition"));
         assert!(type_names.contains(&"TestHealth"));
 
@@ -163,10 +169,7 @@ mod tests {
                         type_name: "UnknownComponent".to_string(),
                         properties: serde_json::Value::Object(serde_json::Map::new()),
                     },
-                    ComponentData {
-                        type_name: "AnotherUnknown".to_string(),
-                        properties: serde_json::Value::Null,
-                    },
+                    ComponentData { type_name: "AnotherUnknown".to_string(), properties: serde_json::Value::Null },
                 ],
             }],
         };
@@ -196,11 +199,8 @@ mod tests {
         let entity_data = &world_data.entities[0];
         assert_eq!(entity_data.components.len(), 2);
 
-        let type_names: Vec<&str> = entity_data
-            .components
-            .iter()
-            .map(|c| c.type_name.rsplit("::").next().unwrap_or(&c.type_name))
-            .collect();
+        let type_names: Vec<&str> =
+            entity_data.components.iter().map(|c| c.type_name.rsplit("::").next().unwrap_or(&c.type_name)).collect();
         assert!(type_names.contains(&"TestPosition"));
         assert!(type_names.contains(&"TestHealth"));
     }

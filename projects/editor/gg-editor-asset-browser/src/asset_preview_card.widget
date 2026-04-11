@@ -1,0 +1,96 @@
+<template>
+    <Panel class="asset-preview-card" style="position-absolute">
+        <Stack orientation="vertical" style="gap-4 padding-8">
+            <if (assetType() == "Image")>
+                <Image src={thumbnailPath()} class="preview-thumbnail" />
+            </if>
+            <Stack orientation="vertical" style="gap-2">
+                <Text class="preview-name">{assetName()}</Text>
+                <Text class="preview-type">类型: {assetType()}</Text>
+                <Text class="preview-size">大小: {fileSize()}</Text>
+                <Text class="preview-modified">修改: {modifiedTime()}</Text>
+                <if (assetType() == "Image")>
+                    <Text class="preview-resolution">分辨率: {resolution()}</Text>
+                </if>
+                <if (assetType() == "Audio")>
+                    <Text class="preview-duration">时长: {duration()}</Text>
+                </if>
+            </Stack>
+        </Stack>
+    </Panel>
+</template>
+
+<script>
+    using gg_editor::ui::widgets::{Panel, Stack, Text, Image};
+    using gg_editor::ui::signal;
+
+    let assetName = signal("");
+    let assetType = signal("Other");
+    let fileSize = signal("0 B");
+    let modifiedTime = signal("");
+    let thumbnailPath = signal("");
+    let resolution = signal("");
+    let duration = signal("");
+
+    let updatePreview = micro(name: String, a_type: String, size: String, modified: String, thumb: String, res: String, dur: String) {
+        assetName(name);
+        assetType(a_type);
+        fileSize(size);
+        modifiedTime(modified);
+        thumbnailPath(thumb);
+        resolution(res);
+        duration(dur);
+    };
+</script>
+
+<style>
+    .asset-preview-card {
+        background-color: $bg-elevated-color;
+        border: 1px solid $border-color;
+        border-radius: $radius-md;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        min-width: 200px;
+        max-width: 280px;
+        z-index: 1000;
+        pointer-events: none;
+    }
+
+    .preview-thumbnail {
+        width: 100%;
+        max-height: 120px;
+        object-fit: contain;
+        border-radius: $radius-sm;
+        background-color: $bg-color;
+    }
+
+    .preview-name {
+        font-size: $font-size-sm;
+        font-weight: bold;
+        color: $text-primary-color;
+    }
+
+    .preview-type {
+        font-size: $font-size-xs;
+        color: $text-secondary-color;
+    }
+
+    .preview-size {
+        font-size: $font-size-xs;
+        color: $text-secondary-color;
+    }
+
+    .preview-modified {
+        font-size: $font-size-xs;
+        color: $text-tertiary-color;
+    }
+
+    .preview-resolution {
+        font-size: $font-size-xs;
+        color: $accent-color;
+    }
+
+    .preview-duration {
+        font-size: $font-size-xs;
+        color: $accent-color;
+    }
+</style>

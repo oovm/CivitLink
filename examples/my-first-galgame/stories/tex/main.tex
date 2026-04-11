@@ -1,0 +1,150 @@
+% 星光学院的秘密 - 主线
+% author: 灵之镜工作室
+% version: 1.0.0
+
+% ============================================
+% 角色定义（自动生成简写命令）
+% ============================================
+
+\roleacter[player, 主角][p]
+\roleacter[sakura, 樱井美咲][s]
+\roleacter[ren, 黑崎莲][r]
+\roleacter[yuki, 白雪悠希][y]
+
+% ============================================
+% 变量定义
+% ============================================
+
+\variable(sakura_affection = 0)
+\variable(ren_affection = 0)
+\variable(yuki_affection = 0)
+\variable(trust_points = 0)
+\variable(clues_found = 0)
+\variable(knows_secret = false)
+
+% ============================================
+% 序章
+% ============================================
+
+\scene[school_gate_sunset.png, mystery_theme.mp3]
+
+星光学院，这所历史悠久的名校，隐藏着不为人知的秘密。
+
+我转学到这里已经一周了，却总觉得有什么不对劲。
+
+\flash
+
+\p[thinking] （奇怪...那个旧校舍，为什么总是锁着？）
+
+\role[sakura][curious, left]
+
+\s 新同学！你在看什么呢？
+
+\p[surprised] 啊，樱井同学...没什么，只是在发呆。
+
+\s[smile] 你的表情可不像在发呆哦。对了，放学后学生会有个活动，要来吗？
+
+\choice
+\case[accept_student_council][+s, +t] 好啊，我去看看
+\case[decline_student_council][-s] 抱歉，我还有事
+\case[ask_about_activity] 学生会有什么活动？
+\end-choice
+
+% ============================================
+% 分支：接受邀请
+% ============================================
+
+\label(accept_student_council)
+
+\s[happy] 太好了！那放学后见！
+
+\role[sakura][happy]
+
+\goto(after_school_choice)
+
+% ============================================
+% 分支：拒绝邀请
+% ============================================
+
+\label(decline_student_council)
+
+\s[disappointed] 这样啊...那下次有机会再说吧。
+
+\role[sakura][disappointed, hide]
+
+\p[thinking] （她的表情...好像有些失落。）
+
+\goto(after_school_choice)
+
+% ============================================
+% 分支：询问活动
+% ============================================
+
+\label(ask_about_activity)
+
+\s[mysterious] 嘿嘿，这是秘密哦。来了你就知道了~
+
+\p[suspicious] （秘密？）
+
+\goto(after_school_choice)
+
+% ============================================
+% 放学后选择
+% ============================================
+
+\label(after_school_choice)
+
+\scene[classroom_afternoon.png]
+
+放学后，我面临一个选择。
+
+\role[ren][cool, right]
+
+\r 喂，新来的。要不要跟我去个地方？
+
+\p[surprised] 黑崎同学？去哪里？
+
+\r[smirk] 旧校舍。我知道怎么进去。
+
+\choice
+\case[route_student_council](sakura_affection >= 0) 跟樱井去学生会
+\case[route_old_building][+r] 跟黑崎去旧校舍
+\case[route_home] 回家
+\end-choice
+
+% ============================================
+% 路线跳转
+% ============================================
+
+\label(route_student_council)
+
+\set(school_route = true)
+
+\p[thinking] （还是先去学生会看看吧。）
+
+\r[disappointed] 切，无聊。
+
+\role[ren][hide]
+
+\load(chapter1_school)
+
+\label(route_old_building)
+
+\set(school_route = true)
+\set(ren_affection += 2)
+
+\p[curious] （旧校舍...也许能发现什么。）
+
+\r[smirk] 明智的选择。
+
+\load(chapter1_old_building)
+
+\label(route_home)
+
+\set(home_route = true)
+
+\p[thinking] （今天还是先回家吧。）
+
+\r[shrug] 随你便。
+
+\load(chapter1_home)

@@ -1,0 +1,192 @@
+using gg::ecs;
+using gg::engine;
+
+component WaypointPath {
+    waypoints: Array<(f32, f32)>,
+    current_index: i32
+}
+
+component RangedAttack {
+    projectile_speed: f32,
+    cooldown: f32,
+    timer: f32,
+    range: f32
+}
+
+component JumpAttack {
+    jump_force: f32,
+    cooldown: f32,
+    timer: f32,
+    range: f32
+}
+
+system WaypointNavigationSystem {
+    micro execute(world: World): Result<()> {
+        let player_query: Query<Player> = world.query("Player");
+        let player_pos = null;
+        loop entity, player in player_query.iter() {
+            let transform = world.get_component("Transform", entity);
+            if transform != null {
+                player_pos = (transform.x, transform.y);
+            }
+        }
+
+        if player_pos == null {
+            return Ok();
+        }
+
+        let ai_query: Query<(AI, WaypointPath)> = world.query("AI", "WaypointPath");
+        loop entity, (ai, path) in ai_query.iter() {
+            if ai.behavior != "Chase" {
+                continue;
+            }
+
+            let transform = world.get_component("Transform", entity);
+            if transform == null {
+                continue;
+            }
+
+            let best_waypoint = null;
+            let best_distance = 999999.0;
+
+            loop waypoint in path.waypoints {
+                let dx = waypoint.0 - player_pos.0;
+                let dy = waypoint.1 - player_pos.1;
+                let dist = (dx * dx + dy * dy).sqrt();
+                let ai_dx = waypoint.0 - transform.x;
+                let ai_dy = waypoint.1 - transform.y;
+                let ai_dist = (ai_dx * ai_dx + ai_dy * ai_dy).sqrt();
+
+                let total = dist + ai_dist * 0.5;
+                if total < best_distance {
+                    best_distance = total;
+                    best_waypoint = waypoint;
+                }
+            }
+
+            if best_waypoint != null {
+                let velocity = world.get_component("Velocity", entity);
+                if velocity != null {
+                    let dx = best_waypoint.0 - transform.x;
+                    let dy = best_waypoint.1 - transform.y;
+                    let dist = (dx * dx + dy * dy).sqrt();
+                    if dist > 5.0 {
+                        velocity.dx = dx / dist * ai.move_speed;
+                        velocity.dy = dy / dist * ai.move_speed;
+                    }
+                }
+            }
+        }
+
+        return Ok()
+    }
+}
+
+system RangedAttackSystem {
+    micro execute(world: World): Result<()> {
+        let dt = world.get_resource("DeltaTime");
+        if dt == null {
+            return Ok();
+        }
+
+        let player_query: Query<Player> = world.query("Player");
+        let player_pos = null;
+        loop entity, player in player_query.iter() {
+            let transform = world.get_component("Transform", entity);
+            if transform != null {
+                player_pos = (transform.x, transform.y);
+            }
+        }
+
+        if player_pos == null {
+            return Ok();
+        }
+
+        let attack_query: Query<(RangedAttack, AI, Transform)> = world.query("RangedAttack", "AI", "Transform");
+        loop entity, (attack, ai, transform) in attack_query.iter() {
+            attack.timer -= dt.seconds;
+            if attack.timer > 0.0 {
+                continue;
+            }
+
+            let dx = player_pos.0 - transform.x;
+            let dy = player_pos.1 - transform.y;
+            let dist = (dx * dx + dy * dy).sqrt();
+
+            if dist <= attack.range {
+                let projectile = world.spawn();
+                world.add_component("Transform", projectile, {
+                    x: transform.x,
+                    y: transform.y,
+                    rotation: 0.0,
+                    scale: 1.0
+                });
+                world.add_component("Velocity", projectile, {
+                    dx: dx / dist * attack.projectile_speed,
+                    dy: dy / dist * attack.projectile_speed,
+                    ax: 0.0,
+                    ay: 0.0
+                });
+                world.add_component("Collider", projectile, {
+                    collider_type: "Circle",
+                    radius: 5.0,
+                    layer: 8,
+                    mask: 2
+                });
+
+                attack.timer = attack.cooldown;
+            }
+        }
+
+        return Ok()
+    }
+}
+
+system JumpAttackSystem {
+    micro execute(world: World): Result<()> {
+        let dt = world.get_resource("DeltaTime");
+        if dt == null {
+            return Ok();
+        }
+
+        let player_query: Query<Player> = world.query("Player");
+        let player_pos = null;
+        loop entity, player in player_query.iter() {
+            let transform = world.get_component("Transform", entity);
+            if transform != null {
+                player_pos = (transform.x, transform.y);
+            }
+        }
+
+        if player_pos == null {
+            return Ok();
+        }
+
+        let attack_query: Query<(JumpAttack, AI, Transform, PhysicsBody)> = world.query("JumpAttack", "AI", "Transform", "PhysicsBody");
+        loop entity, (attack, ai, transform, body) in attack_query.iter() {
+            attack.timer -= dt.seconds;
+            if attack.timer > 0.0 {
+                continue;
+            }
+
+            let dx = player_pos.0 - transform.x;
+            let dy = player_pos.1 - transform.y;
+            let dist = (dx * dx + dy * dy).sqrt();
+
+            if dist <= attack.range && body.on_ground {
+                let velocity = world.get_component("Velocity", entity);
+                if velocity != null {
+                    velocity.dy = -attack.jump_force;
+                    if dx > 0.0 {
+                        velocity.dx = ai.move_speed * 2.0;
+                    } else {
+                        velocity.dx = -ai.move_speed * 2.0;
+                    }
+                }
+                attack.timer = attack.cooldown;
+            }
+        }
+
+        return Ok()
+    }
+}

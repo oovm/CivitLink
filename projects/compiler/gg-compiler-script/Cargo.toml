@@ -7,7 +7,8 @@ license = { workspace = true }
 
 [dependencies]
 gg-bytecode = { workspace = true }
-gg-compiler-core = { workspace = true }
+gg-compiler = { workspace = true }
 gg-core = { workspace = true }
+gg-ir = { workspace = true }
 gg-script = { workspace = true }
-gg-shader = { workspace = true }
+gg-compiler-shader = { workspace = true }

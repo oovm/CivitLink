@@ -1,4 +1,5 @@
 use crate::{
+    gui_event::{EventContext, GuiEvent, MouseButton},
     node::{UiNodeData, UiNodeId, UiTree},
     style::{FlexAlign, FlexDirection, LayoutStyle, SizeValue, Style},
     widget::Widget,
@@ -100,35 +101,22 @@ impl Widget for Slider {
 
         let track_id = tree.create_node(
             "Slider_Track",
-            Style::new()
-                .with_background_color(gg_render::Color::new(0.3, 0.3, 0.3, 1.0))
-                .with_corner_radius(4.0)
-                .with_layout(
-                    LayoutStyle::new()
-                        .with_direction(FlexDirection::Row)
-                        .with_width(SizeValue::Percent(1.0))
-                        .with_height(SizeValue::Px(8.0)),
-                ),
+            Style::new().with_background_color(gg_render::Color::new(0.3, 0.3, 0.3, 1.0)).with_corner_radius(4.0).with_layout(
+                LayoutStyle::new()
+                    .with_direction(FlexDirection::Row)
+                    .with_width(SizeValue::Percent(1.0))
+                    .with_height(SizeValue::Px(8.0)),
+            ),
             UiNodeData::Container,
         );
 
-        let ratio = if self.max > self.min {
-            (self.value - self.min) / (self.max - self.min)
-        } else {
-            0.0
-        };
+        let ratio = if self.max > self.min { (self.value - self.min) / (self.max - self.min) } else { 0.0 };
 
         let thumb_id = tree.create_node(
             "Slider_Thumb",
-            Style::new()
-                .with_background_color(gg_render::Color::new(0.5, 0.7, 1.0, 1.0))
-                .with_corner_radius(8.0)
-                .with_layout(
-                    LayoutStyle::new()
-                        .with_width(SizeValue::Px(16.0))
-                        .with_height(SizeValue::Px(16.0))
-                        .with_margin(ratio * 100.0),
-                ),
+            Style::new().with_background_color(gg_render::Color::new(0.5, 0.7, 1.0, 1.0)).with_corner_radius(8.0).with_layout(
+                LayoutStyle::new().with_width(SizeValue::Px(16.0)).with_height(SizeValue::Px(16.0)).with_margin(ratio * 100.0),
+            ),
             UiNodeData::Container,
         );
 
@@ -145,17 +133,9 @@ impl Widget for Slider {
     fn update(&self, tree: &mut UiTree) {
         if let Some(thumb_id) = self.thumb_node_id {
             if let Some(track_id) = self.track_node_id {
-                let track_width = tree
-                    .get(track_id)
-                    .and_then(|n| n.layout_result)
-                    .map(|r| r.width)
-                    .unwrap_or(200.0);
+                let track_width = tree.get(track_id).and_then(|n| n.layout_result).map(|r| r.width).unwrap_or(200.0);
 
-                let ratio = if self.max > self.min {
-                    (self.value - self.min) / (self.max - self.min)
-                } else {
-                    0.0
-                };
+                let ratio = if self.max > self.min { (self.value - self.min) / (self.max - self.min) } else { 0.0 };
 
                 let margin_left = ratio * track_width;
 
@@ -168,5 +148,38 @@ impl Widget for Slider {
 
     fn node_id(&self) -> Option<UiNodeId> {
         self.node_id
+    }
+
+    fn render_template(&self) -> oak_voc::TemplateNode {
+        oak_voc::TemplateNode::text(String::new())
+    }
+
+    fn script_setup(&mut self) {}
+
+    fn get_id(&self) -> &str {
+        ""
+    }
+
+    fn handle_event(&mut self, event: &GuiEvent, _ctx: &mut EventContext) {
+        match event {
+            GuiEvent::MouseClick { button: MouseButton::Left, x, .. } => {
+                self.is_dragging = true;
+                let ratio = (*x).clamp(0.0, 1.0);
+                self.value = self.min + ratio * (self.max - self.min);
+                if let Some(ref mut cb) = self.on_change {
+                    cb(self.value);
+                }
+            }
+            GuiEvent::MouseMove { x } => {
+                if self.is_dragging {
+                    let ratio = (*x).clamp(0.0, 1.0);
+                    self.value = self.min + ratio * (self.max - self.min);
+                    if let Some(ref mut cb) = self.on_change {
+                        cb(self.value);
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 }

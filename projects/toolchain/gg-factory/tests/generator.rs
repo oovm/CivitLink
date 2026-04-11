@@ -1,9 +1,11 @@
-use gg_factory::generator::{name_to_package_name, name_to_struct_name, generate_system_registration, generate_component_registration, generate_asset_loader_registration};
-use gg_factory::EngineFactory;
-use gg_manifest::{
-    DisplaySection, EngineManifest, EngineSection, GameType, ModulesSection, PlatformEntry,
-    ToolchainSection,
+use gg_factory::{
+    EngineFactory,
+    generator::{
+        generate_asset_loader_registration, generate_component_registration, generate_system_registration,
+        name_to_package_name, name_to_struct_name,
+    },
 };
+use gg_manifest::{DisplaySection, EngineManifest, EngineSection, GameType, ModulesSection, PlatformEntry, ToolchainSection};
 
 fn make_visual_novel_manifest() -> EngineManifest {
     EngineManifest {
@@ -25,16 +27,8 @@ fn make_visual_novel_manifest() -> EngineManifest {
             name: "Windows".to_string(),
             features: vec![],
         }],
-        toolchain: ToolchainSection {
-            compiler_steps: vec![],
-            editor_panels: vec![],
-        },
-        display: DisplaySection {
-            width: 1280,
-            height: 720,
-            fullscreen: false,
-            title: String::new(),
-        },
+        toolchain: ToolchainSection { compiler_steps: vec![], editor_panels: vec![] },
+        display: DisplaySection { width: 1280, height: 720, fullscreen: false, title: String::new() },
     }
 }
 
@@ -58,16 +52,8 @@ fn make_stg_manifest() -> EngineManifest {
             name: "Windows".to_string(),
             features: vec![],
         }],
-        toolchain: ToolchainSection {
-            compiler_steps: vec![],
-            editor_panels: vec![],
-        },
-        display: DisplaySection {
-            width: 1280,
-            height: 720,
-            fullscreen: false,
-            title: String::new(),
-        },
+        toolchain: ToolchainSection { compiler_steps: vec![], editor_panels: vec![] },
+        display: DisplaySection { width: 1280, height: 720, fullscreen: false, title: String::new() },
     }
 }
 
@@ -91,16 +77,8 @@ fn make_platformer_manifest() -> EngineManifest {
             name: "Windows".to_string(),
             features: vec![],
         }],
-        toolchain: ToolchainSection {
-            compiler_steps: vec![],
-            editor_panels: vec![],
-        },
-        display: DisplaySection {
-            width: 1280,
-            height: 720,
-            fullscreen: false,
-            title: String::new(),
-        },
+        toolchain: ToolchainSection { compiler_steps: vec![], editor_panels: vec![] },
+        display: DisplaySection { width: 1280, height: 720, fullscreen: false, title: String::new() },
     }
 }
 
@@ -158,9 +136,18 @@ fn test_generated_engine_rs_contains_system_registration() {
     EngineFactory::generate(&manifest, &output_dir).unwrap();
 
     let engine_rs = std::fs::read_to_string(output_dir.join("src/engine.rs")).unwrap();
-    assert!(engine_rs.contains("app.add_system(SystemSet::Update, gg_plugin_dialogue::systems::dialogue_system);"), "engine.rs should register DialogueSystem for VisualNovel");
-    assert!(engine_rs.contains("app.add_system(SystemSet::Update, gg_plugin_portrait::systems::portrait_system);"), "engine.rs should register PortraitSystem for VisualNovel");
-    assert!(engine_rs.contains("app.add_system(SystemSet::Update, gg_plugin_scene_transition::systems::scene_transition_system);"), "engine.rs should register SceneTransitionSystem for VisualNovel");
+    assert!(
+        engine_rs.contains("app.add_system(SystemSet::Update, gg_plugin_dialogue::systems::dialogue_system);"),
+        "engine.rs should register DialogueSystem for VisualNovel"
+    );
+    assert!(
+        engine_rs.contains("app.add_system(SystemSet::Update, gg_plugin_portrait::systems::portrait_system);"),
+        "engine.rs should register PortraitSystem for VisualNovel"
+    );
+    assert!(
+        engine_rs.contains("app.add_system(SystemSet::Update, gg_plugin_scene_transition::systems::scene_transition_system);"),
+        "engine.rs should register SceneTransitionSystem for VisualNovel"
+    );
 }
 
 #[test]
@@ -172,8 +159,14 @@ fn test_generated_engine_rs_stg_systems() {
     EngineFactory::generate(&manifest, &output_dir).unwrap();
 
     let engine_rs = std::fs::read_to_string(output_dir.join("src/engine.rs")).unwrap();
-    assert!(engine_rs.contains("app.add_system(SystemSet::Update, gg_ecs::systems::bullet_system);"), "engine.rs should register BulletSystem for STG");
-    assert!(engine_rs.contains("app.add_system(SystemSet::Update, gg_ecs::systems::collision_system);"), "engine.rs should register CollisionSystem for STG");
+    assert!(
+        engine_rs.contains("app.add_system(SystemSet::Update, gg_ecs::systems::bullet_system);"),
+        "engine.rs should register BulletSystem for STG"
+    );
+    assert!(
+        engine_rs.contains("app.add_system(SystemSet::Update, gg_ecs::systems::collision_system);"),
+        "engine.rs should register CollisionSystem for STG"
+    );
 }
 
 #[test]
@@ -185,8 +178,14 @@ fn test_generated_engine_rs_platformer_systems() {
     EngineFactory::generate(&manifest, &output_dir).unwrap();
 
     let engine_rs = std::fs::read_to_string(output_dir.join("src/engine.rs")).unwrap();
-    assert!(engine_rs.contains("app.add_system(SystemSet::Update, gg_ecs::systems::movement_system);"), "engine.rs should register MovementSystem for Platformer");
-    assert!(engine_rs.contains("app.add_system(SystemSet::Update, gg_ecs::systems::physics_system);"), "engine.rs should register PhysicsSystem for Platformer");
+    assert!(
+        engine_rs.contains("app.add_system(SystemSet::Update, gg_ecs::systems::movement_system);"),
+        "engine.rs should register MovementSystem for Platformer"
+    );
+    assert!(
+        engine_rs.contains("app.add_system(SystemSet::Update, gg_ecs::systems::physics_system);"),
+        "engine.rs should register PhysicsSystem for Platformer"
+    );
 }
 
 #[test]
@@ -198,9 +197,18 @@ fn test_generated_engine_rs_contains_component_registration() {
     EngineFactory::generate(&manifest, &output_dir).unwrap();
 
     let engine_rs = std::fs::read_to_string(output_dir.join("src/engine.rs")).unwrap();
-    assert!(engine_rs.contains("app.register_component::<gg_plugin_dialogue::components::DialogueComponent>();"), "engine.rs should register DialogueComponent for VisualNovel");
-    assert!(engine_rs.contains("app.register_component::<gg_plugin_portrait::components::PortraitComponent>();"), "engine.rs should register PortraitComponent for VisualNovel");
-    assert!(engine_rs.contains("app.register_component::<gg_plugin_scene_transition::components::SceneTransitionComponent>();"), "engine.rs should register SceneTransitionComponent for VisualNovel");
+    assert!(
+        engine_rs.contains("app.register_component::<gg_plugin_dialogue::components::DialogueComponent>();"),
+        "engine.rs should register DialogueComponent for VisualNovel"
+    );
+    assert!(
+        engine_rs.contains("app.register_component::<gg_plugin_portrait::components::PortraitComponent>();"),
+        "engine.rs should register PortraitComponent for VisualNovel"
+    );
+    assert!(
+        engine_rs.contains("app.register_component::<gg_plugin_scene_transition::components::SceneTransitionComponent>();"),
+        "engine.rs should register SceneTransitionComponent for VisualNovel"
+    );
 }
 
 #[test]
@@ -212,8 +220,14 @@ fn test_generated_engine_rs_stg_components() {
     EngineFactory::generate(&manifest, &output_dir).unwrap();
 
     let engine_rs = std::fs::read_to_string(output_dir.join("src/engine.rs")).unwrap();
-    assert!(engine_rs.contains("app.register_component::<gg_ecs::components::BulletComponent>();"), "engine.rs should register BulletComponent for STG");
-    assert!(engine_rs.contains("app.register_component::<gg_ecs::components::HitboxComponent>();"), "engine.rs should register HitboxComponent for STG");
+    assert!(
+        engine_rs.contains("app.register_component::<gg_ecs::components::BulletComponent>();"),
+        "engine.rs should register BulletComponent for STG"
+    );
+    assert!(
+        engine_rs.contains("app.register_component::<gg_ecs::components::HitboxComponent>();"),
+        "engine.rs should register HitboxComponent for STG"
+    );
 }
 
 #[test]
@@ -225,10 +239,22 @@ fn test_generated_engine_rs_contains_asset_loader_registration() {
     EngineFactory::generate(&manifest, &output_dir).unwrap();
 
     let engine_rs = std::fs::read_to_string(output_dir.join("src/engine.rs")).unwrap();
-    assert!(engine_rs.contains("app.register_loader::<gg_asset::loader::TextLoader>();"), "engine.rs should register TextLoader");
-    assert!(engine_rs.contains("app.register_loader::<gg_asset::loader::BinaryLoader>();"), "engine.rs should register BinaryLoader");
-    assert!(engine_rs.contains("app.register_loader::<gg_asset::loader::ImageLoader>();"), "engine.rs should register ImageLoader");
-    assert!(engine_rs.contains("app.register_loader::<gg_asset::loader::AudioLoader>();"), "engine.rs should register AudioLoader");
+    assert!(
+        engine_rs.contains("app.register_loader::<gg_asset::loader::TextLoader>();"),
+        "engine.rs should register TextLoader"
+    );
+    assert!(
+        engine_rs.contains("app.register_loader::<gg_asset::loader::BinaryLoader>();"),
+        "engine.rs should register BinaryLoader"
+    );
+    assert!(
+        engine_rs.contains("app.register_loader::<gg_asset::loader::ImageLoader>();"),
+        "engine.rs should register ImageLoader"
+    );
+    assert!(
+        engine_rs.contains("app.register_loader::<gg_asset::loader::AudioLoader>();"),
+        "engine.rs should register AudioLoader"
+    );
 }
 
 #[test]
@@ -243,9 +269,15 @@ fn test_generated_cargo_toml_has_correct_dependency_paths() {
     assert!(cargo_toml.contains("path = \"../../projects/core/gg-core\""), "Cargo.toml should have correct gg-core path");
     assert!(cargo_toml.contains("path = \"../../projects/core/gg-ecs\""), "Cargo.toml should have correct gg-ecs path");
     assert!(cargo_toml.contains("path = \"../../projects/core/gg-asset\""), "Cargo.toml should have correct gg-asset path");
-    assert!(cargo_toml.contains("path = \"../../projects/runtime/gg-runtime-core\""), "Cargo.toml should have gg-runtime-core dependency");
+    assert!(
+        cargo_toml.contains("path = \"../../projects/runtime/gg-runtime\""),
+        "Cargo.toml should have gg-runtime dependency"
+    );
     assert!(cargo_toml.contains("path = \"../../projects/core/gg-schedule\""), "Cargo.toml should have gg-schedule dependency");
-    assert!(cargo_toml.contains("path = \"../../projects/plugins/gg-plugin-dialogue\""), "Cargo.toml should have correct plugin path");
+    assert!(
+        cargo_toml.contains("path = \"../../projects/plugins/gg-plugin-dialogue\""),
+        "Cargo.toml should have correct plugin path"
+    );
     assert!(!cargo_toml.contains("path = \"../../core/"), "Cargo.toml should not have old-style core paths");
     assert!(!cargo_toml.contains("path = \"../../plugins/"), "Cargo.toml should not have old-style plugin paths");
     assert!(!cargo_toml.contains("path = \"../../platforms/"), "Cargo.toml should not have old-style platform paths");

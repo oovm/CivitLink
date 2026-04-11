@@ -36,7 +36,7 @@ GG Game Engine 采用模块化的 Crate 设计，每个模块可独立使用：
 - **[gg-error](projects/core/gg-error/)**: 错误处理系统
 
 ### 编译器模块 (compiler)
-- **[gg-compiler-core](projects/compiler/gg-compiler-core/)**: 编译器核心功能
+- **[gg-compiler](projects/compiler/gg-compiler/)**: 编译器核心功能
 - **[gg-compiler-script](projects/compiler/gg-compiler-script/)**: 脚本编译器
 - **[gg-compiler-aot](projects/compiler/gg-compiler-aot/)**: AOT 编译器
 - **[gg-script](projects/compiler/gg-script/)**: 脚本解析和执行
@@ -54,7 +54,8 @@ GG Game Engine 采用模块化的 Crate 设计，每个模块可独立使用：
 ### 平台模块 (platforms)
 - **[gg-platform-desktop](projects/platforms/gg-platform-desktop/)**: 桌面平台实现
 - **[gg-platform-web](projects/platforms/gg-platform-web/)**: Web 平台实现
-- **[gg-platform-mobile](projects/platforms/gg-platform-mobile/)**: 移动平台实现
+- **[gg-platform-ios](projects/compiler/gg-platform-ios/)**: iOS 平台实现
+- **[gg-platform-android](projects/compiler/gg-platform-android/)**: Android 平台实现
 
 ### 插件模块 (plugins)
 - **[gg-plugin-dialogue](projects/plugins/gg-plugin-dialogue/)**: 对话系统插件
@@ -67,7 +68,7 @@ GG Game Engine 采用模块化的 Crate 设计，每个模块可独立使用：
 - **[gg-galgame-schema](projects/plugins/gg-galgame-schema/)**: GAL 游戏数据 schema
 
 ### 运行时模块 (runtime)
-- **[gg-runtime-core](projects/runtime/gg-runtime-core/)**: 运行时核心
+- **[gg-runtime](projects/runtime/gg-runtime/)**: 运行时核心
 - **[gg-runtime-audio](projects/runtime/gg-runtime-audio/)**: 音频系统
 - **[gg-render-wgpu](projects/runtime/gg-render-wgpu/)**: WGPU 渲染实现
 - **[gg-bytecode](projects/runtime/gg-bytecode/)**: 字节码执行
@@ -87,7 +88,7 @@ GG Game Engine 采用模块化的 Crate 设计，每个模块可独立使用：
 
 ```toml
 [dependencies]
-gg-runtime-core = { path = "projects/runtime/gg-runtime-core" }
+gg-runtime = { path = "projects/runtime/gg-runtime" }
 ```
 
 ### 基础示例

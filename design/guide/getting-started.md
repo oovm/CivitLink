@@ -1,12 +1,20 @@
 # 快速开始
 
-本节将帮助你在 10 分钟内创建第一个基于 gg 元引擎框架的游戏引擎项目。
+本节将帮助不同角色的开发者快速上手 GG 游戏引擎。根据你的角色选择对应的入门路径：
+
+- **引擎开发人员**：使用 Rust 开发引擎核心和插件
+- **游戏开发人员**：使用 Valkyrie 脚本开发游戏逻辑
+- **Mod 开发者**：填充内容资源，无需编程
+
+---
+
+# 引擎开发人员
+
+引擎开发人员需要 Rust 开发环境，负责开发引擎核心、插件和底层功能。
 
 ## 环境搭建
 
 ### 1. 安装 Rust
-
-首先，你需要安装 Rust 编程语言。gg 元引擎基于 Rust 开发，利用其强大的性能和安全性特性。
 
 访问 [Rust 官网](https://www.rust-lang.org/tools/install) 下载并安装最新版本的 Rust：
 
@@ -63,91 +71,11 @@ xcode-select --install
 sudo apt install build-essential pkg-config libssl-dev libasound2-dev
 ```
 
-## 创建第一个引擎项目
-
-### 1. 初始化项目
-
-使用 Cargo 创建新的 Rust 项目：
-
-```bash
-cargo new my-game-engine
-cd my-game-engine
-```
-
-### 2. 配置 Cargo.toml
-
-编辑 `Cargo.toml`，添加 gg 元引擎框架的依赖：
-
-```toml
-[package]
-name = "my-game-engine"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-# 核心框架
-gg-ecs = { path = "../../crates/frameworks/gg-ecs" }
-gg-asset = { path = "../../crates/frameworks/gg-asset" }
-gg-world = { path = "../../crates/frameworks/gg-world" }
-gg-schedule = { path = "../../crates/frameworks/gg-schedule" }
-gg-reflection = { path = "../../crates/frameworks/gg-reflection" }
-
-# 运行时
-gg-vm = { path = "../../crates/runtime/gg-vm" }
-gg-ir = { path = "../../crates/runtime/gg-ir" }
-
-# 工具库
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1", features = ["derive"] }
-tracing = "0.1"
-tracing-subscriber = "0.3"
-
-[features]
-default = ["desktop"]
-desktop = []
-editor = ["gg-engine/editor"]
-```
-
-### 3. 编写 main.rs
-
-创建 `src/main.rs` 文件，实现一个简单的游戏引擎入口：
-
-```rust
-use gg_engine::prelude::*;
-use gg_modules_rendering::RenderPlugin;
-use gg_modules_audio::AudioPlugin;
-use gg_modules_ui::UIPlugin;
-use gg_modules_input::InputPlugin;
-
-/// 主函数
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 初始化日志系统
-    tracing_subscriber::fmt::init();
-
-    // 构建并运行引擎
-    EngineBuilder::new()
-        .with_name("我的游戏引擎")
-        .with_version("0.1.0")
-        // 添加核心插件
-        .add_plugin(RenderPlugin::new_2d())
-        .add_plugin(AudioPlugin::default())
-        .add_plugin(UIPlugin::default())
-        .add_plugin(InputPlugin::default())
-        // 启用编辑器（可选）
-        .with_editor(cfg!(feature = "editor"))
-        // 构建并运行
-        .build()?
-        .run();
-
-    Ok(())
-}
-```
-
-## 简单的插件使用示例
+## 创建引擎插件
 
 ### 1. 创建自定义插件
 
-让我们创建一个简单的游戏插件，添加一些基本的游戏逻辑。在 `src/` 目录下创建 `plugins/` 文件夹，并添加 `my_game_plugin.rs`：
+在 `src/` 目录下创建 `plugins/` 文件夹，并添加 `my_game_plugin.rs`：
 
 ```rust
 //! 我的游戏插件
@@ -224,82 +152,19 @@ fn player_movement_system(
     }
 }
 
-/// 初始化游戏系统
-fn init_game_system(
-    mut commands: Commands,
-    config: Res<GameConfig>,
-) {
-    tracing::info!("初始化游戏: {}", config.title);
-    
-    // 生成玩家实体
-    commands.spawn((
-        Player::default(),
-        Transform::from_xyz(0.0, 0.0, 0.0),
-        Name::new("玩家"),
-    ));
-}
-
 /// 我的游戏插件
 pub struct MyGamePlugin;
 
 impl Plugin for MyGamePlugin {
     fn build(&self, app: &mut App) {
-        // 插入资源
         app.insert_resource(GameConfig::default());
-        
-        // 添加系统
         app.add_systems(Startup, init_game_system);
         app.add_systems(Update, player_movement_system);
     }
 }
 ```
 
-### 2. 更新 main.rs 使用自定义插件
-
-修改 `src/main.rs` 以包含你的自定义插件：
-
-```rust
-use gg_engine::prelude::*;
-use gg_modules_rendering::RenderPlugin;
-use gg_modules_audio::AudioPlugin;
-use gg_modules_ui::UIPlugin;
-use gg_modules_input::InputPlugin;
-
-// 导入自定义插件
-mod plugins;
-use plugins::my_game_plugin::MyGamePlugin;
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing_subscriber::fmt::init();
-
-    EngineBuilder::new()
-        .with_name("我的游戏引擎")
-        .with_version("0.1.0")
-        .add_plugin(RenderPlugin::new_2d())
-        .add_plugin(AudioPlugin::default())
-        .add_plugin(UIPlugin::default())
-        .add_plugin(InputPlugin::default())
-        // 添加自定义插件
-        .add_plugin(MyGamePlugin)
-        .with_editor(cfg!(feature = "editor"))
-        .build()?
-        .run();
-
-    Ok(())
-}
-```
-
-同时创建 `src/plugins/mod.rs`：
-
-```rust
-pub mod my_game_plugin;
-```
-
-## 运行和测试
-
-### 1. 编译运行
-
-使用 Cargo 编译并运行你的引擎：
+### 2. 编译运行
 
 ```bash
 # 普通运行
@@ -312,73 +177,21 @@ cargo run --features editor
 cargo run --release
 ```
 
-### 2. 跨平台构建
+---
 
-#### 构建 Windows 版本：
+# 游戏开发人员
 
-```bash
-cargo build --release --target x86_64-pc-windows-msvc
-```
+游戏开发人员使用 Valkyrie 脚本开发游戏逻辑，无需 Rust 环境。
 
-可执行文件将位于 `target/x86_64-pc-windows-msvc/release/my-game-engine.exe`。
+## 环境搭建
 
-#### 构建 WebAssembly (H5) 版本：
+### 1. 安装 GG Editor
 
-首先安装 wasm-bindgen：
+下载并安装 GG Editor（图形化编辑器）。
 
-```bash
-cargo install wasm-bindgen-cli
-```
+### 2. 创建游戏项目
 
-然后构建：
-
-```bash
-# 构建 WASM
-cargo build --release --target wasm32-unknown-unknown
-
-# 生成绑定代码
-wasm-bindgen --out-dir ./web --target web target/wasm32-unknown-unknown/release/my-game-engine.wasm
-```
-
-在 `web/` 目录创建一个简单的 HTML 文件 `index.html`：
-
-```html
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>我的游戏引擎</title>
-    <style>
-        body { margin: 0; padding: 0; background: #000; }
-        canvas { display: block; width: 100vw; height: 100vh; }
-    </style>
-</head>
-<body>
-    <script type="module">
-        import init from './my-game-engine.js';
-        
-        async function run() {
-            await init();
-        }
-        
-        run();
-    </script>
-</body>
-</html>
-```
-
-使用本地服务器测试：
-
-```bash
-# 使用 Python 3 启动简单服务器
-python -m http.server 8080
-```
-
-然后在浏览器访问 `http://localhost:8080`。
-
-### 3. 创建游戏项目
-
-引擎运行后，你可以创建游戏项目。在引擎工作目录下创建游戏项目结构：
+在 GG Editor 中创建新项目，项目结构如下：
 
 ```
 my-first-game/
@@ -391,10 +204,79 @@ my-first-game/
 │   │   └── se/
 │   └── fonts/
 ├── scripts/
-│   └── main.yarn
+│   └── main.script
 ├── dlc/
 └── mods/
 ```
+
+### 3. 编写 Valkyrie 脚本
+
+创建 `scripts/main.script` 文件：
+
+```valkyrie
+/// 游戏入口脚本
+/// 
+/// 定义游戏的基本配置和初始化逻辑
+
+using gg::prelude::*;
+
+/// 游戏配置
+@config
+struct GameConfig {
+    title: string = "我的游戏",
+    version: string = "0.1.0",
+    window_width: i32 = 1280,
+    window_height: i32 = 720,
+}
+
+/// 玩家状态
+state PlayerState {
+    health: f32 = 100.0,
+    speed: f32 = 5.0,
+    position: Vec3 = Vec3::ZERO,
+}
+
+/// 主入口函数
+@main
+fn main() {
+    console::log("游戏启动！");
+    
+    // 初始化玩家
+    let player = PlayerState::new();
+    
+    // 游戏主循环
+    game::run(micro(delta_time) {
+        update_player(player, delta_time);
+    });
+}
+
+/// 更新玩家状态
+fn update_player(player: mut PlayerState, delta_time: f32) {
+    // 处理输入
+    let mut movement = Vec3::ZERO;
+    
+    if input::key_pressed("W") or input::key_pressed("Up") {
+        movement.y += 1.0;
+    }
+    if input::key_pressed("S") or input::key_pressed("Down") {
+        movement.y -= 1.0;
+    }
+    if input::key_pressed("A") or input::key_pressed("Left") {
+        movement.x -= 1.0;
+    }
+    if input::key_pressed("D") or input::key_pressed("Right") {
+        movement.x += 1.0;
+    }
+    
+    // 更新位置
+    if movement.length() > 0.0 {
+        movement = movement.normalize() * player.speed * delta_time;
+        player.position = player.position + movement;
+    }
+}
+```
+
+### 4. 配置游戏
 
 创建 `game.toml` 配置文件：
 
@@ -402,8 +284,6 @@ my-first-game/
 [game]
 name = "我的第一个游戏"
 version = "0.1.0"
-engine = "my-game-engine"
-engine_version = "0.1.0"
 
 [display]
 width = 1280
@@ -416,9 +296,140 @@ bgm_volume = 0.8
 se_volume = 1.0
 ```
 
-## 下一步
+### 5. 运行游戏
+
+在 GG Editor 中点击"运行"按钮，或使用命令行：
+
+```bash
+gg-cli run
+```
+
+---
+
+# Mod 开发者
+
+Mod 开发者无需编程，只需填充内容资源（图片、音频、文本等）。
+
+## 环境搭建
+
+### 1. 安装 GG Editor
+
+下载并安装 GG Editor（图形化编辑器）。
+
+### 2. 创建 Mod 项目
+
+在 GG Editor 中创建新 Mod 项目，项目结构如下：
+
+```
+my-mod/
+├── mod.toml
+├── assets/
+│   ├── images/
+│   │   └── characters/
+│   ├── audio/
+│   │   ├── bgm/
+│   │   └── se/
+│   └── fonts/
+└── data/
+    └── characters.json
+```
+
+### 3. 配置 Mod
+
+创建 `mod.toml` 配置文件：
+
+```toml
+[mod]
+name = "我的Mod"
+version = "0.1.0"
+author = "开发者名称"
+description = "Mod描述"
+
+[dependencies]
+# 依赖的其他Mod（可选）
+```
+
+### 4. 添加内容资源
+
+#### 添加角色
+
+在 `data/characters.json` 中定义角色：
+
+```json
+{
+    "characters": [
+        {
+            "id": "hero",
+            "name": "勇者",
+            "portrait": "assets/images/characters/hero.png",
+            "stats": {
+                "health": 100,
+                "attack": 10,
+                "defense": 5
+            }
+        },
+        {
+            "id": "villain",
+            "name": "反派",
+            "portrait": "assets/images/characters/villain.png",
+            "stats": {
+                "health": 200,
+                "attack": 15,
+                "defense": 8
+            }
+        }
+    ]
+}
+```
+
+#### 添加对话
+
+在 `data/dialogues.json` 中定义对话：
+
+```json
+{
+    "dialogues": [
+        {
+            "id": "intro",
+            "speaker": "hero",
+            "text": "你好，世界！",
+            "portrait_expression": "happy"
+        },
+        {
+            "id": "response",
+            "speaker": "villain",
+            "text": "哼，有意思。",
+            "portrait_expression": "smirk"
+        }
+    ]
+}
+```
+
+### 5. 打包发布
+
+在 GG Editor 中点击"打包"按钮，生成 `.ggmod` 文件：
+
+```bash
+gg-cli package my-mod
+```
+
+---
+
+# 角色对比
+
+| 特性 | 引擎开发人员 | 游戏开发人员 | Mod 开发者 |
+|------|-------------|-------------|-----------|
+| 编程语言 | Rust | Valkyrie 脚本 | 无需编程 |
+| 开发环境 | Rust 工具链 | GG Editor | GG Editor |
+| 主要工作 | 引擎核心、插件 | 游戏逻辑、系统 | 内容资源、数据 |
+| 技术要求 | 高 | 中 | 低 |
+| 输出产物 | 动态库、插件 | 字节码、脚本 | 资源包、Mod |
+
+---
+
+# 下一步
 
 - [核心优势](/guide/advantages) - 了解 gg 元引擎的设计理念
 - [架构设计](/architecture/overview) - 深入了解 gg 的架构
-- [模块文档](/modules/rendering) - 了解各个功能模块的使用
-
+- [Valkyrie 脚本指南](/guide/valkyrie) - 学习 Valkyrie 脚本语言
+- [Mod 开发指南](/guide/mod-development) - 学习 Mod 开发流程

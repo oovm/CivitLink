@@ -1,0 +1,927 @@
+//! Galgame 引擎核心模块
+//! 提供引擎初始化、主循环和插件管理功能
+
+use std::{collections::HashMap, path::Path, time::Instant};
+
+use gg_plugin_dialogue::{loader::DialogueScriptLoader, plugin::DialoguePlugin, typewriter::TypewriterState};
+use gg_plugin_save::plugin::SavePlugin;
+
+use crate::{
+    config::GalgameConfig,
+    schema::{
+        components::{AudioControl, CharacterDef, ChoiceState, PortraitState, SceneBackground, TransitionType},
+        resources::{DeltaTime, DialogueHistory},
+    },
+};
+use gg_asset::AssetServer;
+use gg_core::{GError, GErrorKind, GResult, plugin::PluginManager};
+use gg_ecs::{Entity, World};
+
+use gg_plugin_portrait::{plugin::PortraitPlugin, systems::PortraitRenderSystem};
+
+use gg_plugin_scene_transition::{plugin::SceneTransitionPlugin, systems::TransitionSystem};
+use gg_render::{Color, DrawCommand, RenderContext, Renderer, SurfaceInfo, TextureId, Transform};
+use gg_render_wgpu::WgpuRenderer;
+use gg_runtime_ui::plugin::{EventSystemResource, UiPlugin, UiTreeResource};
+use gg_ui::{
+    FlexAlign, FlexDirection, FontStyle, LayoutEngine, LayoutStyle, SizeValue, Style, UiEvent, UiNodeData, UiNodeId,
+    UiRenderer, UiTree,
+};
+use winit::{
+    event::{ElementState, Event, MouseButton},
+    event_loop::EventLoop,
+};
+
+/// 对话 UI 节点标识符集合
+///
+/// 存储对话界面中各 UI 节点的 ID，
+/// 作为 ECS 全局资源注册到 World 中，供各系统统一读取和更新。
+pub struct DialogueUiNodes {
+    /// 对话面板节点 ID
+    pub dialogue_panel_id: Option<UiNodeId>,
+    /// 说话者名称节点 ID
+    pub speaker_text_id: Option<UiNodeId>,
+    /// 对话文本节点 ID
+    pub dialogue_text_id: Option<UiNodeId>,
+    /// 选项按钮容器节点 ID
+    pub choice_container_id: Option<UiNodeId>,
+    /// 选项按钮节点 ID 列表
+    pub choice_button_ids: Vec<UiNodeId>,
+    /// 历史面板节点 ID
+    pub history_panel_id: Option<UiNodeId>,
+    /// 历史文本容器节点 ID
+    pub history_content_id: Option<UiNodeId>,
+}
+
+impl Default for DialogueUiNodes {
+    fn default() -> Self {
+        Self {
+            dialogue_panel_id: None,
+            speaker_text_id: None,
+            dialogue_text_id: None,
+            choice_container_id: None,
+            choice_button_ids: Vec::new(),
+            history_panel_id: None,
+            history_content_id: None,
+        }
+    }
+}
+
+/// Galgame 引擎
+///
+/// 负责管理游戏的生命周期，包括：
+/// - 初始化渲染器和窗口
+/// - 初始化所有插件
+/// - 加载游戏资源
+/// - 执行主循环（事件处理 → 逻辑更新 → 渲染 → 呈现）
+pub struct GalgameEngine {
+    /// 游戏配置
+    pub config: GalgameConfig,
+    /// ECS 世界
+    pub world: World,
+    /// 资源服务器
+    pub asset_server: AssetServer,
+    /// 是否编辑器模式
+    pub is_editor_mode: bool,
+    /// WGPU 渲染器
+    renderer: Option<WgpuRenderer>,
+    /// 插件管理器
+    plugin_manager: PluginManager,
+    /// 上一帧的时间戳
+    last_frame_time: Option<Instant>,
+    /// 鼠标位置
+    mouse_position: [f32; 2],
+    /// 待处理的推进对话请求
+    pending_advance: bool,
+    /// 待处理的 UI 点击分发请求
+    pending_ui_click: bool,
+    /// 是否显示对话历史
+    show_history: bool,
+    /// 纹理路径到 TextureId 的映射
+    texture_map: HashMap<String, TextureId>,
+    /// 纹理尺寸映射
+    texture_sizes: HashMap<TextureId, [f32; 2]>,
+    /// 上次背景资源路径
+    last_bg_path: Option<String>,
+    /// 上次立绘资源路径映射（角色 ID → 资源路径）
+    last_portrait_paths: HashMap<String, String>,
+    /// 项目根目录路径
+    pub project_path: Option<std::path::PathBuf>,
+}
+
+impl GalgameEngine {
+    /// 创建新的 Galgame 引擎实例
+    ///
+    /// # 参数
+    ///
+    /// - `config` - 游戏配置
+    /// - `is_editor_mode` - 是否启用编辑器模式
+    /// - `project_path` - 项目根目录路径
+    pub fn new(config: GalgameConfig, is_editor_mode: bool, project_path: Option<std::path::PathBuf>) -> Self {
+        Self {
+            config,
+            world: World::new(),
+            asset_server: AssetServer::new(),
+            is_editor_mode,
+            renderer: None,
+            plugin_manager: PluginManager::new(),
+            last_frame_time: None,
+            mouse_position: [0.0, 0.0],
+            pending_advance: false,
+            pending_ui_click: false,
+            show_history: false,
+            texture_map: HashMap::new(),
+            texture_sizes: HashMap::new(),
+            last_bg_path: None,
+            last_portrait_paths: HashMap::new(),
+            project_path,
+        }
+    }
+
+    /// 从 World 获取 UI 树的可变引用
+    ///
+    /// 通过 World 的 UiTreeResource 获取内部 UiTree 的可变访问，
+    /// 统一所有 UI 操作使用 World 中的单一 UI 树。
+    fn ui_tree_mut(world: &mut World) -> Option<&mut UiTree> {
+        world.get_resource_mut::<UiTreeResource>().map(|r| &mut r.0)
+    }
+
+    /// 初始化引擎
+    ///
+    /// 注册所有插件，构建插件系统并初始化。
+    /// 从项目目录编译 .gscript 脚本或加载 dialogue.json，
+    /// 并将对话节点和角色定义注册到 World 中。
+    pub fn initialize(&mut self) -> GResult<()> {
+        let screen_width = self.config.display.width as f32;
+        let screen_height = self.config.display.height as f32;
+
+        self.plugin_manager.register(Box::new(DialoguePlugin))?;
+        self.plugin_manager.register(Box::new(PortraitPlugin::new(screen_width, screen_height)))?;
+        self.plugin_manager.register(Box::new(SceneTransitionPlugin))?;
+        self.plugin_manager.register(Box::new(SavePlugin))?;
+        self.plugin_manager.register(Box::new(UiPlugin))?;
+
+        self.plugin_manager.build_all(&mut self.world)?;
+        self.plugin_manager.initialize_all()?;
+
+        self.world.insert_resource(DialogueUiNodes::default());
+
+        let bg_entity = self.world.spawn().id();
+        self.world.add_component(
+            bg_entity,
+            SceneBackground {
+                asset_path: None,
+                transition: TransitionType::None,
+                ambient_filter: None,
+                texture_id: TextureId::INVALID,
+            },
+        )?;
+        self.world.add_component(
+            bg_entity,
+            AudioControl {
+                bgm_path: None,
+                bgm_volume: 1.0,
+                bgm_fade_in_secs: 0.0,
+                bgm_fade_out_secs: 0.0,
+                pending_se: Vec::new(),
+            },
+        )?;
+
+        self.load_project_scripts()?;
+
+        if let Some(history) = self.world.get_resource_mut::<DialogueHistory>() {
+            history.current_node_id = Some(self.config.game.initial_scene.clone());
+        }
+
+        self.build_dialogue_ui();
+
+        Ok(())
+    }
+
+    /// 加载项目脚本
+    ///
+    /// 从项目目录编译 .galgame 脚本文件，或加载 dialogue.json。
+    /// 同时加载角色定义和初始变量。
+    fn load_project_scripts(&mut self) -> GResult<()> {
+        let base_path = self.project_path.as_deref().unwrap_or(std::path::Path::new(".")).to_path_buf();
+        let scripts_dir = base_path.join("scripts");
+
+        let loaded_from_galgame =
+            if scripts_dir.exists() { self.compile_and_load_galgame_scripts(&scripts_dir)? } else { false };
+
+        if !loaded_from_galgame {
+            let json_path = base_path.join("scripts").join("dialogue.json");
+            if json_path.exists() {
+                let script_content = std::fs::read_to_string(&json_path).map_err(|e| GError {
+                    kind: GErrorKind::Io,
+                    message: format!("Failed to read dialogue script '{}': {}", json_path.display(), e),
+                })?;
+                DialogueScriptLoader::load_from_json(&mut self.world, &script_content)?;
+            }
+        }
+
+        let characters_path = base_path.join("characters.json");
+        if characters_path.exists() {
+            self.load_characters(&characters_path)?;
+        }
+
+        Ok(())
+    }
+
+    /// 编译并加载 .galgame 脚本文件
+    ///
+    /// 使用 IncrementalCompiler 编译指定目录下的所有 .galgame 文件，
+    /// 将编译得到的对话节点注册到 World 中。
+    /// 返回是否成功编译了至少一个文件。
+    fn compile_and_load_galgame_scripts(&mut self, scripts_dir: &std::path::Path) -> GResult<bool> {
+        let db = match crate::compiler::incremental::IncrementalCompiler::new().compile_directory(scripts_dir) {
+            Ok(db) => db,
+            Err(_) => return Ok(false),
+        };
+
+        if db.sequences.is_empty() {
+            return Ok(false);
+        }
+
+        for (_file_name, sequence) in &db.sequences {
+            for node in &sequence.nodes {
+                let entity = self.world.spawn().id();
+                self.world.add_component(entity, node.clone())?;
+            }
+        }
+
+        Ok(true)
+    }
+
+    /// 加载角色定义文件
+    ///
+    /// 从 JSON 文件加载角色定义列表，为每个角色创建实体。
+    fn load_characters(&mut self, path: &std::path::Path) -> GResult<()> {
+        let content = std::fs::read_to_string(path).map_err(|e| GError {
+            kind: GErrorKind::Io,
+            message: format!("Failed to read characters file '{}': {}", path.display(), e),
+        })?;
+
+        let characters: Vec<CharacterDef> = serde_json::from_str(&content).map_err(|e| GError {
+            kind: GErrorKind::Other,
+            message: format!("Failed to parse characters file '{}': {}", path.display(), e),
+        })?;
+
+        for character in characters {
+            let entity = self.world.spawn().id();
+            self.world.add_component(entity, character)?;
+        }
+
+        Ok(())
+    }
+
+    /// 加载纹理到渲染器
+    ///
+    /// 从文件加载图像并注册到 WgpuRenderer 的纹理缓存中。
+    /// 返回的 TextureId 可用于后续的 DrawCommand::Sprite 渲染。
+    ///
+    /// # 参数
+    ///
+    /// - `path` - 图像文件路径
+    pub fn load_texture(&mut self, path: &str) -> GResult<TextureId> {
+        if let Some(&id) = self.texture_map.get(path) {
+            return Ok(id);
+        }
+
+        let renderer = self
+            .renderer
+            .as_mut()
+            .ok_or_else(|| GError { kind: GErrorKind::Runtime, message: "Renderer not initialized".to_string() })?;
+
+        let texture_id = renderer.load_texture(Path::new(path))?;
+
+        let img_data = std::fs::read(path).ok();
+        let size = if let Some(data) = img_data {
+            image::load_from_memory(&data).map(|img| [img.width() as f32, img.height() as f32]).unwrap_or([200.0, 400.0])
+        }
+        else {
+            [200.0, 400.0]
+        };
+        self.texture_sizes.insert(texture_id, size);
+
+        self.texture_map.insert(path.to_string(), texture_id);
+
+        Ok(texture_id)
+    }
+
+    /// 查询纹理尺寸
+    ///
+    /// 根据纹理标识符查询对应的图像尺寸。
+    /// 如果纹理未加载则返回 None。
+    ///
+    /// # 参数
+    ///
+    /// - `texture_id` - 纹理标识符
+    pub fn texture_size(&self, texture_id: TextureId) -> Option<[f32; 2]> {
+        self.texture_sizes.get(&texture_id).copied()
+    }
+
+    /// 使用事件循环初始化渲染器
+    ///
+    /// 必须在 `initialize` 之后、`run` 之前调用。
+    ///
+    /// # 参数
+    ///
+    /// - `event_loop` - winit 事件循环
+    pub fn initialize_renderer(&mut self, event_loop: &EventLoop<()>) -> GResult<()> {
+        let surface_info =
+            SurfaceInfo::new(self.config.display.width, self.config.display.height, self.config.game.name.clone())
+                .with_fullscreen(self.config.display.fullscreen);
+
+        let renderer = WgpuRenderer::new(event_loop, surface_info)?;
+        self.renderer = Some(renderer);
+        Ok(())
+    }
+
+    /// 执行一帧
+    ///
+    /// 计算帧间隔时间并更新 DeltaTime 资源，然后执行所有已注册的 ECS 系统。
+    pub fn tick(&mut self) -> GResult<()> {
+        let now = Instant::now();
+        let delta = match self.last_frame_time {
+            Some(last) => now.duration_since(last).as_secs_f32(),
+            None => 1.0 / 60.0,
+        };
+        self.last_frame_time = Some(now);
+
+        if let Some(dt) = self.world.get_resource_mut::<DeltaTime>() {
+            dt.secs = delta;
+        }
+
+        self.world.run_systems()?;
+
+        let bg_path = self.world.get_component::<SceneBackground>(Entity::new(0, 0)).and_then(|bg| bg.asset_path.clone());
+        if bg_path != self.last_bg_path {
+            if let Some(ref path) = bg_path {
+                if let Ok(texture_id) = self.load_texture(path) {
+                    if let Some(bg_mut) = self.world.get_component_mut::<SceneBackground>(Entity::new(0, 0)) {
+                        bg_mut.texture_id = texture_id;
+                    }
+                }
+            }
+            self.last_bg_path = bg_path;
+        }
+
+        let portrait_data: Vec<(Entity, String, String)> = self
+            .world
+            .entities()
+            .iter()
+            .filter_map(|&entity| {
+                let state = self.world.get_component::<PortraitState>(entity)?;
+                Some((entity, state.character_id.clone(), state.current_expression.clone()))
+            })
+            .collect();
+        for (entity, character_id, current_expression) in portrait_data {
+            let resolved_path = self
+                .world
+                .entities()
+                .iter()
+                .filter_map(|&e| self.world.get_component::<CharacterDef>(e))
+                .find(|c| c.id == character_id)
+                .and_then(|c| c.expression_map.get(&current_expression).cloned().or(c.default_portrait_path.clone()));
+            let last_path = self.last_portrait_paths.get(&character_id).cloned();
+            if resolved_path != last_path {
+                if let Some(ref path) = resolved_path {
+                    if let Ok(texture_id) = self.load_texture(path) {
+                        let size = self.texture_size(texture_id).unwrap_or([200.0, 400.0]);
+                        if let Some(portrait_mut) = self.world.get_component_mut::<PortraitState>(entity) {
+                            portrait_mut.texture_id = texture_id;
+                            portrait_mut.texture_width = size[0];
+                            portrait_mut.texture_height = size[1];
+                        }
+                    }
+                }
+                match resolved_path {
+                    Some(path) => {
+                        self.last_portrait_paths.insert(character_id, path);
+                    }
+                    None => {
+                        self.last_portrait_paths.remove(&character_id);
+                    }
+                }
+            }
+        }
+
+        self.update_dialogue_ui();
+        self.update_choice_buttons();
+        self.update_history_ui();
+
+        Ok(())
+    }
+
+    /// 处理输入事件
+    ///
+    /// 检查是否需要推进对话或跳过打字机效果。
+    fn handle_input(&mut self) {
+        let should_advance = self.pending_advance;
+        if !should_advance {
+            return;
+        }
+        self.pending_advance = false;
+
+        if let Some(state) = self.world.get_resource_mut::<TypewriterState>() {
+            if !state.is_complete() {
+                state.skip();
+                return;
+            }
+        }
+
+        let has_active_choices = self.world.get_resource::<ChoiceState>().map(|c| c.is_active).unwrap_or(false);
+
+        if !has_active_choices {
+            self.world.remove_resource::<TypewriterState>();
+        }
+    }
+
+    /// 将鼠标点击事件分发到 UI 事件系统
+    ///
+    /// 先将点击事件分发到 UI 事件系统，然后检测是否点击了选项按钮。
+    /// 如果点击了选项按钮，设置 ChoiceState 的 selected_index 并停用选项。
+    fn dispatch_click_to_ui(&mut self) {
+        let tree = self.world.get_resource::<UiTreeResource>().map(|r| r.0.clone());
+        let button_ids = self.world.get_resource::<DialogueUiNodes>().map(|n| n.choice_button_ids.clone()).unwrap_or_default();
+
+        if let Some(event_sys_res) = self.world.get_resource_mut::<EventSystemResource>() {
+            if let Some(ref tree) = tree {
+                event_sys_res.0.dispatch(&UiEvent::Click { x: self.mouse_position[0], y: self.mouse_position[1] }, tree);
+            }
+        }
+
+        let click_x = self.mouse_position[0];
+        let click_y = self.mouse_position[1];
+
+        let button_layouts: Vec<(usize, f32, f32, f32, f32)> = button_ids
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &button_id)| {
+                let node = tree.as_ref()?.get(button_id)?;
+                let layout = node.layout_result?;
+                Some((i, layout.x, layout.y, layout.width, layout.height))
+            })
+            .collect();
+
+        for (i, x, y, w, h) in &button_layouts {
+            if click_x >= *x && click_x <= *x + *w && click_y >= *y && click_y <= *y + *h {
+                if let Some(choice_state) = self.world.get_resource_mut::<ChoiceState>() {
+                    choice_state.selected_index = Some(*i);
+                    choice_state.is_active = false;
+                }
+                return;
+            }
+        }
+    }
+
+    /// 构建对话 UI 布局
+    ///
+    /// 创建底部对话文本框、说话者名称和历史回看面板的 UI 节点。
+    /// 布局结构为：根容器（纵向，底部对齐）→ 选项容器 → 对话面板（说话者 + 文本）。
+    /// 历史面板覆盖在屏幕中央，默认隐藏。
+    /// 所有节点通过 World 的 UiTreeResource 创建，节点 ID 存储到 DialogueUiNodes 资源。
+    fn build_dialogue_ui(&mut self) {
+        let theme = &self.config.ui;
+        let (choice_container_id, dialogue_panel_id, speaker_text_id, dialogue_text_id, history_panel_id, history_content_id) = {
+            let ui_tree = match Self::ui_tree_mut(&mut self.world) {
+                Some(tree) => tree,
+                None => return,
+            };
+
+            if ui_tree.root().is_none() {
+                let root_style = Style {
+                    layout: LayoutStyle {
+                        direction: FlexDirection::Column,
+                        justify_content: FlexAlign::End,
+                        width: SizeValue::Percent(1.0),
+                        height: SizeValue::Percent(1.0),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                };
+                let root_id = ui_tree.create_node("root", root_style, UiNodeData::Container);
+                ui_tree.set_root(root_id);
+            }
+            let root_id = ui_tree.root().unwrap();
+
+            let choice_container_style = Style {
+                layout: LayoutStyle {
+                    direction: FlexDirection::Column,
+                    width: SizeValue::Percent(1.0),
+                    height: SizeValue::Auto,
+                    padding: 10.0,
+                    gap: 5.0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let choice_container_id = ui_tree.create_node("choice_container", choice_container_style, UiNodeData::Container);
+            ui_tree.add_child(root_id, choice_container_id);
+
+            let panel_bg = theme.colors.panel_background;
+            let panel_style = Style {
+                layout: LayoutStyle {
+                    direction: FlexDirection::Column,
+                    width: SizeValue::Percent(1.0),
+                    height: SizeValue::Px(theme.panel_height),
+                    padding: 10.0,
+                    ..Default::default()
+                },
+                background_color: Some(Color::new(panel_bg[0], panel_bg[1], panel_bg[2], panel_bg[3])),
+                ..Default::default()
+            };
+            let panel_id = ui_tree.create_node("dialogue_panel", panel_style, UiNodeData::Container);
+            ui_tree.add_child(root_id, panel_id);
+
+            let speaker_col = theme.colors.speaker_color;
+            let speaker_style = Style {
+                layout: LayoutStyle { width: SizeValue::Percent(1.0), height: SizeValue::Px(30.0), ..Default::default() },
+                font: Some(FontStyle {
+                    size: theme.fonts.speaker_size,
+                    color: Color::new(speaker_col[0], speaker_col[1], speaker_col[2], speaker_col[3]),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let speaker_id = ui_tree.create_node("speaker_name", speaker_style, UiNodeData::Text { content: String::new() });
+            ui_tree.add_child(panel_id, speaker_id);
+
+            let text_col = theme.colors.text_color;
+            let text_style = Style {
+                layout: LayoutStyle {
+                    width: SizeValue::Percent(1.0),
+                    height: SizeValue::Px(theme.panel_height - 40.0),
+                    ..Default::default()
+                },
+                font: Some(FontStyle {
+                    size: theme.fonts.text_size,
+                    color: Color::new(text_col[0], text_col[1], text_col[2], text_col[3]),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            };
+            let text_id = ui_tree.create_node("dialogue_text", text_style, UiNodeData::Text { content: String::new() });
+            ui_tree.add_child(panel_id, text_id);
+
+            let history_panel_style = Style {
+                layout: LayoutStyle {
+                    direction: FlexDirection::Column,
+                    width: SizeValue::Percent(0.8),
+                    height: SizeValue::Percent(0.7),
+                    padding: 20.0,
+                    ..Default::default()
+                },
+                background_color: Some(Color::new(0.0, 0.0, 0.0, 0.85)),
+                ..Default::default()
+            };
+            let history_panel_id = ui_tree.create_node("history_panel", history_panel_style, UiNodeData::Container);
+            ui_tree.add_child(root_id, history_panel_id);
+            if let Some(node) = ui_tree.get_mut(history_panel_id) {
+                node.visible = false;
+            }
+
+            let history_content_style = Style {
+                layout: LayoutStyle {
+                    direction: FlexDirection::Column,
+                    width: SizeValue::Percent(1.0),
+                    height: SizeValue::Percent(1.0),
+                    gap: 8.0,
+                    ..Default::default()
+                },
+                ..Default::default()
+            };
+            let history_content_id = ui_tree.create_node("history_content", history_content_style, UiNodeData::Container);
+            ui_tree.add_child(history_panel_id, history_content_id);
+
+            (choice_container_id, panel_id, speaker_id, text_id, history_panel_id, history_content_id)
+        };
+
+        self.world.insert_resource(DialogueUiNodes {
+            dialogue_panel_id: Some(dialogue_panel_id),
+            speaker_text_id: Some(speaker_text_id),
+            dialogue_text_id: Some(dialogue_text_id),
+            choice_container_id: Some(choice_container_id),
+            choice_button_ids: Vec::new(),
+            history_panel_id: Some(history_panel_id),
+            history_content_id: Some(history_content_id),
+        });
+    }
+
+    /// 更新对话 UI
+    ///
+    /// 根据 TypewriterState 和 ChoiceState 更新对话文本框内容。
+    /// 当存在打字机文本或活跃选项时显示对话面板，否则隐藏。
+    /// 说话者名称使用角色定义的颜色渲染。
+    /// 通过 World 的 UiTreeResource 统一修改 UI 树。
+    fn update_dialogue_ui(&mut self) {
+        let typewriter_text = self.world.get_resource::<TypewriterState>().map(|t| t.current_text().to_string());
+        let has_choices = self.world.get_resource::<ChoiceState>().map(|c| c.is_active).unwrap_or(false);
+        let speaker_id =
+            self.world.get_resource::<DialogueHistory>().and_then(|h| h.entries.last().and_then(|e| e.speaker_name.clone()));
+        let (resolved_speaker_name, speaker_color) = match speaker_id {
+            Some(ref id) => {
+                let char_def = self
+                    .world
+                    .entities()
+                    .iter()
+                    .filter_map(|&e| self.world.get_component::<CharacterDef>(e))
+                    .find(|c| c.id == *id);
+                let name = char_def.as_ref().map(|c| c.name.clone()).unwrap_or_else(|| id.clone());
+                let color = char_def.and_then(|c| c.color).unwrap_or(self.config.ui.colors.speaker_color);
+                (name, color)
+            }
+            None => (String::new(), self.config.ui.colors.speaker_color),
+        };
+
+        let (text_id, speaker_text_id, panel_id) = {
+            let nodes = self.world.get_resource::<DialogueUiNodes>();
+            (
+                nodes.and_then(|n| n.dialogue_text_id),
+                nodes.and_then(|n| n.speaker_text_id),
+                nodes.and_then(|n| n.dialogue_panel_id),
+            )
+        };
+
+        if let Some(ui_tree) = Self::ui_tree_mut(&mut self.world) {
+            if let Some(text_id) = text_id {
+                if let Some(ref text) = typewriter_text {
+                    if let Some(node) = ui_tree.get_mut(text_id) {
+                        if let UiNodeData::Text { ref mut content } = node.data {
+                            *content = text.clone();
+                        }
+                    }
+                }
+            }
+
+            if let Some(speaker_id) = speaker_text_id {
+                if let Some(node) = ui_tree.get_mut(speaker_id) {
+                    if let UiNodeData::Text { ref mut content } = node.data {
+                        *content = resolved_speaker_name;
+                    }
+                    node.style.font = Some(FontStyle {
+                        size: self.config.ui.fonts.speaker_size,
+                        color: Color::new(speaker_color[0], speaker_color[1], speaker_color[2], speaker_color[3]),
+                        ..Default::default()
+                    });
+                }
+            }
+
+            if let Some(panel_id) = panel_id {
+                let should_show = typewriter_text.is_some() || has_choices;
+                if let Some(node) = ui_tree.get_mut(panel_id) {
+                    node.visible = should_show;
+                }
+            }
+        }
+    }
+
+    /// 更新选项按钮
+    ///
+    /// 根据 ChoiceState 动态创建或移除选项按钮。
+    /// 当选项不活跃时仅移除已有按钮，活跃时重建所有按钮。
+    /// 通过 World 的 UiTreeResource 统一修改 UI 树。
+    fn update_choice_buttons(&mut self) {
+        let choice_state = self.world.get_resource::<ChoiceState>().map(|c| (c.is_active, c.choices.clone()));
+
+        let (is_active, choices) = match choice_state {
+            Some((active, ch)) => (active, ch),
+            None => (false, Vec::new()),
+        };
+
+        let (choice_container_id, old_button_ids) = {
+            let nodes = self.world.get_resource::<DialogueUiNodes>();
+            (nodes.and_then(|n| n.choice_container_id), nodes.map(|n| n.choice_button_ids.clone()).unwrap_or_default())
+        };
+
+        let mut new_button_ids = Vec::new();
+        if let Some(ui_tree) = Self::ui_tree_mut(&mut self.world) {
+            for &button_id in &old_button_ids {
+                ui_tree.remove_node(button_id);
+            }
+
+            if let Some(container_id) = choice_container_id {
+                if let Some(node) = ui_tree.get_mut(container_id) {
+                    node.visible = is_active;
+                }
+            }
+
+            if is_active {
+                if let Some(container_id) = choice_container_id {
+                    for (i, choice) in choices.iter().enumerate() {
+                        let button_style = Style {
+                            layout: LayoutStyle {
+                                width: SizeValue::Px(300.0),
+                                height: SizeValue::Px(40.0),
+                                ..Default::default()
+                            },
+                            background_color: Some(Color::new(0.2, 0.2, 0.4, 0.9)),
+                            ..Default::default()
+                        };
+
+                        let button_id = ui_tree.create_node(
+                            format!("choice_{}", i),
+                            button_style,
+                            UiNodeData::Text { content: choice.text.clone() },
+                        );
+                        ui_tree.add_child(container_id, button_id);
+                        new_button_ids.push(button_id);
+                    }
+                }
+            }
+        }
+
+        if let Some(nodes) = self.world.get_resource_mut::<DialogueUiNodes>() {
+            nodes.choice_button_ids = new_button_ids;
+        }
+    }
+
+    /// 更新对话历史回看 UI
+    ///
+    /// 当 `show_history` 为 true 时，显示历史面板并填充最近的对话记录。
+    /// 当 `show_history` 为 false 时，隐藏历史面板。
+    fn update_history_ui(&mut self) {
+        let (history_panel_id, history_content_id) = {
+            let nodes = self.world.get_resource::<DialogueUiNodes>();
+            (nodes.and_then(|n| n.history_panel_id), nodes.and_then(|n| n.history_content_id))
+        };
+
+        if let Some(ui_tree) = Self::ui_tree_mut(&mut self.world) {
+            if let Some(panel_id) = history_panel_id {
+                if let Some(node) = ui_tree.get_mut(panel_id) {
+                    node.visible = self.show_history;
+                }
+            }
+
+            if self.show_history {
+                if let Some(content_id) = history_content_id {
+                    if let Some(content_node) = ui_tree.get_mut(content_id) {
+                        let old_children: Vec<UiNodeId> = content_node.children.clone();
+                        for &child_id in &old_children {
+                            ui_tree.remove_node(child_id);
+                        }
+                    }
+
+                    let entries = self.world.get_resource::<DialogueHistory>().map(|h| h.entries.clone()).unwrap_or_default();
+                    for (i, entry) in entries.iter().rev().take(50).enumerate() {
+                        let speaker_name = entry.speaker_name.as_deref().unwrap_or("");
+                        let text = if speaker_name.is_empty() {
+                            entry.text.clone()
+                        }
+                        else {
+                            format!("{}：{}", speaker_name, entry.text)
+                        };
+                        let entry_style = Style {
+                            layout: LayoutStyle {
+                                width: SizeValue::Percent(1.0),
+                                height: SizeValue::Auto,
+                                ..Default::default()
+                            },
+                            font: Some(FontStyle { size: 14.0, color: Color::WHITE, ..Default::default() }),
+                            ..Default::default()
+                        };
+                        let entry_id = ui_tree.create_node(
+                            format!("history_entry_{}", i),
+                            entry_style,
+                            UiNodeData::Text { content: text },
+                        );
+                        ui_tree.add_child(content_id, entry_id);
+                    }
+                }
+            }
+        }
+    }
+
+    /// 运行主循环
+    ///
+    /// 使用 winit 事件循环驱动主循环：
+    /// 1. 处理窗口事件
+    /// 2. 执行游戏逻辑（tick）
+    /// 3. 渲染一帧
+    /// 4. 呈现到屏幕
+    pub fn run(mut self) -> GResult<()> {
+        let event_loop = EventLoop::new().map_err(|e| gg_core::GError {
+            kind: gg_core::GErrorKind::Platform,
+            message: format!("Failed to create event loop: {}", e),
+        })?;
+
+        self.initialize_renderer(&event_loop)?;
+
+        event_loop
+            .run(move |event, elwt| {
+                if let Some(renderer) = &mut self.renderer {
+                    match event {
+                        Event::WindowEvent { event, .. } => {
+                            renderer.handle_window_event(&event);
+                            match &event {
+                                winit::event::WindowEvent::KeyboardInput { event, .. } => {
+                                    if event.state == ElementState::Pressed {
+                                        match event.physical_key {
+                                            winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Enter)
+                                            | winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::Space) => {
+                                                self.pending_advance = true;
+                                            }
+                                            _ => {}
+                                        }
+                                    }
+                                }
+                                winit::event::WindowEvent::MouseInput { state, button, .. } => {
+                                    if *state == ElementState::Pressed && *button == MouseButton::Left {
+                                        self.pending_advance = true;
+                                        self.pending_ui_click = true;
+                                    }
+                                }
+                                winit::event::WindowEvent::CursorMoved { position, .. } => {
+                                    self.mouse_position = [position.x as f32, position.y as f32];
+                                }
+                                winit::event::WindowEvent::MouseWheel { delta, .. } => match delta {
+                                    winit::event::MouseScrollDelta::LineDelta(_, y) => {
+                                        if y > 0.0 {
+                                            self.show_history = true;
+                                        }
+                                        else if y < 0.0 {
+                                            self.show_history = false;
+                                        }
+                                    }
+                                    winit::event::MouseScrollDelta::PixelDelta(_) => {}
+                                },
+                                _ => {}
+                            }
+                            if renderer.should_close() {
+                                elwt.exit();
+                            }
+                        }
+                        Event::AboutToWait => {
+                            if self.pending_ui_click {
+                                self.pending_ui_click = false;
+                                self.dispatch_click_to_ui();
+                            }
+
+                            self.handle_input();
+
+                            if let Err(_) = self.tick() {
+                                elwt.exit();
+                            }
+
+                            if let Err(_) = self.render_frame() {
+                                elwt.exit();
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+            })
+            .map_err(|e| gg_core::GError { kind: gg_core::GErrorKind::Runtime, message: format!("Event loop error: {}", e) })
+    }
+
+    /// 渲染一帧
+    ///
+    /// 执行渲染流程：开始帧 → 绘制 → 结束帧 → 呈现。
+    /// 通过 World 的 UiTreeResource 统一执行布局计算和 UI 渲染。
+    fn render_frame(&mut self) -> GResult<()> {
+        let renderer = self.renderer.as_mut().ok_or_else(|| gg_core::GError {
+            kind: gg_core::GErrorKind::Runtime,
+            message: "Renderer not initialized".to_string(),
+        })?;
+
+        renderer.begin_frame()?;
+
+        let mut context = RenderContext::new(renderer.surface_info().width, renderer.surface_info().height);
+
+        let entities: Vec<Entity> = self.world.entities().iter().copied().collect();
+        for entity in entities {
+            if let Some(bg) = self.world.get_component::<SceneBackground>(entity) {
+                if bg.texture_id != TextureId::INVALID {
+                    let surface_width = renderer.surface_info().width as f32;
+                    let surface_height = renderer.surface_info().height as f32;
+                    context.draw(DrawCommand::Sprite {
+                        texture_id: bg.texture_id,
+                        transform: Transform { position: [0.0, 0.0], scale: [1.0, 1.0], rotation: 0.0, z_index: -1.0 },
+                        size: [surface_width, surface_height],
+                        tint: Color::WHITE,
+                        clip_rect: None,
+                    });
+                }
+            }
+        }
+
+        let portrait_system =
+            PortraitRenderSystem::new(renderer.surface_info().width as f32, renderer.surface_info().height as f32);
+        portrait_system.render_to_context(&self.world, &mut context)?;
+
+        let transition_system = TransitionSystem::new();
+        transition_system.render_to_context(&self.world, &mut context)?;
+
+        if let Some(ui_tree) = Self::ui_tree_mut(&mut self.world) {
+            LayoutEngine::compute(ui_tree, renderer.surface_info().width as f32, renderer.surface_info().height as f32);
+            UiRenderer::render(ui_tree, &mut context);
+        }
+
+        renderer.draw(&context)?;
+        renderer.end_frame()?;
+        renderer.present()?;
+
+        Ok(())
+    }
+}

@@ -155,11 +155,7 @@ pub fn derive_reflect(input: TokenStream) -> TokenStream {
             TokenStream::from(expanded)
         }
         Data::Enum(data) => derive_reflect_enum(name, data, &impl_generics, &ty_generics, where_clause),
-        _ => {
-            syn::Error::new_spanned(&input.ident, "Reflect only supports structs and enums")
-                .to_compile_error()
-                .into()
-        }
+        _ => syn::Error::new_spanned(&input.ident, "Reflect only supports structs and enums").to_compile_error().into(),
     }
 }
 
@@ -342,10 +338,8 @@ fn derive_reflect_enum(
         })
         .collect();
 
-    let static_variants_name = syn::Ident::new(
-        &format!("{}_REFLECT_VARIANTS", name.to_string().to_uppercase()),
-        proc_macro2::Span::call_site(),
-    );
+    let static_variants_name =
+        syn::Ident::new(&format!("{}_REFLECT_VARIANTS", name.to_string().to_uppercase()), proc_macro2::Span::call_site());
 
     let expanded = quote! {
         static #static_variants_name: &[&str] = &[#(#variant_names),*];

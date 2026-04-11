@@ -1,0 +1,114 @@
+Prefab(
+    name: "hud",
+    children: [
+        Component({
+            type: "UiCanvas",
+            properties: UiCanvasProperties({
+                render_mode: ScreenSpace,
+                sort_order: 100,
+            }),
+        }),
+        Component({
+            type: "UiRectTransform",
+            properties: UiRectTransformProperties({
+                anchor: Stretch,
+                offset: Rect(min_x: 0.0, min_y: 0.0, max_x: 0.0, max_y: 0.0),
+                pivot: Vec2(x: 0.5, y: 0.5),
+            }),
+        }),
+        Component({
+            type: "UiProgressBar",
+            properties: UiProgressBarProperties({
+                fill_amount: 1.0,
+                fill_direction: LeftToRight,
+                background_color: Color(r: 0.2, g: 0.2, b: 0.2, a: 0.8),
+                fill_color: Color(r: 0.0, g: 0.8, b: 0.2, a: 1.0),
+                border_width: 2.0,
+                border_color: Color(r: 0.5, g: 0.5, b: 0.5, a: 1.0),
+            }),
+            name: "health_bar",
+        }),
+        Component({
+            type: "UiRectTransform",
+            properties: UiRectTransformProperties({
+                anchor: TopLeft,
+                offset: Rect(min_x: 20.0, min_y: -30.0, max_x: 220.0, max_y: -10.0),
+                pivot: Vec2(x: 0.0, y: 1.0),
+            }),
+        }),
+        Component({
+            type: "UiText",
+            properties: UiTextProperties({
+                text: "SCORE: 0",
+                font_size: 18.0,
+                color: Color(r: 1.0, g: 1.0, b: 1.0, a: 1.0),
+                alignment: TopRight,
+                font_path: "assets/fonts/default.ttf",
+            }),
+            name: "score_text",
+        }),
+        Component({
+            type: "UiRectTransform",
+            properties: UiRectTransformProperties({
+                anchor: TopRight,
+                offset: Rect(min_x: -200.0, min_y: -30.0, max_x: -20.0, max_y: -10.0),
+                pivot: Vec2(x: 1.0, y: 1.0),
+            }),
+        }),
+        Component({
+            type: "UiText",
+            properties: UiTextProperties({
+                text: "WAVE 1",
+                font_size: 16.0,
+                color: Color(r: 1.0, g: 1.0, b: 0.5, a: 1.0),
+                alignment: TopCenter,
+                font_path: "assets/fonts/default.ttf",
+            }),
+            name: "wave_text",
+        }),
+        Component({
+            type: "UiRectTransform",
+            properties: UiRectTransformProperties({
+                anchor: TopCenter,
+                offset: Rect(min_x: -60.0, min_y: -30.0, max_x: 60.0, max_y: -10.0),
+                pivot: Vec2(x: 0.5, y: 1.0),
+            }),
+        }),
+        Component({
+            type: "UiText",
+            properties: UiTextProperties({
+                text: "BOMB: 3",
+                font_size: 14.0,
+                color: Color(r: 0.8, g: 0.4, b: 1.0, a: 1.0),
+                alignment: BottomLeft,
+                font_path: "assets/fonts/default.ttf",
+            }),
+            name: "bomb_text",
+        }),
+        Component({
+            type: "UiRectTransform",
+            properties: UiRectTransformProperties({
+                anchor: BottomLeft,
+                offset: Rect(min_x: 20.0, min_y: 10.0, max_x: 120.0, max_y: 30.0),
+                pivot: Vec2(x: 0.0, y: 0.0),
+            }),
+        }),
+        Component({
+            type: "UiImage",
+            properties: UiImageProperties({
+                texture_path: "assets/textures/crosshair.png",
+                color: Color(r: 1.0, g: 1.0, b: 1.0, a: 0.6),
+                preserve_aspect: true,
+            }),
+            name: "crosshair",
+        }),
+        Component({
+            type: "UiRectTransform",
+            properties: UiRectTransformProperties({
+                anchor: Center,
+                offset: Rect(min_x: -12.0, min_y: -12.0, max_x: 12.0, max_y: 12.0),
+                pivot: Vec2(x: 0.5, y: 0.5),
+            }),
+        }),
+    ],
+)

@@ -1,0 +1,86 @@
+using gg::ecs;
+using gg::engine;
+
+component WaveState {
+    wave_number: i32,
+    enemy_count: i32,
+    enemies_alive: i32,
+    spawn_timer: f32,
+    spawn_interval: f32,
+    is_spawning: bool,
+    is_complete: bool,
+    events on_wave_start: micro(wave: i32, count: i32) -> (),
+    events on_wave_complete: micro(wave: i32) -> (),
+    events on_enemy_spawned: micro(enemy_type: String) -> ()
+}
+
+system WaveManagerSystem {
+    micro execute(world: World): Result<()> {
+        let query: Query<WaveState> = world.query("WaveState");
+        loop entity, wave_state in query.iter() {
+            if wave_state.is_complete {
+                continue
+            }
+
+            if wave_state.is_spawning {
+                wave_state.spawn_timer += 1.0;
+                if wave_state.spawn_timer >= wave_state.spawn_interval {
+                    wave_state.spawn_timer = 0.0;
+                    this.spawn_enemy(world, wave_state);
+                }
+            }
+
+            let enemies: Query<Enemy> = world.query("Enemy");
+            let alive_count = 0;
+            loop e, _ in enemies.iter() {
+                alive_count += 1;
+            }
+            wave_state.enemies_alive = alive_count;
+
+            if wave_state.enemies_alive == 0 && !wave_state.is_spawning {
+                wave_state.is_complete = true;
+                wave_state.on_wave_complete(wave_state.wave_number);
+            }
+        }
+
+        return Ok()
+    }
+
+    micro spawn_enemy(world: World, wave_state: WaveState) {
+        let spawned = wave_state.enemy_count - wave_state.enemies_alive;
+        if spawned >= wave_state.enemy_count {
+            wave_state.is_spawning = false;
+            return
+        }
+
+        wave_state.on_enemy_spawned("basic");
+    }
+}
+
+class WaveManager {
+    micro start_wave(world: World, wave: i32, count: i32) {
+        let wave_entity = world.spawn();
+        wave_entity.add_component("WaveState", {
+            wave_number: wave,
+            enemy_count: count,
+            enemies_alive: 0,
+            spawn_timer: 0.0,
+            spawn_interval: 60.0,
+            is_spawning: true,
+            is_complete: false
+        });
+
+        let query: Query<WaveState> = world.query("WaveState");
+        loop entity, wave_state in query.iter() {
+            wave_state.on_wave_start(wave, count);
+        }
+
+        console::log("Wave " + wave + " started with " + count + " enemies");
+    }
+
+    micro get_wave_enemy_count(wave: i32): i32 {
+        return 5 + wave * 2
+    }
+}
+
+let wave_manager = WaveManager();

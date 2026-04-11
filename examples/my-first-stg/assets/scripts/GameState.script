@@ -11,23 +11,25 @@ component GameState {
     level: i32,
     wave: i32,
     game_over: Bool,
+    paused: Bool,
     events on_score_change: micro(score: i32) -> (),
     events on_lives_change: micro(lives: i32) -> (),
     events on_level_change: micro(level: i32) -> (),
     events on_wave_change: micro(wave: i32) -> (),
-    events on_game_over: micro() -> ()
+    events on_game_over: micro() -> (),
+    events on_pause: micro() -> (),
+    events on_resume: micro() -> (),
+    events on_bomb_use: micro(remaining: i32) -> ()
 }
 
 # 游戏状态系统
 system GameStateSystem {
     micro execute(world: World): Result<()> {
-        # 获取游戏状态
         let game_state_query: Query<GameState> = world.query("GameState");
         loop entity, game_state in game_state_query.iter() {
-            # 检查游戏结束条件
             game_state_manager.check_game_over(world, game_state);
         }
-        
+
         return Ok()
     }
 }
@@ -42,33 +44,45 @@ class GameStateManager {
             lives: 3,
             level: 1,
             wave: 1,
-            game_over: false
+            game_over: false,
+            paused: false
         });
-        
-        # 注册事件监听器
+
         game_state.on_score_change.subscribe(micro(score: i32) {
             on_score_change_handler(world, score);
         });
-        
+
         game_state.on_lives_change.subscribe(micro(lives: i32) {
             on_lives_change_handler(world, lives);
         });
-        
+
         game_state.on_level_change.subscribe(micro(level: i32) {
             on_level_change_handler(world, level);
         });
-        
+
         game_state.on_wave_change.subscribe(micro(wave: i32) {
             on_wave_change_handler(world, wave);
         });
-        
+
         game_state.on_game_over.subscribe(micro() {
             on_game_over_handler(world);
         });
-        
+
+        game_state.on_pause.subscribe(micro() {
+            on_pause_handler(world);
+        });
+
+        game_state.on_resume.subscribe(micro() {
+            on_resume_handler(world);
+        });
+
+        game_state.on_bomb_use.subscribe(micro(remaining: i32) {
+            on_bomb_use_handler(world, remaining);
+        });
+
         return game_state;
     }
-    
+
     # 检查游戏结束条件
     micro check_game_over(world: World, game_state: GameState) {
         if game_state.lives <= 0 && not game_state.game_over {
@@ -76,65 +90,93 @@ class GameStateManager {
             game_state.on_game_over();
         }
     }
-    
+
+    # 切换暂停状态
+    micro toggle_pause(game_state: GameState) {
+        game_state.paused = not game_state.paused;
+        if game_state.paused {
+            game_state.on_pause();
+        } else {
+            game_state.on_resume();
+        }
+    }
+
+    # 使用炸弹
+    micro use_bomb(game_state: GameState, player: Player) {
+        if player.bomb_count > 0 {
+            player.bomb_count -= 1;
+            game_state.on_bomb_use(player.bomb_count);
+        }
+    }
+
     # 增加分数
     micro add_score(game_state: GameState, amount: i32) {
         game_state.score += amount;
         game_state.on_score_change(game_state.score);
     }
-    
+
     # 减少生命
     micro lose_life(game_state: GameState) {
         game_state.lives -= 1;
         game_state.on_lives_change(game_state.lives);
     }
-    
+
     # 增加生命
     micro add_life(game_state: GameState) {
         game_state.lives += 1;
         game_state.on_lives_change(game_state.lives);
     }
-    
+
     # 进入下一关
     micro next_level(game_state: GameState) {
         game_state.level += 1;
         game_state.on_level_change(game_state.level);
     }
-    
+
     # 进入下一波
     micro next_wave(game_state: GameState) {
         game_state.wave += 1;
         game_state.on_wave_change(game_state.wave);
     }
-    
+
     # 分数变化处理
     micro on_score_change_handler(world: World, score: i32) {
         console::log("Score: " + score);
-        # 可以在这里添加分数变化的视觉效果
     }
-    
+
     # 生命变化处理
     micro on_lives_change_handler(world: World, lives: i32) {
         console::log("Lives: " + lives);
-        # 可以在这里添加生命变化的视觉效果
     }
-    
+
     # 关卡变化处理
     micro on_level_change_handler(world: World, level: i32) {
         console::log("Level: " + level);
-        # 可以在这里添加关卡变化的视觉效果、音效等
     }
-    
+
     # 波次变化处理
     micro on_wave_change_handler(world: World, wave: i32) {
         console::log("Wave: " + wave);
-        # 可以在这里添加波次变化的视觉效果、音效等
     }
-    
+
     # 游戏结束处理
     micro on_game_over_handler(world: World) {
         console::log("Game Over!");
-        # 可以在这里添加游戏结束的视觉效果、音效等
+    }
+
+    # 暂停处理
+    micro on_pause_handler(world: World) {
+        console::log("Game Paused");
+    }
+
+    # 恢复处理
+    micro on_resume_handler(world: World) {
+        console::log("Game Resumed");
+    }
+
+    # 炸弹使用处理
+    micro on_bomb_use_handler(world: World, remaining: i32) {
+        console::log("Bomb used! Remaining: " + remaining);
     }
 }
 

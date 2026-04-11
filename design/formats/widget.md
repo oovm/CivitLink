@@ -1085,3 +1085,176 @@ FlexLayoutEngine::compute()
 ## 总结
 
 *.widget 文件格式为 GG Editor UI Toolkit 提供了一种统一、直观的方式来开发编辑器界面。通过结合 ValkyrieX 模板、Valkyrie 脚本和 USS 样式系统，开发者可以快速构建出美观、响应式的编辑器界面。*.widget 文件仅用于编辑器界面开发，游戏运行时 UI 请使用 *.prefab 文件格式。
+
+## Widget 编译器集成
+
+### 编译器架构
+
+Widget 文件由 `gg-compiler-widget` 编译器模块负责编译，该模块位于 `projects/compiler/gg-compiler-widget`。编译器遵循 GG 引擎的统一编译管线：`源码 → AST → IR → 产物`。
+
+```mermaid
+graph TB
+    subgraph Input[输入]
+        WidgetFile[.widget 文件]
+    end
+
+    subgraph Parser[解析层]
+        VxParser[VxParser 解析器]
+        TemplateParser[TemplateParser]
+        ScriptParser[ScriptParser]
+        StyleParser[StyleParser]
+    end
+
+    subgraph IR[中间表示层]
+        TemplateIr[TemplateIr]
+        ScriptIr[ScriptIr]
+        StyleIr[StyleIr]
+    end
+
+    subgraph Compiler[编译层]
+        TemplateCompiler[TemplateCompiler]
+        ScriptCompiler[ScriptCompiler]
+        StyleCompiler[StyleCompiler]
+    end
+
+    subgraph Output[产物层]
+        TemplateBundle[TemplateBundle]
+        BytecodeModule[BytecodeModule]
+        StyleBundle[StyleBundle]
+        WidgetArtifact[WidgetArtifact]
+    end
+
+    WidgetFile --> VxParser
+    VxParser --> TemplateParser
+    VxParser --> ScriptParser
+    VxParser --> StyleParser
+
+    TemplateParser --> TemplateIr
+    ScriptParser --> ScriptIr
+    StyleParser --> StyleIr
+
+    TemplateIr --> TemplateCompiler
+    ScriptIr --> ScriptCompiler
+    StyleIr --> StyleCompiler
+
+    TemplateCompiler --> TemplateBundle
+    ScriptCompiler --> BytecodeModule
+    StyleCompiler --> StyleBundle
+
+    TemplateBundle --> WidgetArtifact
+    BytecodeModule --> WidgetArtifact
+    StyleBundle --> WidgetArtifact
+```
+
+### 编译流程
+
+#### 1. 解析阶段
+
+Widget 文件首先由 `VxParser` 解析为三部分：
+
+- **Template 部分**：使用 `oak-voc` 解析器解析为 `TemplateAst`
+- **Script 部分**：使用 `oak-valkyrie` 解析器解析为 `ScriptAst`
+- **Style 部分**：使用 USS 解析器解析为 `StyleAst`
+
+#### 2. 语义分析阶段
+
+对 AST 进行语义分析：
+
+- **Template 验证**：组件类型检查、属性类型验证、事件绑定验证
+- **Script 类型检查**：Valkyrie 脚本类型检查和推断
+- **Style 解析**：选择器解析、主题变量解析、样式值计算
+
+#### 3. IR 生成阶段
+
+将 AST 转换为中间表示：
+
+- **TemplateIr**：包含元素树、数据绑定、事件绑定
+- **ScriptIr**：GG IR 中间表示
+- **StyleIr**：样式规则、选择器索引、主题变量值
+
+#### 4. 代码生成阶段
+
+将 IR 编译为产物：
+
+- **TemplateBundle**：序列化的 UI 节点树
+- **BytecodeModule**：可执行字节码
+- **StyleBundle**：序列化的样式规则
+
+#### 5. 产物打包阶段
+
+将三部分产物打包为 `WidgetArtifact`。
+
+### 组件注册系统
+
+编译器通过 `ComponentRegistry` 进行组件类型检查：
+
+```rust
+pub struct ComponentRegistry {
+    components: HashMap<String, ComponentSchema>,
+    builtins: HashSet<String>,
+}
+
+pub struct ComponentSchema {
+    pub type_name: String,
+    pub properties: HashMap<String, PropertySchema>,
+    pub events: HashMap<String, EventSchema>,
+    pub is_container: bool,
+    pub allowed_children: Vec<String>,
+    pub source_module: String,
+}
+```
+
+所有内置组件（Layout、Button、Text 等）和编辑器专用组件（InspectorPanel、HierarchyView 等）都在编译器中注册，实现编译期类型安全。
+
+### 运行时加载
+
+`GuiRuntime` 负责加载编译后的 Widget 产物：
+
+```rust
+impl GuiRuntime {
+    pub fn load_widget(&mut self, artifact: &WidgetArtifact) -> GResult<Entity> {
+        let ui_tree = self.build_ui_tree(&artifact.template)?;
+        let entity = self.create_entity_from_tree(&ui_tree)?;
+
+        if let Some(ref script) = artifact.script {
+            self.load_script(entity, script)?;
+        }
+
+        if let Some(ref style) = artifact.style {
+            self.apply_style(entity, style)?;
+        }
+
+        Ok(entity)
+    }
+}
+```
+
+### 与编译器核心集成
+
+Widget 编译器实现 `Transformer` trait，集成到 `gg-compiler` 的编译流水线：
+
+```rust
+impl Transformer for WidgetTransformer {
+    fn name(&self) -> &str { "widget" }
+
+    fn input_keys(&self) -> Vec<ArtifactKey> {
+        vec![ArtifactKey::new("widget_source", "*")]
+    }
+
+    fn output_keys(&self) -> Vec<ArtifactKey> {
+        vec![
+            ArtifactKey::new("widget_artifact", "*"),
+            ArtifactKey::new("template_bundle", "*"),
+            ArtifactKey::new("style_bundle", "*"),
+        ]
+    }
+
+    fn transform(&self, inputs: &ArtifactSet, context: &mut BuildContext) -> GResult<ArtifactSet> {
+        // 编译逻辑
+    }
+}
+```
+
+### 详细设计文档
+
+Widget 编译器的详细架构设计、模块划分和开发计划，请参见 [Widget 编译器扩展计划](../roadmaps/compiler-extra.md)。

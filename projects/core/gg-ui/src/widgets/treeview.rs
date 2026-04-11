@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    gui_event::{EventContext, GuiEvent, MouseButton},
     node::{UiNodeData, UiNodeId, UiTree},
     style::{FlexAlign, FlexDirection, FontStyle, LayoutStyle, Style},
     widget::Widget,
@@ -32,13 +33,7 @@ impl TreeNode {
     /// - `id` - 节点唯一标识
     /// - `label` - 节点标签文本
     pub fn new(id: impl Into<String>, label: impl Into<String>) -> Self {
-        Self {
-            id: id.into(),
-            label: label.into(),
-            icon: None,
-            children: Vec::new(),
-            expanded: false,
-        }
+        Self { id: id.into(), label: label.into(), icon: None, children: Vec::new(), expanded: false }
     }
 
     /// 设置图标
@@ -86,23 +81,10 @@ impl TreeView {
     /// - `roots` - 根节点列表
     pub fn new(roots: Vec<TreeNode>) -> Self {
         let style = Style::new()
-            .with_layout(
-                LayoutStyle::new()
-                    .with_direction(FlexDirection::Column)
-                    .with_padding(4.0)
-                    .with_gap(2.0),
-            )
+            .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column).with_padding(4.0).with_gap(2.0))
             .with_font(FontStyle::new());
 
-        Self {
-            roots,
-            style,
-            selected_id: None,
-            on_select: None,
-            on_toggle: None,
-            node_id: None,
-            node_id_map: HashMap::new(),
-        }
+        Self { roots, style, selected_id: None, on_select: None, on_toggle: None, node_id: None, node_id_map: HashMap::new() }
     }
 
     /// 设置样式
@@ -211,81 +193,55 @@ fn build_tree_node(
 ) -> UiNodeId {
     let is_selected = selected_id.as_deref() == Some(node.id.as_str());
 
-    let row_bg = if is_selected {
-        gg_render::Color::new(0.26, 0.52, 0.96, 0.3)
-    } else {
-        gg_render::Color::new(0.0, 0.0, 0.0, 0.0)
-    };
+    let row_bg =
+        if is_selected { gg_render::Color::new(0.26, 0.52, 0.96, 0.3) } else { gg_render::Color::new(0.0, 0.0, 0.0, 0.0) };
 
     let indent = depth as f32 * 16.0;
 
-    let row_style = Style::new()
-        .with_background_color(row_bg)
-        .with_corner_radius(2.0)
-        .with_layout(
-            LayoutStyle::new()
-                .with_direction(FlexDirection::Row)
-                .with_align_items(FlexAlign::Center)
-                .with_gap(4.0)
-                .with_padding(4.0)
-                .with_margin_left(indent),
-        );
-
-    let row_id = tree.create_node(
-        format!("TreeNode_Row({})", node.id),
-        row_style,
-        UiNodeData::Container,
+    let row_style = Style::new().with_background_color(row_bg).with_corner_radius(2.0).with_layout(
+        LayoutStyle::new()
+            .with_direction(FlexDirection::Row)
+            .with_align_items(FlexAlign::Center)
+            .with_gap(4.0)
+            .with_padding(4.0)
+            .with_margin_left(indent),
     );
+
+    let row_id = tree.create_node(format!("TreeNode_Row({})", node.id), row_style, UiNodeData::Container);
 
     let indicator_text = if node.is_leaf() {
         "  ".to_string()
-    } else if node.expanded {
+    }
+    else if node.expanded {
         "▼".to_string()
-    } else {
+    }
+    else {
         "▶".to_string()
     };
 
-    let indicator_style = Style::new().with_font(
-        FontStyle::new().with_size(10.0),
-    );
+    let indicator_style = Style::new().with_font(FontStyle::new().with_size(10.0));
 
     let indicator_id = tree.create_node(
         format!("TreeNode_Indicator({})", node.id),
         indicator_style,
-        UiNodeData::Text {
-            content: indicator_text,
-        },
+        UiNodeData::Text { content: indicator_text },
     );
 
     tree.add_child(row_id, indicator_id);
 
     if let Some(ref icon) = node.icon {
-        let icon_style = Style::new().with_font(
-            FontStyle::new().with_size(14.0),
-        );
+        let icon_style = Style::new().with_font(FontStyle::new().with_size(14.0));
 
-        let icon_id = tree.create_node(
-            format!("TreeNode_Icon({})", node.id),
-            icon_style,
-            UiNodeData::Text {
-                content: icon.clone(),
-            },
-        );
+        let icon_id =
+            tree.create_node(format!("TreeNode_Icon({})", node.id), icon_style, UiNodeData::Text { content: icon.clone() });
 
         tree.add_child(row_id, icon_id);
     }
 
-    let label_style = Style::new().with_font(
-        FontStyle::new(),
-    );
+    let label_style = Style::new().with_font(FontStyle::new());
 
-    let label_id = tree.create_node(
-        format!("TreeNode_Label({})", node.id),
-        label_style,
-        UiNodeData::Text {
-            content: node.label.clone(),
-        },
-    );
+    let label_id =
+        tree.create_node(format!("TreeNode_Label({})", node.id), label_style, UiNodeData::Text { content: node.label.clone() });
 
     tree.add_child(row_id, label_id);
 
@@ -303,22 +259,12 @@ fn build_tree_node(
 
 impl Widget for TreeView {
     fn build(&mut self, tree: &mut UiTree) -> GResult<UiNodeId> {
-        let root_id = tree.create_node(
-            "TreeView",
-            self.style.clone(),
-            UiNodeData::Container,
-        );
+        let root_id = tree.create_node("TreeView", self.style.clone(), UiNodeData::Container);
 
         let mut node_id_map = HashMap::new();
 
         for root_node in &self.roots {
-            let child_row_id = build_tree_node(
-                tree,
-                root_node,
-                &self.selected_id,
-                0,
-                &mut node_id_map,
-            );
+            let child_row_id = build_tree_node(tree, root_node, &self.selected_id, 0, &mut node_id_map);
             tree.add_child(root_id, child_row_id);
         }
 
@@ -334,7 +280,8 @@ impl Widget for TreeView {
 
             let bg = if is_selected {
                 gg_render::Color::new(0.26, 0.52, 0.96, 0.3)
-            } else {
+            }
+            else {
                 gg_render::Color::new(0.0, 0.0, 0.0, 0.0)
             };
 
@@ -346,5 +293,34 @@ impl Widget for TreeView {
 
     fn node_id(&self) -> Option<UiNodeId> {
         self.node_id
+    }
+
+    fn render_template(&self) -> oak_voc::TemplateNode {
+        oak_voc::TemplateNode::text(String::new())
+    }
+
+    fn script_setup(&mut self) {}
+
+    fn get_id(&self) -> &str {
+        ""
+    }
+
+    fn handle_event(&mut self, event: &GuiEvent, _ctx: &mut EventContext) {
+        if let GuiEvent::MouseClick { button: MouseButton::Left, .. } = event {
+            if let Some(ref first_root) = self.roots.first() {
+                let id = first_root.id.clone();
+                if first_root.expanded {
+                    self.selected_id = Some(id.clone());
+                    if let Some(ref mut cb) = self.on_select {
+                        cb(&id);
+                    }
+                } else {
+                    self.selected_id = Some(id.clone());
+                    if let Some(ref mut cb) = self.on_toggle {
+                        cb(&id, true);
+                    }
+                }
+            }
+        }
     }
 }

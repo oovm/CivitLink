@@ -8,7 +8,10 @@ license = { workspace = true }
 
 [dependencies]
 oak-voc = { workspace = true }
+gg-core = { workspace = true }
 gg-error = { workspace = true }
+gg-render = { workspace = true }
+gg-ui = { workspace = true }
 
 [features]
 default = []

@@ -144,10 +144,7 @@ impl ShortcutKey {
 
     /// 检查快捷键是否与当前修饰键状态和按键匹配
     pub fn matches(&self, key: &crate::event::Key, modifiers: &ModifierState) -> bool {
-        &self.key == key
-            && self.ctrl == modifiers.ctrl
-            && self.shift == modifiers.shift
-            && self.alt == modifiers.alt
+        &self.key == key && self.ctrl == modifiers.ctrl && self.shift == modifiers.shift && self.alt == modifiers.alt
     }
 }
 

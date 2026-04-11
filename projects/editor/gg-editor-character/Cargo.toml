@@ -8,6 +8,7 @@ license = { workspace = true }
 [dependencies]
 gg-core = { workspace = true }
 gg-ecs = { workspace = true }
-gg-galgame-schema = { workspace = true }
+gg-engine = { workspace = true }
 gg-editor-shell = { workspace = true }
 gg-ui = { workspace = true }
+uuid = { workspace = true }

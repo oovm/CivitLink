@@ -143,10 +143,9 @@ graph TD
 项目采用 Cargo Workspace 结构，按功能分组组织模块：
 
 - **projects/core/**: 核心抽象与基础类型，包括 ECS 核心、资源系统、反射系统、调度器、世界管理等
-- **projects/compiler/**: 编译器相关模块，包括编译流水线、脚本语言前端、AOT 编译后端等
+- **projects/compiler/**: 编译器相关模块，包括编译流水线、脚本语言前端、AOT 编译后端、平台构建支持等
 - **projects/editor/**: Editor UI Toolkit，包括 GUI 框架核心、GUI 编译器、GUI 运行时等
 - **projects/runtime/**: 运行时相关模块，包括系统调度器、宿主服务接口、HMR 状态迁移等
-- **projects/platforms/**: 平台特定胶水层，包括 Windows/macOS/Linux、WebAssembly/WebGL 和 iOS/Android
 - **projects/plugins/**: 官方提供的领域专用插件模块，包括视觉小说/对话系统插件、瓦片地图与碰撞插件等
 - **projects/engines/**: 具体游戏引擎实现，如 Galgame、STG、Platformer 等
 - **examples/**: 示例，展示如何使用 gg 引擎定制各环节

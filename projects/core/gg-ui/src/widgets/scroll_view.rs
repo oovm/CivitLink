@@ -1,4 +1,5 @@
 use crate::{
+    gui_event::{EventContext, GuiEvent, MouseButton},
     node::{UiNodeData, UiNodeId, UiTree},
     style::{FlexDirection, LayoutStyle, Overflow, SizeValue, Style},
     widget::Widget,
@@ -140,23 +141,15 @@ impl ScrollView {
     /// 返回 0.0（顶部）到 1.0（底部）之间的值，表示当前滚动位置。
     pub fn vertical_scroll_ratio(&self) -> f32 {
         let max_y = (self.content_size[1] - self.view_size[1]).max(0.0);
-        if max_y <= 0.0 {
-            0.0
-        } else {
-            self.scroll_offset[1] / max_y
-        }
+        if max_y <= 0.0 { 0.0 } else { self.scroll_offset[1] / max_y }
     }
 }
 
 impl Widget for ScrollView {
     fn build(&mut self, ui_tree: &mut UiTree) -> GResult<UiNodeId> {
-        let root_style = Style::new()
-            .with_overflow(Overflow::Clip)
-            .with_layout(
-                LayoutStyle::new()
-                    .with_width(SizeValue::Px(self.view_size[0]))
-                    .with_height(SizeValue::Px(self.view_size[1])),
-            );
+        let root_style = Style::new().with_overflow(Overflow::Clip).with_layout(
+            LayoutStyle::new().with_width(SizeValue::Px(self.view_size[0])).with_height(SizeValue::Px(self.view_size[1])),
+        );
 
         let root_id = ui_tree.create_node("ScrollView", root_style, UiNodeData::Container);
 
@@ -183,25 +176,18 @@ impl Widget for ScrollView {
                         .with_margin_left(self.view_size[0] - self.scroll_bar_width),
                 );
 
-            let track_id = ui_tree.create_node(
-                "ScrollView_VTrack",
-                track_style,
-                UiNodeData::Container,
-            );
+            let track_id = ui_tree.create_node("ScrollView_VTrack", track_style, UiNodeData::Container);
 
             let ratio = self.vertical_scroll_ratio();
             let thumb_height = if self.content_size[1] > 0.0 {
                 (self.view_size[1] / self.content_size[1] * self.view_size[1]).max(20.0).min(self.view_size[1])
-            } else {
+            }
+            else {
                 self.view_size[1]
             };
 
             let max_y = (self.content_size[1] - self.view_size[1]).max(0.0);
-            let thumb_top = if max_y > 0.0 {
-                ratio * (self.view_size[1] - thumb_height)
-            } else {
-                0.0
-            };
+            let thumb_top = if max_y > 0.0 { ratio * (self.view_size[1] - thumb_height) } else { 0.0 };
 
             let thumb_style = Style::new()
                 .with_background_color(gg_render::Color::new(0.5, 0.5, 0.5, 0.8))
@@ -213,11 +199,7 @@ impl Widget for ScrollView {
                         .with_margin_top(thumb_top),
                 );
 
-            let thumb_id = ui_tree.create_node(
-                "ScrollView_VThumb",
-                thumb_style,
-                UiNodeData::Container,
-            );
+            let thumb_id = ui_tree.create_node("ScrollView_VThumb", thumb_style, UiNodeData::Container);
 
             ui_tree.add_child(track_id, thumb_id);
             ui_tree.add_child(root_id, track_id);
@@ -238,24 +220,17 @@ impl Widget for ScrollView {
                         .with_margin_top(self.view_size[1] - self.scroll_bar_width),
                 );
 
-            let track_id = ui_tree.create_node(
-                "ScrollView_HTrack",
-                track_style,
-                UiNodeData::Container,
-            );
+            let track_id = ui_tree.create_node("ScrollView_HTrack", track_style, UiNodeData::Container);
 
             let thumb_width = if self.content_size[0] > 0.0 {
                 (self.view_size[0] / self.content_size[0] * self.view_size[0]).max(20.0).min(self.view_size[0])
-            } else {
+            }
+            else {
                 self.view_size[0]
             };
 
             let max_x = (self.content_size[0] - self.view_size[0]).max(0.0);
-            let ratio_x = if max_x > 0.0 {
-                self.scroll_offset[0] / max_x
-            } else {
-                0.0
-            };
+            let ratio_x = if max_x > 0.0 { self.scroll_offset[0] / max_x } else { 0.0 };
             let thumb_left = ratio_x * (self.view_size[0] - thumb_width);
 
             let thumb_style = Style::new()
@@ -268,11 +243,7 @@ impl Widget for ScrollView {
                         .with_margin_left(thumb_left),
                 );
 
-            let thumb_id = ui_tree.create_node(
-                "ScrollView_HThumb",
-                thumb_style,
-                UiNodeData::Container,
-            );
+            let thumb_id = ui_tree.create_node("ScrollView_HThumb", thumb_style, UiNodeData::Container);
 
             ui_tree.add_child(track_id, thumb_id);
             ui_tree.add_child(root_id, track_id);
@@ -297,16 +268,13 @@ impl Widget for ScrollView {
         if let Some(thumb_id) = self.v_scroll_thumb_node_id {
             let thumb_height = if self.content_size[1] > 0.0 {
                 (self.view_size[1] / self.content_size[1] * self.view_size[1]).max(20.0).min(self.view_size[1])
-            } else {
+            }
+            else {
                 self.view_size[1]
             };
 
             let max_y = (self.content_size[1] - self.view_size[1]).max(0.0);
-            let thumb_top = if max_y > 0.0 {
-                self.vertical_scroll_ratio() * (self.view_size[1] - thumb_height)
-            } else {
-                0.0
-            };
+            let thumb_top = if max_y > 0.0 { self.vertical_scroll_ratio() * (self.view_size[1] - thumb_height) } else { 0.0 };
 
             if let Some(node) = ui_tree.get_mut(thumb_id) {
                 node.style.layout.height = SizeValue::Px(thumb_height);
@@ -317,16 +285,13 @@ impl Widget for ScrollView {
         if let Some(thumb_id) = self.h_scroll_thumb_node_id {
             let thumb_width = if self.content_size[0] > 0.0 {
                 (self.view_size[0] / self.content_size[0] * self.view_size[0]).max(20.0).min(self.view_size[0])
-            } else {
+            }
+            else {
                 self.view_size[0]
             };
 
             let max_x = (self.content_size[0] - self.view_size[0]).max(0.0);
-            let ratio_x = if max_x > 0.0 {
-                self.scroll_offset[0] / max_x
-            } else {
-                0.0
-            };
+            let ratio_x = if max_x > 0.0 { self.scroll_offset[0] / max_x } else { 0.0 };
             let thumb_left = ratio_x * (self.view_size[0] - thumb_width);
 
             if let Some(node) = ui_tree.get_mut(thumb_id) {
@@ -338,5 +303,40 @@ impl Widget for ScrollView {
 
     fn node_id(&self) -> Option<UiNodeId> {
         self.node_id
+    }
+
+    fn render_template(&self) -> oak_voc::TemplateNode {
+        oak_voc::TemplateNode::text(String::new())
+    }
+
+    fn script_setup(&mut self) {}
+
+    fn get_id(&self) -> &str {
+        ""
+    }
+
+    fn handle_event(&mut self, event: &GuiEvent, _ctx: &mut EventContext) {
+        match event {
+            GuiEvent::Custom { name, .. } if name == "MouseWheelUp" => {
+                self.scroll_offset[1] = (self.scroll_offset[1] - 30.0).max(0.0);
+            }
+            GuiEvent::Custom { name, .. } if name == "MouseWheelDown" => {
+                let max_y = (self.content_size[1] - self.view_size[1]).max(0.0);
+                self.scroll_offset[1] = (self.scroll_offset[1] + 30.0).min(max_y);
+            }
+            GuiEvent::MouseClick { button: MouseButton::Left, .. } => {
+                self.is_dragging_scroll_bar = true;
+            }
+            GuiEvent::MouseMove { y } => {
+                if self.is_dragging_scroll_bar {
+                    let max_y = (self.content_size[1] - self.view_size[1]).max(0.0);
+                    if max_y > 0.0 {
+                        let ratio = (*y / self.view_size[1]).clamp(0.0, 1.0);
+                        self.scroll_offset[1] = ratio * max_y;
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 }

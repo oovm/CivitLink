@@ -11,9 +11,10 @@ pub mod types;
 
 pub use client::LspClient;
 pub use diagnostic::DiagnosticCollector;
-pub use service::LspService;
+pub use service::{LspDiagnosticsData, LspService};
 pub use transport::{LspTransport, StdioTransport};
 pub use types::{
-    CompletionItem, Diagnostic, DiagnosticSeverity, Hover, Location, Position, Range, TextDocumentContentChangeEvent,
-    TextDocumentIdentifier, VersionedTextDocumentIdentifier,
+    CompletionItem, CompletionOptions, Diagnostic, DiagnosticSeverity, Hover, InitializeResult, Location, LspConfig, Position,
+    Range, ServerCapabilities, TextDocumentContentChangeEvent, TextDocumentIdentifier, TextDocumentSyncKind,
+    VersionedTextDocumentIdentifier,
 };

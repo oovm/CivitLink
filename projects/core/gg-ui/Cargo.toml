@@ -7,4 +7,9 @@ license = { workspace = true }
 
 [dependencies]
 gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-error = { workspace = true }
 gg-render = { workspace = true }
+oak-voc = { workspace = true }
+num_cpus = { workspace = true }
+ab_glyph = { workspace = true }

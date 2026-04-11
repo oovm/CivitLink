@@ -1,4 +1,5 @@
 use crate::{
+    gui_event::{EventContext, GuiEvent, MouseButton},
     node::{UiNodeData, UiNodeId, UiTree},
     style::{FlexAlign, FlexDirection, FontStyle, LayoutStyle, SizeValue, Style},
     widget::Widget,
@@ -31,14 +32,7 @@ impl Checkbox {
     /// - `label` - 文本标签
     /// - `checked` - 初始选中状态
     pub fn new(label: String, checked: bool) -> Self {
-        Self {
-            label,
-            checked,
-            on_change: None,
-            node_id: None,
-            check_box_node_id: None,
-            label_node_id: None,
-        }
+        Self { label, checked, on_change: None, node_id: None, check_box_node_id: None, label_node_id: None }
     }
 
     /// 设置选中状态
@@ -67,42 +61,23 @@ impl Checkbox {
 
 impl Widget for Checkbox {
     fn build(&mut self, tree: &mut UiTree) -> GResult<UiNodeId> {
-        let root_style = Style::new()
-            .with_layout(
-                LayoutStyle::new()
-                    .with_direction(FlexDirection::Row)
-                    .with_align_items(FlexAlign::Center)
-                    .with_gap(8.0),
-            );
-
-        let root_id = tree.create_node(
-            format!("Checkbox({})", self.label),
-            root_style,
-            UiNodeData::Container,
+        let root_style = Style::new().with_layout(
+            LayoutStyle::new().with_direction(FlexDirection::Row).with_align_items(FlexAlign::Center).with_gap(8.0),
         );
 
-        let check_bg = if self.checked {
-            gg_render::Color::new(0.26, 0.52, 0.96, 1.0)
-        } else {
-            gg_render::Color::new(0.0, 0.0, 0.0, 0.0)
-        };
+        let root_id = tree.create_node(format!("Checkbox({})", self.label), root_style, UiNodeData::Container);
+
+        let check_bg =
+            if self.checked { gg_render::Color::new(0.26, 0.52, 0.96, 1.0) } else { gg_render::Color::new(0.0, 0.0, 0.0, 0.0) };
 
         let check_box_style = Style::new()
             .with_background_color(check_bg)
             .with_border_color(gg_render::Color::new(0.5, 0.5, 0.5, 1.0))
             .with_border_width(2.0)
             .with_corner_radius(3.0)
-            .with_layout(
-                LayoutStyle::new()
-                    .with_width(SizeValue::Px(20.0))
-                    .with_height(SizeValue::Px(20.0)),
-            );
+            .with_layout(LayoutStyle::new().with_width(SizeValue::Px(20.0)).with_height(SizeValue::Px(20.0)));
 
-        let check_box_id = tree.create_node(
-            format!("Checkbox_Box({})", self.label),
-            check_box_style,
-            UiNodeData::Container,
-        );
+        let check_box_id = tree.create_node(format!("Checkbox_Box({})", self.label), check_box_style, UiNodeData::Container);
 
         let label_style = Style::new().with_font(FontStyle::new());
 
@@ -126,7 +101,8 @@ impl Widget for Checkbox {
         if let Some(check_box_id) = self.check_box_node_id {
             let bg = if self.checked {
                 gg_render::Color::new(0.26, 0.52, 0.96, 1.0)
-            } else {
+            }
+            else {
                 gg_render::Color::new(0.0, 0.0, 0.0, 0.0)
             };
 
@@ -146,5 +122,24 @@ impl Widget for Checkbox {
 
     fn node_id(&self) -> Option<UiNodeId> {
         self.node_id
+    }
+
+    fn render_template(&self) -> oak_voc::TemplateNode {
+        oak_voc::TemplateNode::text(String::new())
+    }
+
+    fn script_setup(&mut self) {}
+
+    fn get_id(&self) -> &str {
+        ""
+    }
+
+    fn handle_event(&mut self, event: &GuiEvent, _ctx: &mut EventContext) {
+        if let GuiEvent::MouseClick { button: MouseButton::Left, .. } = event {
+            self.checked = !self.checked;
+            if let Some(ref mut cb) = self.on_change {
+                cb(self.checked);
+            }
+        }
     }
 }

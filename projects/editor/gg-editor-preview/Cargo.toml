@@ -7,7 +7,11 @@ license = { workspace = true }
 
 [dependencies]
 gg-core = { workspace = true }
+gg-engine-galgame = { workspace = true }
 gg-ecs = { workspace = true }
-gg-galgame-schema = { workspace = true }
+gg-render = { workspace = true }
 gg-editor-shell = { workspace = true }
+gg-world = { workspace = true }
 gg-ui = { workspace = true }
+notify = { workspace = true }
+seahash = "4.1"

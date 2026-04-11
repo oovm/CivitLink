@@ -1,0 +1,148 @@
+<template>
+  <SplitView direction="horizontal" ratio="0.3">
+    <Panel name="character-list-panel">
+      <Input placeholder="搜索角色..." signal="search_text" />
+      <Button text="创建角色" on-click="on_create_character" />
+      <Button text="删除角色" on-click="on_delete_character" />
+      <ScrollView>
+        <TreeView items="character_list" on-select="on_character_selected" />
+      </ScrollView>
+    </Panel>
+    <Panel name="character-detail-panel">
+      <Label text="立绘预览" />
+      <Image signal="portrait_preview" />
+      <Label text="表情列表" />
+      <ScrollView>
+        <TreeView items="expression_list" on-select="on_expression_selected" />
+      </ScrollView>
+      <Label text="骨骼绑定" />
+      <TreeView items="skeleton_hierarchy" on-select="on_skeleton_node_selected" />
+    </Panel>
+  </SplitView>
+</template>
+
+<script>
+import { signal, computed } from "gg_editor::ui"
+import { CharacterDef, PortraitPosition } from "gg_galgame_schema::components"
+
+signal search_text: String = ""
+signal selected_character_id: Option<String> = None
+signal portrait_preview: Option<TextureId> = None
+
+computed character_list: Vec<TreeItem> = {
+  let query = search_text.get().to_lowercase()
+  characters_cache.iter()
+    .filter(|c| c.name.to_lowercase().contains(&query) || c.id.to_lowercase().contains(&query))
+    .map(|c| TreeItem { id: c.id.clone(), label: format!("{} ({})", c.name, c.id), children: vec![] })
+    .collect()
+}
+
+computed expression_list: Vec<TreeItem> = {
+  match selected_character_id.get() {
+    Some(id) => get_expressions_for(id),
+    None => vec![]
+  }
+}
+
+computed skeleton_hierarchy: Vec<TreeItem> = {
+  match selected_character_id.get() {
+    Some(id) => get_skeleton_tree_for(id),
+    None => vec![]
+  }
+}
+
+fn on_create_character() {
+  open_create_wizard()
+}
+
+fn on_delete_character() {
+  if let Some(id) = selected_character_id.get() {
+    delete_character(&id)
+  }
+}
+
+fn on_character_selected(id: String) {
+  selected_character_id.set(Some(id.clone()))
+  publish_event(EditorEvent::EntitySelected { entity: id_to_entity(&id) })
+  refresh_character_detail(&id)
+}
+
+fn on_expression_selected(tag: String) {
+  preview_expression.set(Some(tag))
+}
+
+fn on_skeleton_node_selected(node_id: String) {
+  selected_skeleton_node.set(Some(node_id))
+}
+</script>
+
+<style>
+SplitView {
+  width: 100%;
+  height: 100%;
+}
+
+#character-list-panel {
+  background-color: $theme-panel-bg;
+  border-right: 1px solid $theme-border;
+  padding: 4px;
+  gap: 2px;
+  flex-direction: column;
+}
+
+#character-detail-panel {
+  background-color: $theme-panel-bg;
+  padding: 4px;
+  gap: 4px;
+  flex-direction: column;
+}
+
+Input {
+  width: 100%;
+  height: 24px;
+  padding: 2px 4px;
+  background-color: $theme-input-bg;
+  border: 1px solid $theme-border;
+  border-radius: 2px;
+  color: $theme-text-primary;
+}
+
+Button {
+  width: 100%;
+  height: 24px;
+  padding: 2px 8px;
+  background-color: $theme-button-bg;
+  border: 1px solid $theme-border;
+  border-radius: 2px;
+  color: $theme-text-primary;
+}
+
+Button:hover {
+  background-color: $theme-button-hover-bg;
+}
+
+Label {
+  height: 20px;
+  color: $theme-text-secondary;
+  font-size: 12px;
+}
+
+TreeView {
+  width: 100%;
+  flex: 1;
+}
+
+ScrollView {
+  width: 100%;
+  flex: 1;
+  overflow: clip;
+}
+
+Image {
+  width: 100%;
+  height: 200px;
+  background-color: $theme-surface;
+  border: 1px solid $theme-border;
+  border-radius: 2px;
+}
+</style>

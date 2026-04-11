@@ -1,0 +1,14 @@
+[package]
+name = "editor-ui-example"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-ui = { workspace = true }
+gg-render = { workspace = true }
+gg-render-wgpu = { workspace = true }
+gg-runtime-ui = { workspace = true }
+winit = { workspace = true }

@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    gui_event::{EventContext, GuiEvent, MouseButton},
     node::{UiNodeData, UiNodeId, UiTree},
     style::{FlexAlign, FlexDirection, FontStyle, LayoutStyle, Style},
     widget::Widget,
@@ -28,11 +29,7 @@ impl TabItem {
     /// - `id` - 标签页唯一标识
     /// - `label` - 标签页显示文本
     pub fn new(id: impl Into<String>, label: impl Into<String>) -> Self {
-        Self {
-            id: id.into(),
-            label: label.into(),
-            closable: false,
-        }
+        Self { id: id.into(), label: label.into(), closable: false }
     }
 
     /// 设置是否可关闭
@@ -71,10 +68,7 @@ impl TabBar {
     pub fn new(tabs: Vec<TabItem>) -> Self {
         let style = Style::new()
             .with_layout(
-                LayoutStyle::new()
-                    .with_direction(FlexDirection::Row)
-                    .with_align_items(FlexAlign::Center)
-                    .with_gap(2.0),
+                LayoutStyle::new().with_direction(FlexDirection::Row).with_align_items(FlexAlign::Center).with_gap(2.0),
             )
             .with_font(FontStyle::new());
 
@@ -120,34 +114,26 @@ impl TabBar {
 
     /// 获取当前激活标签页
     pub fn active_tab(&self) -> Option<&TabItem> {
-        self.active_tab_id
-            .as_deref()
-            .and_then(|id| self.tabs.iter().find(|t| t.id == id))
+        self.active_tab_id.as_deref().and_then(|id| self.tabs.iter().find(|t| t.id == id))
     }
 }
 
 impl Widget for TabBar {
     fn build(&mut self, tree: &mut UiTree) -> GResult<UiNodeId> {
-        let root_id = tree.create_node(
-            "TabBar",
-            self.style.clone(),
-            UiNodeData::Container,
-        );
+        let root_id = tree.create_node("TabBar", self.style.clone(), UiNodeData::Container);
 
         let mut tab_node_ids = HashMap::new();
 
         for tab in &self.tabs {
             let is_active = self.active_tab_id.as_deref() == Some(tab.id.as_str());
 
-            let tab_bg = if is_active {
-                gg_render::Color::new(0.3, 0.3, 0.3, 1.0)
-            } else {
-                gg_render::Color::new(0.2, 0.2, 0.2, 1.0)
-            };
+            let tab_bg =
+                if is_active { gg_render::Color::new(0.3, 0.3, 0.3, 1.0) } else { gg_render::Color::new(0.2, 0.2, 0.2, 1.0) };
 
             let tab_border = if is_active {
                 gg_render::Color::new(0.26, 0.52, 0.96, 1.0)
-            } else {
+            }
+            else {
                 gg_render::Color::new(0.4, 0.4, 0.4, 1.0)
             };
 
@@ -165,37 +151,25 @@ impl Widget for TabBar {
                 )
                 .with_font(self.style.font.clone().unwrap_or_default());
 
-            let tab_id = tree.create_node(
-                format!("TabBar_Tab({})", tab.id),
-                tab_style,
-                UiNodeData::Container,
-            );
+            let tab_id = tree.create_node(format!("TabBar_Tab({})", tab.id), tab_style, UiNodeData::Container);
 
-            let label_style = Style::new().with_font(
-                FontStyle::new(),
-            );
+            let label_style = Style::new().with_font(FontStyle::new());
 
             let label_id = tree.create_node(
                 format!("TabBar_TabLabel({})", tab.id),
                 label_style,
-                UiNodeData::Text {
-                    content: tab.label.clone(),
-                },
+                UiNodeData::Text { content: tab.label.clone() },
             );
 
             tree.add_child(tab_id, label_id);
 
             if tab.closable {
-                let close_style = Style::new().with_font(
-                    FontStyle::new().with_size(12.0),
-                );
+                let close_style = Style::new().with_font(FontStyle::new().with_size(12.0));
 
                 let close_id = tree.create_node(
                     format!("TabBar_TabClose({})", tab.id),
                     close_style,
-                    UiNodeData::Text {
-                        content: "×".to_string(),
-                    },
+                    UiNodeData::Text { content: "×".to_string() },
                 );
 
                 tree.add_child(tab_id, close_id);
@@ -215,15 +189,13 @@ impl Widget for TabBar {
         for tab in &self.tabs {
             let is_active = self.active_tab_id.as_deref() == Some(tab.id.as_str());
 
-            let tab_bg = if is_active {
-                gg_render::Color::new(0.3, 0.3, 0.3, 1.0)
-            } else {
-                gg_render::Color::new(0.2, 0.2, 0.2, 1.0)
-            };
+            let tab_bg =
+                if is_active { gg_render::Color::new(0.3, 0.3, 0.3, 1.0) } else { gg_render::Color::new(0.2, 0.2, 0.2, 1.0) };
 
             let tab_border = if is_active {
                 gg_render::Color::new(0.26, 0.52, 0.96, 1.0)
-            } else {
+            }
+            else {
                 gg_render::Color::new(0.4, 0.4, 0.4, 1.0)
             };
 
@@ -239,5 +211,29 @@ impl Widget for TabBar {
 
     fn node_id(&self) -> Option<UiNodeId> {
         self.node_id
+    }
+
+    fn render_template(&self) -> oak_voc::TemplateNode {
+        oak_voc::TemplateNode::text(String::new())
+    }
+
+    fn script_setup(&mut self) {}
+
+    fn get_id(&self) -> &str {
+        ""
+    }
+
+    fn handle_event(&mut self, event: &GuiEvent, _ctx: &mut EventContext) {
+        if let GuiEvent::MouseClick { button: MouseButton::Left, .. } = event {
+            if !self.tabs.is_empty() {
+                let current_idx = self.tabs.iter().position(|t| Some(&t.id) == self.active_tab_id.as_ref()).unwrap_or(0);
+                let next_idx = (current_idx + 1) % self.tabs.len();
+                let next_id = self.tabs[next_idx].id.clone();
+                self.active_tab_id = Some(next_id.clone());
+                if let Some(ref mut cb) = self.on_tab_changed {
+                    cb(&next_id);
+                }
+            }
+        }
     }
 }

@@ -2,7 +2,7 @@
 //!
 //! 提供面板和插件访问编辑器核心子系统的统一入口。
 
-use crate::{command::CommandManager, event::EventBus, service::ServiceRegistry};
+use crate::{command::CommandManager, event::EventBus, extension::ExtensionPointRegistry, service::ServiceRegistry};
 use gg_world::GameWorld;
 
 /// 编辑器配置
@@ -19,11 +19,20 @@ pub struct EditorConfig {
     pub show_line_numbers: bool,
     /// 制表符大小
     pub tab_size: u32,
+    /// 上次保存的布局文件路径
+    pub last_layout_path: Option<String>,
 }
 
 impl Default for EditorConfig {
     fn default() -> Self {
-        Self { theme: "dark".to_string(), font_size: 14, auto_save: false, show_line_numbers: true, tab_size: 4 }
+        Self {
+            theme: "dark".to_string(),
+            font_size: 14,
+            auto_save: false,
+            show_line_numbers: true,
+            tab_size: 4,
+            last_layout_path: None,
+        }
     }
 }
 
@@ -36,6 +45,7 @@ pub struct EditorContext<'a> {
     commands: &'a mut CommandManager,
     events: &'a mut EventBus,
     world: &'a mut GameWorld,
+    extension_points: &'a mut ExtensionPointRegistry,
 }
 
 impl<'a> EditorContext<'a> {
@@ -45,8 +55,9 @@ impl<'a> EditorContext<'a> {
         commands: &'a mut CommandManager,
         events: &'a mut EventBus,
         world: &'a mut GameWorld,
+        extension_points: &'a mut ExtensionPointRegistry,
     ) -> Self {
-        Self { services, commands, events, world }
+        Self { services, commands, events, world, extension_points }
     }
 
     /// 获取服务注册表引用
@@ -89,6 +100,23 @@ impl<'a> EditorContext<'a> {
         self.world
     }
 
+    /// 获取扩展点注册表引用
+    pub fn extension_points(&self) -> &ExtensionPointRegistry {
+        self.extension_points
+    }
+
+    /// 获取扩展点注册表可变引用
+    pub fn extension_points_mut(&mut self) -> &mut ExtensionPointRegistry {
+        self.extension_points
+    }
+
+    /// 调用扩展点
+    ///
+    /// 若扩展点已注册则执行其处理器并返回结果，否则返回 `None`。
+    pub fn invoke_extension_point(&mut self, name: &str, data: &dyn std::any::Any) -> Option<Box<dyn std::any::Any>> {
+        self.extension_points.invoke(name, data)
+    }
+
     /// 执行命令并压入撤销栈
     ///
     /// 便捷方法，避免外部调用者同时持有 `CommandManager` 和 `EditorContext` 的可变引用
@@ -106,10 +134,13 @@ impl<'a> EditorContext<'a> {
     /// 便捷方法，从撤销栈弹出最近执行的命令，调用其 `undo` 方法，
     /// 然后压入重做栈。避免借用冲突。
     pub fn undo_command(&mut self) -> gg_core::GResult<()> {
-        let mut command = self.commands.undo_stack.pop().ok_or_else(|| gg_core::GError {
-            kind: gg_core::GErrorKind::Other,
-            message: "没有可撤销的命令".to_string(),
-        })?;
+        let mut command = self
+            .commands
+            .undo_stack
+            .pop()
+            .ok_or_else(|| gg_core::GError {
+                kind: gg_core::GErrorKind::Other, message: "没有可撤销的命令".to_string()
+            })?;
         command.undo(self)?;
         self.commands.redo_stack.push(command);
         Ok(())
@@ -120,10 +151,13 @@ impl<'a> EditorContext<'a> {
     /// 便捷方法，从重做栈弹出最近撤销的命令，调用其 `execute` 方法，
     /// 然后压入撤销栈。避免借用冲突。
     pub fn redo_command(&mut self) -> gg_core::GResult<()> {
-        let mut command = self.commands.redo_stack.pop().ok_or_else(|| gg_core::GError {
-            kind: gg_core::GErrorKind::Other,
-            message: "没有可重做的命令".to_string(),
-        })?;
+        let mut command = self
+            .commands
+            .redo_stack
+            .pop()
+            .ok_or_else(|| gg_core::GError {
+                kind: gg_core::GErrorKind::Other, message: "没有可重做的命令".to_string()
+            })?;
         command.execute(self)?;
         self.commands.undo_stack.push(command);
         Ok(())

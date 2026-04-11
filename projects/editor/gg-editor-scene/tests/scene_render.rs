@@ -101,52 +101,12 @@ fn test_base_scene_view_render_commands() {
     let mut world = GameWorld::new("test_scene".to_string());
 
     let entity = world.spawn().id();
-    world
-        .add_component(
-            entity,
-            Transform2D {
-                x: 100.0,
-                y: 200.0,
-                rotation: 0.0,
-                scale_x: 1.0,
-                scale_y: 1.0,
-            },
-        )
-        .unwrap();
-    world
-        .add_component(
-            entity,
-            RectRenderer {
-                width: 50.0,
-                height: 30.0,
-                color: Color::new(1.0, 0.0, 0.0, 1.0),
-            },
-        )
-        .unwrap();
+    world.add_component(entity, Transform2D { x: 100.0, y: 200.0, rotation: 0.0, scale_x: 1.0, scale_y: 1.0 }).unwrap();
+    world.add_component(entity, RectRenderer { width: 50.0, height: 30.0, color: Color::new(1.0, 0.0, 0.0, 1.0) }).unwrap();
 
     let entity2 = world.spawn().id();
-    world
-        .add_component(
-            entity2,
-            Transform2D {
-                x: 300.0,
-                y: 400.0,
-                rotation: 0.0,
-                scale_x: 1.0,
-                scale_y: 1.0,
-            },
-        )
-        .unwrap();
-    world
-        .add_component(
-            entity2,
-            RectRenderer {
-                width: 80.0,
-                height: 60.0,
-                color: Color::new(0.0, 1.0, 0.0, 1.0),
-            },
-        )
-        .unwrap();
+    world.add_component(entity2, Transform2D { x: 300.0, y: 400.0, rotation: 0.0, scale_x: 1.0, scale_y: 1.0 }).unwrap();
+    world.add_component(entity2, RectRenderer { width: 80.0, height: 60.0, color: Color::new(0.0, 1.0, 0.0, 1.0) }).unwrap();
 
     let mut view = BaseSceneView::new();
     view.collect_render_commands(&world);

@@ -1,5 +1,7 @@
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
+use std::{
+    collections::hash_map::DefaultHasher,
+    hash::{Hash, Hasher},
+};
 
 use gg_runtime_audio::{SoundDescriptor, SoundFormat, SoundId};
 
@@ -40,12 +42,7 @@ fn test_sound_format_variants() {
 
 #[test]
 fn test_sound_descriptor_construction() {
-    let descriptor = SoundDescriptor {
-        format: SoundFormat::Ogg,
-        duration_secs: 3.5,
-        channels: 2,
-        sample_rate: 44100,
-    };
+    let descriptor = SoundDescriptor { format: SoundFormat::Ogg, duration_secs: 3.5, channels: 2, sample_rate: 44100 };
     assert_eq!(descriptor.format, SoundFormat::Ogg);
     assert!((descriptor.duration_secs - 3.5).abs() < f64::EPSILON);
     assert_eq!(descriptor.channels, 2);

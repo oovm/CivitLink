@@ -1,0 +1,265 @@
+% TeX DSL 国际化方案
+% 
+% 核心理念：
+% 1. 编剧直接写原文，不需要关心 ID
+% 2. 翻译工具自动提取文本
+% 3. 翻译团队只翻译提取的文本文件
+
+% ============================================
+% 编剧直接写原文
+% ============================================
+
+\scene[school_gate.png, theme.mp3]
+
+星光学院，这所历史悠久的名校，隐藏着不为人知的秘密。
+
+我转学到这里已经一周了，却总觉得有什么不对劲。
+
+\flash
+
+\p[thinking] （奇怪...那个旧校舍，为什么总是锁着？）
+
+\role[sakura][curious, left]
+
+\s 新同学！你在看什么呢？
+
+\p[surprised] 啊，樱井同学...没什么，只是在发呆。
+
+\s[smile] 你的表情可不像在发呆哦。对了，放学后学生会有个活动，要来吗？
+
+```choice
+\case[accept][+s] 好啊，我去看看
+\case[decline][-s] 抱歉，我还有事
+\case[ask] 学生会有什么活动？
+```
+
+% ============================================
+% 节点 ID 设计（替代行号）
+% ============================================
+
+% 为什么不用行号？
+% 行号在剧本修改后会变化，导致翻译引用失效。
+
+% ID 格式：<文件路径>:<结构路径>#<内容指纹>
+%
+% 示例：
+%   main.tex:scene[0].narration[0]#a3b2c1d0
+%   main.tex:scene[0].dialogue[2]#e4f5g6h7
+%   main.tex:scene[0].choice[0].option[1]#i8j9k0l1
+
+% 组成部分：
+% - 文件路径：源文件相对路径
+% - 结构路径：节点在 AST 中的位置
+% - 内容指纹：文本内容的 SHA-256 哈希前 8 位
+
+% ============================================
+% 翻译工作流
+% ============================================
+
+% 步骤 1：编剧用中文写完剧本
+% 步骤 2：运行提取工具
+%   $ galgame extract main.tex -o locales/zh-CN/main.pot
+%
+% 步骤 3：生成各语言翻译文件
+%   $ galgame init-locale zh-CN main.pot  # 源语言，直接复制
+%   $ galgame init-locale en-US main.pot  # 英文翻译文件
+%   $ galgame init-locale ja-JP main.pot  # 日文翻译文件
+%
+% 步骤 4：翻译团队编辑翻译文件
+% 步骤 5：运行时根据语言设置加载翻译
+
+% ============================================
+% 生成的翻译文件格式
+% ============================================
+
+# locales/en-US/main.po (gettext 格式)
+
+#. ID: main.tex:scene[0].narration[0]#a3b2c1d0
+msgid "星光学院，这所历史悠久的名校，隐藏着不为人知的秘密。"
+msgstr "Star Academy, a historic school, hides secrets unknown to all."
+
+#. ID: main.tex:scene[0].narration[1]#b4c5d6e7
+msgid "我转学到这里已经一周了，却总觉得有什么不对劲。"
+msgstr "I transferred here a week ago, but something feels off."
+
+#. ID: main.tex:scene[0].dialogue[0]#c5d6e7f8
+msgctxt "player"
+msgid "（奇怪...那个旧校舍，为什么总是锁着？）"
+msgstr "(Strange... why is that old building always locked?)"
+
+#. ID: main.tex:scene[0].dialogue[1]#d6e7f8g9
+msgctxt "sakura"
+msgid "新同学！你在看什么呢？"
+msgstr "New student! What are you looking at?"
+
+#. ID: main.tex:scene[0].dialogue[2]#e7f8g9h0
+msgctxt "sakura"
+msgid "你的表情可不像在发呆哦。对了，放学后学生会有个活动，要来吗？"
+msgstr "You don't look like you're spacing out. By the way, there's a student council activity after school. Want to come?"
+
+# 选择选项
+#. ID: main.tex:scene[0].choice[0].option[0]#f8g9h0i1
+msgid "好啊，我去看看"
+msgstr "Sure, I'll check it out"
+
+#. ID: main.tex:scene[0].choice[0].option[1]#g9h0i1j2
+msgid "抱歉，我还有事"
+msgstr "Sorry, I have something else"
+
+#. ID: main.tex:scene[0].choice[0].option[2]#h0i1j2k3
+msgid "学生会有什么活动？"
+msgstr "What kind of activity?"
+
+% ============================================
+% 增量更新策略
+% ============================================
+
+% 当剧本修改后，使用智能匹配保留已有翻译：
+
+% 1. 精确匹配：ID 完全相同 → 直接保留翻译
+% 2. 指纹匹配：指纹相同，路径变化 → 更新路径，保留翻译
+% 3. 模糊匹配：路径相似，文本相似度 > 80% → 标记为 fuzzy
+% 4. 新增条目：无法匹配 → msgstr 为空，等待翻译
+% 5. 废弃条目：旧 ID 不在新提取中 → 标记为 obsolete
+
+% ============================================
+% 场景演示：插入内容后更新
+% ============================================
+
+% 原始剧本：
+% \scene[school.png]
+% 星光学院，历史悠久的名校。
+% \s 你好！
+
+% 翻译文件：
+% #. ID: main.tex:scene[0].narration[0]#abc12345
+% msgid "星光学院，历史悠久的名校。"
+% msgstr "Star Academy, a historic school."
+%
+% #. ID: main.tex:scene[0].dialogue[0]#def67890
+% msgctxt "sakura"
+% msgid "你好！"
+% msgstr "Hello!"
+
+% 修改后剧本（插入内容）：
+% \scene[school.png]
+% 阳光明媚的早晨。
+% 星光学院，历史悠久的名校。
+% \s 你好！
+
+% 增量更新结果：
+% #. ID: main.tex:scene[0].narration[0]#xyz11111  # 新增
+% msgid "阳光明媚的早晨。"
+% msgstr ""  # 等待翻译
+%
+% #. ID: main.tex:scene[0].narration[1]#abc12345  # 路径更新，指纹匹配
+% msgid "星光学院，历史悠久的名校。"
+% msgstr "Star Academy, a historic school."  # 保留翻译
+%
+% #. ID: main.tex:scene[0].dialogue[0]#def67890  # 精确匹配
+% msgctxt "sakura"
+% msgid "你好！"
+% msgstr "Hello!"  # 保留翻译
+
+% ============================================
+% JSON 格式的翻译文件（备选）
+% ============================================
+
+# locales/en-US/main.json
+
+{
+  "meta": {
+    "source": "main.tex",
+    "language": "en-US",
+    "version": "1.0.0"
+  },
+  "translations": [
+    {
+      "id": "scene[0].narration[0]#a3b2c1d0",
+      "context": "narration",
+      "source": "星光学院，这所历史悠久的名校，隐藏着不为人知的秘密。",
+      "target": "Star Academy, a historic school, hides secrets unknown to all."
+    },
+    {
+      "id": "scene[0].narration[1]#b4c5d6e7",
+      "context": "narration",
+      "source": "我转学到这里已经一周了，却总觉得有什么不对劲。",
+      "target": "I transferred here a week ago, but something feels off."
+    },
+    {
+      "id": "scene[0].dialogue[0]#c5d6e7f8",
+      "context": "player.thinking",
+      "source": "（奇怪...那个旧校舍，为什么总是锁着？）",
+      "target": "(Strange... why is that old building always locked?)"
+    },
+    {
+      "id": "scene[0].dialogue[1]#d6e7f8g9",
+      "context": "sakura",
+      "source": "新同学！你在看什么呢？",
+      "target": "New student! What are you looking at?"
+    }
+  ]
+}
+
+% ============================================
+% 角色名称翻译
+% ============================================
+
+# locales/en-US/characters.json
+
+{
+  "player": "Protagonist",
+  "sakura": "Sakura Mirai",
+  "ren": "Ren Kurosaki",
+  "yuki": "Yuki Shirayuki"
+}
+
+# locales/ja-JP/characters.json
+
+{
+  "player": "主人公",
+  "sakura": "桜井美咲",
+  "ren": "黒崎蓮",
+  "yuki": "白雪悠希"
+}
+
+% ============================================
+% 工作流对比
+% ============================================
+
+❌ 错误方式（使用行号）：
+#: main.tex:15        # 在第 15 行插入内容后，这里变成 16 行
+msgid "星光学院..."
+msgstr "..."
+
+✅ 正确方式（使用节点 ID）：
+#. ID: main.tex:scene[0].narration[0]#a3b2c1d0
+msgid "星光学院..."
+msgstr "..."
+
+% ============================================
+% 完整工作流程
+% ============================================
+
+1. 编剧阶段
+   - 编剧用中文（或任何源语言）直接写剧本
+   - 不需要关心翻译，只关注故事内容
+   - 文件：scripts/main.tex
+
+2. 提取阶段
+   - 运行：galgame extract scripts/*.tex -o locales/zh-CN/
+   - 自动提取所有可翻译文本
+   - 生成带节点 ID 的翻译文件
+
+3. 翻译阶段
+   - 翻译团队编辑 PO/JSON 文件
+   - 不需要触碰剧本文件
+   - 文件：locales/en-US/main.po, locales/ja-JP/main.po
+
+4. 构建阶段
+   - 运行：galgame build --locale en-US
+   - 将翻译合并到运行时数据
+
+5. 运行时
+   - 根据用户语言设置显示对应翻译
+   - 没有翻译的文本显示原文

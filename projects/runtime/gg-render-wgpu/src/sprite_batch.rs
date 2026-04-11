@@ -78,11 +78,18 @@ impl SpriteBatcher {
             }
         }
 
+        let mvp_t = [
+            [mvp[0][0], mvp[1][0], mvp[2][0], mvp[3][0]],
+            [mvp[0][1], mvp[1][1], mvp[2][1], mvp[3][1]],
+            [mvp[0][2], mvp[1][2], mvp[2][2], mvp[3][2]],
+            [mvp[0][3], mvp[1][3], mvp[2][3], mvp[3][3]],
+        ];
+
         self.current_instances.push(BatchedSpriteInstance {
-            mvp_row0: mvp[0],
-            mvp_row1: mvp[1],
-            mvp_row2: mvp[2],
-            mvp_row3: mvp[3],
+            mvp_row0: mvp_t[0],
+            mvp_row1: mvp_t[1],
+            mvp_row2: mvp_t[2],
+            mvp_row3: mvp_t[3],
             tint,
             uv_transform,
         });

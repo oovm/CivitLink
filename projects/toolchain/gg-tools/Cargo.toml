@@ -11,11 +11,12 @@ path = "bin/gg.rs"
 
 [dependencies]
 gg-core = { workspace = true }
+gg-error = { workspace = true }
 gg-manifest = { workspace = true }
 gg-factory = { workspace = true }
 gg-script = { workspace = true }
 gg-vm = { workspace = true }
-gg-runtime-core = { workspace = true, features = ["desktop"] }
+gg-runtime = { workspace = true, features = ["desktop"] }
 gg-sheet = { workspace = true }
 gg-meta = { workspace = true }
 gg-lsp = { workspace = true, optional = true }

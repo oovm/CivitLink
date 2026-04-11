@@ -48,7 +48,7 @@ fn main() {
 
 - **gg-editor-shell**：编辑器外壳和基础框架
 - **gg-core**：核心功能和平台抽象
-- **gg-runtime-core**：运行时核心
+- **gg-runtime**：运行时核心
 - **gg-error**：错误处理系统
 
 ## 📖 相关文档

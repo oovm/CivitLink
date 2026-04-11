@@ -29,6 +29,30 @@ pub enum PropertyType {
     Vec2,
     /// 自定义类型，包含类型标识符
     Custom(String),
+    /// 数组类型，元素类型由内部 PropertyType 指定
+    Array(Box<PropertyType>),
+    /// 映射类型，键值类型分别指定
+    Map {
+        /// 键类型
+        key_type: Box<PropertyType>,
+        /// 值类型
+        value_type: Box<PropertyType>,
+    },
+    /// 三维向量类型
+    Vec3,
+    /// 四维向量类型
+    Vec4,
+    /// 矩形类型，包含 x、y、w、h 四个分量
+    Rect,
+    /// 实体引用类型，引用另一个实体
+    EntityRef,
+    /// 结构体类型，包含结构体名称和字段列表
+    Struct {
+        /// 结构体名称
+        name: String,
+        /// 字段描述符列表
+        fields: Vec<PropertyDescriptor>,
+    },
 }
 
 /// 属性约束
@@ -154,12 +178,23 @@ impl DescriptorRegistry {
 ///
 /// 将 Rust 类型名称映射为 `PropertyType` 枚举值，
 /// 用于从反射信息自动生成属性描述符。
+/// 支持推断基础类型和常见复合类型（Vec2、Vec3、Vec4、Rect、EntityRef）。
 fn infer_property_type(type_name: &str) -> PropertyType {
     match type_name {
         "String" | "alloc::string::String" => PropertyType::String,
         "i32" | "i64" | "u32" | "u64" => PropertyType::Int,
         "f32" | "f64" => PropertyType::Float,
         "bool" => PropertyType::Bool,
-        _ => PropertyType::Custom(type_name.to_string()),
+        _ => {
+            let short = type_name.split("::").last().unwrap_or(type_name);
+            match short {
+                "Vec2" => PropertyType::Vec2,
+                "Vec3" => PropertyType::Vec3,
+                "Vec4" => PropertyType::Vec4,
+                "Rect" => PropertyType::Rect,
+                name if name.contains("EntityRef") || name.contains("Entity") => PropertyType::EntityRef,
+                _ => PropertyType::Custom(type_name.to_string()),
+            }
+        }
     }
 }

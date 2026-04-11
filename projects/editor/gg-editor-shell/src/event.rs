@@ -156,6 +156,115 @@ pub enum Key {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SubscriptionId(u64);
 
+/// 拖拽数据枚举
+///
+/// 定义面板间拖拽操作携带的数据类型。
+#[derive(Debug, Clone)]
+pub enum DragData {
+    /// 资源路径拖拽
+    AssetPath(String),
+    /// 多资源路径批量拖拽
+    MultiAsset(Vec<String>),
+    /// 实体拖拽
+    Entity(u64),
+    /// 自定义拖拽数据
+    Custom {
+        /// 数据类型标识
+        kind: String,
+        /// 数据内容
+        data: String,
+    },
+}
+
+/// 拖拽状态
+///
+/// 管理当前拖拽操作的状态信息。
+#[derive(Debug, Clone)]
+pub struct DragState {
+    /// 拖拽数据
+    pub data: DragData,
+    /// 拖拽起始位置
+    pub start_position: (f32, f32),
+    /// 是否正在拖拽中
+    pub is_dragging: bool,
+}
+
+impl DragState {
+    /// 创建新的拖拽状态
+    pub fn new(data: DragData, start_position: (f32, f32)) -> Self {
+        Self { data, start_position, is_dragging: true }
+    }
+}
+
+/// 拖拽视觉反馈状态
+///
+/// 管理拖拽操作过程中的视觉反馈信息，包括目标面板的高亮状态。
+/// 有效放置目标显示蓝色边框，无效放置目标显示红色边框。
+#[derive(Debug, Clone)]
+pub struct DragVisualFeedback {
+    /// 当前是否正在拖拽
+    pub is_dragging: bool,
+    /// 拖拽目标的合法面板名称列表
+    pub valid_targets: Vec<String>,
+    /// 当前鼠标悬停的面板名称
+    pub hover_target: Option<String>,
+}
+
+impl DragVisualFeedback {
+    /// 创建新的拖拽视觉反馈状态
+    pub fn new() -> Self {
+        Self { is_dragging: false, valid_targets: Vec::new(), hover_target: None }
+    }
+
+    /// 开始拖拽，设置有效目标面板列表
+    pub fn start_drag(&mut self, valid_targets: Vec<String>) {
+        self.is_dragging = true;
+        self.valid_targets = valid_targets;
+        self.hover_target = None;
+    }
+
+    /// 结束拖拽，清除所有状态
+    pub fn end_drag(&mut self) {
+        self.is_dragging = false;
+        self.valid_targets.clear();
+        self.hover_target = None;
+    }
+
+    /// 设置当前悬停目标面板
+    pub fn set_hover_target(&mut self, target: Option<String>) {
+        self.hover_target = target;
+    }
+
+    /// 判断指定面板是否为有效放置目标
+    pub fn is_valid_target(&self, panel_name: &str) -> bool {
+        self.valid_targets.iter().any(|t| t == panel_name)
+    }
+
+    /// 获取指定面板的拖拽高亮颜色
+    ///
+    /// 返回 (r, g, b, a) 颜色值：
+    /// - 正在拖拽且为有效目标且正在悬停：蓝色 (0.2, 0.5, 1.0, 0.5)
+    /// - 正在拖拽且为无效目标且正在悬停：红色 (1.0, 0.2, 0.2, 0.5)
+    /// - 其他情况：透明 (0.0, 0.0, 0.0, 0.0)
+    pub fn highlight_color(&self, panel_name: &str) -> (f32, f32, f32, f32) {
+        if !self.is_dragging {
+            return (0.0, 0.0, 0.0, 0.0);
+        }
+        if self.hover_target.as_deref() == Some(panel_name) {
+            if self.is_valid_target(panel_name) { (0.2, 0.5, 1.0, 0.5) } else { (1.0, 0.2, 0.2, 0.5) }
+        }
+        else {
+            (0.0, 0.0, 0.0, 0.0)
+        }
+    }
+}
+
+impl Default for DragVisualFeedback {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// 编辑器事件枚举
 ///
 /// 定义了编辑器中所有内置事件类型，以及支持携带任意数据的自定义事件。
@@ -252,6 +361,79 @@ pub enum EditorEvent {
         /// 释放的键
         key: Key,
     },
+    /// 插件已加载
+    PluginLoaded {
+        /// 插件名称
+        plugin_name: String,
+    },
+    /// 插件已卸载
+    PluginUnloaded {
+        /// 插件名称
+        plugin_name: String,
+    },
+    /// 插件已重载
+    PluginReloaded {
+        /// 插件名称
+        plugin_name: String,
+    },
+    /// 布局已保存
+    LayoutSaved {
+        /// 布局文件路径
+        path: String,
+    },
+    /// 布局已加载
+    LayoutLoaded {
+        /// 布局文件路径
+        path: String,
+    },
+    /// 布局已重置为默认
+    LayoutReset,
+    /// 窗口大小变更
+    WindowResized {
+        /// 窗口 ID
+        window_id: u64,
+        /// 新宽度
+        width: u32,
+        /// 新高度
+        height: u32,
+    },
+    /// 预览已启动
+    PreviewStarted,
+    /// 预览已停止
+    PreviewStopped,
+    /// 预览已暂停
+    PreviewPaused,
+    /// 预览已恢复
+    PreviewResumed,
+    /// HMR 重载已触发
+    HmrReloadTriggered {
+        /// 变更文件列表
+        changed_files: Vec<String>,
+    },
+    /// HMR 重载已完成
+    HmrReloadCompleted {
+        /// 是否成功
+        success: bool,
+    },
+    /// 拖拽开始
+    DragStart {
+        /// 拖拽数据
+        data: DragData,
+    },
+    /// 拖拽移动
+    DragMove {
+        /// 当前鼠标位置
+        position: (f32, f32),
+    },
+    /// 拖拽结束
+    DragEnd {
+        /// 释放位置
+        position: (f32, f32),
+        /// 拖拽数据
+        data: DragData,
+    },
+    /// 拖拽取消
+    DragCancel,
     /// 自定义事件
     Custom {
         /// 事件名称

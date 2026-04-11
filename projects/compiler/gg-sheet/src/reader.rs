@@ -15,6 +15,8 @@ pub enum FileFormat {
     Csv,
     /// TSV 格式 (.tsv)
     Tsv,
+    /// JSON 格式 (.json)
+    Json,
 }
 
 impl FileFormat {
@@ -24,6 +26,7 @@ impl FileFormat {
             Some("xlsx") | Some("xls") => Ok(FileFormat::Xlsx),
             Some("csv") => Ok(FileFormat::Csv),
             Some("tsv") => Ok(FileFormat::Tsv),
+            Some("json") => Ok(FileFormat::Json),
             _ => Err(SheetError::Io {
                 path: path.to_path_buf(), message: format!("不支持的文件格式: {}", path.display())
             }),
@@ -164,11 +167,99 @@ impl TableReader for CsvReader {
     }
 }
 
+/// JSON 文件读取器
+pub struct JsonReader;
+
+impl TableReader for JsonReader {
+    fn load(path: &Path) -> SheetResult<RawTable> {
+        let name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("unknown").to_string();
+
+        let content = std::fs::read_to_string(path)
+            .map_err(|e| SheetError::Io { path: path.to_path_buf(), message: format!("无法读取文件: {}", e) })?;
+
+        let json_value: serde_json::Value = serde_json::from_str(&content).map_err(|e| SheetError::Parse {
+            path: path.to_path_buf(),
+            line: 0,
+            message: format!("JSON 解析错误: {}", e),
+        })?;
+
+        let obj = json_value.as_object().ok_or_else(|| SheetError::Parse {
+            path: path.to_path_buf(),
+            line: 0,
+            message: "JSON 根元素必须是对象".to_string(),
+        })?;
+
+        let header_row = extract_json_string_array(obj, "headers", path, "headers")?;
+        let type_row = extract_json_string_array(obj, "types", path, "types")?;
+        let comment_row = extract_json_string_array(obj, "comments", path, "comments")?;
+
+        let rows_array = obj.get("rows").and_then(|v| v.as_array()).ok_or_else(|| SheetError::Parse {
+            path: path.to_path_buf(),
+            line: 0,
+            message: "JSON 缺少 'rows' 数组字段".to_string(),
+        })?;
+
+        let mut data_rows: Vec<Vec<String>> = Vec::new();
+        for (i, row) in rows_array.iter().enumerate() {
+            let arr = row.as_array().ok_or_else(|| SheetError::Parse {
+                path: path.to_path_buf(),
+                line: i + 1,
+                message: format!("JSON rows[{}] 必须是数组", i),
+            })?;
+            let cells: Vec<String> = arr.iter().map(json_value_to_string).collect();
+            data_rows.push(cells);
+        }
+
+        let col_count = header_row.len().max(type_row.len());
+        let header_row = pad_row(header_row, col_count);
+        let type_row = pad_row(type_row, col_count);
+        let comment_row = pad_row(comment_row, col_count);
+
+        Ok(RawTable { name, path: path.to_path_buf(), header_row, type_row, comment_row, data_rows })
+    }
+}
+
+/// 从 JSON 对象中提取字符串数组字段
+fn extract_json_string_array(
+    obj: &serde_json::Map<String, serde_json::Value>,
+    key: &str,
+    path: &Path,
+    field_name: &str,
+) -> SheetResult<Vec<String>> {
+    let arr = obj.get(key).and_then(|v| v.as_array()).ok_or_else(|| SheetError::Parse {
+        path: path.to_path_buf(),
+        line: 0,
+        message: format!("JSON 缺少 '{}' 数组字段", field_name),
+    })?;
+
+    Ok(arr.iter().map(json_value_to_string).collect())
+}
+
+/// 将 JSON 值转换为字符串
+fn json_value_to_string(v: &serde_json::Value) -> String {
+    match v {
+        serde_json::Value::String(s) => s.clone(),
+        serde_json::Value::Number(n) => n.to_string(),
+        serde_json::Value::Bool(b) => b.to_string(),
+        serde_json::Value::Null => String::new(),
+        _ => v.to_string(),
+    }
+}
+
+/// 将行填充到指定列数
+fn pad_row(mut row: Vec<String>, col_count: usize) -> Vec<String> {
+    while row.len() < col_count {
+        row.push(String::new());
+    }
+    row
+}
+
 /// 根据文件格式自动选择读取器加载表格
 pub fn load_table(path: &Path) -> SheetResult<RawTable> {
     let format = FileFormat::from_extension(path)?;
     match format {
         FileFormat::Xlsx => ExcelReader::load(path),
         FileFormat::Csv | FileFormat::Tsv => CsvReader::load(path),
+        FileFormat::Json => JsonReader::load(path),
     }
 }

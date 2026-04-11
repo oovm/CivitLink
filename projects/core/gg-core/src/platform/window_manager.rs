@@ -39,20 +39,14 @@ impl WindowManager for SingleWindowManager {
         if id == WindowId(0) {
             self.exists = false;
             Ok(())
-        } else {
-            Err(GError {
-                kind: GErrorKind::Runtime,
-                message: format!("Window not found: {:?}", id),
-            })
+        }
+        else {
+            Err(GError { kind: GErrorKind::Runtime, message: format!("Window not found: {:?}", id) })
         }
     }
 
     fn get_window(&mut self, id: WindowId) -> Option<&mut dyn Window> {
-        if id == WindowId(0) && self.exists {
-            Some(self.window.as_mut())
-        } else {
-            None
-        }
+        if id == WindowId(0) && self.exists { Some(self.window.as_mut()) } else { None }
     }
 
     fn poll_events(&mut self) -> Vec<WindowManagerEvent> {

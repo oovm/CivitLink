@@ -3,7 +3,7 @@
 
 use gg_core::plugin::Plugin;
 use gg_ecs::World;
-use gg_runtime_core::{RuntimeBuilder, Stage};
+use gg_runtime::{RuntimeBuilder, Stage};
 use gg_vm::VmResult;
 use std::sync::Arc;
 
@@ -78,8 +78,8 @@ fn main() -> gg_core::GResult<()> {
             VmResult::Ok | VmResult::Return(_) => {
                 println!("Script init executed successfully");
             }
-            VmResult::Error(e) => {
-                eprintln!("Script init error: {}", e);
+            VmResult::Error { message, source_location: _ } => {
+                eprintln!("Script init error: {}", message);
             }
         }
     }

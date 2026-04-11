@@ -1,7 +1,7 @@
 use bytemuck::{Pod, Zeroable};
+use std::borrow::Cow;
 use wgpu::util::DeviceExt;
 
-use crate::shader::GpuShaderSource;
 use crate::sprite_batch::BatchedSpriteInstance;
 
 /// 顶点格式
@@ -79,11 +79,12 @@ impl SpritePipeline {
     /// - `device` - wgpu 设备
     /// - `format` - 渲染目标纹理格式
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader_source = GpuShaderSource::from_naga(
-            gg_shader::builtin::builtin_sprite_shader()
-                .expect("内置精灵着色器编译失败")
-        );
-        let shader = shader_source.create_shader_module(device, "sprite_shader");
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("sprite_shader"),
+            source: wgpu::ShaderSource::Naga(Cow::Owned(
+                gg_compiler_shader::shaders::load_sprite_shader().expect("内置精灵着色器编译失败"),
+            )),
+        });
 
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("sprite_uniform_layout"),
@@ -222,11 +223,12 @@ impl TransitionPipeline {
     /// - `device` - wgpu 设备
     /// - `format` - 渲染目标纹理格式
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader_source = GpuShaderSource::from_naga(
-            gg_shader::builtin::builtin_transition_shader()
-                .expect("内置过渡着色器编译失败")
-        );
-        let shader = shader_source.create_shader_module(device, "transition_shader");
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("transition_shader"),
+            source: wgpu::ShaderSource::Naga(Cow::Owned(
+                gg_compiler_shader::shaders::load_transition_shader().expect("内置过渡着色器编译失败"),
+            )),
+        });
 
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("transition_uniform_layout"),
@@ -381,11 +383,12 @@ impl BatchSpritePipeline {
     /// - `device` - wgpu 设备
     /// - `format` - 渲染目标纹理格式
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader_source = GpuShaderSource::from_naga(
-            gg_shader::builtin::builtin_batch_sprite_shader()
-                .expect("内置批渲染精灵着色器编译失败")
-        );
-        let shader_module = shader_source.create_shader_module(device, "sprite_batch_shader");
+        let shader_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("sprite_batch_shader"),
+            source: wgpu::ShaderSource::Naga(Cow::Owned(
+                gg_compiler_shader::shaders::load_batch_sprite_shader().expect("内置批渲染精灵着色器编译失败"),
+            )),
+        });
 
         let texture_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("batch_sprite_texture_layout"),
@@ -556,11 +559,12 @@ impl RoundedRectPipeline {
     /// - `device` - wgpu 设备
     /// - `format` - 渲染目标纹理格式
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader_source = GpuShaderSource::from_naga(
-            gg_shader::builtin::builtin_rounded_rect_shader()
-                .expect("内置圆角矩形着色器编译失败")
-        );
-        let shader = shader_source.create_shader_module(device, "rounded_rect_shader");
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("rounded_rect_shader"),
+            source: wgpu::ShaderSource::Naga(Cow::Owned(
+                gg_compiler_shader::shaders::load_rounded_rect_shader().expect("内置圆角矩形着色器编译失败"),
+            )),
+        });
 
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("rounded_rect_uniform_layout"),
@@ -693,11 +697,12 @@ impl EllipsePipeline {
     /// - `device` - wgpu 设备
     /// - `format` - 渲染目标纹理格式
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
-        let shader_source = GpuShaderSource::from_naga(
-            gg_shader::builtin::builtin_ellipse_shader()
-                .expect("内置椭圆着色器编译失败")
-        );
-        let shader = shader_source.create_shader_module(device, "ellipse_shader");
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("ellipse_shader"),
+            source: wgpu::ShaderSource::Naga(Cow::Owned(
+                gg_compiler_shader::shaders::load_ellipse_shader().expect("内置椭圆着色器编译失败"),
+            )),
+        });
 
         let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("ellipse_uniform_layout"),

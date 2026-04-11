@@ -105,3 +105,54 @@ pub struct TextDocumentContentChangeEvent {
     /// 变更的文本内容
     pub text: String,
 }
+
+/// 文档同步方式
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TextDocumentSyncKind {
+    /// 不同步
+    None = 0,
+    /// 全量同步
+    Full = 1,
+    /// 增量同步
+    Incremental = 2,
+}
+
+/// 补全提供者选项
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompletionOptions {
+    /// 补全提供者支持的触发字符
+    pub trigger_characters: Option<Vec<String>>,
+    /// 是否在连续输入时提供补全
+    pub resolve_provider: Option<bool>,
+}
+
+/// 语言服务器能力声明
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ServerCapabilities {
+    /// 文档同步方式
+    pub text_document_sync: Option<TextDocumentSyncKind>,
+    /// 补全提供者
+    pub completion_provider: Option<CompletionOptions>,
+    /// 悬停提供者
+    pub hover_provider: Option<bool>,
+    /// 定义跳转提供者
+    pub definition_provider: Option<bool>,
+}
+
+/// LSP initialize 请求的响应结果
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InitializeResult {
+    /// 语言服务器能力
+    pub capabilities: ServerCapabilities,
+}
+
+/// LSP 连接配置
+#[derive(Debug, Clone)]
+pub struct LspConfig {
+    /// 语言服务器可执行文件路径
+    pub server_command: String,
+    /// 传递给语言服务器的命令行参数
+    pub server_args: Vec<String>,
+    /// 项目根目录 URI
+    pub root_uri: String,
+}

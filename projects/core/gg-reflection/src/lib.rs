@@ -69,12 +69,9 @@ macro_rules! impl_reflect_primitive {
                 if let Some(val) = source.as_any().downcast_ref::<Self>() {
                     *self = *val;
                     Ok(())
-                } else {
-                    Err(format!(
-                        "type mismatch: expected {}, got {}",
-                        self.type_name(),
-                        source.type_name()
-                    ))
+                }
+                else {
+                    Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
                 }
             }
         }
@@ -118,12 +115,9 @@ impl PartialReflect for String {
         if let Some(val) = source.as_any().downcast_ref::<Self>() {
             *self = val.clone();
             Ok(())
-        } else {
-            Err(format!(
-                "type mismatch: expected {}, got {}",
-                self.type_name(),
-                source.type_name()
-            ))
+        }
+        else {
+            Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
         }
     }
 }
@@ -222,12 +216,9 @@ impl<T: PartialReflect + Clone + 'static> PartialReflect for Vec<T> {
         if let Some(val) = source.as_any().downcast_ref::<Self>() {
             *self = val.clone();
             Ok(())
-        } else {
-            Err(format!(
-                "type mismatch: expected {}, got {}",
-                self.type_name(),
-                source.type_name()
-            ))
+        }
+        else {
+            Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
         }
     }
 }
@@ -252,11 +243,7 @@ impl<T: PartialReflect + Clone + 'static> ListReflect for Vec<T> {
     }
 
     fn remove(&mut self, index: usize) -> Option<Box<dyn PartialReflect>> {
-        if index < self.len() {
-            Some(Box::new(self.remove(index)))
-        } else {
-            None
-        }
+        if index < self.len() { Some(Box::new(self.remove(index))) } else { None }
     }
 }
 
@@ -281,12 +268,9 @@ impl<V: PartialReflect + Clone + 'static> PartialReflect for HashMap<String, V> 
         if let Some(val) = source.as_any().downcast_ref::<Self>() {
             *self = val.clone();
             Ok(())
-        } else {
-            Err(format!(
-                "type mismatch: expected {}, got {}",
-                self.type_name(),
-                source.type_name()
-            ))
+        }
+        else {
+            Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
         }
     }
 }
@@ -419,10 +403,7 @@ pub struct ReflectionRegistry {
 impl ReflectionRegistry {
     /// 创建空的反射注册表
     pub fn new() -> Self {
-        Self {
-            registrations: HashMap::new(),
-            reflect_components: HashMap::new(),
-        }
+        Self { registrations: HashMap::new(), reflect_components: HashMap::new() }
     }
 
     /// 注册类型 `T`
@@ -462,7 +443,8 @@ impl ReflectionRegistry {
     /// 并创建 `ReflectComponentFor::<T>` 插入反射组件映射。
     pub fn register_component<T: gg_ecs::Component + PartialReflect + Clone + 'static>(&mut self) {
         self.register::<T>();
-        self.reflect_components.insert(TypeId::of::<T>(), Box::new(ReflectComponentFor::<T> { _marker: std::marker::PhantomData }));
+        self.reflect_components
+            .insert(TypeId::of::<T>(), Box::new(ReflectComponentFor::<T> { _marker: std::marker::PhantomData }));
     }
 
     /// 根据类型 ID 获取反射组件操作接口
@@ -592,5 +574,3 @@ pub mod prelude {
     };
     pub use gg_macros::Reflect;
 }
-
-

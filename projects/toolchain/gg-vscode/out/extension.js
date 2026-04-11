@@ -74,8 +74,8 @@ function activate(context) {
                     { scheme: 'file', language: 'gg-prefab' },
                     { scheme: 'file', language: 'gg-scene' },
                     { scheme: 'file', language: 'gg-script' },
-                    { scheme: 'file', language: 'gg-shader' },
-                    { scheme: 'file', language: 'gg-widget' },
+                    { scheme: 'file', language: 'gg-compiler-shader' },
+                    { scheme: 'file', language: 'gg-compiler-widget' },
                     { scheme: 'file', language: 'gg-galgame' }
                 ],
                 synchronize: {

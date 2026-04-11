@@ -95,7 +95,8 @@ pub fn cmd_init(engine_name: &str, game_type: &str) -> GResult<()> {
     game_config.display.width = manifest.display.width;
     game_config.display.height = manifest.display.height;
     game_config.display.title = engine_name.to_string();
-    game_config.save_to_file(&project_dir.join("game.toml"))
+    game_config
+        .save_to_file(&project_dir.join("game.toml"))
         .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write game.toml: {}", e) })?;
 
     std::fs::create_dir_all(project_dir.join("scripts"))

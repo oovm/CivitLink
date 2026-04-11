@@ -1,12 +1,12 @@
 #![warn(missing_docs)]
 
-//! GG 剧本编辑器面板
-//! 提供剧本节点图编辑功能
+//! GG 脚本编辑器面板
+//! 提供脚本文件浏览和外部 IDE 集成功能
 
-pub mod graph;
+pub mod ide;
 pub mod panel;
-pub mod templates;
+pub mod script_file;
 
-pub use graph::{NodeGraph, NodeGraphEntry};
+pub use ide::{IdeDescriptor, IdeLauncher};
 pub use panel::ScriptEditorPanel;
-pub use templates::ScriptTemplate;
+pub use script_file::ScriptFile;

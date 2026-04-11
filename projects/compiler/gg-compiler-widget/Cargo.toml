@@ -1,0 +1,15 @@
+[package]
+name = "gg-compiler-widget"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-compiler = { workspace = true }
+gg-bytecode = { workspace = true }
+gg-script = { workspace = true }
+oak-voc = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

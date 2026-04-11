@@ -3,7 +3,7 @@
 //! 验证 DirectoryNode 展开/折叠、filter_tree 过滤
 //! 和 AssetBrowserPanel 文件导入功能。
 
-use gg_editor_asset_browser::{filter_tree, AssetBrowserPanel, DirectoryNode};
+use gg_editor_asset_browser::{AssetBrowserPanel, DirectoryNode, filter_tree};
 
 /// 构建测试用目录树
 ///
@@ -143,11 +143,7 @@ fn test_filter_tree_matching_query() {
     let filtered = result.unwrap();
     assert!(filtered.children.len() >= 1);
 
-    let images_dir = filtered
-        .children
-        .iter()
-        .find(|c| c.name == "images")
-        .expect("images 目录应存在");
+    let images_dir = filtered.children.iter().find(|c| c.name == "images").expect("images 目录应存在");
     assert!(images_dir.is_directory);
     assert_eq!(images_dir.children.len(), 1);
     assert_eq!(images_dir.children[0].name, "hero.png");

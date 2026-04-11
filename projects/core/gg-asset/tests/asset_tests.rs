@@ -1,4 +1,7 @@
-use gg_asset::{AssetChangeKind, AssetServer, AssetWatcher, AudioAsset, AudioFormat, BinaryAsset, FontAsset, TextAsset, TextLoader, BinaryLoader};
+use gg_asset::{
+    AssetChangeKind, AssetServer, AssetWatcher, AudioAsset, AudioFormat, BinaryAsset, BinaryLoader, FontAsset, TextAsset,
+    TextLoader,
+};
 use std::sync::{Arc, Mutex};
 
 #[test]

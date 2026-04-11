@@ -28,13 +28,7 @@ pub struct Transform2D {
 
 impl Default for Transform2D {
     fn default() -> Self {
-        Self {
-            x: 0.0,
-            y: 0.0,
-            rotation: 0.0,
-            scale_x: 1.0,
-            scale_y: 1.0,
-        }
+        Self { x: 0.0, y: 0.0, rotation: 0.0, scale_x: 1.0, scale_y: 1.0 }
     }
 }
 
@@ -55,12 +49,7 @@ pub struct SpriteRenderer {
 
 impl Default for SpriteRenderer {
     fn default() -> Self {
-        Self {
-            texture_path: String::new(),
-            width: 50.0,
-            height: 50.0,
-            color: Color::WHITE,
-        }
+        Self { texture_path: String::new(), width: 50.0, height: 50.0, color: Color::WHITE }
     }
 }
 
@@ -79,10 +68,6 @@ pub struct RectRenderer {
 
 impl Default for RectRenderer {
     fn default() -> Self {
-        Self {
-            width: 50.0,
-            height: 50.0,
-            color: Color::new(0.5, 0.5, 0.5, 1.0),
-        }
+        Self { width: 50.0, height: 50.0, color: Color::new(0.5, 0.5, 0.5, 1.0) }
     }
 }

@@ -19,7 +19,8 @@ pub fn cmd_new_game(game_name: &str) -> GResult<()> {
     let mut game_config = gg_manifest::GameConfig::default();
     game_config.game.name = game_name.to_string();
     game_config.display.title = game_name.to_string();
-    game_config.save_to_file(&game_dir.join("game.toml"))
+    game_config
+        .save_to_file(&game_dir.join("game.toml"))
         .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write game.toml: {}", e) })?;
 
     std::fs::create_dir_all(game_dir.join("scripts"))

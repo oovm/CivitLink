@@ -1,0 +1,117 @@
+using gg::ecs;
+using gg::engine;
+
+component GamepadState {
+    left_stick_x: f32,
+    left_stick_y: f32,
+    button_a: Bool,
+    button_b: Bool,
+    button_x: Bool,
+    button_y: Bool,
+    connected: Bool
+}
+
+component InputMapping {
+    keyboard_bindings: Map<String, Array<String>>,
+    gamepad_bindings: Map<String, String>
+}
+
+system GamepadInputSystem {
+    micro execute(world: World): Result<()> {
+        let gamepad = world.get_resource("GamepadState");
+        if gamepad == null {
+            return Ok();
+        }
+
+        if !gamepad.connected {
+            return Ok();
+        }
+
+        let input_state = world.get_resource_mut("InputState");
+        if input_state == null {
+            return Ok();
+        }
+
+        let deadzone = 0.2;
+        if gamepad.left_stick_x < -deadzone {
+            input_state.set_action("MoveLeft", true);
+            input_state.set_action("MoveRight", false);
+        } else if gamepad.left_stick_x > deadzone {
+            input_state.set_action("MoveLeft", false);
+            input_state.set_action("MoveRight", true);
+        } else {
+            input_state.set_action("MoveLeft", false);
+            input_state.set_action("MoveRight", false);
+        }
+
+        if gamepad.button_a {
+            input_state.set_action("Jump", true);
+        }
+
+        return Ok()
+    }
+}
+
+system InputMappingSystem {
+    micro execute(world: World): Result<()> {
+        let mapping = world.get_resource("InputMapping");
+        if mapping == null {
+            mapping = InputMapping {
+                keyboard_bindings: {
+                    "MoveLeft": ["ArrowLeft", "KeyA"],
+                    "MoveRight": ["ArrowRight", "KeyD"],
+                    "Jump": ["ArrowUp", "KeyW", "Space"]
+                },
+                gamepad_bindings: {
+                    "MoveLeft": "LeftStickLeft",
+                    "MoveRight": "LeftStickRight",
+                    "Jump": "ButtonA"
+                }
+            };
+            world.insert_resource("InputMapping", mapping);
+        }
+
+        return Ok()
+    }
+}
+
+class InputManager {
+    micro get_movement_direction(input_state: InputState, gamepad: GamepadState): f32 {
+        let mut direction = 0.0;
+
+        if input_state.is_action_pressed("MoveLeft") {
+            direction -= 1.0;
+        }
+        if input_state.is_action_pressed("MoveRight") {
+            direction += 1.0;
+        }
+
+        if gamepad.connected {
+            let deadzone = 0.2;
+            if gamepad.left_stick_x < -deadzone {
+                direction -= 1.0;
+            } else if gamepad.left_stick_x > deadzone {
+                direction += 1.0;
+            }
+        }
+
+        if direction > 1.0 {
+            direction = 1.0;
+        }
+        if direction < -1.0 {
+            direction = -1.0;
+        }
+
+        return direction;
+    }
+
+    micro is_jump_pressed(input_state: InputState, gamepad: GamepadState): Bool {
+        if input_state.is_action_pressed("Jump") {
+            return true;
+        }
+        if gamepad.connected && gamepad.button_a {
+            return true;
+        }
+        return false;
+    }
+}

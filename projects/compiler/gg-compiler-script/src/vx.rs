@@ -2,7 +2,7 @@
 //! 将 .vx 单文件组件编译为字节码产物
 
 use gg_bytecode::BytecodeWriter;
-use gg_compiler_core::{
+use gg_compiler::{
     artifact::{Artifact, ArtifactKey, ArtifactSet},
     context::{BuildContext, DiagnosticLevel},
     transformer::Transformer,

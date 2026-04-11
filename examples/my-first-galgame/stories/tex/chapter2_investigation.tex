@@ -1,0 +1,308 @@
+% TeX 格式 - 第二章 调查
+
+\begin{document}
+
+\label(chapter2_investigation)
+
+\scene[school_classroom.png, school_morning.mp3]
+
+第二天早上。
+
+\p （今天要继续调查...）
+
+\char[sakura][smile, left]
+\char[yuki][gentle, right]
+
+\s 早上好！准备好了吗？
+
+\y 我们今天放学后去旧校舍。
+
+\if(knows_secret)
+\p （昨晚那个人说樱井同学是知情者...）
+\else
+\p （希望能找到一些线索。）
+\endif
+
+\choice
+\case[ready_to_investigate] 我准备好了
+\case[ask_about_others] 还有其他人要来吗？
+\end-choice
+
+% ============================================
+% 询问其他人
+% ============================================
+
+\label(ask_about_others)
+
+\s 嗯...黑崎同学说他也要来。
+
+\char[ren][cool, center]
+
+\r 当然要来。旧校舍可是我的地盘。
+
+\y 黑崎同学...请不要太冲动。
+
+\r 放心，我知道分寸。
+
+\goto(ready_to_investigate)
+
+% ============================================
+% 准备调查
+% ============================================
+
+\label(ready_to_investigate)
+
+\clock_transition(1.5)
+
+\scene[old_building_entrance.png, mystery_theme.mp3]
+
+放学后，我们来到了旧校舍前。
+
+\s 这里...真的好旧了。
+
+\char[ren][cool, right]
+
+\r 入口在这边。
+
+\scene[old_building_interior.png]
+
+\audio.play_se(door_creak.wav)
+\shake(0.3)
+
+门发出刺耳的声音，缓缓打开。
+
+\y 好黑...
+
+\flash(0.2)
+\audio.play_se(strange_light.wav)
+
+突然，一道奇异的光从走廊深处闪过！
+
+\p 那是...！
+
+\r 在那边！追！
+
+\choice
+\case[chase_light][+c, +r] 追上去
+\case[careful_advance][+t, +y] 小心前进
+\case[observe_first][+c, +s] 先观察一下
+\end-choice
+
+% ============================================
+% 分支：追上去
+% ============================================
+
+\label(chase_light)
+
+\p （不能让它跑了！）
+
+\scene[old_building_hallway.png]
+
+\audio.play_se(running_footsteps.wav)
+
+我们追着光跑过走廊，最后来到了一扇门前。
+
+\r 这是...实验室？
+
+\goto(discover_lab)
+
+% ============================================
+% 分支：小心前进
+% ============================================
+
+\label(careful_advance)
+
+\p （太危险了，还是小心点。）
+
+\y 对，我们还是小心一点比较好。
+
+\scene[old_building_hallway.png]
+
+我们小心翼翼地前进，发现地上有一些奇怪的痕迹。
+
+\set(has_lab_key = true)
+
+\p 这是...一把钥匙？
+
+\goto(discover_lab)
+
+% ============================================
+% 分支：先观察
+% ============================================
+
+\label(observe_first)
+
+\p （先观察一下情况。）
+
+\s 看，光是从那边那个房间传来的。
+
+\p （樱井同学好像对这里很熟悉...）
+
+\s 怎么了？
+
+\p 没什么，我们过去看看吧。
+
+\goto(discover_lab)
+
+% ============================================
+% 发现实验室
+% ============================================
+
+\label(discover_lab)
+
+\scene[old_lab.png, revelation.mp3]
+
+\flash(0.2)
+
+我们来到了一个废弃的实验室。
+
+\s 这...这是...
+
+\y 不可能...为什么会有这种东西...
+
+\r 看来传说是真的。
+
+\p （这些设备...看起来像是用来做某种实验的...）
+
+---
+
+桌上散落着文件：
+"记忆操纵实验 - 第七次测试报告
+实验对象：学生志愿者
+结果：部分记忆成功被改写
+副作用：轻微头痛，偶尔出现幻觉
+..."
+
+---
+
+\p 记忆操纵...？
+
+\char[sakura][serious, left]
+
+\s ...你们想知道真相吗？
+
+\choice
+\case[reveal_truth] 告诉我真相
+\case[confront_sakura][-s, -t] 你早就知道了？
+\end-choice
+
+% ============================================
+% 揭示真相
+% ============================================
+
+\label(reveal_truth)
+
+\s 是的...我知道。
+
+\s 这所学校...曾经进行过记忆操纵的实验。
+
+\s 而我...是实验的参与者之一。
+
+\p 什么？！
+
+\y 樱井同学...
+
+\s 我...我不记得那段时间发生了什么。
+
+\s 但是我知道，我的记忆...被改写过。
+
+\set(knows_secret = true)
+
+\goto(final_choice)
+
+% ============================================
+% 质问樱井
+% ============================================
+
+\label(confront_sakura)
+
+\p 你早就知道了？为什么要瞒着我们？
+
+\s 对不起...我害怕...
+
+\s 害怕你们知道真相后会讨厌我...
+
+\choice
+\case[forgive_sakura][+s, +t] 我理解你的顾虑
+\case[need_time] 我需要时间消化
+\end-choice
+
+% ============================================
+% 原谅樱井
+% ============================================
+
+\label(forgive_sakura)
+
+\p 没关系，我理解。
+
+\s 谢谢你...
+
+\goto(reveal_truth)
+
+% ============================================
+% 需要时间
+% ============================================
+
+\label(need_time)
+
+\p 我需要时间消化这些信息。
+
+\s 我明白...
+
+\goto(reveal_truth)
+
+% ============================================
+% 最终选择
+% ============================================
+
+\label(final_choice)
+
+\s 现在，我们有一个选择。
+
+\s 我们可以把这一切公之于众，或者...
+
+\r 或者什么？
+
+\s 或者...找到当初的实验数据，恢复所有人的记忆。
+
+\choice
+\case[ending_public] 公布真相
+\case[ending_restore] 恢复记忆
+\case[ending_investigate][+c] 先找到更多证据
+\end-choice
+
+% ============================================
+% 结局分支
+% ============================================
+
+\label(ending_public)
+
+\set(ending_type = "public")
+
+\p 真相应该被公开。
+
+\s 我同意。大家有权知道发生了什么。
+
+\load(endings)
+
+\label(ending_restore)
+
+\set(ending_type = "restore")
+
+\p 如果能恢复记忆...那才是最好的结果。
+
+\y 是的，这样大家都能找回自己失去的记忆。
+
+\load(endings)
+
+\label(ending_investigate)
+
+\set(ending_type = "investigate")
+
+\p 我们需要更多证据才能做决定。
+
+\r 说得对，不能草率行事。
+
+\load(endings)
+
+\end{document}

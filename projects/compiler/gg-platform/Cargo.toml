@@ -1,0 +1,12 @@
+[package]
+name = "gg-platform"
+version = "0.1.0"
+edition = "2021"
+description = "GG 引擎平台基础库"
+license = "MIT"
+
+[dependencies]
+gg-core = { path = "../../core/gg-core" }
+
+[dev-dependencies]
+tokio = { version = "1.51.1", features = ["full"] }

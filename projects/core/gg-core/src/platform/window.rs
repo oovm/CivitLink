@@ -9,7 +9,7 @@ use crate::GResult;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct WindowId(
     /// 内部 ID 值
-    pub u64
+    pub u64,
 );
 
 /// 窗口事件

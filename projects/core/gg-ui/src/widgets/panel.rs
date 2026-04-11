@@ -1,4 +1,5 @@
 use crate::{
+    gui_event::{EventContext, GuiEvent},
     node::{UiNodeData, UiNodeId, UiTree},
     style::Style,
     widget::Widget,
@@ -58,4 +59,16 @@ impl Widget for Panel {
     fn node_id(&self) -> Option<UiNodeId> {
         self.node_id
     }
+
+    fn render_template(&self) -> oak_voc::TemplateNode {
+        oak_voc::TemplateNode::text(String::new())
+    }
+
+    fn script_setup(&mut self) {}
+
+    fn get_id(&self) -> &str {
+        ""
+    }
+
+    fn handle_event(&mut self, _event: &GuiEvent, _ctx: &mut EventContext) {}
 }

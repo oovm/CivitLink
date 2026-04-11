@@ -7,16 +7,15 @@ license = { workspace = true }
 
 [dependencies]
 gg-core = { workspace = true }
+gg-compiler = { workspace = true }
 calamine = { workspace = true }
-clap = { workspace = true }
 csv = { workspace = true }
-notify = { workspace = true }
+regex = { workspace = true }
 serde = { workspace = true }
-toml = { workspace = true }
-
-[[bin]]
-name = "gg-sheet"
-path = "src/bin/gg-sheet.rs"
+serde_json = { workspace = true }
+notify = { workspace = true }
+bincode = { version = "3", features = ["serde"] }
 
 [dev-dependencies]
+gg-compiler = { workspace = true }
 tempfile = { workspace = true }

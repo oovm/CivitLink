@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use gg_render::Color;
 
 /// 主轴方向
@@ -244,6 +246,15 @@ impl Default for Overflow {
     }
 }
 
+/// 样式值，支持字面值和主题令牌引用
+#[derive(Debug, Clone, PartialEq)]
+pub enum StyleValue {
+    /// 字面值
+    Literal(String),
+    /// 主题令牌引用（如 $theme-primary）
+    ThemeRef(String),
+}
+
 /// UI 样式
 #[derive(Debug, Clone, PartialEq)]
 pub struct Style {
@@ -265,6 +276,8 @@ pub struct Style {
     pub image_path: Option<String>,
     /// 不透明度（0.0 完全透明，1.0 完全不透明）
     pub opacity: f32,
+    /// 主题令牌覆盖
+    pub theme_token_overrides: HashMap<String, StyleValue>,
 }
 
 impl Default for Style {
@@ -279,6 +292,7 @@ impl Default for Style {
             overflow: Overflow::default(),
             image_path: None,
             opacity: 1.0,
+            theme_token_overrides: HashMap::new(),
         }
     }
 }
@@ -341,5 +355,186 @@ impl Style {
     pub fn with_opacity(mut self, opacity: f32) -> Self {
         self.opacity = opacity;
         self
+    }
+
+    /// 添加主题令牌覆盖
+    pub fn with_theme_token(mut self, name: impl Into<String>, value: StyleValue) -> Self {
+        self.theme_token_overrides.insert(name.into(), value);
+        self
+    }
+}
+
+/// 可继承的样式属性
+///
+/// 定义哪些样式属性可以从父节点继承到子节点。
+/// 当子节点未显式设置这些属性时，自动使用父节点的值。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum InheritableProperty {
+    /// 字体大小
+    FontSize,
+    /// 字体颜色
+    FontColor,
+    /// 行间距
+    LineHeight,
+    /// 不透明度
+    Opacity,
+    /// 溢出处理方式
+    Overflow,
+}
+
+/// 样式优先级
+///
+/// 定义样式来源的优先级顺序，数值越大优先级越高。
+/// 当同一属性在多个来源中定义时，使用优先级最高的来源的值。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum StylePriority {
+    /// 主题默认值（最低优先级）
+    ThemeDefault = 0,
+    /// 继承自父节点的样式
+    Inherited = 1,
+    /// 类样式（CSS class）
+    ClassStyle = 2,
+    /// 内联样式（最高优先级）
+    Inline = 3,
+}
+
+impl Default for StylePriority {
+    fn default() -> Self {
+        Self::ThemeDefault
+    }
+}
+
+/// 样式解析器
+///
+/// 将主题默认值、继承样式、类样式和内联样式按优先级合并，
+/// 计算出节点的最终样式。
+pub struct StyleResolver {
+    /// 可继承属性列表
+    inheritable_properties: Vec<InheritableProperty>,
+}
+
+impl StyleResolver {
+    /// 创建新的样式解析器
+    pub fn new() -> Self {
+        Self {
+            inheritable_properties: vec![
+                InheritableProperty::FontSize,
+                InheritableProperty::FontColor,
+                InheritableProperty::LineHeight,
+                InheritableProperty::Opacity,
+                InheritableProperty::Overflow,
+            ],
+        }
+    }
+
+    /// 判断指定属性是否可继承
+    pub fn is_inheritable(&self, prop: InheritableProperty) -> bool {
+        self.inheritable_properties.contains(&prop)
+    }
+
+    /// 从父节点样式继承可继承属性到子节点
+    ///
+    /// 对于子节点中未显式设置的可继承属性，自动使用父节点的值。
+    /// 已显式设置的属性不会被覆盖。
+    pub fn inherit(parent_style: &Style, child_style: &mut Style) {
+        if child_style.font.is_none() && parent_style.font.is_some() {
+            child_style.font = parent_style.font.clone();
+        }
+        else if let (Some(ref parent_font), Some(ref mut child_font)) = (&parent_style.font, &mut child_style.font) {
+            if child_font.size == FontStyle::default().size {
+                child_font.size = parent_font.size;
+            }
+            if child_font.color == FontStyle::default().color {
+                child_font.color = parent_font.color;
+            }
+            if child_font.line_height == FontStyle::default().line_height {
+                child_font.line_height = parent_font.line_height;
+            }
+        }
+    }
+
+    /// 解析 StyleValue::ThemeRef 引用
+    ///
+    /// 从主题注册表中查找令牌名称对应的实际值。
+    /// 若令牌不存在，返回 None。
+    pub fn resolve_theme_ref(
+        style: &mut Style,
+        resolve_fn: &dyn Fn(&str) -> Option<String>,
+    ) {
+        let mut resolved = HashMap::new();
+        for (key, value) in &style.theme_token_overrides {
+            if let StyleValue::ThemeRef(token_name) = value {
+                if let Some(resolved_value) = resolve_fn(token_name) {
+                    resolved.insert(key.clone(), StyleValue::Literal(resolved_value));
+                }
+            }
+        }
+        for (key, value) in resolved {
+            style.theme_token_overrides.insert(key, value);
+        }
+    }
+
+    /// 计算节点的最终样式
+    ///
+    /// 按优先级合并主题默认值、继承样式、类样式和内联样式：
+    /// 1. 从主题默认值开始
+    /// 2. 应用继承的样式
+    /// 3. 应用类样式
+    /// 4. 应用内联样式
+    pub fn resolve(
+        theme_default: &Style,
+        inherited: Option<&Style>,
+        class_style: Option<&Style>,
+        inline_style: &Style,
+    ) -> Style {
+        let mut result = theme_default.clone();
+
+        if let Some(inherited_style) = inherited {
+            Self::inherit(inherited_style, &mut result);
+        }
+
+        if let Some(class_style) = class_style {
+            Self::apply_higher_priority(&class_style, &mut result);
+        }
+
+        Self::apply_higher_priority(inline_style, &mut result);
+
+        result
+    }
+
+    /// 将高优先级样式应用到低优先级样式上
+    ///
+    /// 仅覆盖低优先级样式中未设置（None/默认值）的属性。
+    fn apply_higher_priority(higher: &Style, lower: &mut Style) {
+        if higher.background_color.is_some() {
+            lower.background_color = higher.background_color;
+        }
+        if higher.border_color.is_some() {
+            lower.border_color = higher.border_color;
+        }
+        if higher.border_width != 0.0 {
+            lower.border_width = higher.border_width;
+        }
+        if higher.corner_radius != 0.0 {
+            lower.corner_radius = higher.corner_radius;
+        }
+        if higher.font.is_some() {
+            lower.font = higher.font.clone();
+        }
+        if higher.image_path.is_some() {
+            lower.image_path = higher.image_path.clone();
+        }
+        if higher.opacity != 1.0 {
+            lower.opacity = higher.opacity;
+        }
+        for (key, value) in &higher.theme_token_overrides {
+            lower.theme_token_overrides.insert(key.clone(), value.clone());
+        }
+    }
+}
+
+impl Default for StyleResolver {
+    fn default() -> Self {
+        Self::new()
     }
 }

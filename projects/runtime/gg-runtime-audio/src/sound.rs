@@ -27,5 +27,3 @@ pub struct SoundDescriptor {
     /// 采样率
     pub sample_rate: u32,
 }
-
-

@@ -1,6 +1,4 @@
-use gg_lsp::semantic::{
-    DiagnosticSeverity, SemanticAnalyzer, Symbol, SymbolKind, SymbolTable,
-};
+use gg_lsp::semantic::{DiagnosticSeverity, SemanticAnalyzer, Symbol, SymbolKind, SymbolTable};
 
 #[test]
 fn test_symbol_table_construction() {
@@ -133,11 +131,8 @@ let y = unknown_var
 
     let result = analyzer.analyze(source);
 
-    let undef_diags: Vec<_> = result
-        .diagnostics
-        .iter()
-        .filter(|d| d.message.contains("undefined") && d.message.contains("unknown_var"))
-        .collect();
+    let undef_diags: Vec<_> =
+        result.diagnostics.iter().filter(|d| d.message.contains("undefined") && d.message.contains("unknown_var")).collect();
     assert!(!undef_diags.is_empty());
     assert_eq!(undef_diags[0].severity, DiagnosticSeverity::Warning);
 }
@@ -176,31 +171,16 @@ fn test_diagnostic_no_false_positive_on_builtins() {
 
     let result = analyzer.analyze(source);
 
-    let builtin_diags: Vec<_> = result
-        .diagnostics
-        .iter()
-        .filter(|d| d.message.contains("undefined") && d.message.contains("print"))
-        .collect();
+    let builtin_diags: Vec<_> =
+        result.diagnostics.iter().filter(|d| d.message.contains("undefined") && d.message.contains("print")).collect();
     assert!(builtin_diags.is_empty());
 }
 
 #[test]
 fn test_symbol_table_get_all() {
     let mut table = SymbolTable::new();
-    table.insert(Symbol {
-        name: "x".to_string(),
-        kind: SymbolKind::Variable,
-        line: 0,
-        column: 4,
-        type_info: None,
-    });
-    table.insert(Symbol {
-        name: "x".to_string(),
-        kind: SymbolKind::Parameter,
-        line: 2,
-        column: 11,
-        type_info: None,
-    });
+    table.insert(Symbol { name: "x".to_string(), kind: SymbolKind::Variable, line: 0, column: 4, type_info: None });
+    table.insert(Symbol { name: "x".to_string(), kind: SymbolKind::Parameter, line: 2, column: 11, type_info: None });
 
     let all = table.get_all("x");
     assert_eq!(all.len(), 2);

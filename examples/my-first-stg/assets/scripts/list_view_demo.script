@@ -1,0 +1,68 @@
+using gg::ecs;
+using gg::engine;
+using gg::signal;
+
+component ListItem {
+    label: String,
+    detail: String,
+    selected: Bool,
+    events on_select: micro(index: i32) -> ()
+}
+
+system ListViewSystem {
+    micro execute(world: World): Result<()> {
+        let query: Query<ListItem> = world.query("ListItem");
+        loop entity, item in query.iter() {
+            if item.selected {
+                console::log("Selected: " + item.label + " - " + item.detail);
+            }
+        }
+        return Ok()
+    }
+}
+
+class ListViewDemo {
+    let items = signal([]);
+    let selected_index = signal(-1);
+
+    micro add_item(label: String, detail: String) {
+        let current = this.items();
+        current.push({ label: label, detail: detail, selected: false });
+        this.items(current);
+    }
+
+    micro select_item(index: i32) {
+        let current = this.items();
+        loop i in 0..current.len() {
+            current[i].selected = (i == index);
+        }
+        this.items(current);
+        this.selected_index(index);
+    }
+
+    micro remove_selected() {
+        let idx = this.selected_index();
+        if idx >= 0 {
+            let current = this.items();
+            current.remove(idx);
+            this.items(current);
+            this.selected_index(-1);
+        }
+    }
+}
+
+let list_demo = ListViewDemo();
+
+list_demo.add_item("Bullet Pattern A", "Circular spread, 12 bullets");
+list_demo.add_item("Bullet Pattern B", "Spiral, 36 bullets");
+list_demo.add_item("Bullet Pattern C", "Aimed stream, 1 bullet/frame");
+list_demo.add_item("Enemy Wave 1", "5 enemies, circle path");
+list_demo.add_item("Enemy Wave 2", "10 enemies, zigzag path");
+
+effect(micro() {
+    let idx = list_demo.selected_index();
+    if idx >= 0 {
+        let items = list_demo.items();
+        console::log("ListView selected: " + items[idx].label);
+    }
+});

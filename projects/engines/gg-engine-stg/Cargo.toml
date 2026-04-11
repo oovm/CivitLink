@@ -1,0 +1,24 @@
+[package]
+name = "gg-engine-stg"
+description = "STG (Shoot 'em up) game engine based on GG meta-engine"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[features]
+default = []
+runtime = ["gg-render-wgpu", "gg-ui", "gg-platform-desktop", "winit"]
+
+[dependencies]
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-asset = { workspace = true }
+gg-render = { workspace = true }
+gg-render-wgpu = { workspace = true, optional = true }
+gg-ui = { workspace = true, optional = true }
+gg-platform-desktop = { workspace = true, optional = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+winit = { workspace = true, optional = true }
+toml = { workspace = true }

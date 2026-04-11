@@ -1,6 +1,8 @@
 //! 样式系统模块
-//! 
+//!
 //! 处理SCSS样式，支持变量、嵌套选择器等特性
+
+use gg_ui::{Theme, ThemeTokens};
 
 /// 样式规则
 #[derive(Debug, Clone)]
@@ -26,31 +28,82 @@ pub struct StyleContext {
     variables: Vec<StyleVariable>,
     /// 样式规则
     rules: Vec<StyleRule>,
+    /// 当前主题
+    theme: Option<Theme>,
+    /// 引用主题令牌的规则索引列表（用于主题切换时重新解析）
+    theme_rules: Vec<usize>,
 }
 
 impl StyleContext {
     /// 创建新的样式上下文
     pub fn new() -> Self {
-        Self {
-            variables: Vec::new(),
-            rules: Vec::new(),
-        }
+        Self { variables: Vec::new(), rules: Vec::new(), theme: None, theme_rules: Vec::new() }
     }
 
     /// 添加样式变量
     pub fn add_variable(&mut self, name: &str, value: &str) {
-        self.variables.push(StyleVariable {
-            name: name.to_string(),
-            value: value.to_string(),
-        });
+        self.variables.push(StyleVariable { name: name.to_string(), value: value.to_string() });
     }
 
     /// 添加样式规则
     pub fn add_rule(&mut self, selector: &str, properties: Vec<(String, String)>) {
-        self.rules.push(StyleRule {
-            selector: selector.to_string(),
-            properties,
-        });
+        self.rules.push(StyleRule { selector: selector.to_string(), properties });
+    }
+
+    /// 应用主题，替换所有 $theme- 前缀变量
+    pub fn apply_theme(&mut self, theme: &Theme) {
+        let resolved: Vec<Vec<(String, String)>> = self
+            .rules
+            .iter()
+            .map(|rule| {
+                rule.properties
+                    .iter()
+                    .map(|(name, value)| {
+                        let resolved = Self::resolve_theme_variable_static(value, theme);
+                        (name.clone(), resolved.unwrap_or_else(|| value.clone()))
+                    })
+                    .collect()
+            })
+            .collect();
+        for (i, rule) in self.rules.iter_mut().enumerate() {
+            rule.properties = resolved[i].clone();
+        }
+        self.theme = Some(theme.clone());
+    }
+
+    /// 解析主题变量引用
+    fn resolve_theme_variable_static(value: &str, theme: &Theme) -> Option<String> {
+        if let Some(token_name) = value.strip_prefix("$theme-color-") {
+            theme.color(token_name).map(|c| {
+                format!(
+                    "rgba({}, {}, {}, {})",
+                    (c.r * 255.0).round() as u8,
+                    (c.g * 255.0).round() as u8,
+                    (c.b * 255.0).round() as u8,
+                    c.a
+                )
+            })
+        }
+        else if let Some(token_name) = value.strip_prefix("$theme-spacing-") {
+            theme.spacing(token_name).map(|v| format!("{}px", v))
+        }
+        else if let Some(token_name) = value.strip_prefix("$theme-font-") {
+            theme.font_size(token_name).map(|v| format!("{}px", v))
+        }
+        else if let Some(token_name) = value.strip_prefix("$theme-radius-") {
+            theme.border_radius(token_name).map(|v| format!("{}px", v))
+        }
+        else {
+            None
+        }
+    }
+
+    /// 解析变量值
+    pub fn resolve_variable(&self, name: &str) -> Option<String> {
+        if let Some(var) = self.variables.iter().find(|v| v.name == name) {
+            return Some(var.value.clone());
+        }
+        if let Some(ref theme) = self.theme { Self::resolve_theme_variable_static(name, theme) } else { None }
     }
 
     /// 解析SCSS样式
@@ -71,18 +124,26 @@ impl StyleContext {
                 current_selector = line.trim_end_matches('{').trim().to_string();
                 in_block = true;
                 current_properties.clear();
-            } else if line == '}' {
+            }
+            else if line == "}" {
                 if !current_selector.is_empty() && !current_properties.is_empty() {
+                    let has_theme_ref = current_properties.iter().any(|(_, v): &(String, String)| v.starts_with("$theme-"));
+                    let rule_index = self.rules.len();
                     self.add_rule(&current_selector, current_properties.clone());
+                    if has_theme_ref {
+                        self.theme_rules.push(rule_index);
+                    }
                 }
                 in_block = false;
-            } else if in_block {
+            }
+            else if in_block {
                 if let Some((name, value)) = line.split_once(':') {
                     let name = name.trim().to_string();
                     let value = value.trim_end_matches(';').trim().to_string();
                     current_properties.push((name, value));
                 }
-            } else if line.starts_with('$') {
+            }
+            else if line.starts_with('$') {
                 if let Some((name, value)) = line.split_once(':') {
                     let name = name.trim().to_string();
                     let value = value.trim_end_matches(';').trim().to_string();
