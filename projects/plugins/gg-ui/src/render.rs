@@ -56,28 +56,32 @@ impl UiRenderer {
             }
         }
 
-        if let UiNodeData::Text { ref content } = node.data {
-            if let Some(ref font) = node.style.font {
-                context.draw(DrawCommand::Text {
-                    text: content.clone(),
-                    position: [abs_x + node.style.layout.padding, abs_y + node.style.layout.padding],
-                    font_size: font.size,
-                    color: font.color,
-                    max_width: if layout.width > 0.0 { Some(layout.width - 2.0 * node.style.layout.padding) } else { None },
-                });
+        match &node.data {
+            UiNodeData::Text { content } => {
+                if let Some(ref font) = node.style.font {
+                    context.draw(DrawCommand::Text {
+                        text: content.clone(),
+                        position: [abs_x + node.style.layout.padding, abs_y + node.style.layout.padding],
+                        font_size: font.size,
+                        color: font.color,
+                        max_width: if layout.width > 0.0 { Some(layout.width - 2.0 * node.style.layout.padding) } else { None },
+                    });
+                }
             }
-        }
-
-        if let UiNodeData::Image { ref texture_id, ref size } = node.data {
-            if let Some(tid) = texture_id {
-                let (img_w, img_h) = size.unwrap_or((layout.width, layout.height));
-                context.draw(DrawCommand::Sprite {
-                    texture_id: *tid,
-                    transform: Transform::with_position([abs_x, abs_y]),
-                    size: [img_w, img_h],
-                    tint: Color::WHITE,
-                    clip_rect: context.clip_rect().copied(),
-                });
+            UiNodeData::Image { texture_id, size } => {
+                if let Some(tid) = texture_id {
+                    let (img_w, img_h) = size.unwrap_or((layout.width, layout.height));
+                    context.draw(DrawCommand::Sprite {
+                        texture_id: *tid,
+                        transform: Transform::with_position([abs_x, abs_y]),
+                        size: [img_w, img_h],
+                        tint: Color::WHITE,
+                        clip_rect: context.clip_rect().copied(),
+                    });
+                }
+            }
+            UiNodeData::Custom { .. } | UiNodeData::Container => {
+                // 对于 Custom 和 Container 类型的节点，只渲染背景和边框，然后继续渲染子节点
             }
         }
 

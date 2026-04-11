@@ -241,6 +241,10 @@ impl EditorShell {
         for (i, panel) in self.panels.iter_mut().enumerate() {
             println!("Processing panel {}: {} (visible: {})", i, panel.name(), panel.is_visible());
             if panel.is_visible() {
+                // 保存当前根节点
+                let saved_root = self.ui_tree.root();
+                println!("  Saved UI tree root: {:?}", saved_root);
+                
                 let root_before = self.ui_tree.root();
                 println!("  UI tree root before build: {:?}", root_before);
                 
@@ -261,6 +265,12 @@ impl EditorShell {
                             println!("  Panel root nodes: {:?}", self.panel_root_nodes);
                         }
                     }
+                }
+                
+                // 恢复之前的根节点
+                if let Some(saved_root_id) = saved_root {
+                    self.ui_tree.set_root(saved_root_id);
+                    println!("  Restored UI tree root: {:?}", saved_root_id);
                 }
             }
         }

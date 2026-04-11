@@ -15,6 +15,7 @@ use gg_editor_shell::{
     panel::{PanelLayoutHint, PanelPosition},
 };
 use gg_ui::{Style, UiNodeData, UiTree};
+use gg_render::Color;
 
 use crate::{
     binding::{PropertyBinding, ReflectionPropertyBinding},
@@ -500,7 +501,7 @@ impl EditorPanel for InspectorPanel {
             selection_changed = true;
         }
 
-        let root_id = ui_tree.create_node("inspector_root", Style::default(), UiNodeData::Container);
+        let root_id = ui_tree.create_node("inspector_root", Style::new().with_background_color(Color::new(0.12, 0.12, 0.14, 1.0)), UiNodeData::Container);
         ui_tree.set_root(root_id);
 
         if let Some(_entity) = self.selected_entity {

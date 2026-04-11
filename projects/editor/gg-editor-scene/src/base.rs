@@ -671,7 +671,8 @@ impl EditorPanel for BaseSceneView {
         }
         drop(incoming);
 
-        let viewport_style = Style::new();
+        let viewport_style = Style::new()
+            .with_background_color(Color::new(0.1, 0.1, 0.1, 1.0));
         let viewport_id = ui_tree.create_node(
             "scene_viewport",
             viewport_style,
