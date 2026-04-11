@@ -1,8 +1,0 @@
-[package]
-name = "platformer-basic"
-description = "Platformer (2D platform) basic example"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-gg-engine-platformer = { path = "../../projects/engines/platformer" }

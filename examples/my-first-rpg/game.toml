@@ -1,0 +1,14 @@
+[game]
+name = "RPG Basic Example"
+version = "0.1.0"
+initial_scene = "start"
+
+[display]
+width = 1280
+height = 720
+fullscreen = false
+
+[audio]
+master_volume = 1.0
+bgm_volume = 0.8
+se_volume = 1.0
