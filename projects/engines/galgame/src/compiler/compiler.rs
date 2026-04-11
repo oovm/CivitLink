@@ -7,12 +7,12 @@ use std::{
 };
 
 use gg_core::{GError, GErrorKind, GResult};
-use crate::schema::components::DialogueNode;
+use gg_galgame_schema::components::DialogueNode;
 use serde::{Deserialize, Serialize};
 
 use crate::compiler::parser::GscriptParser;
 
-/// 剧本序列，表示一个 .gscript 文件编译后的结果
+/// 剧本序列，表示一个 .script 文件编译后的结果
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorySequence {
     /// 按顺序排列的对话节点列表
@@ -99,11 +99,11 @@ pub enum ValidationError {
     },
 }
 
-/// 剧本编译器，将 .gscript 文件编译为结构化的对话数据
+/// 剧本编译器，将 .script 文件编译为结构化的对话数据
 pub struct ScriptCompiler;
 
 impl ScriptCompiler {
-    /// 编译单个 .gscript 文件
+    /// 编译单个 .script 文件
     ///
     /// 解析文件并构建 StorySequence，同时建立节点索引。
     pub fn compile_file(path: &Path) -> GResult<StorySequence> {
@@ -117,9 +117,9 @@ impl ScriptCompiler {
         Ok(StorySequence { nodes, node_index })
     }
 
-    /// 编译目录下所有 .gscript 文件
+    /// 编译目录下所有 .script 文件
     ///
-    /// 遍历目录中所有 .gscript 扩展名的文件，编译为 StorySequence，
+    /// 遍历目录中所有 .script 扩展名的文件，编译为 StorySequence，
     /// 并汇总构建 DialogueDB。
     pub fn compile_directory(dir: &Path) -> GResult<DialogueDB> {
         let mut db = DialogueDB::new();
@@ -134,7 +134,7 @@ impl ScriptCompiler {
                 .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
 
             let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) == Some("gscript") {
+            if path.extension().and_then(|e| e.to_str()) == Some("script") {
                 let sequence = Self::compile_file(&path)?;
 
                 let file_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("unknown").to_string();

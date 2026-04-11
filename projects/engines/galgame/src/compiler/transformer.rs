@@ -1,5 +1,5 @@
 //! 元编译器转换器模块
-//! 实现 gg-core 编译器转换器概念，将 .gscript 文件转换为 JSON 输出
+//! 实现 gg-core 编译器转换器概念，将 .script 文件转换为 JSON 输出
 
 use std::path::{Path, PathBuf};
 
@@ -7,16 +7,16 @@ use gg_core::{GError, GErrorKind, GResult};
 
 use crate::compiler::ScriptCompiler;
 
-/// 剧本转换器，将 .gscript 文件编译并序列化为 JSON
+/// 剧本转换器，将 .script 文件编译并序列化为 JSON
 ///
-/// 读取 .gscript 文件，编译为 StorySequence，
+/// 读取 .script 文件，编译为 StorySequence，
 /// 序列化为 JSON 写入输出目录，返回输出文件路径列表。
 pub struct ScriptTransformer;
 
 impl ScriptTransformer {
     /// 执行转换
     ///
-    /// 读取 input_path 指向的 .gscript 文件或目录，
+    /// 读取 input_path 指向的 .script 文件或目录，
     /// 编译为 StorySequence，序列化为 JSON 写入 output_dir，
     /// 返回所有输出文件路径列表。
     pub fn transform(input_path: &Path, output_dir: &Path) -> GResult<Vec<PathBuf>> {
@@ -28,7 +28,7 @@ impl ScriptTransformer {
         }
     }
 
-    /// 转换单个 .gscript 文件
+    /// 转换单个 .script 文件
     fn transform_file(input_path: &Path, output_dir: &Path) -> GResult<Vec<PathBuf>> {
         let sequence = ScriptCompiler::compile_file(input_path)?;
 
@@ -52,7 +52,7 @@ impl ScriptTransformer {
         Ok(vec![output_path])
     }
 
-    /// 转换目录下所有 .gscript 文件
+    /// 转换目录下所有 .script 文件
     fn transform_directory(input_dir: &Path, output_dir: &Path) -> GResult<Vec<PathBuf>> {
         let db = ScriptCompiler::compile_directory(input_dir)?;
 

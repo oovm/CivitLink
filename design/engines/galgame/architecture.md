@@ -63,7 +63,7 @@ Galgame 引擎包含以下核心插件：
 
 - **Sprite 资源**：角色立绘、背景图片等
 - **Audio 资源**：音效和背景音乐
-- **GScript 资源**：使用 .gscript 格式编写的对话文本和剧情数据
+- **Script 资源**：使用 .script 格式编写的对话文本和剧情数据
 - **Scene 资源**：场景配置和数据
 - **Texture 资源**：游戏中使用的纹理图片
 
@@ -92,7 +92,7 @@ graph TD
         B1_4[SceneTransitionPlugin]
         B1_5[SavePlugin]
         B1_6[UiPlugin]
-        B1_7[GScript 编译器]
+        B1_7[Script 编译器]
         B1_8[Schema 组件]
     end
     
@@ -100,7 +100,7 @@ graph TD
         C1_1[游戏配置 game.toml]
         C1_2[精灵资源]
         C1_3[音频资源]
-        C1_4[GScript 对话脚本]
+        C1_4[Script 对话脚本]
         C1_5[场景数据]
     end
 ```
@@ -163,7 +163,7 @@ Galgame 引擎的对话系统是核心功能之一，设计如下：
 
 ### 7.2 对话系统实现
 
-- **GScript 解析**：使用 GscriptParser 解析 .gscript 格式的对话脚本
+- **Script 解析**：使用 GscriptParser 解析 .script 格式的对话脚本
 - **对话编译**：使用 ScriptCompiler 将解析后的对话节点编译为 DialogueDB
 - **对话显示**：通过 UI 系统显示对话文本和选项
 - **选择处理**：处理玩家的选择并切换到对应的分支
@@ -177,7 +177,7 @@ Galgame 引擎的对话系统是核心功能之一，设计如下：
 - **文本缓存**：缓存对话文本，减少解析时间
 - **立绘缓存**：缓存角色立绘，减少加载时间
 - **批处理**：批量处理对话渲染，提高性能
-- **增量编译**：支持 .gscript 文件的增量编译，减少重复编译时间
+- **增量编译**：支持 .script 文件的增量编译，减少重复编译时间
 
 ## 8. 与 GG 元引擎的集成
 

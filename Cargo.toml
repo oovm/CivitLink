@@ -145,7 +145,6 @@ gg-editor-asset-browser = { path = "projects/editor/gg-editor-asset-browser" }
 gg-editor-character = { path = "projects/editor/gg-editor-character" }
 gg-editor-inspector = { path = "projects/editor/gg-editor-inspector" }
 gg-editor-preview = { path = "projects/editor/gg-editor-preview" }
-gg-editor-scene-galgame = { path = "projects/editor/gg-editor-scene-galgame" }
 gg-editor-script = { path = "projects/editor/gg-editor-script" }
 gg-editor-lsp = { path = "projects/editor/gg-editor-lsp" }
 

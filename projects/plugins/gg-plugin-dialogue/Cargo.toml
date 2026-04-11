@@ -12,5 +12,6 @@ gg-asset = { workspace = true }
 gg-render = { workspace = true }
 gg-editor-shell = { workspace = true }
 gg-ui = { workspace = true }
+gg-galgame-schema = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

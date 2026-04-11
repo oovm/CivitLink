@@ -43,7 +43,7 @@ impl IncrementalCompiler {
                 .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
 
             let path = entry.path();
-            if path.extension().and_then(|e| e.to_str()) == Some("gscript") {
+            if path.extension().and_then(|e| e.to_str()) == Some("script") {
                 let file_name = path.file_stem().and_then(|s| s.to_str()).unwrap_or("unknown").to_string();
                 current_files.insert(file_name, path);
             }

@@ -169,7 +169,7 @@ fn default_type_map() -> HashMap<&'static str, &'static str> {
 
     map.insert("v", "Script");
     map.insert("vx", "Script");
-    map.insert("gscript", "Script");
+    map.insert("script", "Script");
 
     map.insert("glsl", "Shader");
     map.insert("vert", "Shader");

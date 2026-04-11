@@ -1,18 +1,18 @@
-//! .gscript 剧本脚本解析器模块
-//! 将 .gscript 源码解析为 DialogueNode 列表
+//! .script 剧本脚本解析器模块
+//! 将 .script 源码解析为 DialogueNode 列表
 
 use gg_core::{GError, GErrorKind, GResult};
-use crate::schema::components::{Choice, DialogueCommand, DialogueNode, PortraitPosition, TransitionType, VariableValue};
+use gg_galgame_schema::components::{Choice, DialogueCommand, DialogueNode, PortraitPosition, TransitionType, VariableValue};
 
-/// .gscript 剧本脚本解析器
+/// .script 剧本脚本解析器
 ///
-/// 将 .gscript 格式的剧本源码解析为结构化的 DialogueNode 列表。
+/// 将 .script 格式的剧本源码解析为结构化的 DialogueNode 列表。
 /// 支持 @node 定义节点、[speaker:id] 标记说话者、+ 选项行、
 /// [command:args] 内联命令和 -> 跳转指令。
 pub struct GscriptParser;
 
 impl GscriptParser {
-    /// 解析 .gscript 源码为 DialogueNode 列表
+    /// 解析 .script 源码为 DialogueNode 列表
     ///
     /// 每行以 @node 开头定义新节点，[speaker:id] 标记说话者，
     /// + 开头的行为选项，[command:args] 为内联命令，-> 开头为跳转目标。
@@ -89,11 +89,11 @@ impl GscriptParser {
         Ok(nodes)
     }
 
-    /// 从文件解析 .gscript 剧本
+    /// 从文件解析 .script 剧本
     pub fn parse_file(path: &std::path::Path) -> GResult<Vec<DialogueNode>> {
         let source = std::fs::read_to_string(path).map_err(|e| GError {
             kind: GErrorKind::Io,
-            message: format!("Failed to read gscript file '{}': {}", path.display(), e),
+            message: format!("Failed to read script file '{}': {}", path.display(), e),
         })?;
         Self::parse(&source)
     }

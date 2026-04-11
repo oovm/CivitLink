@@ -10,7 +10,7 @@ my-first-galgame/
 │   ├── backgrounds/  # 背景图片
 │   ├── portraits/    # 角色立绘
 │   ├── scripts/      # 脚本文件
-│   │   └── start.gscript  # 对话脚本
+│   │   └── start.script  # 对话脚本
 ├── src/              # 源代码目录
 │   ├── components/   # ECS 组件
 │   ├── resources/    # ECS 资源
@@ -42,7 +42,7 @@ my-first-galgame/
 
 ### 添加新对话
 
-1. 在 `assets/scripts/start.gscript` 文件中，添加新的对话节点
+1. 在 `assets/scripts/start.script` 文件中，添加新的对话节点
 2. 使用以下格式编写对话：
    - `@node node_id`：定义新节点
    - `[speaker:character_id]`：指定说话者
@@ -52,7 +52,7 @@ my-first-galgame/
    - `[command:args]`：添加内联命令
 
    示例：
-   ```gscript
+   ```script
    @node start
    [speaker:sakura]
    你好，欢迎来到我的游戏！
@@ -77,12 +77,12 @@ my-first-galgame/
 ### 添加新角色
 
 1. 在 `assets/portraits/` 目录中添加角色立绘
-2. 在 `start.gscript` 文件中使用 `[show_portrait:character_id:expression:position]` 命令显示角色立绘
+2. 在 `start.script` 文件中使用 `[show_portrait:character_id:expression:position]` 命令显示角色立绘
 
 ### 添加新场景
 
 1. 在 `assets/backgrounds/` 目录中添加背景图片
-2. 在 `start.gscript` 文件中使用 `[change_background:background_path]` 命令切换背景
+2. 在 `start.script` 文件中使用 `[change_background:background_path]` 命令切换背景
 
 ## 技术说明
 

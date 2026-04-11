@@ -77,8 +77,8 @@ se_volume = 1.0
 
 ### 游戏脚本示例
 
-```gscript
-// start.gscript
+```script
+// start.script
 show background "bg1.png"
 show character "character1.png" at center
 
@@ -106,7 +106,7 @@ galgame/
 │   └── main.rs       # 入口点
 ├── template/         # 游戏模板
 │   ├── scripts/
-│   │   └── start.gscript
+│   │   └── start.script
 │   └── game.toml
 ├── Cargo.toml        # 项目配置
 └── readme.md         # 文档

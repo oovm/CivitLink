@@ -12,9 +12,9 @@ use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::{Entity, World};
 use gg_plugin_dialogue::loader::DialogueScriptLoader;
 use gg_plugin_dialogue::plugin::DialoguePlugin;
-use gg_plugin_dialogue::schema::{
-    AudioControl, CharacterDef, ChoiceState, DeltaTime, DialogueHistory,
-    PortraitState, SceneBackground, TransitionType,
+use gg_galgame_schema::{
+    components::{AudioControl, CharacterDef, ChoiceState, PortraitState, SceneBackground, TransitionType},
+    resources::{DeltaTime, DialogueHistory},
 };
 use gg_plugin_dialogue::typewriter::TypewriterState;
 use gg_plugin_portrait::plugin::PortraitPlugin;

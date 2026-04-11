@@ -26,7 +26,7 @@ mod tests_meta_generator {
 
         assert_eq!(generator.get_asset_type("v"), "Script");
         assert_eq!(generator.get_asset_type("vx"), "Script");
-        assert_eq!(generator.get_asset_type("gscript"), "Script");
+        assert_eq!(generator.get_asset_type("script"), "Script");
 
         assert_eq!(generator.get_asset_type("glsl"), "Shader");
         assert_eq!(generator.get_asset_type("vert"), "Shader");
