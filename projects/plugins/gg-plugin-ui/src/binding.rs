@@ -286,9 +286,18 @@ impl BindingRegistry {
             .insert(property, key);
     }
 
+    /// 为节点属性注册表达式绑定
+    pub fn register_expression(&mut self, node_id: u64, property: String, expr: BindingExpression) {
+        self.expression_bindings
+            .entry(node_id)
+            .or_default()
+            .insert(property, expr);
+    }
+
     /// 移除节点的所有绑定
     pub fn unregister_node(&mut self, node_id: u64) {
         self.bindings.remove(&node_id);
+        self.expression_bindings.remove(&node_id);
     }
 }
 

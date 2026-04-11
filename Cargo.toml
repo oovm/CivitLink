@@ -130,9 +130,7 @@ gg-plugin-spine = { path = "projects/plugins/gg-plugin-spine" }
 gg-plugin-ui = { path = "projects/plugins/gg-plugin-ui" }
 
 # gnostic gamer engines
-gg-galgame-schema = { path = "projects/engines/galgame-schema" }
-gg-galgame-compiler = { path = "projects/engines/galgame-compiler" }
-gg-galgame-editor-scene = { path = "projects/engines/galgame-editor" }
+gg-galgame = { path = "projects/engines/galgame" }
 
 # oak parsers
 oak-core = { path = "../oaks/projects/oak-core" }
