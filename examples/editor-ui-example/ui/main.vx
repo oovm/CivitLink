@@ -1,0 +1,51 @@
+<!-- 编辑器 UI 示例 -->
+<Layout id="main" class="container">
+  <Layout id="header" class="header">
+    <Text id="title" class="title">GG Engine Editor</Text>
+  </Layout>
+  
+  <Layout id="content" class="content">
+    <Layout id="left-panel" class="panel">
+      <Text id="panel-title" class="panel-title">Project</Text>
+      <Button id="new-project" class="button">New Project</Button>
+      <Button id="open-project" class="button">Open Project</Button>
+      <Button id="save-project" class="button">Save Project</Button>
+    </Layout>
+    
+    <Layout id="center-panel" class="panel">
+      <Text id="panel-title" class="panel-title">Scene</Text>
+      <Button id="add-object" class="button">Add Object</Button>
+      <Button id="remove-object" class="button">Remove Object</Button>
+      <Button id="duplicate-object" class="button">Duplicate Object</Button>
+    </Layout>
+    
+    <Layout id="right-panel" class="panel">
+      <Text id="panel-title" class="panel-title">Inspector</Text>
+      <Text id="object-name" class="label">Object Name:</Text>
+      <Input id="name-input" class="input" value="GameObject" />
+      <Text id="position-label" class="label">Position:</Text>
+      <Layout id="position-inputs" class="input-group">
+        <Input id="pos-x" class="input small" value="0" />
+        <Input id="pos-y" class="input small" value="0" />
+        <Input id="pos-z" class="input small" value="0" />
+      </Layout>
+      <Text id="rotation-label" class="label">Rotation:</Text>
+      <Layout id="rotation-inputs" class="input-group">
+        <Input id="rot-x" class="input small" value="0" />
+        <Input id="rot-y" class="input small" value="0" />
+        <Input id="rot-z" class="input small" value="0" />
+      </Layout>
+      <Text id="scale-label" class="label">Scale:</Text>
+      <Layout id="scale-inputs" class="input-group">
+        <Input id="scale-x" class="input small" value="1" />
+        <Input id="scale-y" class="input small" value="1" />
+        <Input id="scale-z" class="input small" value="1" />
+      </Layout>
+    </Layout>
+  </Layout>
+  
+  <Layout id="footer" class="footer">
+    <Text id="status" class="status">Ready</Text>
+    <Text id="fps" class="fps">60 FPS</Text>
+  </Layout>
+</Layout>

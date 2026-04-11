@@ -1,0 +1,9 @@
+[package]
+name = "gg-ui-tools"
+version = "0.1.0"
+edition = "2021"
+description = "GG Engine UI Tools"
+license = "MIT"
+
+[dependencies]
+gg-error = { path = "../../core/gg-error" }

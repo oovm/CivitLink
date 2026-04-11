@@ -4,6 +4,7 @@
 
 #![warn(missing_docs)]
 
+use std::any::Any;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
@@ -260,4 +261,281 @@ impl AssetServer {
             let path = &item.meta.path;
             if let Ok(metadata) = std::fs::metadata(path) {
                 if let Ok(modified) = metadata.modified() {
-                    let modified
+                    let modified_instant = Instant::from(modified);
+                    if modified_instant > item.meta.last_modified {
+                        // 资源已修改，重新加载
+                        if let Ok(asset) = self.reload_asset(*id) {
+                            reloaded_assets.push(*id);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(reloaded_assets)
+    }
+
+    /// 重新加载资源
+    fn reload_asset(&mut self, id: u64) -> GResult<()> {
+        if let Some(item) = self.assets.get_mut(&id) {
+            let path = &item.meta.path;
+            let asset_type = item.meta.asset_type;
+
+            // 根据资源类型重新加载
+            match asset_type {
+                AssetType::Texture => {
+                    // 重新加载纹理
+                }
+                AssetType::Font => {
+                    // 重新加载字体
+                }
+                AssetType::Material => {
+                    // 重新加载材质
+                }
+                AssetType::Model => {
+                    // 重新加载模型
+                }
+                AssetType::Audio => {
+                    // 重新加载音频
+                }
+                AssetType::Script => {
+                    // 重新加载脚本
+                }
+                AssetType::Ui => {
+                    // 重新加载UI资源
+                }
+                AssetType::EditorUi => {
+                    // 重新加载编辑器UI资源
+                }
+                AssetType::Other => {
+                    // 重新加载其他资源
+                }
+            }
+
+            // 更新最后修改时间
+            item.meta.last_modified = Instant::now();
+            Ok(())
+        } else {
+            Err(GError { kind: GErrorKind::Asset, message: format!("Asset not found: {}", id) })
+        }
+    }
+
+    /// 清理未使用的资源
+    pub fn cleanup_unused(&mut self, max_age: Duration) {
+        let now = Instant::now();
+        let mut to_remove = Vec::new();
+
+        for (id, item) in &self.assets {
+            if item.ref_count == 0 && now.duration_since(item.last_accessed) > max_age {
+                to_remove.push(*id);
+            }
+        }
+
+        for id in to_remove {
+            if let Some(item) = self.assets.remove(&id) {
+                self.path_to_id.remove(&item.meta.path);
+                self.editor_ui_assets.remove(&id);
+                self.game_ui_assets.remove(&id);
+            }
+        }
+    }
+
+    /// 获取编辑器UI资源
+    pub fn get_editor_ui_assets(&self) -> &HashSet<u64> {
+        &self.editor_ui_assets
+    }
+
+    /// 获取游戏UI资源
+    pub fn get_game_ui_assets(&self) -> &HashSet<u64> {
+        &self.game_ui_assets
+    }
+}
+
+impl Default for AssetServer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// 资源加载器特质
+pub trait AssetLoader<T: Asset> {
+    /// 加载资源
+    fn load(path: &Path) -> GResult<T>;
+
+    /// 卸载资源
+    fn unload(asset: &mut T);
+}
+
+/// 纹理资源
+#[derive(Debug, Clone)]
+pub struct TextureAsset {
+    /// 纹理数据
+    data: Vec<u8>,
+    /// 宽度
+    width: u32,
+    /// 高度
+    height: u32,
+}
+
+impl Asset for TextureAsset {
+    fn asset_type() -> AssetType {
+        AssetType::Texture
+    }
+
+    fn load(path: &Path) -> GResult<Self> {
+        // 加载纹理数据
+        let data = std::fs::read(path)?;
+        // 这里应该解析纹理宽度和高度
+        Ok(Self {
+            data,
+            width: 0,
+            height: 0,
+        })
+    }
+
+    fn unload(&mut self) {
+        self.data.clear();
+    }
+
+    fn size(&self) -> usize {
+        self.data.len()
+    }
+}
+
+/// 字体资源
+#[derive(Debug, Clone)]
+pub struct FontAsset {
+    /// 字体数据
+    data: Vec<u8>,
+}
+
+impl Asset for FontAsset {
+    fn asset_type() -> AssetType {
+        AssetType::Font
+    }
+
+    fn load(path: &Path) -> GResult<Self> {
+        let data = std::fs::read(path)?;
+        Ok(Self { data })
+    }
+
+    fn unload(&mut self) {
+        self.data.clear();
+    }
+
+    fn size(&self) -> usize {
+        self.data.len()
+    }
+}
+
+/// 材质资源
+#[derive(Debug, Clone)]
+pub struct MaterialAsset {
+    /// 材质数据
+    data: Vec<u8>,
+}
+
+impl Asset for MaterialAsset {
+    fn asset_type() -> AssetType {
+        AssetType::Material
+    }
+
+    fn load(path: &Path) -> GResult<Self> {
+        let data = std::fs::read(path)?;
+        Ok(Self { data })
+    }
+
+    fn unload(&mut self) {
+        self.data.clear();
+    }
+
+    fn size(&self) -> usize {
+        self.data.len()
+    }
+}
+
+/// UI资源
+#[derive(Debug, Clone)]
+pub struct UiAsset {
+    /// UI数据
+    data: Vec<u8>,
+}
+
+impl Asset for UiAsset {
+    fn asset_type() -> AssetType {
+        AssetType::Ui
+    }
+
+    fn load(path: &Path) -> GResult<Self> {
+        let data = std::fs::read(path)?;
+        Ok(Self { data })
+    }
+
+    fn unload(&mut self) {
+        self.data.clear();
+    }
+
+    fn size(&self) -> usize {
+        self.data.len()
+    }
+}
+
+/// 编辑器UI资源
+#[derive(Debug, Clone)]
+pub struct EditorUiAsset {
+    /// 编辑器UI数据
+    data: Vec<u8>,
+}
+
+impl Asset for EditorUiAsset {
+    fn asset_type() -> AssetType {
+        AssetType::EditorUi
+    }
+
+    fn load(path: &Path) -> GResult<Self> {
+        let data = std::fs::read(path)?;
+        Ok(Self { data })
+    }
+
+    fn unload(&mut self) {
+        self.data.clear();
+    }
+
+    fn size(&self) -> usize {
+        self.data.len()
+    }
+}
+
+/// 资源系统
+pub struct AssetSystem {
+    /// 资源服务器
+    asset_server: Arc<RwLock<AssetServer>>,
+}
+
+impl AssetSystem {
+    /// 创建新的资源系统
+    pub fn new() -> Self {
+        Self {
+            asset_server: Arc::new(RwLock::new(AssetServer::new())),
+        }
+    }
+
+    /// 获取资源服务器
+    pub fn asset_server(&self) -> Arc<RwLock<AssetServer>> {
+        Arc::clone(&self.asset_server)
+    }
+}
+
+impl gg_ecs::System for AssetSystem {
+    fn name(&self) -> &str {
+        "AssetSystem"
+    }
+
+    fn execute(&mut self, world: &mut gg_ecs::World) -> GResult<()> {
+        // 检查热更新
+        if let Ok(mut asset_server) = self.asset_server.write() {
+            let _ = asset_server.check_hot_reload();
+        }
+        Ok(())
+    }
+}

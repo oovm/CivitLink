@@ -1,10 +1,10 @@
 [package]
-name = "gg-asset"
+name = "gg-ui-perf"
 version = "0.1.0"
 edition = "2021"
-description = "GG Engine Asset Management System"
+description = "GG Engine UI Performance Optimization"
 license = "MIT"
 
 [dependencies]
-gg-ecs = { path = "../gg-ecs" }
 gg-error = { path = "../gg-error" }
+num_cpus = "1.16.0"
