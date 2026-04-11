@@ -10,125 +10,125 @@
 
 ### 基本结构
 
-```ron
-// 场景文件
-SceneFile({
+```von
+# 场景文件
+SceneFile {
     version: "1.0",
-    scene: Scene({
+    scene: Scene {
         name: "MainScene",
         description: "Main game scene",
         author: "Game Developer",
         created_at: "2026-04-10T12:00:00Z",
         last_modified: "2026-04-10T12:30:00Z",
-    }),
-    environment: Environment({
+    },
+    environment: Environment {
         ambient_light: [0.5, 0.5, 0.5, 1.0],
-        fog: Fog({
+        fog: Fog {
             enabled: true,
             color: [0.1, 0.1, 0.1, 1.0],
             near: 10.0,
             far: 100.0,
             density: 0.01,
-        }),
+        },
         gravity: [0, -9.81, 0],
         time_of_day: 12.0,
         weather: "clear",
-    }),
+    },
     entities: [
-        Entity({
+        Entity {
             id: 1,
             name: "Player",
-            parent_id: None,
+            parent_id: null,
             components: [
-                Component({
+                Component {
                     type: "Transform",
-                    properties: TransformProperties({
+                    properties: TransformProperties {
                         position: [0, 0, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "PlayerController",
-                    properties: PlayerControllerProperties({
+                    properties: PlayerControllerProperties {
                         speed: 5.0,
                         jump_force: 10.0,
-                    }),
-                }),
+                    },
+                },
             ],
-        }),
-        Entity({
+        },
+        Entity {
             id: 2,
             name: "Camera",
-            parent_id: Some(1),
+            parent_id: 1,
             components: [
-                Component({
+                Component {
                     type: "Transform",
-                    properties: TransformProperties({
+                    properties: TransformProperties {
                         position: [0, 0, -10],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "Camera",
-                    properties: CameraProperties({
+                    properties: CameraProperties {
                         field_of_view: 60,
                         near_plane: 0.1,
                         far_plane: 1000,
-                    }),
-                }),
+                    },
+                },
             ],
-        }),
+        },
     ],
     prefabs: [
-        PrefabInstance({
+        PrefabInstance {
             path: "assets/prefabs/enemy.prefab",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0001",
             instances: [
-                PrefabInstanceData({
+                PrefabInstanceData {
                     id: 3,
                     name: "Enemy1",
                     position: [5, 0, 0],
                     rotation: [0, 0, 0],
                     scale: [1, 1, 1],
-                }),
-                PrefabInstanceData({
+                },
+                PrefabInstanceData {
                     id: 4,
                     name: "Enemy2",
                     position: [-5, 0, 0],
                     rotation: [0, 0, 0],
                     scale: [1, 1, 1],
-                }),
+                },
             ],
-        }),
+        },
     ],
     scripts: [
-        Script({
+        Script {
             path: "assets/scripts/scene_manager.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0002",
             enabled: true,
-        }),
+        },
     ],
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/prefabs/enemy.prefab",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0001",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/scripts/scene_manager.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0002",
-        }),
+        },
     ],
     references: [
-        Reference({
+        Reference {
             path: "assets/scripts/game_manager.v",
-            field: Some("current_scene"),
-        }),
+            field: "current_scene",
+        },
     ],
     timestamp: "2026-04-10T12:30:00Z",
     hash: "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
-})
+}
 ```
 
 ## 字段详细说明
@@ -246,199 +246,199 @@ SceneFile({
 
 ## 示例完整文件
 
-```ron
-// 场景示例文件
-SceneFile({
+```von
+# 场景示例文件
+SceneFile {
     version: "1.0",
-    scene: Scene({
+    scene: Scene {
         name: "Level1",
         description: "First level of the game",
         author: "Game Developer",
         created_at: "2026-04-10T12:00:00Z",
         last_modified: "2026-04-10T12:30:00Z",
-    }),
-    environment: Environment({
+    },
+    environment: Environment {
         ambient_light: [0.5, 0.5, 0.5, 1.0],
-        fog: Fog({
+        fog: Fog {
             enabled: true,
             color: [0.1, 0.1, 0.1, 1.0],
             near: 10.0,
             far: 100.0,
             density: 0.01,
-        }),
+        },
         gravity: [0, -9.81, 0],
         time_of_day: 10.0,
         weather: "sunny",
-    }),
+    },
     entities: [
-        Entity({
+        Entity {
             id: 1,
             name: "Player",
-            parent_id: None,
+            parent_id: null,
             components: [
-                Component({
+                Component {
                     type: "Transform",
-                    properties: TransformProperties({
+                    properties: TransformProperties {
                         position: [0, 0, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "PlayerController",
-                    properties: PlayerControllerProperties({
+                    properties: PlayerControllerProperties {
                         speed: 5.0,
                         jump_force: 10.0,
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "Health",
-                    properties: HealthProperties({
+                    properties: HealthProperties {
                         max_health: 100,
                         current_health: 100,
-                    }),
-                }),
+                    },
+                },
             ],
-        }),
-        Entity({
+        },
+        Entity {
             id: 2,
             name: "MainCamera",
-            parent_id: Some(1),
+            parent_id: 1,
             components: [
-                Component({
+                Component {
                     type: "Transform",
-                    properties: TransformProperties({
+                    properties: TransformProperties {
                         position: [0, 2, -5],
                         rotation: [15, 0, 0],
                         scale: [1, 1, 1],
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "Camera",
-                    properties: CameraProperties({
+                    properties: CameraProperties {
                         field_of_view: 60,
                         near_plane: 0.1,
                         far_plane: 1000,
                         clear_color: [0.5, 0.7, 1.0, 1.0],
-                    }),
-                }),
+                    },
+                },
             ],
-        }),
-        Entity({
+        },
+        Entity {
             id: 3,
             name: "Ground",
-            parent_id: None,
+            parent_id: null,
             components: [
-                Component({
+                Component {
                     type: "Transform",
-                    properties: TransformProperties({
+                    properties: TransformProperties {
                         position: [0, -1, 0],
                         rotation: [0, 0, 0],
                         scale: [20, 1, 20],
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "MeshRenderer",
-                    properties: MeshRendererProperties({
+                    properties: MeshRendererProperties {
                         mesh: "assets/meshes/ground.obj",
                         material: "assets/materials/ground.mat",
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "Collider",
-                    properties: ColliderProperties({
+                    properties: ColliderProperties {
                         shape: "box",
                         size: [20, 1, 20],
                         is_trigger: false,
-                    }),
-                }),
+                    },
+                },
             ],
-        }),
+        },
     ],
     prefabs: [
-        PrefabInstance({
+        PrefabInstance {
             path: "assets/prefabs/enemy.prefab",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0004",
             instances: [
-                PrefabInstanceData({
+                PrefabInstanceData {
                     id: 4,
                     name: "Enemy1",
                     position: [5, 0, 0],
                     rotation: [0, 0, 0],
                     scale: [1, 1, 1],
-                }),
-                PrefabInstanceData({
+                },
+                PrefabInstanceData {
                     id: 5,
                     name: "Enemy2",
                     position: [-5, 0, 0],
                     rotation: [0, 0, 0],
                     scale: [1, 1, 1],
-                }),
-                PrefabInstanceData({
+                },
+                PrefabInstanceData {
                     id: 6,
                     name: "Enemy3",
                     position: [0, 0, 5],
                     rotation: [0, 90, 0],
                     scale: [1, 1, 1],
-                }),
+                },
             ],
-        }),
-        PrefabInstance({
+        },
+        PrefabInstance {
             path: "assets/prefabs/health_pack.prefab",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0005",
             instances: [
-                PrefabInstanceData({
+                PrefabInstanceData {
                     id: 7,
                     name: "HealthPack1",
                     position: [3, 0, 3],
                     rotation: [0, 0, 0],
                     scale: [1, 1, 1],
-                }),
+                },
             ],
-        }),
+        },
     ],
     scripts: [
-        Script({
+        Script {
             path: "assets/scripts/level_manager.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0006",
             enabled: true,
-        }),
-        Script({
+        },
+        Script {
             path: "assets/scripts/enemy_spawner.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0007",
             enabled: true,
-        }),
+        },
     ],
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/prefabs/enemy.prefab",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0004",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/prefabs/health_pack.prefab",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0005",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/scripts/level_manager.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0006",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/scripts/enemy_spawner.v",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0007",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/meshes/ground.obj",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0008",
-        }),
-        Dependency({
+        },
+        Dependency {
             path: "assets/materials/ground.mat",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0009",
-        }),
+        },
     ],
     references: [],
     timestamp: "2026-04-10T12:30:00Z",
     hash: "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
-})
+}
 ```
 
 ## 总结

@@ -10,161 +10,161 @@
 
 ### 基本结构
 
-```ron
-// 预制体文件
-PrefabFile({
+```von
+# 预制体文件
+PrefabFile {
     version: "1.0",
-    prefab: Prefab({
+    prefab: Prefab {
         name: "PlayerPrefab",
         description: "Player character prefab",
         is_variant: false,
-        base_prefab: None,
-    }),
+        base_prefab: null,
+    },
     entities: [
-        Entity({
+        Entity {
             id: 1,
             name: "Player",
-            parent_id: None,
+            parent_id: null,
             components: [
-                Component({
+                Component {
                     type: "Transform",
-                    properties: TransformProperties({
+                    properties: TransformProperties {
                         position: [0, 0, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "SpriteRenderer",
-                    properties: SpriteRendererProperties({
+                    properties: SpriteRendererProperties {
                         sprite: "assets/textures/player.png",
                         sort_order: 0,
                         flip_x: false,
                         flip_y: false,
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "PlayerController",
-                    properties: PlayerControllerProperties({
+                    properties: PlayerControllerProperties {
                         speed: 5.0,
                         jump_force: 10.0,
                         health: 100,
-                    }),
-                }),
+                    },
+                },
             ],
-        }),
-        Entity({
+        },
+        Entity {
             id: 2,
             name: "Camera",
-            parent_id: Some(1),
+            parent_id: 1,
             components: [
-                Component({
+                Component {
                     type: "Transform",
-                    properties: TransformProperties({
+                    properties: TransformProperties {
                         position: [0, 0, -10],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "Camera",
-                    properties: CameraProperties({
+                    properties: CameraProperties {
                         field_of_view: 60,
                         near_plane: 0.1,
                         far_plane: 1000,
                         clear_color: [0, 0, 0, 1],
-                    }),
-                }),
+                    },
+                },
             ],
-        }),
+        },
     ],
     variants: [],
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/textures/player.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0001",
-        }),
+        },
     ],
     references: [
-        Reference({
+        Reference {
             path: "scenes/main.scene",
-            entity_id: Some(123),
-            component: Some("Spawner"),
-            field: Some("prefab"),
-        }),
+            entity_id: 123,
+            component: "Spawner",
+            field: "prefab",
+        },
     ],
     timestamp: "2026-04-10T12:00:00Z",
     hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-})
+}
 ```
 
 ### Prefab Variant 结构
 
-```ron
-// 预制体变体文件
-PrefabFile({
+```von
+# 预制体变体文件
+PrefabFile {
     version: "1.0",
-    prefab: Prefab({
+    prefab: Prefab {
         name: "PlayerPrefab_Armed",
         description: "Player character with weapon",
         is_variant: true,
-        base_prefab: Some("018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0000"),
-    }),
+        base_prefab: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0000",
+    },
     entities: [
-        Entity({
+        Entity {
             id: 1,
             name: "Player",
-            parent_id: None,
+            parent_id: null,
             components: [
-                Component({
+                Component {
                     type: "PlayerController",
-                    properties: PlayerControllerProperties({
+                    properties: PlayerControllerProperties {
                         speed: 6.0,
                         health: 120,
-                    }),
-                }),
+                    },
+                },
             ],
-        }),
-        Entity({
+        },
+        Entity {
             id: 3,
             name: "Weapon",
-            parent_id: Some(1),
+            parent_id: 1,
             components: [
-                Component({
+                Component {
                     type: "Transform",
-                    properties: TransformProperties({
+                    properties: TransformProperties {
                         position: [1, 0, 0],
                         rotation: [0, 0, 0],
                         scale: [1, 1, 1],
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "SpriteRenderer",
-                    properties: SpriteRendererProperties({
+                    properties: SpriteRendererProperties {
                         sprite: "assets/textures/weapon.png",
-                    }),
-                }),
-                Component({
+                    },
+                },
+                Component {
                     type: "Weapon",
-                    properties: WeaponProperties({
+                    properties: WeaponProperties {
                         damage: 20,
                         range: 5,
-                    }),
-                }),
+                    },
+                },
             ],
-        }),
+        },
     ],
     variants: [],
     dependencies: [
-        Dependency({
+        Dependency {
             path: "assets/textures/weapon.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0003",
-        }),
+        },
     ],
     references: [],
     timestamp: "2026-04-10T12:30:00Z",
     hash: "a94a8fe5ccb19ba61c4c0873d391e987982fbbd3",
-})
+}
 ```
 
 ## 字段详细说明

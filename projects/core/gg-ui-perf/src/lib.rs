@@ -5,6 +5,7 @@
 #![warn(missing_docs)]
 
 use std::collections::HashMap;
+use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Instant;
@@ -718,6 +719,263 @@ impl PerformanceAnalyzer {
         }
 
         bottlenecks
+    }
+}
+
+/// Canvas 脏标记位标志
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CanvasDirtyFlag(u32);
+
+impl CanvasDirtyFlag {
+    /// 顶点数据脏
+    pub const VERTICES: CanvasDirtyFlag = CanvasDirtyFlag(1 << 0);
+    /// 材质数据脏
+    pub const MATERIAL: CanvasDirtyFlag = CanvasDirtyFlag(1 << 1);
+    /// 布局数据脏
+    pub const LAYOUT: CanvasDirtyFlag = CanvasDirtyFlag(1 << 2);
+    /// 所有标记
+    pub const ALL: CanvasDirtyFlag = CanvasDirtyFlag(Self::VERTICES.0 | Self::MATERIAL.0 | Self::LAYOUT.0);
+
+    /// 判断是否包含指定脏标记
+    pub fn contains(self, other: CanvasDirtyFlag) -> bool {
+        self.0 & other.0 != 0
+    }
+
+    /// 判断是否没有任何脏标记
+    pub fn is_empty(self) -> bool {
+        self.0 == 0
+    }
+
+    /// 获取内部位值
+    pub fn bits(self) -> u32 {
+        self.0
+    }
+}
+
+impl Default for CanvasDirtyFlag {
+    fn default() -> Self {
+        CanvasDirtyFlag::ALL
+    }
+}
+
+impl BitOr for CanvasDirtyFlag {
+    type Output = Self;
+
+    fn bitor(self, rhs: Self) -> Self::Output {
+        CanvasDirtyFlag(self.0 | rhs.0)
+    }
+}
+
+impl BitOrAssign for CanvasDirtyFlag {
+    fn bitor_assign(&mut self, rhs: Self) {
+        self.0 |= rhs.0;
+    }
+}
+
+impl BitAnd for CanvasDirtyFlag {
+    type Output = Self;
+
+    fn bitand(self, rhs: Self) -> Self::Output {
+        CanvasDirtyFlag(self.0 & rhs.0)
+    }
+}
+
+impl BitAndAssign for CanvasDirtyFlag {
+    fn bitand_assign(&mut self, rhs: Self) {
+        self.0 &= rhs.0;
+    }
+}
+
+impl Not for CanvasDirtyFlag {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        CanvasDirtyFlag(!self.0 & CanvasDirtyFlag::ALL.0)
+    }
+}
+
+/// Canvas 渲染模式
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CanvasRenderMode {
+    /// 屏幕空间
+    ScreenSpace,
+    /// 世界空间
+    WorldSpace,
+    /// 相机空间
+    CameraSpace,
+}
+
+/// Canvas 中的 UI 元素
+#[derive(Debug, Clone)]
+pub struct CanvasElement {
+    /// 元素 ID
+    pub id: String,
+    /// 材质 ID
+    pub material_id: u64,
+    /// 纹理 ID
+    pub texture_id: u64,
+    /// 顶点数据
+    pub vertex_data: Vec<f32>,
+    /// 索引数据
+    pub index_data: Vec<u32>,
+    /// 脏标记
+    pub dirty_flags: CanvasDirtyFlag,
+    /// 渲染排序
+    pub sort_order: i32,
+}
+
+/// 批处理合并结果
+#[derive(Debug, Clone)]
+pub struct CanvasBatch {
+    /// 合并后的材质 ID
+    pub material_id: u64,
+    /// 合并后的纹理 ID
+    pub texture_id: u64,
+    /// 合并后的顶点数据
+    pub merged_vertex_data: Vec<f32>,
+    /// 合并后的索引数据
+    pub merged_index_data: Vec<u32>,
+    /// 包含的元素数量
+    pub element_count: usize,
+    /// Draw Call 数量
+    pub draw_call_count: u32,
+}
+
+/// 负责每帧收集和合并 Canvas 下的 UI 网格
+pub struct CanvasRebuilder {
+    /// Canvas ID
+    pub canvas_id: String,
+    /// 渲染模式
+    pub render_mode: CanvasRenderMode,
+    /// Canvas 中的所有元素
+    pub elements: Vec<CanvasElement>,
+    /// 当前帧的批处理结果
+    pub batches: Vec<CanvasBatch>,
+    /// 是否为静态 Canvas（静态 Canvas 跳过每帧重建）
+    pub is_static: bool,
+    /// 是否有脏元素
+    pub has_dirty_elements: bool,
+}
+
+impl CanvasRebuilder {
+    /// 创建新的 Canvas 重建器
+    pub fn new(canvas_id: &str, render_mode: CanvasRenderMode) -> Self {
+        Self {
+            canvas_id: canvas_id.to_string(),
+            render_mode,
+            elements: Vec::new(),
+            batches: Vec::new(),
+            is_static: false,
+            has_dirty_elements: true,
+        }
+    }
+
+    /// 添加 UI 元素
+    pub fn add_element(&mut self, element: CanvasElement) {
+        if !element.dirty_flags.is_empty() {
+            self.has_dirty_elements = true;
+        }
+        self.elements.push(element);
+    }
+
+    /// 标记元素顶点为脏
+    pub fn set_vertices_dirty(&mut self, element_id: &str) {
+        if let Some(element) = self.elements.iter_mut().find(|e| e.id == element_id) {
+            element.dirty_flags = element.dirty_flags | CanvasDirtyFlag::VERTICES;
+            self.has_dirty_elements = true;
+        }
+    }
+
+    /// 标记元素材质为脏
+    pub fn set_material_dirty(&mut self, element_id: &str) {
+        if let Some(element) = self.elements.iter_mut().find(|e| e.id == element_id) {
+            element.dirty_flags = element.dirty_flags | CanvasDirtyFlag::MATERIAL;
+            self.has_dirty_elements = true;
+        }
+    }
+
+    /// 执行合并-重建：收集脏元素，按材质/纹理分组合并网格，生成 Draw Call 队列。
+    /// 如果是静态 Canvas 且无脏元素，跳过重建
+    pub fn rebuild(&mut self) {
+        if self.is_static && !self.has_dirty_elements {
+            return;
+        }
+
+        self.batches.clear();
+
+        let mut group_map: HashMap<(u64, u64), Vec<&CanvasElement>> = HashMap::new();
+
+        for element in &self.elements {
+            let key = (element.material_id, element.texture_id);
+            group_map.entry(key).or_default().push(element);
+        }
+
+        for ((material_id, texture_id), group_elements) in &group_map {
+            let mut merged_vertex_data = Vec::new();
+            let mut merged_index_data = Vec::new();
+            let mut element_count = 0usize;
+            let mut vertex_offset = 0u32;
+
+            let mut sorted_elements: Vec<&&CanvasElement> = group_elements.iter().collect();
+            sorted_elements.sort_by_key(|e| e.sort_order);
+
+            for element in sorted_elements {
+                merged_vertex_data.extend_from_slice(&element.vertex_data);
+                for &index in &element.index_data {
+                    merged_index_data.push(index + vertex_offset);
+                }
+                vertex_offset += (element.vertex_data.len() / 3) as u32;
+                element_count += 1;
+            }
+
+            self.batches.push(CanvasBatch {
+                material_id: *material_id,
+                texture_id: *texture_id,
+                merged_vertex_data,
+                merged_index_data,
+                element_count,
+                draw_call_count: 1,
+            });
+        }
+
+        for element in &mut self.elements {
+            element.dirty_flags = CanvasDirtyFlag::default() & !CanvasDirtyFlag::ALL;
+        }
+        self.has_dirty_elements = false;
+    }
+
+    /// 获取当前帧的批处理结果
+    pub fn get_batches(&self) -> &[CanvasBatch] {
+        &self.batches
+    }
+
+    /// 设置 Canvas 是否为静态
+    pub fn set_static(&mut self, is_static: bool) {
+        self.is_static = is_static;
+    }
+
+    /// 动静分离：将指定元素分离到新的动态 Canvas，返回新的 CanvasRebuilder
+    pub fn separate_dynamic_elements(&mut self, dynamic_element_ids: &[&str]) -> CanvasRebuilder {
+        let mut dynamic_rebuilder = CanvasRebuilder::new(
+            &format!("{}_dynamic", self.canvas_id),
+            self.render_mode,
+        );
+
+        let dynamic_id_set: std::collections::HashSet<&str> = dynamic_element_ids.iter().copied().collect();
+
+        let mut remaining = Vec::new();
+        for element in self.elements.drain(..) {
+            if dynamic_id_set.contains(element.id.as_str()) {
+                dynamic_rebuilder.add_element(element);
+            } else {
+                remaining.push(element);
+            }
+        }
+
+        self.elements = remaining;
+        self.has_dirty_elements = self.elements.iter().any(|e| !e.dirty_flags.is_empty());
+
+        dynamic_rebuilder
     }
 }
 

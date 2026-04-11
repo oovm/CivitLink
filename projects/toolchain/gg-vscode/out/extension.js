@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.activate = activate;
 exports.deactivate = deactivate;
 const vscode = __importStar(require("vscode"));
+const node_1 = require("vscode-languageclient/node");
 function activate(context) {
     console.log('GG Game Engine extension activated');
     // 读取配置
@@ -48,8 +49,51 @@ function activate(context) {
     console.log(`GG Game Engine config: syntax=${enableSyntaxHighlighting}, lsp=${enableLSP}, mcp=${enableMCP}`);
     // 注册 LSP 客户端
     if (enableLSP && lspPath) {
-        // TODO: 实现 LSP 客户端注册
-        console.log(`LSP enabled with path: ${lspPath}`);
+        try {
+            // 配置服务器选项
+            const serverOptions = {
+                run: {
+                    command: lspPath,
+                    transport: node_1.TransportKind.stdio
+                },
+                debug: {
+                    command: lspPath,
+                    transport: node_1.TransportKind.stdio,
+                    options: {
+                        env: { RUST_BACKTRACE: '1' }
+                    }
+                }
+            };
+            // 配置客户端选项
+            const clientOptions = {
+                documentSelector: [
+                    { scheme: 'file', language: 'gg-animation' },
+                    { scheme: 'file', language: 'gg-config' },
+                    { scheme: 'file', language: 'gg-material' },
+                    { scheme: 'file', language: 'gg-meta' },
+                    { scheme: 'file', language: 'gg-prefab' },
+                    { scheme: 'file', language: 'gg-scene' },
+                    { scheme: 'file', language: 'gg-script' },
+                    { scheme: 'file', language: 'gg-shader' },
+                    { scheme: 'file', language: 'gg-widget' },
+                    { scheme: 'file', language: 'gg-galgame' }
+                ],
+                synchronize: {
+                    fileEvents: vscode.workspace.createFileSystemWatcher('**/*.*')
+                }
+            };
+            // 创建并启动客户端
+            const client = new node_1.LanguageClient('gg-lsp', 'GG Game Engine Language Server', serverOptions, clientOptions);
+            // 启动客户端
+            client.start();
+            // 注册客户端到上下文，以便在插件停用时有正确清理
+            context.subscriptions.push(client);
+            console.log(`LSP enabled with path: ${lspPath}`);
+        }
+        catch (error) {
+            console.error('Failed to start LSP client:', error);
+            vscode.window.showErrorMessage(`Failed to start LSP client: ${error.message || String(error)}`);
+        }
     }
     // 注册 MCP 客户端
     if (enableMCP && mcpPath) {

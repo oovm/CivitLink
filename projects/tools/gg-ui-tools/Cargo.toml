@@ -1,9 +1,10 @@
 [package]
 name = "gg-ui-tools"
-version = "0.1.0"
-edition = "2021"
+version = { workspace = true }
+edition = { workspace = true }
 description = "GG Engine UI Tools"
-license = "MIT"
+authors = { workspace = true }
+license = { workspace = true }
 
 [dependencies]
-gg-error = { path = "../../core/gg-error" }
+gg-error = { workspace = true }

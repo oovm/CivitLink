@@ -15,6 +15,8 @@ pub mod events;
 pub mod styles;
 /// 状态管理模块
 pub mod state;
+/// Flexbox 布局引擎模块
+pub mod layout;
 
 use std::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 use std::sync::{Arc, RwLock};
