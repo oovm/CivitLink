@@ -1,3 +1,4 @@
+#![feature(new_range_api)]
 #![warn(missing_docs)]
 
 //! GG 引擎脚本编译模块

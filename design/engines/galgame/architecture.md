@@ -28,42 +28,40 @@ Galgame 引擎架构分为以下层次：
 
 #### 核心组件
 
-- **Transform**：位置和旋转信息
-- **Sprite**：精灵渲染信息
-- **Dialogue**：对话内容和状态
-- **Character**：角色信息和状态
-- **Scene**：场景信息和状态
-- **Choice**：选择项信息
-- **Audio**：音频播放信息
-- **SaveData**：存档数据
+- **SceneBackground**：场景背景信息，包括资源路径、过渡效果和氛围滤镜
+- **PortraitState**：角色立绘状态，包括角色 ID、表情、位置、缩放和透明度
+- **CharacterDef**：角色定义，包括角色 ID、名称、立绘路径和表情映射
+- **AudioControl**：音频控制，包括 BGM 路径、音量和音效列表
+- **DialogueNode**：对话节点，包括文本、说话者、命令、选项和跳转目标
+- **Choice**：选项信息，包括文本、跳转目标和显示条件
+- **ChoiceState**：选项状态，包括可用选项、选中索引和激活状态
 
 #### 核心系统
 
 - **DialogueSystem**：处理对话逻辑和显示
-- **CharacterSystem**：处理角色管理和状态
-- **SceneSystem**：处理场景切换和管理
-- **ChoiceSystem**：处理选择项逻辑
-- **AudioSystem**：处理音频播放
+- **PortraitRenderSystem**：处理角色立绘的渲染
+- **TransitionSystem**：处理场景切换和过渡效果
+- **UiRenderSystem**：处理 UI 渲染和事件
 - **SaveSystem**：处理存档和读档
-- **RenderSystem**：处理渲染逻辑
+- **RenderSystem**：处理整体渲染逻辑
 
 ### 4.2 插件系统
 
 Galgame 引擎包含以下核心插件：
 
-- **Galgame Core Plugin**：提供 Galgame 游戏的核心功能
-- **Dialogue Plugin**：提供对话系统功能
-- **Character Plugin**：提供角色管理功能
-- **Scene Plugin**：提供场景管理功能
-- **UI Plugin**：提供游戏界面
-- **Audio Plugin**：提供音频播放功能
+- **DialoguePlugin**：提供对话系统功能，包括对话管理、选择处理和剧情分支
+- **PortraitPlugin**：提供角色立绘管理功能，包括立绘显示、位置调整和表情切换
+- **SceneTransitionPlugin**：提供场景切换和过渡效果功能
+- **SavePlugin**：提供存档和读档功能
+- **UiPlugin**：提供游戏界面功能，包括对话面板和选项按钮
 
 ### 4.3 资源管理
 
 - **Sprite 资源**：角色立绘、背景图片等
 - **Audio 资源**：音效和背景音乐
-- **MDX 资源**：使用 MDX 格式编写的对话文本和剧情数据
+- **GScript 资源**：使用 .gscript 格式编写的对话文本和剧情数据
 - **Scene 资源**：场景配置和数据
+- **Texture 资源**：游戏中使用的纹理图片
 
 ## 5. 架构图
 
@@ -84,19 +82,21 @@ graph TD
     end
     
     subgraph B1[Galgame 引擎组件]
-        B1_1[Galgame Core Plugin]
-        B1_2[Dialogue Plugin]
-        B1_3[Character Plugin]
-        B1_4[Scene Plugin]
-        B1_5[UI Plugin]
-        B1_6[Audio Plugin]
+        B1_1[GalgameEngine 核心]
+        B1_2[DialoguePlugin]
+        B1_3[PortraitPlugin]
+        B1_4[SceneTransitionPlugin]
+        B1_5[SavePlugin]
+        B1_6[UiPlugin]
+        B1_7[GScript 编译器]
+        B1_8[Schema 组件]
     end
     
     subgraph C1[Galgame 游戏实例]
-        C1_1[游戏配置]
+        C1_1[游戏配置 game.toml]
         C1_2[精灵资源]
         C1_3[音频资源]
-        C1_4[对话数据]
+        C1_4[GScript 对话脚本]
         C1_5[场景数据]
     end
 ```
@@ -151,21 +151,26 @@ Galgame 引擎的对话系统是核心功能之一，设计如下：
 
 ### 7.1 对话组件
 
-- **Dialogue**：包含对话文本、说话者、立绘信息等
-- **Choice**：包含选择项文本和对应的分支
+- **DialogueNode**：包含对话文本、说话者、命令、选项和跳转目标
+- **Choice**：包含选择项文本、跳转目标和显示条件
+- **ChoiceState**：包含可用选项、选中索引和激活状态
+- **TypewriterState**：包含打字机效果的状态和文本
 
 ### 7.2 对话系统实现
 
-- **对话解析**：解析对话数据文件
-- **对话显示**：控制对话的显示和动画
+- **GScript 解析**：使用 GscriptParser 解析 .gscript 格式的对话脚本
+- **对话编译**：使用 ScriptCompiler 将解析后的对话节点编译为 DialogueDB
+- **对话显示**：通过 UI 系统显示对话文本和选项
 - **选择处理**：处理玩家的选择并切换到对应的分支
-- **对话状态**：管理对话的状态和进度
+- **对话状态**：通过 DialogueHistory 管理对话的状态和进度
+- **打字机效果**：通过 TypewriterState 实现文本逐字显示效果
 
 ### 7.3 性能优化
 
 - **文本缓存**：缓存对话文本，减少解析时间
 - **立绘缓存**：缓存角色立绘，减少加载时间
 - **批处理**：批量处理对话渲染，提高性能
+- **增量编译**：支持 .gscript 文件的增量编译，减少重复编译时间
 
 ## 8. 与 GG 元引擎的集成
 

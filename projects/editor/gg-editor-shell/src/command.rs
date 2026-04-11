@@ -2,6 +2,8 @@
 //!
 //! 提供可撤销/重做的命令 trait 和命令管理器。
 
+use std::collections::HashMap;
+
 use crate::context::EditorContext;
 use gg_core::{GError, GErrorKind, GResult};
 

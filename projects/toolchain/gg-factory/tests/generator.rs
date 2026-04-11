@@ -4,7 +4,6 @@ use gg_manifest::{
     DisplaySection, EngineManifest, EngineSection, GameType, ModulesSection, PlatformEntry,
     ToolchainSection,
 };
-use std::path::Path;
 
 fn make_visual_novel_manifest() -> EngineManifest {
     EngineManifest {

@@ -1,0 +1,29 @@
+{
+  "name": "Enemy",
+  "components": [
+    {
+      "type": "Enemy",
+      "data": {
+        "position": [0, 0],
+        "velocity": [0, 1.0],
+        "health": 50,
+        "damage": 10,
+        "speed": 1.0,
+        "pattern": "Straight"
+      }
+    },
+    {
+      "type": "Collider",
+      "data": {
+        "radius": 15.0
+      }
+    },
+    {
+      "type": "Sprite",
+      "data": {
+        "path": "sprites/enemy.png",
+        "size": [30, 30]
+      }
+    }
+  ]
+}

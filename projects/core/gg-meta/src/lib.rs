@@ -334,66 +334,66 @@ mod tests_meta_generator {
 
     #[test]
     fn test_default_type_map() {
-        let gen = MetaGenerator::new();
+        let generator = MetaGenerator::new();
 
-        assert_eq!(gen.get_asset_type("png"), "Texture");
-        assert_eq!(gen.get_asset_type("jpg"), "Texture");
-        assert_eq!(gen.get_asset_type("jpeg"), "Texture");
-        assert_eq!(gen.get_asset_type("bmp"), "Texture");
-        assert_eq!(gen.get_asset_type("webp"), "Texture");
+        assert_eq!(generator.get_asset_type("png"), "Texture");
+        assert_eq!(generator.get_asset_type("jpg"), "Texture");
+        assert_eq!(generator.get_asset_type("jpeg"), "Texture");
+        assert_eq!(generator.get_asset_type("bmp"), "Texture");
+        assert_eq!(generator.get_asset_type("webp"), "Texture");
 
-        assert_eq!(gen.get_asset_type("wav"), "Audio");
-        assert_eq!(gen.get_asset_type("mp3"), "Audio");
-        assert_eq!(gen.get_asset_type("ogg"), "Audio");
-        assert_eq!(gen.get_asset_type("flac"), "Audio");
+        assert_eq!(generator.get_asset_type("wav"), "Audio");
+        assert_eq!(generator.get_asset_type("mp3"), "Audio");
+        assert_eq!(generator.get_asset_type("ogg"), "Audio");
+        assert_eq!(generator.get_asset_type("flac"), "Audio");
 
-        assert_eq!(gen.get_asset_type("ttf"), "Font");
-        assert_eq!(gen.get_asset_type("otf"), "Font");
-        assert_eq!(gen.get_asset_type("woff"), "Font");
-        assert_eq!(gen.get_asset_type("woff2"), "Font");
+        assert_eq!(generator.get_asset_type("ttf"), "Font");
+        assert_eq!(generator.get_asset_type("otf"), "Font");
+        assert_eq!(generator.get_asset_type("woff"), "Font");
+        assert_eq!(generator.get_asset_type("woff2"), "Font");
 
-        assert_eq!(gen.get_asset_type("v"), "Script");
-        assert_eq!(gen.get_asset_type("vx"), "Script");
-        assert_eq!(gen.get_asset_type("gscript"), "Script");
+        assert_eq!(generator.get_asset_type("v"), "Script");
+        assert_eq!(generator.get_asset_type("vx"), "Script");
+        assert_eq!(generator.get_asset_type("gscript"), "Script");
 
-        assert_eq!(gen.get_asset_type("glsl"), "Shader");
-        assert_eq!(gen.get_asset_type("vert"), "Shader");
-        assert_eq!(gen.get_asset_type("frag"), "Shader");
-        assert_eq!(gen.get_asset_type("gs"), "Shader");
+        assert_eq!(generator.get_asset_type("glsl"), "Shader");
+        assert_eq!(generator.get_asset_type("vert"), "Shader");
+        assert_eq!(generator.get_asset_type("frag"), "Shader");
+        assert_eq!(generator.get_asset_type("gs"), "Shader");
 
-        assert_eq!(gen.get_asset_type("scene"), "Scene");
-        assert_eq!(gen.get_asset_type("prefab"), "Prefab");
+        assert_eq!(generator.get_asset_type("scene"), "Scene");
+        assert_eq!(generator.get_asset_type("prefab"), "Prefab");
 
-        assert_eq!(gen.get_asset_type("toml"), "Config");
-        assert_eq!(gen.get_asset_type("json"), "Config");
-        assert_eq!(gen.get_asset_type("yaml"), "Config");
-        assert_eq!(gen.get_asset_type("yml"), "Config");
+        assert_eq!(generator.get_asset_type("toml"), "Config");
+        assert_eq!(generator.get_asset_type("json"), "Config");
+        assert_eq!(generator.get_asset_type("yaml"), "Config");
+        assert_eq!(generator.get_asset_type("yml"), "Config");
 
-        assert_eq!(gen.get_asset_type("anim"), "Animation");
+        assert_eq!(generator.get_asset_type("anim"), "Animation");
 
-        assert_eq!(gen.get_asset_type("spine"), "Spine");
-        assert_eq!(gen.get_asset_type("atlas"), "Spine");
+        assert_eq!(generator.get_asset_type("spine"), "Spine");
+        assert_eq!(generator.get_asset_type("atlas"), "Spine");
 
-        assert_eq!(gen.get_asset_type("xlsx"), "Sheet");
-        assert_eq!(gen.get_asset_type("csv"), "Sheet");
-        assert_eq!(gen.get_asset_type("tsv"), "Sheet");
+        assert_eq!(generator.get_asset_type("xlsx"), "Sheet");
+        assert_eq!(generator.get_asset_type("csv"), "Sheet");
+        assert_eq!(generator.get_asset_type("tsv"), "Sheet");
     }
 
     #[test]
     fn test_register_type() {
-        let mut gen = MetaGenerator::new();
+        let mut generator = MetaGenerator::new();
 
-        assert_eq!(gen.get_asset_type("custom"), "Unknown");
+        assert_eq!(generator.get_asset_type("custom"), "Unknown");
 
-        gen.register_type("custom", "CustomType");
-        assert_eq!(gen.get_asset_type("custom"), "CustomType");
+        generator.register_type("custom", "CustomType");
+        assert_eq!(generator.get_asset_type("custom"), "CustomType");
     }
 
     #[test]
     fn test_get_asset_type_unknown() {
-        let gen = MetaGenerator::new();
-        assert_eq!(gen.get_asset_type("xyz"), "Unknown");
-        assert_eq!(gen.get_asset_type(""), "Unknown");
+        let generator = MetaGenerator::new();
+        assert_eq!(generator.get_asset_type("xyz"), "Unknown");
+        assert_eq!(generator.get_asset_type(""), "Unknown");
     }
 
     #[test]
@@ -402,8 +402,8 @@ mod tests_meta_generator {
         let file_path = dir.path().join("test.png");
         fs::write(&file_path, b"fake png data").unwrap();
 
-        let gen = MetaGenerator::new();
-        let result = gen.generate_for_file(&file_path).unwrap();
+        let generator = MetaGenerator::new();
+        let result = generator.generate_for_file(&file_path).unwrap();
 
         assert!(result);
 
@@ -422,12 +422,12 @@ mod tests_meta_generator {
         let file_path = dir.path().join("test.wav");
         fs::write(&file_path, b"fake audio").unwrap();
 
-        let gen = MetaGenerator::new();
+        let generator = MetaGenerator::new();
 
-        let first = gen.generate_for_file(&file_path).unwrap();
+        let first = generator.generate_for_file(&file_path).unwrap();
         assert!(first);
 
-        let second = gen.generate_for_file(&file_path).unwrap();
+        let second = generator.generate_for_file(&file_path).unwrap();
         assert!(!second);
     }
 
@@ -442,8 +442,8 @@ mod tests_meta_generator {
         fs::write(sub_dir.join("nested.wav"), b"audio").unwrap();
         fs::write(sub_dir.join("data.toml"), b"config").unwrap();
 
-        let gen = MetaGenerator::new();
-        let count = gen.generate_for_directory(dir.path(), true).unwrap();
+        let generator = MetaGenerator::new();
+        let count = generator.generate_for_directory(dir.path(), true).unwrap();
 
         assert_eq!(count, 3);
         assert!(dir.path().join("top.png.meta").exists());
@@ -461,8 +461,8 @@ mod tests_meta_generator {
         fs::write(dir.path().join("top.png"), b"img").unwrap();
         fs::write(sub_dir.join("nested.wav"), b"audio").unwrap();
 
-        let gen = MetaGenerator::new();
-        let count = gen.generate_for_directory(dir.path(), false).unwrap();
+        let generator = MetaGenerator::new();
+        let count = generator.generate_for_directory(dir.path(), false).unwrap();
 
         assert_eq!(count, 1);
         assert!(dir.path().join("top.png.meta").exists());
@@ -475,8 +475,8 @@ mod tests_meta_generator {
 
         fs::write(dir.path().join("existing.meta"), b"meta content").unwrap();
 
-        let gen = MetaGenerator::new();
-        let count = gen.generate_for_directory(dir.path(), false).unwrap();
+        let generator = MetaGenerator::new();
+        let count = generator.generate_for_directory(dir.path(), false).unwrap();
 
         assert_eq!(count, 0);
     }

@@ -1,0 +1,55 @@
+# Dialogue 脚本
+# 处理对话相关的逻辑
+
+using gg::ecs;
+using gg::dialogue;
+
+# 对话系统扩展
+system EnhancedDialogueSystem {
+    micro execute(world: World): Result<()> {
+        # 获取对话历史
+        let dialogue_history: dialogue::DialogueHistory = world.get_resource("DialogueHistory");
+        
+        # 处理对话逻辑
+        if dialogue_history.current_node_id != null {
+            process_dialogue_node(world, dialogue_history.current_node_id);
+        }
+        
+        # 处理选择
+        let choice_state: dialogue::ChoiceState = world.get_resource("ChoiceState");
+        if choice_state.is_active && choice_state.selected_index != null {
+            handle_choice(world, choice_state.selected_index);
+        }
+        
+        return Ok()
+    }
+}
+
+# 处理对话节点
+micro process_dialogue_node(world: World, node_id: String) {
+    # 处理对话节点逻辑
+    # 例如：根据节点 ID 执行不同的游戏逻辑
+}
+
+# 处理玩家选择
+micro handle_choice(world: World, choice_index: Int) {
+    # 获取选择状态
+    let choice_state: dialogue.ChoiceState = world.get_resource("ChoiceState");
+    
+    if choice_index < choice_state.choices.length {
+        let selected_choice: dialogue.Choice = choice_state.choices[choice_index];
+        
+        # 处理选择结果
+        process_choice_result(world, selected_choice);
+        
+        # 重置选择状态
+        choice_state.is_active = false;
+        choice_state.selected_index = null;
+    }
+}
+
+# 处理选择结果
+micro process_choice_result(world: World, choice: dialogue.Choice) {
+    # 处理选择结果逻辑
+    # 例如：更新游戏状态、触发事件等
+}

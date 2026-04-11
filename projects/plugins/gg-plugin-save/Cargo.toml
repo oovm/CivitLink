@@ -9,5 +9,7 @@ license = { workspace = true }
 gg-core = { workspace = true }
 gg-ecs = { workspace = true }
 gg-galgame-schema = { workspace = true }
+gg-render = { workspace = true }
+gg-ui = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

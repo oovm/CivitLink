@@ -1,0 +1,81 @@
+# GameState 脚本
+# 处理游戏状态相关的逻辑
+
+using gg::ecs;
+
+# 游戏状态组件
+component GameState {
+    variables: Map<String, Any>,
+    flags: Set<String>,
+    day: Int,
+    time: String,
+    game_over: Bool
+}
+
+# 游戏状态系统
+system GameStateSystem {
+    micro name(): String {
+        return "game_state_system"
+    }
+    
+    micro execute(world: World): Result<()> {
+        # 获取游戏状态
+        let game_state_query: Query<GameState> = world.query("GameState");
+        for entity, game_state in game_state_query.iter() {
+            # 更新游戏状态
+            update_game_state(game_state);
+        }
+        
+        return Ok()
+    }
+}
+
+# 更新游戏状态
+micro update_game_state(game_state: GameState) {
+    # 更新游戏时间
+    update_game_time(game_state);
+    
+    # 检查游戏结束条件
+    check_game_over(game_state);
+    
+    # 处理其他游戏状态更新
+    process_game_events(game_state);
+}
+
+# 更新游戏时间
+micro update_game_time(game_state: GameState) {
+    # 这里可以添加游戏时间更新逻辑
+    # 例如：根据游戏内时间流逝更新 day 和 time 字段
+}
+
+# 检查游戏结束条件
+micro check_game_over(game_state: GameState) {
+    # 这里可以添加游戏结束条件检查
+    # 例如：检查玩家生命值、任务完成状态等
+}
+
+# 处理游戏事件
+micro process_game_events(game_state: GameState) {
+    # 这里可以添加游戏事件处理逻辑
+    # 例如：处理触发的游戏事件、更新游戏变量等
+}
+
+# 设置游戏变量
+micro set_game_variable(game_state: GameState, key: String, value: Any) {
+    game_state.variables[key] = value;
+}
+
+# 获取游戏变量
+micro get_game_variable(game_state: GameState, key: String): Any {
+    return game_state.variables.get(key);
+}
+
+# 设置游戏标志
+micro set_game_flag(game_state: GameState, flag: String) {
+    game_state.flags.add(flag);
+}
+
+# 检查游戏标志
+micro has_game_flag(game_state: GameState, flag: String): Bool {
+    return game_state.flags.has(flag);
+}

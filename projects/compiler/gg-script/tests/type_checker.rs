@@ -20,12 +20,10 @@ fn parse_and_check(source: &str) -> Vec<gg_script::type_checker::TypeDiagnostic>
 
 #[test]
 fn test_bool_literal_type() {
-    let source = r#"
-        micro test() {
-            let x = true
-            let y = false
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = true;
+    let y = false;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "Expected no diagnostics for bool literals, got: {:?}", diags);
@@ -33,11 +31,9 @@ fn test_bool_literal_type() {
 
 #[test]
 fn test_string_literal_type() {
-    let source = r#"
-        micro test() {
-            let x = "hello"
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = "hello";
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "Expected no diagnostics for string literals, got: {:?}", diags);
@@ -45,11 +41,9 @@ fn test_string_literal_type() {
 
 #[test]
 fn test_integer_literal_inferred_as_int() {
-    let source = r#"
-        micro test() {
-            let x = 42
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = 42;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "Expected no diagnostics for integer literals, got: {:?}", diags);
@@ -57,11 +51,9 @@ fn test_integer_literal_inferred_as_int() {
 
 #[test]
 fn test_float_literal_inferred_as_float() {
-    let source = r#"
-        micro test() {
-            let x = 3.14
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = 3.14;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "Expected no diagnostics for float literals, got: {:?}", diags);
@@ -69,13 +61,11 @@ fn test_float_literal_inferred_as_float() {
 
 #[test]
 fn test_arithmetic_binary_int() {
-    let source = r#"
-        micro test() {
-            let x = 10
-            let y = 5
-            let z = x + y
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = 10;
+    let y = 5;
+    let z = x + y;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "Expected no diagnostics for int arithmetic, got: {:?}", diags);
@@ -83,13 +73,11 @@ fn test_arithmetic_binary_int() {
 
 #[test]
 fn test_arithmetic_binary_float() {
-    let source = r#"
-        micro test() {
-            let x = 1.5
-            let y = 2.5
-            let z = x + y
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = 1.5;
+    let y = 2.5;
+    let z = x + y;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "Expected no diagnostics for float arithmetic, got: {:?}", diags);
@@ -97,13 +85,11 @@ fn test_arithmetic_binary_float() {
 
 #[test]
 fn test_comparison_returns_bool() {
-    let source = r#"
-        micro test() {
-            let x = 10
-            let y = 5
-            let z = x > y
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = 10;
+    let y = 5;
+    let z = x > y;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "Expected no diagnostics for comparison, got: {:?}", diags);
@@ -111,13 +97,11 @@ fn test_comparison_returns_bool() {
 
 #[test]
 fn test_logical_operators_require_bool() {
-    let source = r#"
-        micro test() {
-            let x = true
-            let y = false
-            let z = x && y
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = true;
+    let y = false;
+    let z = x && y;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "Expected no diagnostics for logical ops on bools, got: {:?}", diags);
@@ -125,13 +109,11 @@ fn test_logical_operators_require_bool() {
 
 #[test]
 fn test_logical_operator_with_non_bool() {
-    let source = r#"
-        micro test() {
-            let x = 10
-            let y = true
-            let z = x && y
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = 10;
+    let y = true;
+    let z = x && y;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(!diags.is_empty(), "Expected diagnostics for logical op with non-bool");
@@ -141,12 +123,10 @@ fn test_logical_operator_with_non_bool() {
 
 #[test]
 fn test_unary_negate_numeric() {
-    let source = r#"
-        micro test() {
-            let x = 10
-            let y = -x
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = 10;
+    let y = -x;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "Expected no diagnostics for negating int, got: {:?}", diags);
@@ -154,12 +134,10 @@ fn test_unary_negate_numeric() {
 
 #[test]
 fn test_unary_not_bool() {
-    let source = r#"
-        micro test() {
-            let x = true
-            let y = !x
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = true;
+    let y = !x;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "Expected no diagnostics for NOT on bool, got: {:?}", diags);
@@ -167,12 +145,10 @@ fn test_unary_not_bool() {
 
 #[test]
 fn test_unary_not_non_bool() {
-    let source = r#"
-        micro test() {
-            let x = 10
-            let y = !x
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = 10;
+    let y = !x;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(!diags.is_empty(), "Expected diagnostics for NOT on non-bool");
@@ -182,13 +158,11 @@ fn test_unary_not_non_bool() {
 
 #[test]
 fn test_if_condition_must_be_bool() {
-    let source = r#"
-        micro test() {
-            if (10) {
-                print("oops")
-            }
-        }
-    "#;
+    let source = r#"micro test() {
+    if 10 {
+        print("oops");
+    }
+}"#;
 
     let diags = parse_and_check(source);
     assert!(!diags.is_empty(), "Expected diagnostics for non-bool if condition");
@@ -198,13 +172,11 @@ fn test_if_condition_must_be_bool() {
 
 #[test]
 fn test_if_condition_bool_ok() {
-    let source = r#"
-        micro test() {
-            if (true) {
-                print("ok")
-            }
-        }
-    "#;
+    let source = r#"micro test() {
+    if true {
+        print("ok");
+    }
+}"#;
 
     let diags = parse_and_check(source);
     let if_errors: Vec<_> = diags.iter().filter(|d| d.message.contains("If condition")).collect();
@@ -213,15 +185,13 @@ fn test_if_condition_bool_ok() {
 
 #[test]
 fn test_function_signature_checking() {
-    let source = r#"
-        micro add(a, b) {
-            return a + b
-        }
+    let source = r#"micro add(a, b) {
+    return a + b;
+}
 
-        micro test() {
-            let result = add(1, 2)
-        }
-    "#;
+micro test() {
+    let result = add(1, 2);
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "Expected no diagnostics for correct function call, got: {:?}", diags);
@@ -229,15 +199,13 @@ fn test_function_signature_checking() {
 
 #[test]
 fn test_function_wrong_arg_count() {
-    let source = r#"
-        micro add(a, b) {
-            return a + b
-        }
+    let source = r#"micro add(a, b) {
+    return a + b;
+}
 
-        micro test() {
-            let result = add(1)
-        }
-    "#;
+micro test() {
+    let result = add(1);
+}"#;
 
     let diags = parse_and_check(source);
     assert!(!diags.is_empty(), "Expected diagnostics for wrong argument count");
@@ -247,12 +215,10 @@ fn test_function_wrong_arg_count() {
 
 #[test]
 fn test_gradual_typing_no_annotations_no_errors() {
-    let source = r#"
-        micro test() {
-            let x = something_unknown
-            let y = x + other_thing
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = something_unknown;
+    let y = x + other_thing;
+}"#;
 
     let diags = parse_and_check(source);
     let type_mismatch_errors: Vec<_> = diags
@@ -264,13 +230,11 @@ fn test_gradual_typing_no_annotations_no_errors() {
 
 #[test]
 fn test_gradual_typing_unknown_no_binary_error() {
-    let source = r#"
-        micro test() {
-            let x = unknown_var
-            let y = 10
-            let z = x + y
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = unknown_var;
+    let y = 10;
+    let z = x + y;
+}"#;
 
     let diags = parse_and_check(source);
     let binary_errors: Vec<_> = diags
@@ -282,13 +246,11 @@ fn test_gradual_typing_unknown_no_binary_error() {
 
 #[test]
 fn test_type_mismatch_comparison() {
-    let source = r#"
-        micro test() {
-            let x = 10
-            let y = true
-            let z = x > y
-        }
-    "#;
+    let source = r#"micro test() {
+    let x = 10;
+    let y = true;
+    let z = x > y;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(!diags.is_empty(), "Expected diagnostics for comparison between different types");
@@ -298,11 +260,9 @@ fn test_type_mismatch_comparison() {
 
 #[test]
 fn test_return_type_mismatch() {
-    let source = r#"
-        micro test() {
-            return 10
-        }
-    "#;
+    let source = r#"micro test() {
+    return 10;
+}"#;
 
     let diags = parse_and_check(source);
     assert!(diags.is_empty(), "No return type annotation means no return type error, got: {:?}", diags);
@@ -310,15 +270,13 @@ fn test_return_type_mismatch() {
 
 #[test]
 fn test_namespace_items_checked() {
-    let source = r#"
-        namespace Game {
-            micro start() {
-                if (10) {
-                    print("bad")
-                }
-            }
+    let source = r#"namespace Game {
+    micro start() {
+        if 10 {
+            print("bad");
         }
-    "#;
+    }
+}"#;
 
     let diags = parse_and_check(source);
     assert!(!diags.is_empty(), "Expected diagnostics for namespace inner items");
@@ -367,14 +325,12 @@ fn test_diagnostic_severity_display() {
 
 #[test]
 fn test_loop_condition_must_be_bool() {
-    let source = r#"
-        micro test() {
-            let i = 0
-            loop (10) {
-                let i = i + 1
-            }
-        }
-    "#;
+    let source = r#"micro test() {
+    let i = 0;
+    loop (10) {
+        let i = i + 1;
+    }
+}"#;
 
     let diags = parse_and_check(source);
     assert!(!diags.is_empty(), "Expected diagnostics for non-bool loop condition");

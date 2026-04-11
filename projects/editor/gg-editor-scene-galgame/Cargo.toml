@@ -1,5 +1,5 @@
 [package]
-name = "gg-galgame-schema"
+name = "gg-editor-scene-galgame"
 version = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }

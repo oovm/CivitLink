@@ -15,7 +15,7 @@ pub mod window_manager;
 
 pub use build::{BuildConfig, GenerateContext, PackageContext, Platform, RunContext};
 pub use fs::{DirEntry, FileMetadata, FileSystem, FileType};
-pub use input::{Input, InputEvent, KeyCode, KeyState, PointerAction, PointerButton};
+pub use input::{GamepadAxis, GamepadButton, GamepadId, Input, InputEvent, KeyCode, KeyState, PointerAction, PointerButton};
 pub use runtime::RuntimePlatform;
 pub use services::PlatformServices;
 pub use thread::RuntimeThread;

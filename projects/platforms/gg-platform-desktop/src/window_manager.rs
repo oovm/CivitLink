@@ -91,7 +91,7 @@ impl WindowManager for DesktopWindowManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gg_core::platform::{Window, WindowManager};
+    use gg_core::platform::WindowManager;
 
     #[test]
     fn test_create_window_manager() {

@@ -167,7 +167,7 @@ impl DesktopInput {
             return events;
         };
         while let Some(gilrs::Event { id, event, .. }) = gilrs.next_event() {
-            let gamepad_id = GamepadId(id as u32);
+            let gamepad_id = GamepadId(usize::from(id) as u32);
             match event {
                 gilrs::EventType::ButtonPressed(button, _) => {
                     if let Some(gp_button) = Self::gilrs_button_to_gamepad(button) {

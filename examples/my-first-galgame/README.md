@@ -7,21 +7,14 @@
 ```
 my-first-galgame/
 ├── assets/           # 资源目录
-│   ├── audio/        # 音频资源
-│   │   ├── bgm/      # 背景音乐
-│   │   └── sfx/      # 音效
-│   ├── graphics/     # 图形资源
-│   │   ├── sprites/  # 精灵
-│   │   ├── backgrounds/ # 背景
-│   │   └── ui/       # UI 资源
+│   ├── backgrounds/  # 背景图片
+│   ├── portraits/    # 角色立绘
 │   ├── scripts/      # 脚本文件
-│   └── scenes/       # 场景配置
+│   │   └── start.gscript  # 对话脚本
 ├── src/              # 源代码目录
 │   ├── components/   # ECS 组件
-│   ├── systems/      # ECS 系统
 │   ├── resources/    # ECS 资源
-│   └── utils/        # 工具函数
-├── config/           # 配置文件
+│   └── systems/      # ECS 系统
 ├── README.md         # 项目说明
 └── game.toml         # 引擎配置
 ```
@@ -49,26 +42,47 @@ my-first-galgame/
 
 ### 添加新对话
 
-1. 在 `assets/scripts/start.valkyrie` 文件中，找到 `DialogueData` 资源
-2. 在 `nodes` 对象中添加新的对话节点
-3. 每个节点包含以下属性：
-   - `text`：对话文本
-   - `speaker`：说话者名称
-   - `portrait`：角色立绘名称
-   - `expression`：角色表情
-   - `position`：立绘位置
-   - `choices`：选择项数组
-   - `next`：下一个节点 ID
+1. 在 `assets/scripts/start.gscript` 文件中，添加新的对话节点
+2. 使用以下格式编写对话：
+   - `@node node_id`：定义新节点
+   - `[speaker:character_id]`：指定说话者
+   - 对话文本：直接写在说话者后面
+   - `+ 选项文本 -> target_node_id`：添加选择项
+   - `-> target_node_id`：指定跳转目标
+   - `[command:args]`：添加内联命令
+
+   示例：
+   ```gscript
+   @node start
+   [speaker:sakura]
+   你好，欢迎来到我的游戏！
+   + 你好 -> hello
+   + 再见 -> goodbye
+
+   @node hello
+   [speaker:sakura]
+   很高兴见到你！
+   -> end
+
+   @node goodbye
+   [speaker:sakura]
+   再见，希望你玩得开心！
+   -> end
+
+   @node end
+   [speaker:narrator]
+   游戏结束
+   ```
 
 ### 添加新角色
 
-1. 在 `assets/graphics/sprites/` 目录中添加角色立绘
-2. 在对话节点中引用这些立绘
+1. 在 `assets/portraits/` 目录中添加角色立绘
+2. 在 `start.gscript` 文件中使用 `[show_portrait:character_id:expression:position]` 命令显示角色立绘
 
 ### 添加新场景
 
-1. 在 `assets/graphics/backgrounds/` 目录中添加背景图片
-2. 在 `Scene` 组件中引用这些背景
+1. 在 `assets/backgrounds/` 目录中添加背景图片
+2. 在 `start.gscript` 文件中使用 `[change_background:background_path]` 命令切换背景
 
 ## 技术说明
 

@@ -6,3 +6,4 @@
 pub mod manager;
 pub mod plugin;
 pub mod systems;
+pub mod ui;

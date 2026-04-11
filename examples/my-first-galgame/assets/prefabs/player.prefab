@@ -37,6 +37,14 @@ PrefabFile({
                         health: 100,
                     }),
                 }),
+                Component({
+                    type: "Script",
+                    properties: ScriptProperties({
+                        path: "assets/scripts/start.valkyrie",
+                        class_name: "PlayerController",
+                        enabled: true,
+                    }),
+                }),
             ],
         }),
     ],
@@ -45,6 +53,10 @@ PrefabFile({
         Dependency({
             path: "assets/graphics/sprites/player.png",
             guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0001",
+        }),
+        Dependency({
+            path: "assets/scripts/start.valkyrie",
+            guid: "018dc3f0-82c9-7d1a-8c3a-9d8b7e6f0002",
         }),
     ],
     references: [],

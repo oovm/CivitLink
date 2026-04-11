@@ -1,5 +1,5 @@
 //! gs AST → naga IR 转换器
-//! 
+//!
 //! 将 gs 语言的类型化 AST 转换为 naga IR 中间表示，
 //! 支持顶点着色器、片段着色器、计算着色器和 uniforms。
 
@@ -7,6 +7,8 @@ use std::collections::HashMap;
 
 use gg_core::{GError, GErrorKind, GResult};
 use naga;
+
+#[cfg(feature = "valkyrie-compiler")]
 use oak_valkyrie::ast::{ShaderDeclaration, StatementNode, MicroDeclaration, NamespaceDeclaration};
 
 /// gs AST → naga IR 转换器
@@ -33,6 +35,7 @@ impl GslLowerer {
     }
 
     /// 将 oak-valkyrie 的 Shader AST 转换为 naga Module
+    #[cfg(feature = "valkyrie-compiler")]
     pub fn lower(&mut self, shader: &ShaderDeclaration) -> GResult<naga::Module> {
         self.local_vars.clear();
         self.global_vars.clear();
@@ -45,17 +48,16 @@ impl GslLowerer {
 
         for item in &shader.items {
             match item {
-                StatementNode::Micro(micro) => {
+                StatementNode::Micro(_micro) => {
                 }
-                StatementNode::Namespace(namespace) => {
+                StatementNode::Namespace(_namespace) => {
                 }
-                StatementNode::Statement(stmt) => {
+                StatementNode::Statement(_stmt) => {
                 }
                 _ => {}
             }
         }
 
-        // 创建 uniform 缓冲区
         let uniform_buffer_members = self.create_uniform_buffer_members(&uniforms, &mut module)?;
         let uniform_buffer_ty = if !uniform_buffer_members.is_empty() {
             let ty = module.types.insert(
@@ -88,7 +90,6 @@ impl GslLowerer {
             None
         };
 
-        // 处理 functions
         for func in &functions {
             let entry_point = self.lower_entry_point(func, &mut module, uniform_buffer_ty)?;
             module.entry_points.push(entry_point);
@@ -98,39 +99,32 @@ impl GslLowerer {
     }
 
     /// 创建 uniform 缓冲区结构体成员
+    #[cfg(feature = "valkyrie-compiler")]
     fn create_uniform_buffer_members(
         &mut self,
         uniforms: &Vec<()>,
         module: &mut naga::Module,
     ) -> GResult<Vec<naga::StructMember>> {
-        let mut members = Vec::new();
-        let mut offset = 0u32;
-
-        // TODO: 从 oak-valkyrie 的 AST 中提取 uniform 成员
-        // 目前返回空的成员列表
+        let _ = (uniforms, module);
+        let members = Vec::new();
 
         Ok(members)
     }
 
     /// 将函数转换为 naga EntryPoint
+    #[cfg(feature = "valkyrie-compiler")]
     fn lower_entry_point(
         &mut self,
         func: &(),
         module: &mut naga::Module,
         _uniform_buffer_ty: Option<naga::Handle<naga::Type>>,
     ) -> GResult<naga::EntryPoint> {
+        let _ = (func, module);
         self.local_vars.clear();
 
-        // TODO: 从 oak-valkyrie 的 AST 中提取函数信息
         let stage = naga::ShaderStage::Vertex;
         let mut function = naga::Function::default();
         function.name = Some("vertex".to_string());
-
-        // TODO: 处理函数参数
-
-        // TODO: 处理返回类型
-
-        // TODO: 处理函数体
 
         Ok(naga::EntryPoint {
             name: "vertex".to_string(),

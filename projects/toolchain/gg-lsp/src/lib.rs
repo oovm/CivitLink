@@ -22,15 +22,129 @@ pub use semantic::{
 };
 
 #[cfg(feature = "lsp")]
+mod lang {
+    use oak_core::language::{
+        ElementRole, ElementType, Language, LanguageCategory, TokenRole, TokenType,
+        UniversalElementRole, UniversalTokenRole,
+    };
+    use std::hash::Hash;
+
+    /// Valkyrie 语言的 token 类型。
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+    pub enum ValkyrieToken {
+        /// 输入流结束
+        Eof,
+        /// 关键字
+        Keyword,
+        /// 标识符
+        Ident,
+        /// 字符串字面量
+        String,
+        /// 数字字面量
+        Number,
+        /// 注释
+        Comment,
+        /// 标点符号
+        Punct,
+        /// 空白字符
+        Whitespace,
+        /// 未知
+        Unknown,
+    }
+
+    impl TokenType for ValkyrieToken {
+        type Role = UniversalTokenRole;
+
+        const END_OF_STREAM: Self = Self::Eof;
+
+        fn role(&self) -> Self::Role {
+            match self {
+                Self::Eof => UniversalTokenRole::Eof,
+                Self::Keyword => UniversalTokenRole::Keyword,
+                Self::Ident => UniversalTokenRole::Name,
+                Self::String | Self::Number => UniversalTokenRole::Literal,
+                Self::Comment => UniversalTokenRole::Comment,
+                Self::Punct => UniversalTokenRole::Punctuation,
+                Self::Whitespace => UniversalTokenRole::Whitespace,
+                Self::Unknown => UniversalTokenRole::Error,
+            }
+        }
+    }
+
+    /// Valkyrie 语言的元素类型。
+    #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+    pub enum ValkyrieElement {
+        /// 根节点
+        Root,
+        /// 命名空间
+        Namespace,
+        /// 函数定义
+        Function,
+        /// 变量绑定
+        Binding,
+        /// 引用
+        Reference,
+        /// 语句
+        Statement,
+        /// 表达式
+        Expression,
+        /// 调用
+        Call,
+        /// 类型标注
+        Typing,
+        /// 参数
+        Parameter,
+        /// 错误节点
+        Error,
+    }
+
+    impl ElementType for ValkyrieElement {
+        type Role = UniversalElementRole;
+
+        fn role(&self) -> Self::Role {
+            match self {
+                Self::Root => UniversalElementRole::Root,
+                Self::Namespace => UniversalElementRole::Container,
+                Self::Function => UniversalElementRole::Definition,
+                Self::Binding => UniversalElementRole::Binding,
+                Self::Reference => UniversalElementRole::Reference,
+                Self::Statement => UniversalElementRole::Statement,
+                Self::Expression => UniversalElementRole::Expression,
+                Self::Call => UniversalElementRole::Call,
+                Self::Typing => UniversalElementRole::Typing,
+                Self::Parameter => UniversalElementRole::Detail,
+                Self::Error => UniversalElementRole::Error,
+            }
+        }
+    }
+
+    /// Valkyrie 语言定义。
+    #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+    pub struct ValkyrieLang;
+
+    impl Language for ValkyrieLang {
+        const NAME: &'static str = "valkyrie";
+        const CATEGORY: LanguageCategory = LanguageCategory::Programming;
+        type TokenType = ValkyrieToken;
+        type ElementType = ValkyrieElement;
+        type TypedRoot = ();
+    }
+}
+
+#[cfg(feature = "lsp")]
 use {
     core::range::Range,
     futures::Future,
+    oak_core::source::Source,
     oak_core::tree::RedNode,
     oak_lsp::service::LanguageService,
     oak_lsp::types::Hover as LspHover,
     oak_vfs::Vfs,
     std::sync::Mutex,
 };
+
+#[cfg(feature = "lsp")]
+pub use lang::ValkyrieLang;
 
 #[cfg(feature = "lsp")]
 /// Language service implementation for GG Engine.
@@ -63,15 +177,16 @@ impl<V: Vfs> GgLanguageService<V> {
 
     /// 分析指定 URI 的源码，返回语义分析结果。
     pub fn analyze_source(&self, uri: &str) -> Option<SemanticResult> {
-        let source = self.vfs.get_source(uri)?.read().to_string();
+        let src = self.vfs.get_source(uri)?;
+        let text = src.get_text_in(Range::new(0, src.length())).into_owned();
         let mut analyzer = self.analyzer.lock().ok()?;
-        Some(analyzer.analyze(&source))
+        Some(analyzer.analyze(&text))
     }
 }
 
 #[cfg(feature = "lsp")]
 impl<V: Vfs + Send + Sync + 'static + oak_vfs::WritableVfs> LanguageService for GgLanguageService<V> {
-    type Lang = ();
+    type Lang = ValkyrieLang;
     type Vfs = V;
     fn vfs(&self) -> &Self::Vfs {
         &self.vfs
@@ -83,10 +198,10 @@ impl<V: Vfs + Send + Sync + 'static + oak_vfs::WritableVfs> LanguageService for 
         async move { None }
     }
     fn hover(&self, uri: &str, range: Range<usize>) -> impl Future<Output = Option<LspHover>> + Send + '_ {
-        let source = self.vfs.get_source(uri).map(|s| s.read().to_string());
+        let src = self.vfs.get_source(uri).map(|s| s.get_text_in(Range::new(0, s.length())).into_owned());
         let analyzer = self.analyzer.lock().ok();
         async move {
-            let source = source?;
+            let source = src?;
             let analyzer = analyzer?;
             let start = range.start;
             let mut line = 0;
@@ -106,7 +221,7 @@ impl<V: Vfs + Send + Sync + 'static + oak_vfs::WritableVfs> LanguageService for 
             let hover_info = analyzer.get_hover_info(line, col, &source)?;
             Some(LspHover {
                 contents: hover_info.contents,
-                range: hover_info.range.map(|(s, e)| core::range::Range::new(s, e)),
+                range: hover_info.range.map(|(s, e)| Range::new(s, e)),
             })
         }
     }

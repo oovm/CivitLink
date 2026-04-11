@@ -279,6 +279,8 @@ impl EditorRenderer {
             WindowEvent::CloseRequested => {}
             WindowEvent::Focused => {}
             WindowEvent::Unfocused => {}
+            WindowEvent::WindowCreated { .. } => {}
+            WindowEvent::WindowDestroyed { .. } => {}
         }
     }
 }

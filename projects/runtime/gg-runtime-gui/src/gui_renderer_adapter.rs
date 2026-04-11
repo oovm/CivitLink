@@ -1,13 +1,14 @@
 use std::{
     cell::RefCell,
+    collections::HashMap,
     rc::Rc,
-    sync::Arc,
+    sync::{Arc, RwLock},
 };
 
 use gg_render::{Color, RenderContext, Renderer};
 use gg_ui::{FontStyle, LayoutStyle, SizeValue, Style, UiNodeData, UiNodeId, UiRenderer, UiTree};
 
-use crate::{GuiEvent, GuiRenderer, TemplateNode, VxComponent};
+use crate::{EventContext, EventPhase, GuiEvent, GuiRenderer, TemplateNode, VxComponent};
 
 /// GUI 渲染器适配器
 ///
@@ -16,8 +17,8 @@ use crate::{GuiEvent, GuiRenderer, TemplateNode, VxComponent};
 /// 再通过 UiRenderer 生成 DrawCommand 提交给 Renderer。
 ///
 /// 同时提供事件桥接功能：平台输入事件通过 `push_event` 进入待处理队列，
-/// `process_events` 对事件进行分类和命中测试后转入已处理队列，
-/// 外部运行时通过 `drain_events` 取回已处理事件并分发到组件。
+/// `process_events` 对事件进行命中测试后按照 DOM 标准的
+/// 捕获-目标-冒泡三阶段模型分发到组件树。
 pub struct GuiRendererAdapter {
     /// 平台渲染器引用
     renderer: Rc<RefCell<dyn Renderer>>,
@@ -33,6 +34,8 @@ pub struct GuiRendererAdapter {
     processed_events: Vec<GuiEvent>,
     /// 当前聚焦的节点 ID
     focused_node: Option<UiNodeId>,
+    /// UiNodeId 到子组件的映射（根组件通过 process_events 参数传入）
+    component_map: HashMap<UiNodeId, Arc<RwLock<dyn VxComponent>>>,
 }
 
 unsafe impl Send for GuiRendererAdapter {}
@@ -52,6 +55,7 @@ impl GuiRendererAdapter {
             pending_events: Vec::new(),
             processed_events: Vec::new(),
             focused_node: None,
+            component_map: HashMap::new(),
         }
     }
 
@@ -133,15 +137,44 @@ impl GuiRendererAdapter {
             self.hit_test_node(child_id, x, y, hit);
         }
     }
+
+    /// 构建从根节点到指定节点的路径
+    ///
+    /// 返回从根到目标的 UiNodeId 向量（含两端）。
+    /// 如果指定节点不存在或树为空，返回空向量。
+    pub fn find_node_path(&self, target_id: UiNodeId) -> Vec<UiNodeId> {
+        let mut path = vec![target_id];
+        let mut current = target_id;
+        while let Some(node) = self.ui_tree.get(current) {
+            match node.parent {
+                Some(parent_id) => {
+                    path.push(parent_id);
+                    current = parent_id;
+                }
+                None => break,
+            }
+        }
+        path.reverse();
+        path
+    }
 }
 
 impl GuiRenderer for GuiRendererAdapter {
-    fn render(&self, component: Arc<dyn VxComponent>) {
+    fn render(&mut self, component: Arc<dyn VxComponent>) {
         let template = component.render_template();
-        let ui_tree = template_node_to_ui_tree(&template);
+        let mut tree = UiTree::new();
+        let mut component_map = HashMap::new();
+
+        let comp_children = component.children();
+        if let Some(root_id) = convert_node_mapped(&template, &mut tree, &comp_children, &mut component_map) {
+            tree.set_root(root_id);
+        }
+
+        self.ui_tree = tree;
+        self.component_map = component_map;
 
         let mut render_context = RenderContext::new(self.viewport_width, self.viewport_height);
-        UiRenderer::render(&ui_tree, &mut render_context);
+        UiRenderer::render(&self.ui_tree, &mut render_context);
 
         if let Ok(mut renderer) = self.renderer.try_borrow_mut() {
             let _ = renderer.begin_frame();
@@ -151,21 +184,21 @@ impl GuiRenderer for GuiRendererAdapter {
         }
     }
 
-    fn process_events(&mut self) {
+    fn process_events(&mut self, root: Option<&Arc<RwLock<dyn VxComponent>>>) {
         let events = std::mem::take(&mut self.pending_events);
         for event in events {
-            match &event {
-                GuiEvent::MouseClick { x, y, .. } => {
-                    let _target = self.find_node_at(*x, *y);
-                }
-                GuiEvent::MouseMove { x, y } => {
-                    let _target = self.find_node_at(*x, *y);
-                }
-                GuiEvent::KeyPress { .. } | GuiEvent::TextInput { .. } => {
-                    let _target = self.focused_node;
-                }
-                GuiEvent::Custom { .. } => {}
+            let target_id = match &event {
+                GuiEvent::MouseClick { x, y, .. } => self.find_node_at(*x, *y),
+                GuiEvent::MouseMove { x, y } => self.find_node_at(*x, *y),
+                GuiEvent::KeyPress { .. } | GuiEvent::TextInput { .. } => self.focused_node,
+                GuiEvent::Custom { .. } => None,
+            };
+
+            if let (Some(target_id), Some(root_comp)) = (target_id, root) {
+                let path = self.find_node_path(target_id);
+                self.dispatch_event(&event, root_comp, &path);
             }
+
             self.processed_events.push(event);
         }
     }
@@ -177,6 +210,73 @@ impl GuiRenderer for GuiRendererAdapter {
         self.viewport_height = height;
         if let Ok(mut renderer) = self.renderer.try_borrow_mut() {
             renderer.resize(width, height);
+        }
+    }
+}
+
+impl GuiRendererAdapter {
+    /// 按照 DOM 标准三阶段模型分发事件
+    ///
+    /// 依次执行捕获阶段（根→目标父）、目标阶段、冒泡阶段（目标父→根），
+    /// 任何阶段调用 `stop_propagation` 后立即停止后续分发。
+    fn dispatch_event(
+        &self,
+        event: &GuiEvent,
+        root_comp: &Arc<RwLock<dyn VxComponent>>,
+        path: &[UiNodeId],
+    ) {
+        if path.is_empty() {
+            return;
+        }
+
+        let root_id = match self.ui_tree.root() {
+            Some(id) => id,
+            None => return,
+        };
+
+        for &node_id in &path[..path.len() - 1] {
+            let mut ctx = EventContext::new(EventPhase::Capturing);
+            self.dispatch_to_node(event, node_id, root_id, root_comp, &mut ctx);
+            if ctx.stop_propagation {
+                return;
+            }
+        }
+
+        {
+            let target_id = path[path.len() - 1];
+            let mut ctx = EventContext::new(EventPhase::AtTarget);
+            self.dispatch_to_node(event, target_id, root_id, root_comp, &mut ctx);
+            if ctx.stop_propagation {
+                return;
+            }
+        }
+
+        for &node_id in path[..path.len() - 1].iter().rev() {
+            let mut ctx = EventContext::new(EventPhase::Bubbling);
+            self.dispatch_to_node(event, node_id, root_id, root_comp, &mut ctx);
+            if ctx.stop_propagation {
+                return;
+            }
+        }
+    }
+
+    /// 将事件分发到指定 UiNodeId 对应的组件
+    fn dispatch_to_node(
+        &self,
+        event: &GuiEvent,
+        node_id: UiNodeId,
+        root_id: UiNodeId,
+        root_comp: &Arc<RwLock<dyn VxComponent>>,
+        ctx: &mut EventContext,
+    ) {
+        if node_id == root_id {
+            if let Ok(mut comp) = root_comp.write() {
+                comp.handle_event(event, ctx);
+            }
+        } else if let Some(comp) = self.component_map.get(&node_id) {
+            if let Ok(mut c) = comp.write() {
+                c.handle_event(event, ctx);
+            }
         }
     }
 }
@@ -218,6 +318,72 @@ fn convert_node(node: &TemplateNode, tree: &mut UiTree) -> Option<gg_ui::UiNodeI
             for child in children {
                 if let Some(child_id) = convert_node(child, tree) {
                     tree.add_child(id, child_id);
+                }
+            }
+            Some(id)
+        }
+    }
+}
+
+/// 将 TemplateNode 转换为 UiTree，同时构建 UiNodeId 到组件的映射
+///
+/// 与 `convert_node` 类似，但额外跟踪每个 Element 节点对应的子组件，
+/// 将映射关系记录到 `component_map` 中。
+fn convert_node_mapped(
+    node: &TemplateNode,
+    tree: &mut UiTree,
+    component_children: &[Arc<RwLock<dyn VxComponent>>],
+    component_map: &mut HashMap<UiNodeId, Arc<RwLock<dyn VxComponent>>>,
+) -> Option<gg_ui::UiNodeId> {
+    match node {
+        TemplateNode::Text(text) => {
+            if text.is_empty() {
+                return None;
+            }
+            let style = Style::new().with_font(FontStyle::new());
+            let data = UiNodeData::Text { content: text.clone() };
+            let id = tree.create_node("text", style, data);
+            Some(id)
+        }
+        TemplateNode::Element { tag, attributes, children } => {
+            let (style, node_id_attr, _node_class) = extract_attributes(attributes, tag);
+            let data = match tag.as_str() {
+                "Text" => {
+                    let content = extract_text_content(children);
+                    UiNodeData::Text { content }
+                }
+                "Image" => UiNodeData::Image { texture_id: None, size: None },
+                _ => UiNodeData::Container,
+            };
+            let label = node_id_attr.unwrap_or_else(|| tag.clone());
+            let id = tree.create_node(label, style, data);
+
+            let mut comp_child_idx = 0;
+            for child in children {
+                let child_id = match child {
+                    TemplateNode::Element { .. } => {
+                        if comp_child_idx < component_children.len() {
+                            let child_comp = &component_children[comp_child_idx];
+                            let grand_children: Vec<Arc<RwLock<dyn VxComponent>>> =
+                                match child_comp.read() {
+                                    Ok(guard) => guard.children(),
+                                    Err(_) => Vec::new(),
+                                };
+                            let cid =
+                                convert_node_mapped(child, tree, &grand_children, component_map);
+                            if let Some(cid) = cid {
+                                component_map.insert(cid, child_comp.clone());
+                            }
+                            comp_child_idx += 1;
+                            cid
+                        } else {
+                            convert_node(child, tree)
+                        }
+                    }
+                    TemplateNode::Text(_) => convert_node(child, tree),
+                };
+                if let Some(cid) = child_id {
+                    tree.add_child(id, cid);
                 }
             }
             Some(id)
@@ -738,7 +904,7 @@ mod tests {
     #[test]
     fn test_gui_renderer_adapter_render() {
         let renderer = Rc::new(RefCell::new(MockRenderer::new()));
-        let adapter = GuiRendererAdapter::new(renderer);
+        let mut adapter = GuiRendererAdapter::new(renderer);
         let text = Text::new("test", "Hello");
         let component: Arc<dyn VxComponent> = Arc::new(text);
         adapter.render(component);
@@ -748,7 +914,7 @@ mod tests {
     fn test_gui_renderer_adapter_process_events_noop() {
         let renderer = Rc::new(RefCell::new(MockRenderer::new()));
         let mut adapter = GuiRendererAdapter::new(renderer);
-        adapter.process_events();
+        adapter.process_events(None);
         let events = adapter.drain_events();
         assert!(events.is_empty());
     }
@@ -769,7 +935,7 @@ mod tests {
             y: 20.0,
             button: crate::MouseButton::Left,
         });
-        adapter.process_events();
+        adapter.process_events(None);
         let events = adapter.drain_events();
         assert_eq!(events.len(), 1);
         assert!(matches!(
@@ -786,7 +952,7 @@ mod tests {
             key: crate::Key::Enter,
             modifiers: crate::KeyModifiers::default(),
         });
-        adapter.process_events();
+        adapter.process_events(None);
         let events = adapter.drain_events();
         assert_eq!(events.len(), 1);
         assert!(matches!(
@@ -802,7 +968,7 @@ mod tests {
         adapter.push_event(GuiEvent::TextInput {
             text: "hello".to_string(),
         });
-        adapter.process_events();
+        adapter.process_events(None);
         let events = adapter.drain_events();
         assert_eq!(events.len(), 1);
         assert!(matches!(
@@ -816,7 +982,7 @@ mod tests {
         let renderer = Rc::new(RefCell::new(MockRenderer::new()));
         let mut adapter = GuiRendererAdapter::new(renderer);
         adapter.push_event(GuiEvent::MouseMove { x: 50.0, y: 60.0 });
-        adapter.process_events();
+        adapter.process_events(None);
         let events = adapter.drain_events();
         assert_eq!(events.len(), 1);
         assert!(matches!(
@@ -838,7 +1004,7 @@ mod tests {
         adapter.push_event(GuiEvent::TextInput {
             text: "a".to_string(),
         });
-        adapter.process_events();
+        adapter.process_events(None);
         let events = adapter.drain_events();
         assert_eq!(events.len(), 3);
     }
@@ -852,7 +1018,7 @@ mod tests {
             y: 2.0,
             button: crate::MouseButton::Left,
         });
-        adapter.process_events();
+        adapter.process_events(None);
         let first = adapter.drain_events();
         assert_eq!(first.len(), 1);
         let second = adapter.drain_events();
@@ -868,9 +1034,9 @@ mod tests {
             y: 2.0,
             button: crate::MouseButton::Left,
         });
-        adapter.process_events();
+        adapter.process_events(None);
         adapter.push_event(GuiEvent::MouseMove { x: 5.0, y: 6.0 });
-        adapter.process_events();
+        adapter.process_events(None);
         let events = adapter.drain_events();
         assert_eq!(events.len(), 2);
     }

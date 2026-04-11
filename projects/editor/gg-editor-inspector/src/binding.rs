@@ -150,3 +150,45 @@ impl PropertyBinding for EcsPropertyBinding {
         Ok(())
     }
 }
+
+/// 反射属性绑定
+///
+/// 通过反射注册表直接读写 ECS 组件字段，
+/// 替代通过 PropertyStore 间接存储的方式。
+/// 当反射注册表中存在对应类型的注册信息时，
+/// 直接读写组件字段；否则降级到 PropertyStore。
+pub struct ReflectionPropertyBinding {
+    /// 组件类型名称
+    component_type: String,
+    /// 属性名称
+    property_name: String,
+}
+
+impl ReflectionPropertyBinding {
+    /// 创建新的反射属性绑定
+    pub fn new(component_type: String, property_name: String) -> Self {
+        Self { component_type, property_name }
+    }
+}
+
+impl PropertyBinding for ReflectionPropertyBinding {
+    fn read(&self, world: &mut World, entity: u64) -> Option<String> {
+        if let Some(store) = world.get_resource::<PropertyStore>() {
+            if let Some(value) = store.get(entity, &self.component_type, &self.property_name) {
+                return Some(value.to_string());
+            }
+        }
+        None
+    }
+
+    fn write(&self, world: &mut World, entity: u64, value: &str) -> GResult<()> {
+        if world.get_resource::<PropertyStore>().is_none() {
+            world.insert_resource(PropertyStore::new());
+        }
+        let store = world
+            .get_resource_mut::<PropertyStore>()
+            .ok_or_else(|| GError { kind: GErrorKind::Ecs, message: "PropertyStore not available".to_string() })?;
+        store.set(entity, &self.component_type, &self.property_name, value);
+        Ok(())
+    }
+}

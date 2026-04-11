@@ -72,7 +72,12 @@ pub trait VxComponent: Any + Send + Sync {
     fn get_id(&self) -> &str;
 
     /// 处理 GUI 事件
-    fn handle_event(&mut self, event: &GuiEvent);
+    fn handle_event(&mut self, event: &GuiEvent, ctx: &mut EventContext);
+
+    /// 获取子组件列表
+    fn children(&self) -> Vec<Arc<RwLock<dyn VxComponent>>> {
+        Vec::new()
+    }
 
     /// 组件挂载时调用
     fn on_mount(&mut self) {}
@@ -157,7 +162,7 @@ impl VxComponent for DynamicVxComponent {
         &self.id
     }
 
-    fn handle_event(&mut self, _event: &GuiEvent) {}
+    fn handle_event(&mut self, _event: &GuiEvent, _ctx: &mut EventContext) {}
 
     fn on_mount(&mut self) {
         self.lifecycle = ComponentLifecycle::Mounted;
@@ -192,6 +197,40 @@ pub trait GuiComponent: Any + Send + Sync {
 
     /// 获取组件属性
     fn get_property(&self, name: &str) -> Option<PropertyValue>;
+}
+
+/// 事件传播阶段
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EventPhase {
+    /// 事件从根节点向目标节点传播
+    Capturing,
+    /// 事件到达目标组件
+    AtTarget,
+    /// 事件从目标节点向根节点传播
+    Bubbling,
+}
+
+/// 事件上下文，提供给事件处理器以支持传播控制
+pub struct EventContext {
+    /// 当前传播阶段
+    pub phase: EventPhase,
+    /// 是否应停止传播
+    pub stop_propagation: bool,
+}
+
+impl EventContext {
+    /// 为指定阶段创建新的事件上下文
+    pub fn new(phase: EventPhase) -> Self {
+        Self {
+            phase,
+            stop_propagation: false,
+        }
+    }
+
+    /// 停止此事件的进一步传播
+    pub fn stop_propagation(&mut self) {
+        self.stop_propagation = true;
+    }
 }
 
 /// GUI 事件
@@ -408,10 +447,10 @@ impl<T: Clone> Signal<T> {
 /// GUI 渲染器特质
 pub trait GuiRenderer: Send + Sync {
     /// 渲染组件树
-    fn render(&self, component: Arc<dyn VxComponent>);
+    fn render(&mut self, component: Arc<dyn VxComponent>);
 
-    /// 处理事件
-    fn process_events(&mut self);
+    /// 处理事件，接收根组件用于三阶段事件分发
+    fn process_events(&mut self, root: Option<&Arc<RwLock<dyn VxComponent>>>);
 
     /// 更新渲染器
     fn update(&mut self);
@@ -472,7 +511,7 @@ impl GuiRuntime {
     /// 处理单个帧
     pub fn update(&mut self) {
         if let Ok(mut renderer) = self.renderer.write() {
-            renderer.process_events();
+            renderer.process_events(self.root_component.as_ref());
         }
 
         if let Some(component) = &self.root_component {
@@ -484,7 +523,7 @@ impl GuiRuntime {
         if let Some(component) = &self.root_component {
             if let Ok(comp) = component.read() {
                 let cached_id = comp.get_id().to_string();
-                if let Ok(renderer) = self.renderer.read() {
+                if let Ok(mut renderer) = self.renderer.write() {
                     let arc_comp: Arc<dyn VxComponent> = Arc::new(ComponentWrapper { inner: Arc::clone(component), cached_id });
                     renderer.render(arc_comp);
                 }
@@ -524,9 +563,17 @@ impl VxComponent for ComponentWrapper {
         &self.cached_id
     }
 
-    fn handle_event(&mut self, event: &GuiEvent) {
+    fn handle_event(&mut self, event: &GuiEvent, ctx: &mut EventContext) {
         if let Ok(mut comp) = self.inner.write() {
-            comp.handle_event(event);
+            comp.handle_event(event, ctx);
+        }
+    }
+
+    fn children(&self) -> Vec<Arc<RwLock<dyn VxComponent>>> {
+        if let Ok(comp) = self.inner.read() {
+            comp.children()
+        } else {
+            Vec::new()
         }
     }
 
@@ -676,13 +723,23 @@ pub mod components {
             &self.id
         }
 
-        fn handle_event(&mut self, event: &GuiEvent) {
+        fn handle_event(&mut self, event: &GuiEvent, ctx: &mut EventContext) {
+            if ctx.stop_propagation {
+                return;
+            }
             for child in &self.children {
+                if ctx.stop_propagation {
+                    return;
+                }
                 if let Ok(mut comp) = child.write() {
-                    comp.handle_event(event);
+                    comp.handle_event(event, ctx);
                 }
             }
             let _ = event;
+        }
+
+        fn children(&self) -> Vec<Arc<RwLock<dyn VxComponent>>> {
+            self.children.clone()
         }
 
         fn on_mount(&mut self) {
@@ -768,13 +825,23 @@ pub mod components {
             &self.id
         }
 
-        fn handle_event(&mut self, event: &GuiEvent) {
+        fn handle_event(&mut self, event: &GuiEvent, ctx: &mut EventContext) {
+            if ctx.stop_propagation {
+                return;
+            }
             for child in &self.children {
+                if ctx.stop_propagation {
+                    return;
+                }
                 if let Ok(mut comp) = child.write() {
-                    comp.handle_event(event);
+                    comp.handle_event(event, ctx);
                 }
             }
             let _ = event;
+        }
+
+        fn children(&self) -> Vec<Arc<RwLock<dyn VxComponent>>> {
+            self.children.clone()
         }
 
         fn on_mount(&mut self) {
@@ -841,7 +908,7 @@ pub mod components {
             &self.id
         }
 
-        fn handle_event(&mut self, event: &GuiEvent) {
+        fn handle_event(&mut self, event: &GuiEvent, _ctx: &mut EventContext) {
             if let GuiEvent::MouseClick { .. } = event {
                 if let Some(onclick) = &self.onclick {
                     onclick();
@@ -904,7 +971,7 @@ pub mod components {
             &self.id
         }
 
-        fn handle_event(&mut self, _event: &GuiEvent) {}
+        fn handle_event(&mut self, _event: &GuiEvent, _ctx: &mut EventContext) {}
 
         fn on_mount(&mut self) {
             self.lifecycle = ComponentLifecycle::Mounted;
@@ -981,7 +1048,7 @@ pub mod components {
             &self.id
         }
 
-        fn handle_event(&mut self, event: &GuiEvent) {
+        fn handle_event(&mut self, event: &GuiEvent, _ctx: &mut EventContext) {
             if let GuiEvent::TextInput { text } = event {
                 self.value = text.clone();
                 if let Some(onchange) = &self.onchange {
@@ -1068,7 +1135,7 @@ pub mod components {
             &self.id
         }
 
-        fn handle_event(&mut self, _event: &GuiEvent) {}
+        fn handle_event(&mut self, _event: &GuiEvent, _ctx: &mut EventContext) {}
 
         fn on_mount(&mut self) {
             self.lifecycle = ComponentLifecycle::Mounted;
@@ -1131,13 +1198,23 @@ pub mod components {
             &self.id
         }
 
-        fn handle_event(&mut self, event: &GuiEvent) {
+        fn handle_event(&mut self, event: &GuiEvent, ctx: &mut EventContext) {
+            if ctx.stop_propagation {
+                return;
+            }
             for child in &self.children {
+                if ctx.stop_propagation {
+                    return;
+                }
                 if let Ok(mut comp) = child.write() {
-                    comp.handle_event(event);
+                    comp.handle_event(event, ctx);
                 }
             }
             let _ = event;
+        }
+
+        fn children(&self) -> Vec<Arc<RwLock<dyn VxComponent>>> {
+            self.children.clone()
         }
 
         fn on_mount(&mut self) {
@@ -1223,13 +1300,23 @@ pub mod components {
             &self.id
         }
 
-        fn handle_event(&mut self, event: &GuiEvent) {
+        fn handle_event(&mut self, event: &GuiEvent, ctx: &mut EventContext) {
+            if ctx.stop_propagation {
+                return;
+            }
             for child in &self.children {
+                if ctx.stop_propagation {
+                    return;
+                }
                 if let Ok(mut comp) = child.write() {
-                    comp.handle_event(event);
+                    comp.handle_event(event, ctx);
                 }
             }
             let _ = event;
+        }
+
+        fn children(&self) -> Vec<Arc<RwLock<dyn VxComponent>>> {
+            self.children.clone()
         }
 
         fn on_mount(&mut self) {
@@ -1535,7 +1622,7 @@ mod tests {
             y: 20.0,
             button: MouseButton::Left,
         };
-        comp.handle_event(&event);
+        comp.handle_event(&event, &mut EventContext::new(EventPhase::AtTarget));
     }
 
     #[test]
