@@ -290,20 +290,17 @@ impl WgpuRenderer {
         {
             for cmd in context.commands() {
                 if let DrawCommand::Text { text, font_size, .. } = cmd {
-                    let font = self
-                        .glyph_cache
-                        .font()
-                        .ok_or_else(|| GError {
-                            kind: GErrorKind::Runtime, message: "未加载字体，无法渲染文本".to_string()
-                        })?
-                        .clone();
+                    let font = match self.glyph_cache.font() {
+                        Some(f) => f.clone(),
+                        None => continue,
+                    };
 
                     let px_scale = ab_glyph::PxScale { x: *font_size, y: *font_size };
 
                     for c in text.chars() {
                         let glyph_id = font.glyph_id(c);
                         let glyph = glyph_id.with_scale(px_scale);
-                        self.glyph_cache.get_or_rasterize(glyph, &self.device, &self.queue, &mut self.texture_cache)?;
+                        let _ = self.glyph_cache.get_or_rasterize(glyph, &self.device, &self.queue, &mut self.texture_cache);
                     }
                 }
             }
@@ -1012,26 +1009,22 @@ impl Renderer for WgpuRenderer {
         {
             for cmd in context.commands() {
                 if let DrawCommand::Text { text, font_size, .. } = cmd {
-                    let font = self
-                        .glyph_cache
-                        .font()
-                        .ok_or_else(|| GError {
-                            kind: GErrorKind::Runtime, message: "未加载字体，无法渲染文本".to_string()
-                        })?
-                        .clone();
+                    let font = match self.glyph_cache.font() {
+                        Some(f) => f.clone(),
+                        None => continue,
+                    };
 
                     let px_scale = ab_glyph::PxScale { x: *font_size, y: *font_size };
 
                     for c in text.chars() {
                         let glyph_id = font.glyph_id(c);
                         let glyph = glyph_id.with_scale(px_scale);
-                        self.glyph_cache.get_or_rasterize(glyph, &self.device, &self.queue, &mut self.texture_cache)?;
+                        let _ = self.glyph_cache.get_or_rasterize(glyph, &self.device, &self.queue, &mut self.texture_cache);
                     }
                 }
             }
         }
 
-        // 阶段 2：Z 排序 - 稳定排序绘制命令
         let commands = context.commands();
         let mut indexed: Vec<IndexedCommand> = commands
             .iter()

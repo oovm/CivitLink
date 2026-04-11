@@ -194,10 +194,13 @@ impl EditorRenderer {
 
         UiRenderer::render(ui_tree, &mut context);
 
-        self.renderer.draw(&context)?;
-        self.renderer.present()?;
+        let draw_result = self.renderer.draw(&context);
+        let present_result = self.renderer.present();
 
         self.last_frame_time = Instant::now();
+
+        draw_result?;
+        present_result?;
 
         Ok(())
     }
@@ -231,10 +234,13 @@ impl EditorRenderer {
 
         UiRenderer::render(ui_tree, &mut context);
 
-        self.renderer.draw(&context)?;
-        self.renderer.present()?;
+        let draw_result = self.renderer.draw(&context);
+        let present_result = self.renderer.present();
 
         self.last_frame_time = Instant::now();
+
+        draw_result?;
+        present_result?;
 
         Ok(())
     }
