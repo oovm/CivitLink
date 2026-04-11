@@ -24,4 +24,4 @@ pub use node::{UiNode, UiNodeData, UiNodeId, UiTree};
 pub use render::UiRenderer;
 pub use style::*;
 pub use widget::Widget;
-pub use widgets::{Button, ButtonState, Panel, TextBox};
+pub use widgets::{Button, ButtonState, ComboBox, Panel, TabBar, TabItem, TextBox, TreeNode, TreeView};

@@ -10,10 +10,11 @@ use std::{
     marker::PhantomData,
     path::Path,
     pin::Pin,
-    sync::{Arc, RwLock},
+    sync::{Arc, Mutex, RwLock},
 };
 
 use dashmap::DashMap;
+use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 
 /// 资源错误类型
 #[derive(Debug)]
@@ -208,6 +209,147 @@ impl AssetCache {
         self.assets.clear();
         self.handles.clear();
     }
+
+    /// 根据路径获取资源唯一标识
+    ///
+    /// 如果路径不存在于缓存中，返回 `None`。
+    pub fn get_id(&self, path: &str) -> Option<u64> {
+        self.handles.get(path).map(|r| *r.value())
+    }
+
+    /// 使用类型擦除的资源数据更新指定路径的缓存
+    ///
+    /// 如果路径已存在，更新对应的资源并返回其唯一标识。
+    /// 如果路径不存在，返回 `None`。
+    pub fn update_erased(&self, path: &str, asset: Arc<dyn Any + Send + Sync>) -> Option<u64> {
+        if let Some(id) = self.handles.get(path).map(|r| *r.value()) {
+            self.assets.insert(id, asset);
+            Some(id)
+        }
+        else {
+            None
+        }
+    }
+}
+
+/// 资源变更事件
+#[derive(Debug, Clone)]
+pub struct AssetChangeEvent {
+    /// 变更的资源路径
+    pub path: String,
+    /// 变更类型
+    pub kind: AssetChangeKind,
+}
+
+/// 资源变更类型
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AssetChangeKind {
+    /// 文件被修改
+    Modified,
+    /// 文件被创建
+    Created,
+    /// 文件被删除
+    Deleted,
+}
+
+/// 资源文件监视器
+///
+/// 基于 notify crate 实现异步文件变更检测，
+/// 当监视目录中的资源文件发生修改时，通过事件通道通知 AssetServer。
+pub struct AssetWatcher {
+    /// 内部文件监视器
+    watcher: Option<RecommendedWatcher>,
+    /// 文件变更事件接收端
+    rx: Option<tokio::sync::mpsc::UnboundedReceiver<AssetChangeEvent>>,
+    /// 正在监视的目录列表
+    watched_dirs: Vec<String>,
+}
+
+impl AssetWatcher {
+    /// 创建空的资源文件监视器
+    pub fn new() -> Self {
+        Self { watcher: None, rx: None, watched_dirs: Vec::new() }
+    }
+
+    /// 开始监视指定目录
+    ///
+    /// 使用 notify 的 RecommendedWatcher 递归监视目录中的文件变更，
+    /// 变更事件通过内部通道发送，可通过 `poll_changes` 方法获取。
+    /// 如果监视器尚未创建，将自动创建。
+    /// 如果指定目录已在监视列表中，则跳过。
+    pub fn watch(&mut self, path: &str) -> Result<(), AssetError> {
+        if self.watched_dirs.iter().any(|d| d == path) {
+            return Ok(());
+        }
+
+        if self.watcher.is_none() {
+            let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
+
+            let watcher = RecommendedWatcher::new(
+                move |res: Result<notify::Event, notify::Error>| {
+                    if let Ok(event) = res {
+                        for file_path in &event.paths {
+                            let kind = match event.kind {
+                                EventKind::Create(_) => AssetChangeKind::Created,
+                                EventKind::Modify(_) => AssetChangeKind::Modified,
+                                EventKind::Remove(_) => AssetChangeKind::Deleted,
+                                _ => continue,
+                            };
+                            let path_str = file_path.to_string_lossy().to_string();
+                            let _ = tx.send(AssetChangeEvent { path: path_str, kind });
+                        }
+                    }
+                },
+                Config::default(),
+            )
+            .map_err(|e| AssetError::LoadError(format!("Failed to create file watcher: {}", e)))?;
+
+            self.watcher = Some(watcher);
+            self.rx = Some(rx);
+        }
+
+        if let Some(watcher) = &mut self.watcher {
+            watcher
+                .watch(Path::new(path), RecursiveMode::Recursive)
+                .map_err(|e| AssetError::LoadError(format!("Failed to watch directory '{}': {}", path, e)))?;
+        }
+
+        self.watched_dirs.push(path.to_string());
+        Ok(())
+    }
+
+    /// 停止监视所有目录
+    ///
+    /// 停止所有已注册的目录监视，并释放文件监视器资源。
+    pub fn unwatch(&mut self) {
+        if let Some(mut watcher) = self.watcher.take() {
+            for dir in &self.watched_dirs {
+                let _ = watcher.unwatch(Path::new(dir));
+            }
+        }
+        self.rx = None;
+        self.watched_dirs.clear();
+    }
+
+    /// 非阻塞地获取待处理的文件变更事件
+    ///
+    /// 返回自上次调用以来积累的所有变更事件列表。
+    /// 如果没有待处理的事件，返回空列表。
+    pub fn poll_changes(&mut self) -> Vec<AssetChangeEvent> {
+        let mut changes = Vec::new();
+        if let Some(rx) = &mut self.rx {
+            while let Ok(event) = rx.try_recv() {
+                changes.push(event);
+            }
+        }
+        changes
+    }
+}
+
+impl Default for AssetWatcher {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// 类型擦除的资源加载器 trait
@@ -258,12 +400,29 @@ pub struct AssetServer {
     pub load_states: DashMap<u64, LoadState>,
     /// 资源加载完成回调，按资源类型索引
     on_load_callbacks: HashMap<TypeId, Vec<Box<dyn Fn(u64) + Send + Sync>>>,
+    /// 资源重载完成回调，按资源类型索引
+    on_reload_callbacks: HashMap<TypeId, Vec<Box<dyn Fn(&str) + Send + Sync>>>,
+    /// 资源文件监视器
+    watcher: AssetWatcher,
+    /// 资源路径到类型的映射
+    path_types: DashMap<String, TypeId>,
+    /// 待处理的资源重载队列
+    pending_reloads: Mutex<Vec<(String, TypeId)>>,
 }
 
 impl AssetServer {
     /// 创建新的资源服务器
     pub fn new() -> Self {
-        Self { cache: AssetCache::new(), loaders: HashMap::new(), load_states: DashMap::new(), on_load_callbacks: HashMap::new() }
+        Self {
+            cache: AssetCache::new(),
+            loaders: HashMap::new(),
+            load_states: DashMap::new(),
+            on_load_callbacks: HashMap::new(),
+            on_reload_callbacks: HashMap::new(),
+            watcher: AssetWatcher::new(),
+            path_types: DashMap::new(),
+            pending_reloads: Mutex::new(Vec::new()),
+        }
     }
 
     /// 注册资源加载器
@@ -299,6 +458,7 @@ impl AssetServer {
                 let asset = asset_box.downcast::<T>().map_err(|_| AssetError::TypeMismatch)?;
                 let handle = self.cache.insert_with_id(id, path, *asset);
                 self.load_states.insert(id, LoadState::Loaded);
+                self.path_types.insert(path.to_string(), type_id);
 
                 if let Some(callbacks) = self.on_load_callbacks.get(&type_id) {
                     for callback in callbacks {
@@ -332,6 +492,7 @@ impl AssetServer {
     pub fn add_asset<T: Asset + 'static>(&self, path: &str, asset: T) -> Handle<T> {
         let handle = self.cache.insert(path, asset);
         self.load_states.insert(handle.id, LoadState::Loaded);
+        self.path_types.insert(path.to_string(), TypeId::of::<T>());
         handle
     }
 
@@ -355,6 +516,151 @@ impl AssetServer {
     /// 此方法用于需要独占访问的场景。
     pub fn cache_mut(&mut self) -> &mut AssetCache {
         &mut self.cache
+    }
+
+    /// 异步重新加载指定路径的资源
+    ///
+    /// 使用已注册的加载器重新加载资源并更新缓存。
+    /// 如果资源不在缓存中，行为与 `load` 相同。
+    /// 重载成功后触发所有已注册的 `on_reload` 回调。
+    pub async fn reload<T: Asset>(&self, path: &str) -> Result<Handle<T>, AssetError> {
+        if !self.cache.contains(path) {
+            return self.load::<T>(path).await;
+        }
+
+        let type_id = TypeId::of::<T>();
+        let loader = self
+            .loaders
+            .get(&type_id)
+            .ok_or_else(|| AssetError::LoadError(format!("No loader registered for type {:?}", type_id)))?;
+
+        let handle = self
+            .cache
+            .get_handle::<T>(path)
+            .ok_or_else(|| AssetError::NotFound(path.to_string()))?;
+
+        self.load_states.insert(handle.id, LoadState::Loading);
+
+        match loader.load_erased(Path::new(path)).await {
+            Ok(asset_box) => {
+                let asset = asset_box.downcast::<T>().map_err(|_| AssetError::TypeMismatch)?;
+                let handle = self.cache.insert(path, *asset);
+                self.load_states.insert(handle.id, LoadState::Loaded);
+                self.path_types.insert(path.to_string(), type_id);
+
+                if let Some(callbacks) = self.on_reload_callbacks.get(&type_id) {
+                    for callback in callbacks {
+                        callback(path);
+                    }
+                }
+
+                Ok(handle)
+            }
+            Err(e) => {
+                self.load_states.insert(handle.id, LoadState::Failed(e.to_string()));
+                Err(e)
+            }
+        }
+    }
+
+    /// 注册资源重载完成回调
+    ///
+    /// 当指定类型 `T` 的资源通过 `reload` 方法重新加载成功后，
+    /// 将调用所有已注册的回调，传入资源路径。
+    pub fn on_reload<T: Asset>(&mut self, callback: impl Fn(&str) + Send + Sync + 'static) {
+        let type_id = TypeId::of::<T>();
+        self.on_reload_callbacks.entry(type_id).or_default().push(Box::new(callback));
+    }
+
+    /// 开始监视指定目录的资源文件变更
+    ///
+    /// 当目录中的文件发生修改时，变更事件将被记录到待处理队列，
+    /// 需要调用 `process_watcher_events` 和 `process_pending_reloads` 来处理。
+    pub fn watch_directory(&mut self, path: &str) -> Result<(), AssetError> {
+        self.watcher.watch(path)
+    }
+
+    /// 停止监视所有目录
+    pub fn unwatch(&mut self) {
+        self.watcher.unwatch();
+    }
+
+    /// 处理文件监视器事件
+    ///
+    /// 非阻塞地轮询文件监视器的变更事件，
+    /// 将需要重载的资源路径加入待处理队列。
+    /// 对于已删除的资源，直接从缓存中移除。
+    /// 需要后续调用 `process_pending_reloads` 异步处理队列中的重载请求。
+    pub fn process_watcher_events(&mut self) {
+        let changes = self.watcher.poll_changes();
+        for change in changes {
+            match change.kind {
+                AssetChangeKind::Modified | AssetChangeKind::Created => {
+                    if let Some(type_id) = self.path_types.get(&change.path).map(|r| *r.value()) {
+                        let mut pending = self.pending_reloads.lock().unwrap();
+                        pending.push((change.path.clone(), type_id));
+                    }
+                }
+                AssetChangeKind::Deleted => {
+                    self.cache.remove(&change.path);
+                    self.path_types.remove(&change.path);
+                }
+            }
+        }
+    }
+
+    /// 异步处理待重载队列
+    ///
+    /// 处理由 `process_watcher_events` 产生的待重载资源队列，
+    /// 使用类型擦除的方式重新加载每个资源。
+    pub async fn process_pending_reloads(&self) {
+        let reloads: Vec<(String, TypeId)> = {
+            let mut pending = self.pending_reloads.lock().unwrap();
+            std::mem::take(&mut *pending)
+        };
+
+        for (path, type_id) in reloads {
+            let _ = self.reload_erased(&path, type_id).await;
+        }
+    }
+
+    /// 使用类型擦除的方式异步重新加载指定路径的资源
+    async fn reload_erased(&self, path: &str, type_id: TypeId) -> Result<(), AssetError> {
+        let loader = self
+            .loaders
+            .get(&type_id)
+            .ok_or_else(|| AssetError::LoadError(format!("No loader registered for type {:?}", type_id)))?;
+
+        let id = self
+            .cache
+            .get_id(path)
+            .ok_or_else(|| AssetError::NotFound(path.to_string()))?;
+
+        self.load_states.insert(id, LoadState::Loading);
+
+        match loader.load_erased(Path::new(path)).await {
+            Ok(asset_box) => {
+                if self.cache.update_erased(path, Arc::from(asset_box)).is_some() {
+                    self.load_states.insert(id, LoadState::Loaded);
+
+                    if let Some(callbacks) = self.on_reload_callbacks.get(&type_id) {
+                        for callback in callbacks {
+                            callback(path);
+                        }
+                    }
+
+                    Ok(())
+                }
+                else {
+                    self.load_states.insert(id, LoadState::Failed("Asset path no longer in cache".to_string()));
+                    Err(AssetError::NotFound(path.to_string()))
+                }
+            }
+            Err(e) => {
+                self.load_states.insert(id, LoadState::Failed(e.to_string()));
+                Err(e)
+            }
+        }
     }
 }
 
@@ -697,8 +1003,9 @@ impl AssetLoader<FontAsset> for FontLoader {
 pub mod prelude {
     /// 重新导出 gg-asset 核心类型
     pub use crate::{
-        Asset, AssetCache, AssetError, AssetLoader, AssetServer, AudioAsset, AudioFormat, AudioLoader, BinaryAsset,
-        BinaryLoader, FontAsset, FontLoader, Handle, ImageAsset, ImageLoader, LoadState, TextAsset, TextLoader,
+        Asset, AssetCache, AssetChangeKind, AssetChangeEvent, AssetError, AssetLoader, AssetServer,
+        AssetWatcher, AudioAsset, AudioFormat, AudioLoader, BinaryAsset, BinaryLoader, FontAsset,
+        FontLoader, Handle, ImageAsset, ImageLoader, LoadState, TextAsset, TextLoader,
     };
 }
 
@@ -798,5 +1105,141 @@ mod tests {
     fn test_font_asset_invalid_data() {
         let result = FontAsset::new(vec![0u8; 4]);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_asset_watcher_creation() {
+        let watcher = AssetWatcher::new();
+        assert!(watcher.poll_changes().is_empty());
+    }
+
+    #[test]
+    fn test_asset_watcher_default() {
+        let watcher = AssetWatcher::default();
+        assert!(watcher.poll_changes().is_empty());
+    }
+
+    #[test]
+    fn test_asset_change_kind_equality() {
+        assert_eq!(AssetChangeKind::Modified, AssetChangeKind::Modified);
+        assert_ne!(AssetChangeKind::Modified, AssetChangeKind::Created);
+        assert_ne!(AssetChangeKind::Created, AssetChangeKind::Deleted);
+    }
+
+    #[tokio::test]
+    async fn test_manual_reload() {
+        let temp_dir = std::env::temp_dir().join("gg_asset_test_reload");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let file_path = temp_dir.join("test_reload.txt");
+        std::fs::write(&file_path, "original content").unwrap();
+
+        let mut server = AssetServer::new();
+        server.register_loader::<TextAsset, TextLoader>(TextLoader);
+
+        let path = file_path.to_str().unwrap();
+        let handle = server.load::<TextAsset>(path).await.unwrap();
+
+        let asset = server.cache().get(&handle).unwrap();
+        assert_eq!(asset.content(), "original content");
+
+        std::fs::write(&file_path, "updated content").unwrap();
+
+        let handle = server.reload::<TextAsset>(path).await.unwrap();
+        let asset = server.cache().get(&handle).unwrap();
+        assert_eq!(asset.content(), "updated content");
+
+        assert_eq!(server.load_state(&handle), LoadState::Loaded);
+
+        std::fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[tokio::test]
+    async fn test_reload_fallback_to_load() {
+        let temp_dir = std::env::temp_dir().join("gg_asset_test_reload_fallback");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let file_path = temp_dir.join("test_fallback.txt");
+        std::fs::write(&file_path, "hello world").unwrap();
+
+        let mut server = AssetServer::new();
+        server.register_loader::<TextAsset, TextLoader>(TextLoader);
+
+        let path = file_path.to_str().unwrap();
+        let handle = server.reload::<TextAsset>(path).await.unwrap();
+
+        let asset = server.cache().get(&handle).unwrap();
+        assert_eq!(asset.content(), "hello world");
+
+        std::fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[tokio::test]
+    async fn test_on_reload_callback() {
+        let temp_dir = std::env::temp_dir().join("gg_asset_test_on_reload");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let file_path = temp_dir.join("test_callback.txt");
+        std::fs::write(&file_path, "original").unwrap();
+
+        let mut server = AssetServer::new();
+        server.register_loader::<TextAsset, TextLoader>(TextLoader);
+
+        let called = Arc::new(Mutex::new(false));
+        let called_clone = called.clone();
+        let reloaded_path = Arc::new(Mutex::new(String::new()));
+        let reloaded_path_clone = reloaded_path.clone();
+        server.on_reload::<TextAsset>(move |path| {
+            *called_clone.lock().unwrap() = true;
+            *reloaded_path_clone.lock().unwrap() = path.to_string();
+        });
+
+        let path = file_path.to_str().unwrap();
+        let _handle = server.load::<TextAsset>(path).await.unwrap();
+
+        assert!(!*called.lock().unwrap());
+
+        std::fs::write(&file_path, "updated").unwrap();
+        let _handle = server.reload::<TextAsset>(path).await.unwrap();
+
+        assert!(*called.lock().unwrap());
+        assert_eq!(*reloaded_path.lock().unwrap(), path);
+
+        std::fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_on_reload_callback_not_triggered_by_add_asset() {
+        let mut server = AssetServer::new();
+        let called = Arc::new(Mutex::new(false));
+        let called_clone = called.clone();
+
+        server.on_reload::<TextAsset>(move |_path| {
+            *called_clone.lock().unwrap() = true;
+        });
+
+        let _handle = server.add_asset("test.txt", TextAsset::new("test", "hello".to_string()));
+
+        assert!(!*called.lock().unwrap());
+    }
+
+    #[test]
+    fn test_watch_directory() {
+        let temp_dir = std::env::temp_dir().join("gg_asset_test_watch");
+        std::fs::create_dir_all(&temp_dir).unwrap();
+
+        let mut server = AssetServer::new();
+        let path = temp_dir.to_str().unwrap();
+        assert!(server.watch_directory(path).is_ok());
+
+        server.unwatch();
+
+        std::fs::remove_dir_all(&temp_dir).ok();
+    }
+
+    #[test]
+    fn test_process_watcher_events_no_changes() {
+        let mut server = AssetServer::new();
+        server.process_watcher_events();
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(server.process_pending_reloads());
     }
 }

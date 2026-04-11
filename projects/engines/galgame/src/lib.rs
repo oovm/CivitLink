@@ -6,4 +6,5 @@ pub mod compiler;
 pub mod config;
 pub mod editor;
 pub mod engine;
-pub mod schema;
+
+pub use gg_galgame_schema::*;

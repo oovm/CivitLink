@@ -3,74 +3,451 @@
 
 using gg::engine;
 using gg::ui;
+using gg::input;
+using gg::graphics;
 using gg::audio;
 
 # 游戏状态
-let current_node = "start";
-let variables = { affection_heroine: 0 };
+let game_state = {
+    player: {
+        name: "Hero",
+        level: 1,
+        exp: 0,
+        max_exp: 100,
+        hp: 100,
+        max_hp: 100,
+        mp: 50,
+        max_mp: 50,
+        attack: 10,
+        defense: 5,
+        speed: 8
+    },
+    inventory: [
+        { id: "potion", name: "治疗药水", quantity: 3, effect: "恢复50点HP" },
+        { id: "sword", name: "铁剑", quantity: 1, effect: "攻击力+5" }
+    ],
+    current_location: "village",
+    npcs: [
+        {
+            id: "innkeeper",
+            name: "旅店老板",
+            position: { x: 200, y: 300 },
+            dialogues: [
+                "欢迎来到旅店！",
+                "需要休息吗？",
+                "祝你冒险顺利！"
+            ]
+        },
+        {
+            id: "shopkeeper",
+            name: "商店老板",
+            position: { x: 400, y: 300 },
+            dialogues: [
+                "欢迎光临我的商店！",
+                "需要买点什么吗？",
+                "谢谢惠顾！"
+            ]
+        }
+    ],
+    current_npc: null,
+    is_talking: false,
+    dialogue_index: 0,
+    battle_active: false,
+    current_enemy: null
+};
 
-# 对话节点处理函数
-micro handle_node(node: String) {
-    match (node) {
-        case "start" => {
-            # 加载场景
-            engine.load_scene("rpg");
+# 敌人数据
+let enemies = [
+    {
+        id: "goblin",
+        name: "哥布林",
+        hp: 30,
+        max_hp: 30,
+        attack: 5,
+        defense: 2,
+        exp: 20,
+        gold: 10
+    },
+    {
+        id: "slime",
+        name: "史莱姆",
+        hp: 20,
+        max_hp: 20,
+        attack: 3,
+        defense: 1,
+        exp: 10,
+        gold: 5
+    }
+];
+
+# 位置数据
+let locations = {
+    village: {
+        name: "村庄",
+        background: "assets/graphics/backgrounds/village.png",
+        spawn_point: { x: 400, y: 500 }
+    },
+    forest: {
+        name: "森林",
+        background: "assets/graphics/backgrounds/forest.png",
+        spawn_point: { x: 100, y: 100 }
+    }
+};
+
+# 初始化游戏
+micro init_game() {
+    # 加载初始场景
+    load_location("village");
+    
+    # 加载 BGM
+    audio.play_bgm("assets/audio/bgm/town.mp3", 0.8);
+    
+    # 创建玩家
+    create_player();
+    
+    # 创建 NPC
+    create_npcs();
+}
+
+# 加载位置
+micro load_location(location_id) {
+    let location = locations[location_id];
+    game_state.current_location = location_id;
+    graphics.set_background(location.background);
+    
+    # 移动玩家到 spawn point
+    let player = engine.get_entity("player");
+    if (player) {
+        let transform = player.get_component("Transform");
+        transform.x = location.spawn_point.x;
+        transform.y = location.spawn_point.y;
+    }
+}
+
+# 创建玩家
+micro create_player() {
+    let player = engine.create_entity();
+    player.set_name("player");
+    player.add_component("Transform", {
+        x: locations[game_state.current_location].spawn_point.x,
+        y: locations[game_state.current_location].spawn_point.y,
+        width: 50,
+        height: 50
+    });
+    player.add_component("Sprite", {
+        texture: "assets/graphics/sprites/player.png",
+        flip_x: false,
+        flip_y: false
+    });
+    player.add_component("Collider", {
+        width: 50,
+        height: 50,
+        is_static: false
+    });
+}
+
+# 创建 NPC
+micro create_npcs() {
+    for (npc in game_state.npcs) {
+        let npc_entity = engine.create_entity();
+        npc_entity.set_name(npc.id);
+        npc_entity.add_component("Transform", {
+            x: npc.position.x,
+            y: npc.position.y,
+            width: 50,
+            height: 50
+        });
+        npc_entity.add_component("Sprite", {
+            texture: "assets/graphics/sprites/npc.png",
+            flip_x: false,
+            flip_y: false
+        });
+        npc_entity.add_component("Collider", {
+            width: 50,
+            height: 50,
+            is_static: true
+        });
+        npc_entity.add_component("NPC", {
+            name: npc.name,
+            dialogues: npc.dialogues
+        });
+    }
+}
+
+# 处理输入
+micro handle_input() {
+    let player = engine.get_entity("player");
+    if (!player) return;
+    
+    let transform = player.get_component("Transform");
+    
+    # 移动玩家
+    let move_speed = 3;
+    if (input.is_key_down("Left")) {
+        transform.x -= move_speed;
+    } else if (input.is_key_down("Right")) {
+        transform.x += move_speed;
+    }
+    if (input.is_key_down("Up")) {
+        transform.y -= move_speed;
+    } else if (input.is_key_down("Down")) {
+        transform.y += move_speed;
+    }
+    
+    # 交互
+    if (input.is_key_pressed("Space")) {
+        if (game_state.is_talking) {
+            next_dialogue();
+        } else {
+            check_npc_interaction();
+        }
+    }
+    
+    # 打开菜单
+    if (input.is_key_pressed("Escape")) {
+        toggle_menu();
+    }
+}
+
+# 检查 NPC 交互
+micro check_npc_interaction() {
+    let player = engine.get_entity("player");
+    if (!player) return;
+    
+    let player_transform = player.get_component("Transform");
+    
+    for (npc in game_state.npcs) {
+        let npc_entity = engine.get_entity(npc.id);
+        if (npc_entity) {
+            let npc_transform = npc_entity.get_component("Transform");
             
-            # 设置背景
-            ui.set_background("assets/backgrounds/bg_room.png");
+            # 简单的距离检测
+            let distance = Math.sqrt(
+                Math.pow(player_transform.x - npc_transform.x, 2) +
+                Math.pow(player_transform.y - npc_transform.y, 2)
+            );
             
-            # 加载 BGM
-            audio.play_bgm("assets/audio/bgm/morning.mp3", 0.8);
-            
-            current_node = "intro";
-        },
-        case "intro" => {
-            ui.set_speaker("heroine");
-            ui.show_message("早上好！睡得好吗？");
-            ui.show_portrait("heroine", "smile", "center");
-            ui.show_choices([
-                { text: "早上好！", next: "good_morning" },
-                { text: "...你是谁？", next: "who_are_you" }
-            ]);
-        },
-        case "good_morning" => {
-            ui.set_speaker("heroine");
-            ui.show_message("嗯，早上好！今天天气真好呢，要不要一起去散步？");
-            # 设置变量
-            variables.affection_heroine = 10;
-            current_node = "end";
-        },
-        case "who_are_you" => {
-            ui.set_speaker("heroine");
-            ui.show_message("哎？你不记得我了吗？我是你的青梅竹马啊...");
-            ui.show_portrait("heroine", "sad", "center");
-            current_node = "end";
-        },
-        case "end" => {
-            ui.set_speaker("narrator");
-            ui.show_message("故事才刚刚开始...（演示结束）");
-        },
-        case _ => {
-            console.log("Unknown node: " + node);
+            if (distance < 60) {
+                start_dialogue(npc);
+                break;
+            }
         }
     }
 }
 
-# 处理选择
-micro handle_choice(choice_index: Int) {
-    if (current_node == "intro") {
-        match (choice_index) {
-            case 0 => current_node = "good_morning";
-            case 1 => current_node = "who_are_you";
-            case _ => console.log("Invalid choice index: " + choice_index);
-        }
+# 开始对话
+micro start_dialogue(npc) {
+    game_state.is_talking = true;
+    game_state.current_npc = npc;
+    game_state.dialogue_index = 0;
+    
+    show_dialogue();
+}
+
+# 显示对话
+micro show_dialogue() {
+    if (!game_state.is_talking || !game_state.current_npc) return;
+    
+    let npc = game_state.current_npc;
+    let dialogue = npc.dialogues[game_state.dialogue_index];
+    
+    ui.set_speaker(npc.name);
+    ui.show_message(dialogue);
+}
+
+# 下一句对话
+micro next_dialogue() {
+    if (!game_state.is_talking || !game_state.current_npc) return;
+    
+    game_state.dialogue_index += 1;
+    
+    if (game_state.dialogue_index < game_state.current_npc.dialogues.length) {
+        show_dialogue();
+    } else {
+        end_dialogue();
     }
+}
+
+# 结束对话
+micro end_dialogue() {
+    game_state.is_talking = false;
+    game_state.current_npc = null;
+    game_state.dialogue_index = 0;
+    
+    ui.clear_message();
+}
+
+# 切换菜单
+micro toggle_menu() {
+    # 这里应该实现菜单逻辑
+    console.log("Menu toggled");
+}
+
+# 开始战斗
+micro start_battle(enemy_id) {
+    let enemy = enemies.find(e => e.id == enemy_id);
+    if (!enemy) return;
+    
+    game_state.battle_active = true;
+    game_state.current_enemy = JSON.parse(JSON.stringify(enemy)); # 深拷贝
+    
+    # 显示战斗界面
+    ui.show_battle_ui({
+        player: game_state.player,
+        enemy: game_state.current_enemy
+    });
+}
+
+# 执行战斗动作
+micro perform_battle_action(action) {
+    if (!game_state.battle_active || !game_state.current_enemy) return;
+    
+    let enemy = game_state.current_enemy;
+    let player = game_state.player;
+    
+    switch (action) {
+        case "attack":
+            # 玩家攻击
+            let damage = Math.max(1, player.attack - enemy.defense);
+            enemy.hp -= damage;
+            ui.show_battle_message(`你对${enemy.name}造成了${damage}点伤害！`);
+            
+            # 敌人反击
+            if (enemy.hp > 0) {
+                let enemy_damage = Math.max(1, enemy.attack - player.defense);
+                player.hp -= enemy_damage;
+                ui.show_battle_message(`${enemy.name}对你造成了${enemy_damage}点伤害！`);
+            }
+            break;
+        
+        case "skill":
+            # 使用技能
+            if (player.mp >= 10) {
+                player.mp -= 10;
+                let damage = player.attack * 2;
+                enemy.hp -= damage;
+                ui.show_battle_message(`你使用了技能，对${enemy.name}造成了${damage}点伤害！`);
+                
+                # 敌人反击
+                if (enemy.hp > 0) {
+                    let enemy_damage = Math.max(1, enemy.attack - player.defense);
+                    player.hp -= enemy_damage;
+                    ui.show_battle_message(`${enemy.name}对你造成了${enemy_damage}点伤害！`);
+                }
+            } else {
+                ui.show_battle_message("MP不足！");
+            }
+            break;
+        
+        case "item":
+            # 使用物品
+            let potion = game_state.inventory.find(item => item.id == "potion");
+            if (potion && potion.quantity > 0) {
+                player.hp = Math.min(player.max_hp, player.hp + 50);
+                potion.quantity -= 1;
+                ui.show_battle_message(`你使用了治疗药水，恢复了50点HP！`);
+                
+                # 敌人攻击
+                let enemy_damage = Math.max(1, enemy.attack - player.defense);
+                player.hp -= enemy_damage;
+                ui.show_battle_message(`${enemy.name}对你造成了${enemy_damage}点伤害！`);
+            } else {
+                ui.show_battle_message("没有治疗药水了！");
+            }
+            break;
+        
+        case "run":
+            # 逃跑
+            let success = Math.random() > 0.3;
+            if (success) {
+                ui.show_battle_message("你成功逃跑了！");
+                end_battle(false);
+            } else {
+                ui.show_battle_message("逃跑失败！");
+                
+                # 敌人攻击
+                let enemy_damage = Math.max(1, enemy.attack - player.defense);
+                player.hp -= enemy_damage;
+                ui.show_battle_message(`${enemy.name}对你造成了${enemy_damage}点伤害！`);
+            }
+            break;
+    }
+    
+    # 检查战斗结果
+    if (enemy.hp <= 0) {
+        end_battle(true);
+    } else if (player.hp <= 0) {
+        end_battle(false);
+    } else {
+        # 更新战斗界面
+        ui.update_battle_ui({
+            player: game_state.player,
+            enemy: game_state.current_enemy
+        });
+    }
+}
+
+# 结束战斗
+micro end_battle(victory) {
+    game_state.battle_active = false;
+    
+    if (victory) {
+        let enemy = game_state.current_enemy;
+        game_state.player.exp += enemy.exp;
+        
+        # 检查升级
+        if (game_state.player.exp >= game_state.player.max_exp) {
+            level_up();
+        }
+        
+        ui.show_battle_message(`战斗胜利！获得${enemy.exp}点经验值！`);
+    } else {
+        ui.show_battle_message("战斗失败！");
+        # 这里应该实现失败后的逻辑
+    }
+    
+    game_state.current_enemy = null;
+    ui.hide_battle_ui();
+}
+
+# 升级
+micro level_up() {
+    game_state.player.level += 1;
+    game_state.player.exp -= game_state.player.max_exp;
+    game_state.player.max_exp = Math.floor(game_state.player.max_exp * 1.5);
+    game_state.player.max_hp += 20;
+    game_state.player.hp = game_state.player.max_hp;
+    game_state.player.max_mp += 10;
+    game_state.player.mp = game_state.player.max_mp;
+    game_state.player.attack += 2;
+    game_state.player.defense += 1;
+    game_state.player.speed += 1;
+    
+    ui.show_message(`升级了！现在是${game_state.player.level}级！`);
 }
 
 # 游戏更新函数
 micro update(delta_time: Float) {
-    handle_node(current_node);
+    if (!game_state.is_talking && !game_state.battle_active) {
+        handle_input();
+    }
 }
 
-# 注册游戏循环
+# 渲染函数
+micro render() {
+    graphics.clear();
+    
+    # 显示玩家状态
+    graphics.draw_text(`HP: ${game_state.player.hp}/${game_state.player.max_hp}`, 10, 10, 20, Color::WHITE);
+    graphics.draw_text(`MP: ${game_state.player.mp}/${game_state.player.max_mp}`, 10, 30, 20, Color::WHITE);
+    graphics.draw_text(`Level: ${game_state.player.level}`, 10, 50, 20, Color::WHITE);
+    graphics.draw_text(`Exp: ${game_state.player.exp}/${game_state.player.max_exp}`, 10, 70, 20, Color::WHITE);
+    
+    # 显示当前位置
+    graphics.draw_text(`Location: ${locations[game_state.current_location].name}`, 10, 90, 20, Color::WHITE);
+}
+
+# 初始化游戏
+init_game();
 engine.set_update_fn(update);
+engine.set_render_fn(render);

@@ -331,6 +331,34 @@ impl Default for BindingSystem {
     }
 }
 
+impl BindingSystem {
+    /// 将绑定值应用到 UI 节点的对应属性
+    fn apply_property(node: &mut gg_ui::UiNode, property: &str, value: &BindingValue) {
+        match property {
+            "visible" => {
+                if let Some(b) = value.as_bool() {
+                    node.visible = b;
+                }
+            }
+            "content" => {
+                if let gg_ui::UiNodeData::Text { ref mut content } = node.data {
+                    if let Some(s) = value.as_str() {
+                        *content = s.to_string();
+                    } else {
+                        *content = format!("{:?}", value);
+                    }
+                }
+            }
+            "opacity" => {
+                if let Some(f) = value.as_float() {
+                    node.style.opacity = f.clamp(0.0, 1.0);
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
 impl System for BindingSystem {
     /// 返回系统名称
     fn name(&self) -> &str {
@@ -339,7 +367,7 @@ impl System for BindingSystem {
 
     /// 执行数据绑定系统逻辑
     ///
-    /// 遍历绑定注册表，通过解析器链解析每个绑定键的值，
+    /// 遍历绑定注册表，通过解析器链解析每个绑定键或绑定表达式的值，
     /// 根据属性名更新 UI 节点的对应字段：
     /// - "content" → 更新 UiNodeData::Text 的 content
     /// - "visible" → 更新 UiNode 的 visible 字段
@@ -370,28 +398,27 @@ impl System for BindingSystem {
                     continue;
                 };
 
-                match property.as_str() {
-                    "visible" => {
-                        if let Some(b) = value.as_bool() {
-                            node.visible = b;
-                        }
-                    }
-                    "content" => {
-                        if let gg_ui::UiNodeData::Text { ref mut content } = node.data {
-                            if let Some(s) = value.as_str() {
-                                *content = s.to_string();
-                            } else {
-                                *content = format!("{:?}", value);
-                            }
-                        }
-                    }
-                    "opacity" => {
-                        if let Some(f) = value.as_float() {
-                            node.style.opacity = f.clamp(0.0, 1.0);
-                        }
-                    }
-                    _ => {}
-                }
+                Self::apply_property(node, property, &value);
+            }
+        }
+
+        for (node_id, expr_bindings) in &registry.expression_bindings {
+            for (property, expr) in expr_bindings {
+                let value = expr.evaluate(world, &self.resolvers);
+
+                let Some(value) = value else {
+                    continue;
+                };
+
+                let Some(tree_res) = world.get_resource_mut::<UiTreeResource>() else {
+                    continue;
+                };
+
+                let Some(node) = tree_res.0.get_mut(*node_id) else {
+                    continue;
+                };
+
+                Self::apply_property(node, property, &value);
             }
         }
 

@@ -38,6 +38,17 @@ pub enum UiEvent {
         /// 按键名称
         key: String,
     },
+    /// 滚动事件
+    Scroll {
+        /// 水平滚动增量
+        delta_x: f32,
+        /// 垂直滚动增量
+        delta_y: f32,
+        /// 鼠标 X 坐标
+        x: f32,
+        /// 鼠标 Y 坐标
+        y: f32,
+    },
 }
 
 /// 事件处理器
@@ -73,6 +84,7 @@ impl EventSystem {
             UiEvent::MouseMove { x, y } => (*x, *y),
             UiEvent::MouseDown { x, y } => (*x, *y),
             UiEvent::MouseUp { x, y } => (*x, *y),
+            UiEvent::Scroll { x, y, .. } => (*x, *y),
             UiEvent::KeyInput { .. } => {
                 return false;
             }
