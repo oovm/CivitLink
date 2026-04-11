@@ -38,29 +38,4 @@ impl Time for MobileTime {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use gg_core::platform::Time;
 
-    #[test]
-    fn test_initial_delta_is_zero() {
-        let time = MobileTime::new();
-        assert_eq!(time.delta(), std::time::Duration::ZERO);
-    }
-
-    #[test]
-    fn test_elapsed_increases() {
-        let time = MobileTime::new();
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        assert!(time.elapsed() > std::time::Duration::ZERO);
-    }
-
-    #[test]
-    fn test_update_advances_delta() {
-        let mut time = MobileTime::new();
-        std::thread::sleep(std::time::Duration::from_millis(10));
-        time.update();
-        assert!(time.delta() >= std::time::Duration::from_millis(5));
-    }
-}

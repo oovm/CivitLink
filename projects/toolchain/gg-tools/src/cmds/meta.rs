@@ -53,10 +53,7 @@ pub fn execute(args: &MetaArgs, _platform: &Platform) -> GResult<()> {
         }
     }
     else {
-        return Err(GError {
-            kind: GErrorKind::Runtime,
-            message: format!("Target path does not exist: {}", args.target),
-        });
+        return Err(GError { kind: GErrorKind::Runtime, message: format!("Target path does not exist: {}", args.target) });
     }
 
     Ok(())
@@ -70,10 +67,7 @@ fn process_directory_incremental(path: &Path, recursive: bool) -> GResult<()> {
     let generator = MetaGenerator::new();
     let count = generator
         .generate_for_directory(path, recursive)
-        .map_err(|e| GError {
-            kind: GErrorKind::Runtime,
-            message: format!("Failed to generate meta files: {}", e),
-        })?;
+        .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to generate meta files: {}", e) })?;
     println!("Generated {} meta file(s) in {}", count, path.display());
     Ok(())
 }
@@ -95,10 +89,8 @@ fn regenerate_dir_inner(path: &Path, recursive: bool, count: &mut usize) -> GRes
         kind: GErrorKind::Io,
         message: format!("Failed to read directory '{}': {}", path.display(), e),
     })? {
-        let entry = entry.map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("Failed to read directory entry: {}", e),
-        })?;
+        let entry =
+            entry.map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read directory entry: {}", e) })?;
         let entry_path = entry.path();
 
         if entry_path.is_dir() {
@@ -106,11 +98,7 @@ fn regenerate_dir_inner(path: &Path, recursive: bool, count: &mut usize) -> GRes
                 regenerate_dir_inner(&entry_path, true, count)?;
             }
         }
-        else if entry_path.is_file()
-            && !entry_path
-                .extension()
-                .is_some_and(|ext| ext == "meta")
-        {
+        else if entry_path.is_file() && !entry_path.extension().is_some_and(|ext| ext == "meta") {
             regenerate_meta_file(&entry_path)?;
             *count += 1;
         }
@@ -125,11 +113,7 @@ fn generate_meta_file_incremental(file_path: &Path) -> GResult<()> {
     let generator = MetaGenerator::new();
     let generated = generator.generate_for_file(file_path).map_err(|e| GError {
         kind: GErrorKind::Runtime,
-        message: format!(
-            "Failed to generate meta file for '{}': {}",
-            file_path.display(),
-            e
-        ),
+        message: format!("Failed to generate meta file for '{}': {}", file_path.display(), e),
     })?;
 
     if generated {
@@ -148,9 +132,7 @@ fn generate_meta_file_incremental(file_path: &Path) -> GResult<()> {
 /// 如果不存在，则生成新的 .meta 文件。
 fn regenerate_meta_file(file_path: &Path) -> GResult<()> {
     let meta_path = {
-        let original_ext = file_path
-            .extension()
-            .map(|e| e.to_string_lossy().to_string());
+        let original_ext = file_path.extension().map(|e| e.to_string_lossy().to_string());
         match original_ext {
             Some(ext) => file_path.with_extension(format!("{}.meta", ext)),
             None => file_path.with_extension("meta"),
@@ -160,31 +142,19 @@ fn regenerate_meta_file(file_path: &Path) -> GResult<()> {
     if meta_path.exists() {
         let mut meta = MetaFile::from_file(&meta_path).map_err(|e| GError {
             kind: GErrorKind::Runtime,
-            message: format!(
-                "Failed to read meta file '{}': {}",
-                meta_path.display(),
-                e
-            ),
+            message: format!("Failed to read meta file '{}': {}", meta_path.display(), e),
         })?;
 
         let file_metadata = std::fs::metadata(file_path).map_err(|e| GError {
             kind: GErrorKind::Io,
-            message: format!(
-                "Failed to read file metadata '{}': {}",
-                file_path.display(),
-                e
-            ),
+            message: format!("Failed to read file metadata '{}': {}", file_path.display(), e),
         })?;
         meta.asset.size = file_metadata.len();
         meta.update_timestamp();
 
         meta.to_file(&meta_path).map_err(|e| GError {
             kind: GErrorKind::Runtime,
-            message: format!(
-                "Failed to write meta file '{}': {}",
-                meta_path.display(),
-                e
-            ),
+            message: format!("Failed to write meta file '{}': {}", meta_path.display(), e),
         })?;
         println!("Regenerated meta file for {}", file_path.display());
     }
@@ -192,11 +162,7 @@ fn regenerate_meta_file(file_path: &Path) -> GResult<()> {
         let generator = MetaGenerator::new();
         generator.generate_for_file(file_path).map_err(|e| GError {
             kind: GErrorKind::Runtime,
-            message: format!(
-                "Failed to generate meta file for '{}': {}",
-                file_path.display(),
-                e
-            ),
+            message: format!("Failed to generate meta file for '{}': {}", file_path.display(), e),
         })?;
         println!("Generated meta file for {}", file_path.display());
     }

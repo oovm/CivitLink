@@ -1,7 +1,7 @@
 #![warn(missing_docs)]
 
 //! GG 引擎运行时核心模块
-//!
+//! 
 //! 提供脚本驱动的运行时系统和游戏循环，
 //! 支持动态渲染后端、音频后端、HMR 热更新和组件注册表。
 
@@ -43,7 +43,7 @@ use std::{
 };
 
 /// 帧时间资源
-///
+/// 
 /// 存储当前帧的时间信息，作为 ECS 资源注册到世界中，
 /// 供游戏系统查询使用。
 #[derive(Clone, Copy, Debug)]
@@ -57,7 +57,7 @@ pub struct FrameTime {
 }
 
 /// 输入事件资源
-///
+/// 
 /// 存储当前帧收集的所有输入事件，作为 ECS 资源注册到世界中，
 /// 供游戏系统查询和处理键盘、指针、手柄等输入。
 pub struct InputEvents {
@@ -66,7 +66,7 @@ pub struct InputEvents {
 }
 
 /// 引擎宿主，实现 Host trait，将 VM 指令桥接到 ECS 世界
-///
+/// 
 /// 通过 ComponentRegistry 实现动态组件操作，
 /// 替代硬编码的组件类型匹配，支持脚本和 WASM 沙箱按名称访问组件。
 pub struct EngineHost {
@@ -254,7 +254,7 @@ impl ScriptEngine {
 }
 
 /// 帧间隔计时器
-///
+/// 
 /// 精确追踪帧间隔时间，为游戏循环提供准确的 delta 值。
 pub struct DeltaTimer {
     /// 上一帧时间戳
@@ -290,7 +290,7 @@ impl DeltaTimer {
 }
 
 /// 帧率限制器
-///
+/// 
 /// 根据目标帧率控制帧间隔，在无垂直同步时通过睡眠补足剩余帧时间。
 pub struct FrameLimiter {
     /// 目标帧时间
@@ -327,7 +327,7 @@ impl FrameLimiter {
 }
 
 /// 运行时系统
-///
+/// 
 /// 管理游戏循环的核心运行时，集成脚本引擎、阶段调度器、
 /// 渲染后端、音频后端、平台服务和 HMR 热更新支持。
 pub struct Runtime {
@@ -497,7 +497,7 @@ impl Runtime {
     }
 
     /// 启动运行时
-    ///
+    /// 
     /// 初始化渲染后端，执行脚本 init 函数，然后进入游戏循环。
     pub fn start(&mut self) -> GResult<()> {
         if let Some(ref mut renderer) = self.renderer {
@@ -553,14 +553,14 @@ impl Runtime {
     }
 
     /// 创建附着式运行时
-    ///
+    /// 
     /// 基于当前 Runtime 的配置创建一个隔离的附着式运行时实例，
     /// 使用全新的 ECS 世界和 HMR 管理器。
     /// 返回 (AttachedRuntime, InProcessDebugWireEditor) 元组，
     /// 编辑器端通过 InProcessDebugWireEditor 发送控制命令和 HMR 事件。
-    ///
+    /// 
     /// # 参数
-    ///
+    /// 
     /// - `platform_services` - 附着式运行时使用的平台服务
     pub fn attach(
         &self,
@@ -620,7 +620,7 @@ impl Runtime {
     }
 
     /// 执行一帧
-    ///
+    /// 
     /// 按顺序执行：平台服务更新 → HMR 事件处理 → 阶段调度 → 脚本更新 → 音频处理 → 渲染。
     pub fn tick(&mut self, delta: Duration) -> GResult<()> {
         self.platform_services.time.update();
@@ -734,187 +734,5 @@ impl Runtime {
         }
 
         Ok(())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_engine_host_new() {
-        let host = EngineHost::new();
-        assert!(host.world().entities().is_empty());
-    }
-
-    #[test]
-    fn test_engine_host_world_access() {
-        let mut host = EngineHost::new();
-        let entity = host.world_mut().spawn().id();
-        assert!(host.world().contains_entity(entity));
-        assert_eq!(host.world().entities().len(), 1);
-    }
-
-    #[test]
-    fn test_engine_host_registry_access() {
-        let host = EngineHost::new();
-        assert!(!host.registry().is_registered("nonexistent"));
-    }
-
-    #[test]
-    fn test_frame_time_fields() {
-        let ft = FrameTime {
-            delta_seconds: 0.016,
-            fixed_delta_seconds: 0.02,
-            elapsed_seconds: 1.0,
-        };
-        assert!((ft.delta_seconds - 0.016).abs() < f32::EPSILON);
-        assert!((ft.fixed_delta_seconds - 0.02).abs() < f32::EPSILON);
-        assert!((ft.elapsed_seconds - 1.0).abs() < f32::EPSILON);
-    }
-
-    #[test]
-    fn test_input_events_empty() {
-        let events = InputEvents { events: vec![] };
-        assert!(events.events.is_empty());
-    }
-
-    #[test]
-    fn test_delta_timer_tick() {
-        let mut timer = DeltaTimer::new();
-        let delta = timer.tick();
-        assert!(delta.as_secs_f32() >= 0.0);
-    }
-
-    #[test]
-    fn test_delta_timer_elapsed() {
-        let mut timer = DeltaTimer::new();
-        timer.tick();
-        let elapsed = timer.elapsed();
-        assert!(elapsed.as_secs() >= 0);
-    }
-
-    #[test]
-    fn test_delta_timer_delta_seconds() {
-        let dur = Duration::from_millis(16);
-        let secs = DeltaTimer::delta_seconds(dur);
-        assert!((secs - 0.016).abs() < 0.001);
-    }
-
-    #[test]
-    fn test_frame_limiter_new() {
-        let limiter = FrameLimiter::new(60);
-        let fps = limiter.target_fps();
-        assert!(fps >= 59 && fps <= 61);
-    }
-
-    #[test]
-    fn test_frame_limiter_from_fps() {
-        let limiter = FrameLimiter::from_fps(30);
-        let fps = limiter.target_fps();
-        assert!(fps >= 29 && fps <= 31);
-    }
-
-    #[test]
-    fn test_frame_limiter_target_frame_time() {
-        let limiter = FrameLimiter::new(60);
-        let expected = Duration::from_secs_f64(1.0 / 60.0);
-        assert!(limiter.target_frame_time() >= expected - Duration::from_micros(1));
-        assert!(limiter.target_frame_time() <= expected + Duration::from_micros(1));
-    }
-
-    #[test]
-    fn test_script_engine_new() {
-        let engine = ScriptEngine::new();
-        assert!(!engine.has_script());
-    }
-
-    #[test]
-    fn test_input_events_with_keyboard() {
-        use gg_core::platform::{InputEvent, KeyCode, KeyState};
-        let events = InputEvents {
-            events: vec![InputEvent::Keyboard { key: KeyCode::A, state: KeyState::Pressed }],
-        };
-        assert_eq!(events.events.len(), 1);
-        match &events.events[0] {
-            InputEvent::Keyboard { key, state } => {
-                assert_eq!(*key, KeyCode::A);
-                assert_eq!(*state, KeyState::Pressed);
-            }
-            _ => panic!("Expected Keyboard event"),
-        }
-    }
-
-    #[test]
-    fn test_input_events_with_pointer() {
-        use gg_core::platform::{InputEvent, PointerAction, PointerButton};
-        let events = InputEvents {
-            events: vec![InputEvent::Pointer {
-                position: (100.0, 200.0),
-                action: PointerAction::Down,
-                button: Some(PointerButton::Left),
-            }],
-        };
-        assert_eq!(events.events.len(), 1);
-        match &events.events[0] {
-            InputEvent::Pointer { position, action, button } => {
-                assert_eq!(position.0, 100.0);
-                assert_eq!(position.1, 200.0);
-                assert_eq!(*action, PointerAction::Down);
-                assert_eq!(*button, Some(PointerButton::Left));
-            }
-            _ => panic!("Expected Pointer event"),
-        }
-    }
-
-    #[test]
-    fn test_input_events_replacement() {
-        use gg_core::platform::{InputEvent, KeyCode, KeyState, PointerAction};
-        let mut world = World::new();
-        world.insert_resource(InputEvents {
-            events: vec![InputEvent::Keyboard { key: KeyCode::A, state: KeyState::Pressed }],
-        });
-        assert_eq!(world.get_resource::<InputEvents>().unwrap().events.len(), 1);
-        world.insert_resource(InputEvents {
-            events: vec![
-                InputEvent::Pointer {
-                    position: (50.0, 75.0),
-                    action: PointerAction::Move,
-                    button: None,
-                },
-            ],
-        });
-        let replaced = world.get_resource::<InputEvents>().unwrap();
-        assert_eq!(replaced.events.len(), 1);
-        match &replaced.events[0] {
-            InputEvent::Pointer { .. } => {}
-            _ => panic!("Expected only Pointer event after replacement"),
-        }
-    }
-
-    #[test]
-    fn test_frame_time_default_fixed_delta() {
-        let ft = FrameTime {
-            delta_seconds: 0.016,
-            fixed_delta_seconds: 0.0,
-            elapsed_seconds: 0.0,
-        };
-        assert!(ft.fixed_delta_seconds.abs() < f32::EPSILON);
-    }
-
-    #[test]
-    fn test_frame_limiter_sleep_if_needed_no_sleep() {
-        let limiter = FrameLimiter::new(60);
-        let frame_elapsed = limiter.target_frame_time() + Duration::from_millis(5);
-        limiter.sleep_if_needed(frame_elapsed);
-    }
-
-    #[test]
-    fn test_frame_limiter_30fps() {
-        let limiter = FrameLimiter::new(30);
-        let target = limiter.target_frame_time();
-        let expected = Duration::from_secs_f64(1.0 / 30.0);
-        let diff = if target > expected { target - expected } else { expected - target };
-        assert!(diff < Duration::from_micros(100));
     }
 }

@@ -10,7 +10,7 @@ use gg_compiler_core::{
 };
 use gg_core::{GError, GErrorKind, GResult};
 use gg_script::ScriptCompiler;
-use gg_shader::compiler::GgShaderCompiler;
+use gg_shader::compiler::ShaderCompiler;
 
 /// Shader 源码产物类型名称
 const SHADER_SOURCE_TYPE: &str = "shader_source";
@@ -538,7 +538,7 @@ impl Transformer for ShaderTransformer {
                 }
             }
 
-            let gpu_compiler = GgShaderCompiler::new();
+            let gpu_compiler = ShaderCompiler::new();
             let mut gpu_shader_data = Vec::new();
 
             for shader in &shader_file.shaders {

@@ -70,10 +70,7 @@ pub fn cmd_mod_converter(wasm_path: Option<&str>) -> GResult<()> {
 
     let path = Path::new(path_str);
     if !path.exists() {
-        return Err(GError {
-            kind: GErrorKind::Runtime,
-            message: format!("WASM module file not found: {}", path_str),
-        });
+        return Err(GError { kind: GErrorKind::Runtime, message: format!("WASM module file not found: {}", path_str) });
     }
 
     let inspection = inspect_wasm(path)?;
@@ -91,10 +88,7 @@ pub fn cmd_mod_converter(wasm_path: Option<&str>) -> GResult<()> {
         println!("  {:<4} {:<12} {:<10}", "ID", "Name", "Size");
         println!("  {:<4} {:<12} {:<10}", "--", "----", "----");
         for sec in &inspection.sections {
-            println!(
-                "  {:<4} {:<12} {:<10}",
-                sec.id, sec.name, sec.size
-            );
+            println!("  {:<4} {:<12} {:<10}", sec.id, sec.name, sec.size);
         }
     }
 
@@ -138,10 +132,7 @@ fn inspect_wasm(path: &Path) -> GResult<WasmInspection> {
     if data[0..4] != WASM_MAGIC {
         return Err(GError {
             kind: GErrorKind::Runtime,
-            message: format!(
-                "Invalid WASM file: bad magic number (expected \\0asm, got {:02x?})",
-                &data[0..4]
-            ),
+            message: format!("Invalid WASM file: bad magic number (expected \\0asm, got {:02x?})", &data[0..4]),
         });
     }
 
@@ -149,10 +140,7 @@ fn inspect_wasm(path: &Path) -> GResult<WasmInspection> {
     if data[4..8] != WASM_VERSION {
         return Err(GError {
             kind: GErrorKind::Runtime,
-            message: format!(
-                "Unsupported WASM version: {} (only version 1 is supported)",
-                version
-            ),
+            message: format!("Unsupported WASM version: {} (only version 1 is supported)", version),
         });
     }
 
@@ -166,21 +154,12 @@ fn inspect_wasm(path: &Path) -> GResult<WasmInspection> {
         let (section_size, bytes_consumed) = read_leb128_u32(&data[offset..]);
         offset += bytes_consumed;
 
-        sections.push(WasmSectionInfo {
-            id: section_id,
-            name: section_name(section_id),
-            size: section_size as usize,
-        });
+        sections.push(WasmSectionInfo { id: section_id, name: section_name(section_id), size: section_size as usize });
 
         offset += section_size as usize;
     }
 
-    Ok(WasmInspection {
-        file_size,
-        version,
-        section_count: sections.len(),
-        sections,
-    })
+    Ok(WasmInspection { file_size, version, section_count: sections.len(), sections })
 }
 
 /// 读取 LEB128 编码的无符号 32 位整数

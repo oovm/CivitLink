@@ -20,10 +20,7 @@ pub fn cmd_mcp(workspace: &str) -> GResult<()> {
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
-            .map_err(|e| GError {
-                kind: GErrorKind::Runtime,
-                message: format!("Failed to create tokio runtime: {}", e),
-            })?
+            .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to create tokio runtime: {}", e) })?
             .block_on(async {
                 let vfs = MemoryVfs::new();
                 gg_mcp::serve_gg_mcp(vfs).await;
@@ -37,9 +34,6 @@ pub fn cmd_mcp(workspace: &str) -> GResult<()> {
             "MCP service requires the 'lsp' feature to be enabled.\n\
              Rebuild with: cargo build -p gg-tools --features lsp"
         );
-        Err(GError {
-            kind: GErrorKind::Runtime,
-            message: "LSP feature is not enabled (required for MCP)".to_string(),
-        })
+        Err(GError { kind: GErrorKind::Runtime, message: "LSP feature is not enabled (required for MCP)".to_string() })
     }
 }

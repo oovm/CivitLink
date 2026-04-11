@@ -23,10 +23,7 @@ pub fn cmd_lsp(workspace: &str) -> GResult<()> {
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
-            .map_err(|e| GError {
-                kind: GErrorKind::Runtime,
-                message: format!("Failed to create tokio runtime: {}", e),
-            })?
+            .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to create tokio runtime: {}", e) })?
             .block_on(async {
                 let vfs = MemoryVfs::new();
                 let service = GgLanguageService::new(vfs);
@@ -38,10 +35,7 @@ pub fn cmd_lsp(workspace: &str) -> GResult<()> {
                 server
                     .run(stdin, stdout)
                     .await
-                    .map_err(|e| GError {
-                        kind: GErrorKind::Runtime,
-                        message: format!("LSP server error: {}", e),
-                    })?;
+                    .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("LSP server error: {}", e) })?;
 
                 Ok(())
             })
@@ -53,9 +47,6 @@ pub fn cmd_lsp(workspace: &str) -> GResult<()> {
             "LSP service requires the 'lsp' feature to be enabled.\n\
              Rebuild with: cargo build -p gg-tools --features lsp"
         );
-        Err(GError {
-            kind: GErrorKind::Runtime,
-            message: "LSP feature is not enabled".to_string(),
-        })
+        Err(GError { kind: GErrorKind::Runtime, message: "LSP feature is not enabled".to_string() })
     }
 }

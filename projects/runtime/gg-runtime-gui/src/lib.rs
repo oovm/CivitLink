@@ -7,9 +7,7 @@
 
 /// GUI 渲染器适配器模块
 pub mod gui_renderer_adapter;
-pub mod vx_ast;
-pub mod vx_lexer;
-pub mod vx_parser;
+pub mod vx_parser_oak;
 
 use std::{
     any::Any,
@@ -17,21 +15,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// 模板节点，描述 UI 结构
-#[derive(Debug, Clone, PartialEq)]
-pub enum TemplateNode {
-    /// 元素节点
-    Element {
-        /// 标签名
-        tag: String,
-        /// 属性列表
-        attributes: Vec<(String, String)>,
-        /// 子节点
-        children: Vec<TemplateNode>,
-    },
-    /// 文本节点
-    Text(String),
-}
+
 
 /// Flex 布局方向
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,7 +42,7 @@ pub enum ComponentLifecycle {
 /// VX 组件 trait，对齐 *.vx 文件格式的三段式结构
 pub trait VxComponent: Any + Send + Sync {
     /// 渲染模板，返回 UI 节点描述
-    fn render_template(&self) -> TemplateNode;
+    fn render_template(&self) -> oak_voc::TemplateNode;
 
     /// 脚本初始化，设置响应式状态和事件处理
     fn script_setup(&mut self);
@@ -94,7 +78,7 @@ pub struct DynamicVxComponent {
     /// 组件 ID
     id: String,
     /// 模板节点
-    template: Option<TemplateNode>,
+    template: Option<oak_voc::TemplateNode>,
     /// 格式化的样式字符串
     style_string: Option<String>,
     /// 脚本源码
@@ -118,7 +102,7 @@ impl DynamicVxComponent {
     /// 从文档数据创建动态 VX 组件
     pub fn from_document(
         id: &str,
-        template: Option<TemplateNode>,
+        template: Option<oak_voc::TemplateNode>,
         style_string: Option<String>,
         script_source: Option<String>,
     ) -> Self {
@@ -143,10 +127,10 @@ impl DynamicVxComponent {
 }
 
 impl VxComponent for DynamicVxComponent {
-    fn render_template(&self) -> TemplateNode {
+    fn render_template(&self) -> oak_voc::TemplateNode {
         match &self.template {
             Some(node) => node.clone(),
-            None => TemplateNode::Text(String::new()),
+            None => oak_voc::TemplateNode::Text(String::new()),
         }
     }
 
@@ -545,8 +529,8 @@ struct ComponentWrapper {
 }
 
 impl VxComponent for ComponentWrapper {
-    fn render_template(&self) -> TemplateNode {
-        if let Ok(comp) = self.inner.read() { comp.render_template() } else { TemplateNode::Text(String::new()) }
+    fn render_template(&self) -> oak_voc::TemplateNode {
+        if let Ok(comp) = self.inner.read() { comp.render_template() } else { oak_voc::TemplateNode::Text(String::new()) }
     }
 
     fn script_setup(&mut self) {
@@ -679,7 +663,7 @@ pub mod components {
     }
 
     impl VxComponent for Layout {
-        fn render_template(&self) -> TemplateNode {
+        fn render_template(&self) -> oak_voc::TemplateNode {
             let mut attrs = vec![
                 ("id".to_string(), self.id.clone()),
                 (
@@ -708,9 +692,9 @@ pub mod components {
             let children = self
                 .children
                 .iter()
-                .map(|c| if let Ok(comp) = c.read() { comp.render_template() } else { TemplateNode::Text(String::new()) })
+                .map(|c| if let Ok(comp) = c.read() { comp.render_template() } else { oak_voc::TemplateNode::Text(String::new()) })
                 .collect();
-            TemplateNode::Element { tag: "Layout".to_string(), attributes: attrs, children }
+            oak_voc::TemplateNode::Element { tag: "Layout".to_string(), attributes: attrs, children }
         }
 
         fn script_setup(&mut self) {}
@@ -793,7 +777,7 @@ pub mod components {
     }
 
     impl VxComponent for Stack {
-        fn render_template(&self) -> TemplateNode {
+        fn render_template(&self) -> oak_voc::TemplateNode {
             let mut attrs = vec![
                 ("id".to_string(), self.id.clone()),
                 (
@@ -810,9 +794,9 @@ pub mod components {
             let children = self
                 .children
                 .iter()
-                .map(|c| if let Ok(comp) = c.read() { comp.render_template() } else { TemplateNode::Text(String::new()) })
+                .map(|c| if let Ok(comp) = c.read() { comp.render_template() } else { oak_voc::TemplateNode::Text(String::new()) })
                 .collect();
-            TemplateNode::Element { tag: "Stack".to_string(), attributes: attrs, children }
+            oak_voc::TemplateNode::Element { tag: "Stack".to_string(), attributes: attrs, children }
         }
 
         fn script_setup(&mut self) {}
@@ -890,15 +874,15 @@ pub mod components {
     }
 
     impl VxComponent for Button {
-        fn render_template(&self) -> TemplateNode {
+        fn render_template(&self) -> oak_voc::TemplateNode {
             let mut attrs = vec![("id".to_string(), self.id.clone())];
             if !self.style.is_empty() {
                 attrs.push(("style".to_string(), self.style.clone()));
             }
-            TemplateNode::Element {
+            oak_voc::TemplateNode::Element {
                 tag: "Button".to_string(),
                 attributes: attrs,
-                children: vec![TemplateNode::Text(self.text.clone())],
+                children: vec![oak_voc::TemplateNode::Text(self.text.clone())],
             }
         }
 
@@ -953,15 +937,15 @@ pub mod components {
     }
 
     impl VxComponent for Text {
-        fn render_template(&self) -> TemplateNode {
+        fn render_template(&self) -> oak_voc::TemplateNode {
             let mut attrs = vec![("id".to_string(), self.id.clone())];
             if !self.style.is_empty() {
                 attrs.push(("style".to_string(), self.style.clone()));
             }
-            TemplateNode::Element {
+            oak_voc::TemplateNode::Element {
                 tag: "Text".to_string(),
                 attributes: attrs,
-                children: vec![TemplateNode::Text(self.value.clone())],
+                children: vec![oak_voc::TemplateNode::Text(self.value.clone())],
             }
         }
 
@@ -1031,7 +1015,7 @@ pub mod components {
     }
 
     impl VxComponent for Input {
-        fn render_template(&self) -> TemplateNode {
+        fn render_template(&self) -> oak_voc::TemplateNode {
             let mut attrs = vec![("id".to_string(), self.id.clone())];
             if !self.placeholder.is_empty() {
                 attrs.push(("placeholder".to_string(), self.placeholder.clone()));
@@ -1044,10 +1028,10 @@ pub mod components {
             } else {
                 format!("{}|", self.value)
             };
-            TemplateNode::Element {
+            oak_voc::TemplateNode::Element {
                 tag: "Input".to_string(),
                 attributes: attrs,
-                children: vec![TemplateNode::Text(display_text)],
+                children: vec![oak_voc::TemplateNode::Text(display_text)],
             }
         }
 
@@ -1124,7 +1108,7 @@ pub mod components {
     }
 
     impl VxComponent for Image {
-        fn render_template(&self) -> TemplateNode {
+        fn render_template(&self) -> oak_voc::TemplateNode {
             let mut attrs = vec![("id".to_string(), self.id.clone()), ("src".to_string(), self.src.clone())];
             if let Some(width) = self.width {
                 attrs.push(("width".to_string(), width.to_string()));
@@ -1135,7 +1119,7 @@ pub mod components {
             if !self.style.is_empty() {
                 attrs.push(("style".to_string(), self.style.clone()));
             }
-            TemplateNode::Element { tag: "Image".to_string(), attributes: attrs, children: vec![] }
+            oak_voc::TemplateNode::Element { tag: "Image".to_string(), attributes: attrs, children: vec![] }
         }
 
         fn script_setup(&mut self) {}
@@ -1188,7 +1172,7 @@ pub mod components {
     }
 
     impl VxComponent for Panel {
-        fn render_template(&self) -> TemplateNode {
+        fn render_template(&self) -> oak_voc::TemplateNode {
             let mut attrs = vec![("id".to_string(), self.id.clone())];
             if !self.style.is_empty() {
                 attrs.push(("style".to_string(), self.style.clone()));
@@ -1196,9 +1180,9 @@ pub mod components {
             let children = self
                 .children
                 .iter()
-                .map(|c| if let Ok(comp) = c.read() { comp.render_template() } else { TemplateNode::Text(String::new()) })
+                .map(|c| if let Ok(comp) = c.read() { comp.render_template() } else { oak_voc::TemplateNode::Text(String::new()) })
                 .collect();
-            TemplateNode::Element { tag: "Panel".to_string(), attributes: attrs, children }
+            oak_voc::TemplateNode::Element { tag: "Panel".to_string(), attributes: attrs, children }
         }
 
         fn script_setup(&mut self) {}
@@ -1281,7 +1265,7 @@ pub mod components {
     }
 
     impl VxComponent for ScrollView {
-        fn render_template(&self) -> TemplateNode {
+        fn render_template(&self) -> oak_voc::TemplateNode {
             let mut attrs = vec![
                 ("id".to_string(), self.id.clone()),
                 (
@@ -1298,9 +1282,9 @@ pub mod components {
             let children = self
                 .children
                 .iter()
-                .map(|c| if let Ok(comp) = c.read() { comp.render_template() } else { TemplateNode::Text(String::new()) })
+                .map(|c| if let Ok(comp) = c.read() { comp.render_template() } else { oak_voc::TemplateNode::Text(String::new()) })
                 .collect();
-            TemplateNode::Element { tag: "ScrollView".to_string(), attributes: attrs, children }
+            oak_voc::TemplateNode::Element { tag: "ScrollView".to_string(), attributes: attrs, children }
         }
 
         fn script_setup(&mut self) {}
@@ -1555,229 +1539,4 @@ mod legacy {
 #[allow(deprecated)]
 pub use legacy::{LegacyButton, LegacyLayout, LegacyText};
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::vx_ast::{ScriptAst, StyleAst, StyleRule, VxDocument};
 
-    #[test]
-    fn test_dynamic_vx_component_new() {
-        let comp = DynamicVxComponent::new("test-id");
-        assert_eq!(comp.get_id(), "test-id");
-        assert_eq!(comp.render_template(), TemplateNode::Text(String::new()));
-        assert_eq!(comp.get_style(), None);
-        assert_eq!(comp.script_source(), None);
-        assert_eq!(comp.lifecycle(), ComponentLifecycle::Created);
-    }
-
-    #[test]
-    fn test_dynamic_vx_component_render_template_with_node() {
-        let template = TemplateNode::Element {
-            tag: "div".to_string(),
-            attributes: vec![],
-            children: vec![TemplateNode::Text("Hello".to_string())],
-        };
-        let comp = DynamicVxComponent::from_document(
-            "test",
-            Some(template.clone()),
-            None,
-            None,
-        );
-        assert_eq!(comp.render_template(), template);
-    }
-
-    #[test]
-    fn test_dynamic_vx_component_render_template_none() {
-        let comp = DynamicVxComponent::from_document("test", None, None, None);
-        assert_eq!(comp.render_template(), TemplateNode::Text(String::new()));
-    }
-
-    #[test]
-    fn test_dynamic_vx_component_get_style_some() {
-        let comp = DynamicVxComponent::from_document(
-            "test",
-            None,
-            Some(".box { color: red; }".to_string()),
-            None,
-        );
-        assert_eq!(comp.get_style(), Some(".box { color: red; }"));
-    }
-
-    #[test]
-    fn test_dynamic_vx_component_get_style_empty() {
-        let comp = DynamicVxComponent::from_document("test", None, Some(String::new()), None);
-        assert_eq!(comp.get_style(), None);
-    }
-
-    #[test]
-    fn test_dynamic_vx_component_get_style_none() {
-        let comp = DynamicVxComponent::from_document("test", None, None, None);
-        assert_eq!(comp.get_style(), None);
-    }
-
-    #[test]
-    fn test_dynamic_vx_component_script_setup() {
-        let mut comp = DynamicVxComponent::from_document(
-            "test",
-            None,
-            None,
-            Some("let x = 1;".to_string()),
-        );
-        comp.script_setup();
-        assert_eq!(comp.script_source(), Some("let x = 1;"));
-    }
-
-    #[test]
-    fn test_dynamic_vx_component_handle_event_noop() {
-        let mut comp = DynamicVxComponent::new("test");
-        let event = GuiEvent::MouseClick {
-            x: 10.0,
-            y: 20.0,
-            button: MouseButton::Left,
-        };
-        comp.handle_event(&event, &mut EventContext::new(EventPhase::AtTarget));
-    }
-
-    #[test]
-    fn test_dynamic_vx_component_lifecycle() {
-        let mut comp = DynamicVxComponent::new("test");
-        assert_eq!(comp.lifecycle(), ComponentLifecycle::Created);
-
-        comp.on_mount();
-        assert_eq!(comp.lifecycle(), ComponentLifecycle::Mounted);
-
-        comp.on_update();
-        assert_eq!(comp.lifecycle(), ComponentLifecycle::Updated);
-
-        comp.on_cleanup();
-        assert_eq!(comp.lifecycle(), ComponentLifecycle::Unmounted);
-    }
-
-    #[test]
-    fn test_vx_document_to_component_empty() {
-        let doc = VxDocument {
-            template: None,
-            script: None,
-            style: None,
-        };
-        let comp = doc.to_component();
-        assert_eq!(comp.get_id(), "vx-component");
-        assert_eq!(comp.render_template(), TemplateNode::Text(String::new()));
-        assert_eq!(comp.get_style(), None);
-        assert_eq!(comp.script_source(), None);
-    }
-
-    #[test]
-    fn test_vx_document_to_component_full() {
-        let doc = VxDocument {
-            template: Some(TemplateNode::Element {
-                tag: "div".to_string(),
-                attributes: vec![("class".to_string(), "container".to_string())],
-                children: vec![TemplateNode::Text("Hello".to_string())],
-            }),
-            script: Some(ScriptAst {
-                raw_source: "let x = 1;".to_string(),
-            }),
-            style: Some(StyleAst {
-                rules: vec![StyleRule {
-                    selector: ".container".to_string(),
-                    properties: vec![
-                        ("color".to_string(), "red".to_string()),
-                        ("margin".to_string(), "10px".to_string()),
-                    ],
-                }],
-            }),
-        };
-        let comp = doc.to_component();
-        assert_eq!(comp.get_id(), "vx-component");
-        assert_eq!(
-            comp.render_template(),
-            TemplateNode::Element {
-                tag: "div".to_string(),
-                attributes: vec![("class".to_string(), "container".to_string())],
-                children: vec![TemplateNode::Text("Hello".to_string())],
-            }
-        );
-        assert_eq!(comp.get_style(), Some(".container { color: red; margin: 10px; }"));
-        assert_eq!(comp.script_source(), Some("let x = 1;"));
-    }
-
-    #[test]
-    fn test_vx_document_to_component_multiple_style_rules() {
-        let doc = VxDocument {
-            template: None,
-            script: None,
-            style: Some(StyleAst {
-                rules: vec![
-                    StyleRule {
-                        selector: ".a".to_string(),
-                        properties: vec![("color".to_string(), "blue".to_string())],
-                    },
-                    StyleRule {
-                        selector: ".b".to_string(),
-                        properties: vec![("margin".to_string(), "5px".to_string())],
-                    },
-                ],
-            }),
-        };
-        let comp = doc.to_component();
-        assert_eq!(
-            comp.get_style(),
-            Some(".a { color: blue; }\n.b { margin: 5px; }")
-        );
-    }
-
-    #[test]
-    fn test_vx_document_to_component_template_only() {
-        let doc = VxDocument {
-            template: Some(TemplateNode::Text("Hello World".to_string())),
-            script: None,
-            style: None,
-        };
-        let comp = doc.to_component();
-        assert_eq!(comp.render_template(), TemplateNode::Text("Hello World".to_string()));
-        assert_eq!(comp.get_style(), None);
-        assert_eq!(comp.script_source(), None);
-    }
-
-    #[test]
-    fn test_vx_document_to_component_script_only() {
-        let doc = VxDocument {
-            template: None,
-            script: Some(ScriptAst {
-                raw_source: "function hello() {}".to_string(),
-            }),
-            style: None,
-        };
-        let comp = doc.to_component();
-        assert_eq!(comp.render_template(), TemplateNode::Text(String::new()));
-        assert_eq!(comp.script_source(), Some("function hello() {}"));
-    }
-
-    #[test]
-    fn test_vx_document_to_component_style_only() {
-        let doc = VxDocument {
-            template: None,
-            script: None,
-            style: Some(StyleAst {
-                rules: vec![StyleRule {
-                    selector: ".title".to_string(),
-                    properties: vec![("font-size".to_string(), "16px".to_string())],
-                }],
-            }),
-        };
-        let comp = doc.to_component();
-        assert_eq!(comp.get_style(), Some(".title { font-size: 16px; }"));
-    }
-
-    #[test]
-    fn test_vx_document_to_component_empty_style_rules() {
-        let doc = VxDocument {
-            template: None,
-            script: None,
-            style: Some(StyleAst { rules: vec![] }),
-        };
-        let comp = doc.to_component();
-        assert_eq!(comp.get_style(), None);
-    }
-}

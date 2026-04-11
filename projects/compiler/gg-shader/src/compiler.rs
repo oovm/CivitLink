@@ -6,11 +6,8 @@
 use gg_core::{GError, GErrorKind, GResult};
 use naga;
 
-#[cfg(feature = "valkyrie-compiler")]
 use oak_core::Builder;
-#[cfg(feature = "valkyrie-compiler")]
 use oak_core::{SourceText, parser::ParseSession};
-#[cfg(feature = "valkyrie-compiler")]
 use oak_valkyrie::{ValkyrieBuilder, ValkyrieLanguage};
 
 use crate::lower::GslLowerer;
@@ -20,12 +17,12 @@ use crate::serialize;
 ///
 /// 提供 gs 源码到 naga IR 的完整编译管线。
 /// 支持编译、序列化、反序列化和验证操作。
-pub struct GgShaderCompiler {
+pub struct ShaderCompiler {
     /// 是否启用优化
     pub optimize: bool,
 }
 
-impl GgShaderCompiler {
+impl ShaderCompiler {
     /// 创建新的编译器（默认启用优化）
     pub fn new() -> Self {
         Self { optimize: true }
@@ -40,7 +37,6 @@ impl GgShaderCompiler {
     ///
     /// 解析 gs 源码，将其转换为 naga IR 中间表示。
     /// 仅编译第一个着色器块，忽略命名空间和 micro 函数。
-    #[cfg(feature = "valkyrie-compiler")]
     pub fn compile(&self, source: &str) -> GResult<naga::Module> {
         let language = ValkyrieLanguage::default().with_shader_support();
         let builder = ValkyrieBuilder::new(&language);
@@ -72,7 +68,6 @@ impl GgShaderCompiler {
     /// 编译 gs 源码为序列化的二进制数据
     ///
     /// 等价于 `compile()` 后调用 `serialize_module()`。
-    #[cfg(feature = "valkyrie-compiler")]
     pub fn compile_to_bytes(&self, source: &str) -> GResult<Vec<u8>> {
         let module = self.compile(source)?;
         serialize::serialize_module(&module)
@@ -99,7 +94,7 @@ impl GgShaderCompiler {
     }
 }
 
-impl Default for GgShaderCompiler {
+impl Default for ShaderCompiler {
     fn default() -> Self {
         Self::new()
     }
