@@ -2,7 +2,7 @@
 //! 实现存档系统，负责处理保存和加载请求
 
 use gg_core::GResult;
-use gg_ecs::{Component, System, World};
+use gg_ecs::{Entity, System, World};
 use serde::{Deserialize, Serialize};
 
 use crate::manager::SaveManager;
@@ -24,8 +24,6 @@ pub struct SaveRequest {
     /// 存档槽位
     pub slot: u32,
 }
-
-impl Component for SaveRequest {}
 
 /// 存档系统
 ///
@@ -52,7 +50,7 @@ impl System for SaveSystem {
     /// 如果存在保存请求，执行保存操作；
     /// 如果存在加载请求，执行加载操作。
     fn execute(&mut self, world: &mut World) -> GResult<()> {
-        let request = match world.get_component_mut::<SaveRequest>(0) {
+        let request = match world.get_component_mut::<SaveRequest>(Entity::new(0, 0)) {
             Some(req) => req.clone(),
             None => return Ok(()),
         };
@@ -71,7 +69,7 @@ impl System for SaveSystem {
             }
         }
 
-        world.remove_component::<SaveRequest>(0);
+        world.remove_component::<SaveRequest>(Entity::new(0, 0));
 
         Ok(())
     }

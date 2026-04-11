@@ -10,4 +10,4 @@ gg-bytecode = { workspace = true }
 gg-compiler-core = { workspace = true }
 gg-core = { workspace = true }
 gg-script = { workspace = true }
-gg-shader = { workspace = true }
+gg-shader = { workspace = true, features = ["valkyrie-compiler"] }

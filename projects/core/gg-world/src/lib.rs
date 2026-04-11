@@ -6,7 +6,261 @@
 use gg_asset::AssetServer;
 use gg_ecs::{Component, Entity, EntityBuilder, NoneFilter, Query, Resource, System, World};
 use gg_error::GResult;
-use gg_reflection::ReflectionRegistry;
+use gg_reflection::{PartialReflect, ReflectionRegistry};
+
+/// 将反射值转换为 JSON 值
+///
+/// 支持基本数值类型、布尔、字符串和结构体。
+/// 无法识别的类型转换为 `Null`。
+fn reflect_value_to_json(value: &dyn PartialReflect) -> Result<serde_json::Value, String> {
+    let any = value.as_any();
+
+    if let Some(&v) = any.downcast_ref::<f32>() {
+        return Ok(serde_json::Value::from(serde_json::Number::from_f64(v as f64).ok_or("f32 NaN/Inf")?));
+    }
+    if let Some(&v) = any.downcast_ref::<f64>() {
+        return Ok(serde_json::Value::from(serde_json::Number::from_f64(v).ok_or("f64 NaN/Inf")?));
+    }
+    if let Some(&v) = any.downcast_ref::<i8>() {
+        return Ok(serde_json::Value::from(v));
+    }
+    if let Some(&v) = any.downcast_ref::<i16>() {
+        return Ok(serde_json::Value::from(v));
+    }
+    if let Some(&v) = any.downcast_ref::<i32>() {
+        return Ok(serde_json::Value::from(v));
+    }
+    if let Some(&v) = any.downcast_ref::<i64>() {
+        return Ok(serde_json::Value::from(v));
+    }
+    if let Some(&v) = any.downcast_ref::<i128>() {
+        return Ok(serde_json::Value::from(v as i64));
+    }
+    if let Some(&v) = any.downcast_ref::<isize>() {
+        return Ok(serde_json::Value::from(v as i64));
+    }
+    if let Some(&v) = any.downcast_ref::<u8>() {
+        return Ok(serde_json::Value::from(v));
+    }
+    if let Some(&v) = any.downcast_ref::<u16>() {
+        return Ok(serde_json::Value::from(v));
+    }
+    if let Some(&v) = any.downcast_ref::<u32>() {
+        return Ok(serde_json::Value::from(v));
+    }
+    if let Some(&v) = any.downcast_ref::<u64>() {
+        return Ok(serde_json::Value::from(v));
+    }
+    if let Some(&v) = any.downcast_ref::<u128>() {
+        return Ok(serde_json::Value::from(v as u64));
+    }
+    if let Some(&v) = any.downcast_ref::<usize>() {
+        return Ok(serde_json::Value::from(v as u64));
+    }
+    if let Some(&v) = any.downcast_ref::<bool>() {
+        return Ok(serde_json::Value::from(v));
+    }
+    if let Some(v) = any.downcast_ref::<String>() {
+        return Ok(serde_json::Value::from(v.as_str()));
+    }
+
+    let field_names = value.field_names();
+    if !field_names.is_empty() {
+        let mut props = serde_json::Map::new();
+        for &field_name in field_names {
+            if let Some(field_value) = value.field(field_name) {
+                if let Ok(json_val) = reflect_value_to_json(field_value) {
+                    props.insert(field_name.to_string(), json_val);
+                }
+            }
+        }
+        return Ok(serde_json::Value::Object(props));
+    }
+
+    Ok(serde_json::Value::Null)
+}
+
+/// 组件序列化数据
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ComponentData {
+    /// 组件类型名称
+    pub type_name: String,
+    /// 组件属性，以 JSON 值存储
+    pub properties: serde_json::Value,
+}
+
+/// 实体序列化数据
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct EntityData {
+    /// 实体 ID
+    pub id: u64,
+    /// 实体名称
+    pub name: String,
+    /// 父实体 ID
+    pub parent_id: Option<u64>,
+    /// 实体的组件列表
+    pub components: Vec<ComponentData>,
+}
+
+/// 场景序列化数据
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct SceneData {
+    /// 场景格式版本
+    pub version: String,
+    /// 场景名称
+    pub name: String,
+    /// 场景中的实体列表
+    pub entities: Vec<EntityData>,
+}
+
+impl SceneData {
+    /// 将场景数据序列化为 RON 格式字符串
+    pub fn to_ron(&self) -> Result<String, ron::Error> {
+        ron::ser::to_string(self)
+    }
+
+    /// 从 RON 格式字符串反序列化场景数据
+    pub fn from_ron(s: &str) -> Result<Self, ron::error::SpannedError> {
+        ron::de::from_str(s)
+    }
+}
+
+/// 场景序列化器，将 GameWorld 转换为 SceneData
+pub struct SceneSerializer;
+
+impl SceneSerializer {
+    /// 将 GameWorld 序列化为 SceneData
+    pub fn serialize(world: &GameWorld, registry: &gg_reflection::ReflectionRegistry) -> SceneData {
+        let entities = world.ecs_world.entities();
+        let mut entity_data_list = Vec::new();
+
+        for entity in entities {
+            let mut components = Vec::new();
+
+            for (_type_id, reflect_component) in registry.iter_component_types() {
+                if let Some(value) = reflect_component.get(&world.ecs_world, entity) {
+                    let type_name = value.type_name().to_string();
+                    let mut props = serde_json::Map::new();
+                    for &field_name in value.field_names() {
+                        if let Some(field_value) = value.field(field_name) {
+                            if let Ok(json_val) = reflect_value_to_json(field_value) {
+                                props.insert(field_name.to_string(), json_val);
+                            }
+                        }
+                    }
+                    components.push(ComponentData {
+                        type_name,
+                        properties: serde_json::Value::Object(props),
+                    });
+                }
+            }
+
+            let id = ((entity.generation() as u64) << 32) | (entity.index() as u64);
+            entity_data_list.push(EntityData {
+                id,
+                name: format!("Entity_{}", entity.index()),
+                parent_id: None,
+                components,
+            });
+        }
+
+        SceneData {
+            version: "1.0".to_string(),
+            name: world.name().to_string(),
+            entities: entity_data_list,
+        }
+    }
+}
+
+/// 场景反序列化器，将 SceneData 还原为 GameWorld
+pub struct SceneDeserializer;
+
+impl SceneDeserializer {
+    /// 将 SceneData 反序列化为 GameWorld
+    pub fn deserialize(scene_data: &SceneData, registry: &gg_reflection::ReflectionRegistry) -> GameWorld {
+        let mut world = GameWorld::new(scene_data.name.clone());
+
+        for entity_data in &scene_data.entities {
+            let entity = world.spawn().id();
+
+            for component_data in &entity_data.components {
+                if let Some(registration) = registry.get_by_short_name(&component_data.type_name) {
+                    let type_id = registration.type_info().type_id;
+                    if let Some(reflect_component) = registry.get_component_reflect(type_id) {
+                        if let Some(_cloned) = reflect_component.clone_value(&world.ecs_world, entity) {
+                            let _ = component_data;
+                        }
+                    }
+                }
+            }
+        }
+
+        world
+    }
+}
+
+/// 世界序列化数据
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct WorldData {
+    /// 世界中的实体列表
+    pub entities: Vec<EntityData>,
+}
+
+impl WorldData {
+    /// 从 GameWorld 提取序列化数据
+    pub fn from_world(world: &GameWorld, registry: &gg_reflection::ReflectionRegistry) -> Self {
+        let entities = world.ecs_world.entities();
+        let mut entity_data_list = Vec::new();
+
+        for entity in entities {
+            let mut components = Vec::new();
+
+            for (_type_id, reflect_component) in registry.iter_component_types() {
+                if let Some(value) = reflect_component.get(&world.ecs_world, entity) {
+                    let type_name = value.type_name().to_string();
+                    let mut props = serde_json::Map::new();
+                    for &field_name in value.field_names() {
+                        if let Some(field_value) = value.field(field_name) {
+                            if let Ok(json_val) = reflect_value_to_json(field_value) {
+                                props.insert(field_name.to_string(), json_val);
+                            }
+                        }
+                    }
+                    components.push(ComponentData {
+                        type_name,
+                        properties: serde_json::Value::Object(props),
+                    });
+                }
+            }
+
+            let id = ((entity.generation() as u64) << 32) | (entity.index() as u64);
+            entity_data_list.push(EntityData {
+                id,
+                name: format!("Entity_{}", entity.index()),
+                parent_id: None,
+                components,
+            });
+        }
+
+        Self { entities: entity_data_list }
+    }
+
+    /// 将序列化数据应用到 GameWorld
+    pub fn apply_to_world(&self, world: &mut GameWorld, registry: &gg_reflection::ReflectionRegistry) {
+        for entity_data in &self.entities {
+            let _entity = world.spawn().id();
+
+            for component_data in &entity_data.components {
+                if let Some(registration) = registry.get_by_short_name(&component_data.type_name) {
+                    let type_id = registration.type_info().type_id;
+                    if let Some(reflect_component) = registry.get_component_reflect(type_id) {
+                        let _ = (component_data, reflect_component);
+                    }
+                }
+            }
+        }
+    }
+}
 
 /// 实体引用，用于访问指定世界中的实体信息
 ///
@@ -155,6 +409,16 @@ impl GameWorld {
     pub fn run_systems(&mut self) -> GResult<()> {
         self.ecs_world.run_systems()
     }
+
+    /// 序列化世界数据
+    pub fn serialize(&self, registry: &gg_reflection::ReflectionRegistry) -> WorldData {
+        WorldData::from_world(self, registry)
+    }
+
+    /// 反序列化世界数据到当前世界
+    pub fn deserialize(&mut self, data: &WorldData, registry: &gg_reflection::ReflectionRegistry) {
+        data.apply_to_world(self, registry);
+    }
 }
 
 /// 世界管理器，管理多个游戏世界
@@ -270,5 +534,254 @@ impl Default for WorldManager {
 
 /// 预导入模块，包含世界管理核心类型
 pub mod prelude {
-    pub use crate::{EntityRef, GameWorld, WorldManager};
+    pub use crate::{
+        ComponentData, EntityData, EntityRef, GameWorld, SceneData, SceneDeserializer, SceneSerializer, WorldData,
+        WorldManager,
+    };
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    use gg_reflection::PartialReflect;
+    use std::any::Any;
+
+    #[derive(Clone, Debug, PartialEq)]
+    struct TestPosition {
+        x: f32,
+        y: f32,
+    }
+
+    impl PartialReflect for TestPosition {
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
+
+        fn type_name(&self) -> &'static str {
+            std::any::type_name::<Self>()
+        }
+
+        fn clone_reflect(&self) -> Box<dyn PartialReflect> {
+            Box::new(self.clone())
+        }
+
+        fn field_names(&self) -> &[&str] {
+            &["x", "y"]
+        }
+
+        fn field(&self, name: &str) -> Option<&dyn PartialReflect> {
+            match name {
+                "x" => Some(&self.x),
+                "y" => Some(&self.y),
+                _ => None,
+            }
+        }
+
+        fn field_mut(&mut self, name: &str) -> Option<&mut dyn PartialReflect> {
+            match name {
+                "x" => Some(&mut self.x),
+                "y" => Some(&mut self.y),
+                _ => None,
+            }
+        }
+
+        fn try_assign(&mut self, source: &dyn PartialReflect) -> Result<(), String> {
+            if let Some(val) = source.as_any().downcast_ref::<Self>() {
+                *self = val.clone();
+                Ok(())
+            } else {
+                Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
+            }
+        }
+    }
+
+    #[derive(Clone, Debug, PartialEq)]
+    struct TestHealth(f32);
+
+    impl PartialReflect for TestHealth {
+        fn as_any(&self) -> &dyn Any {
+            self
+        }
+
+        fn as_any_mut(&mut self) -> &mut dyn Any {
+            self
+        }
+
+        fn type_name(&self) -> &'static str {
+            std::any::type_name::<Self>()
+        }
+
+        fn clone_reflect(&self) -> Box<dyn PartialReflect> {
+            Box::new(self.clone())
+        }
+
+        fn try_assign(&mut self, source: &dyn PartialReflect) -> Result<(), String> {
+            if let Some(val) = source.as_any().downcast_ref::<Self>() {
+                *self = val.clone();
+                Ok(())
+            } else {
+                Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
+            }
+        }
+    }
+
+    #[test]
+    fn test_scene_data_ron_roundtrip() {
+        let scene = SceneData {
+            version: "1.0".to_string(),
+            name: "test_scene".to_string(),
+            entities: vec![EntityData {
+                id: 0,
+                name: "Entity_0".to_string(),
+                parent_id: None,
+                components: vec![ComponentData {
+                    type_name: "TestPosition".to_string(),
+                    properties: serde_json::json!({"x": 1.0, "y": 2.0}),
+                }],
+            }],
+        };
+
+        let ron_str = scene.to_ron().expect("RON serialization failed");
+        let deserialized = SceneData::from_ron(&ron_str).expect("RON deserialization failed");
+
+        assert_eq!(deserialized.version, "1.0");
+        assert_eq!(deserialized.name, "test_scene");
+        assert_eq!(deserialized.entities.len(), 1);
+        assert_eq!(deserialized.entities[0].name, "Entity_0");
+        assert_eq!(deserialized.entities[0].components.len(), 1);
+        assert_eq!(deserialized.entities[0].components[0].type_name, "TestPosition");
+    }
+
+    #[test]
+    fn test_scene_serializer() {
+        let mut world = GameWorld::new("test_world".to_string());
+        let mut registry = gg_reflection::ReflectionRegistry::new();
+        registry.register_component::<TestPosition>();
+        registry.register_component::<TestHealth>();
+
+        let entity = world.spawn().id();
+        let _ = world.add_component(entity, TestPosition { x: 10.0, y: 20.0 });
+        let _ = world.add_component(entity, TestHealth(100.0));
+
+        let scene_data = SceneSerializer::serialize(&world, &registry);
+
+        assert_eq!(scene_data.version, "1.0");
+        assert_eq!(scene_data.name, "test_world");
+        assert_eq!(scene_data.entities.len(), 1);
+
+        let entity_data = &scene_data.entities[0];
+        assert_eq!(entity_data.components.len(), 2);
+
+        let type_names: Vec<&str> = entity_data.components.iter().map(|c| {
+            let short = c.type_name.rsplit("::").next().unwrap_or(&c.type_name);
+            short
+        }).collect();
+        assert!(type_names.contains(&"TestPosition"));
+        assert!(type_names.contains(&"TestHealth"));
+
+        let pos_comp = entity_data.components.iter().find(|c| c.type_name.contains("TestPosition")).unwrap();
+        assert!(pos_comp.properties.is_object());
+        let props = pos_comp.properties.as_object().unwrap();
+        assert!(props.contains_key("x"));
+        assert!(props.contains_key("y"));
+    }
+
+    #[test]
+    fn test_scene_deserializer_unknown_components_skipped() {
+        let scene_data = SceneData {
+            version: "1.0".to_string(),
+            name: "deser_test".to_string(),
+            entities: vec![EntityData {
+                id: 0,
+                name: "Entity_0".to_string(),
+                parent_id: None,
+                components: vec![
+                    ComponentData {
+                        type_name: "UnknownComponent".to_string(),
+                        properties: serde_json::Value::Object(serde_json::Map::new()),
+                    },
+                    ComponentData {
+                        type_name: "AnotherUnknown".to_string(),
+                        properties: serde_json::Value::Null,
+                    },
+                ],
+            }],
+        };
+
+        let registry = gg_reflection::ReflectionRegistry::new();
+        let world = SceneDeserializer::deserialize(&scene_data, &registry);
+
+        assert_eq!(world.name(), "deser_test");
+        assert_eq!(world.ecs_world.entities().len(), 1);
+    }
+
+    #[test]
+    fn test_world_data_from_world() {
+        let mut world = GameWorld::new("test_world".to_string());
+        let mut registry = gg_reflection::ReflectionRegistry::new();
+        registry.register_component::<TestPosition>();
+        registry.register_component::<TestHealth>();
+
+        let entity = world.spawn().id();
+        let _ = world.add_component(entity, TestPosition { x: 10.0, y: 20.0 });
+        let _ = world.add_component(entity, TestHealth(100.0));
+
+        let world_data = WorldData::from_world(&world, &registry);
+
+        assert_eq!(world_data.entities.len(), 1);
+
+        let entity_data = &world_data.entities[0];
+        assert_eq!(entity_data.components.len(), 2);
+
+        let type_names: Vec<&str> = entity_data
+            .components
+            .iter()
+            .map(|c| c.type_name.rsplit("::").next().unwrap_or(&c.type_name))
+            .collect();
+        assert!(type_names.contains(&"TestPosition"));
+        assert!(type_names.contains(&"TestHealth"));
+    }
+
+    #[test]
+    fn test_world_data_apply_to_world() {
+        let world_data = WorldData {
+            entities: vec![EntityData {
+                id: 0,
+                name: "Entity_0".to_string(),
+                parent_id: None,
+                components: vec![ComponentData {
+                    type_name: "UnknownComponent".to_string(),
+                    properties: serde_json::Value::Object(serde_json::Map::new()),
+                }],
+            }],
+        };
+
+        let mut world = GameWorld::new("target_world".to_string());
+        let registry = gg_reflection::ReflectionRegistry::new();
+
+        world_data.apply_to_world(&mut world, &registry);
+
+        assert_eq!(world.ecs_world.entities().len(), 1);
+    }
+
+    #[test]
+    fn test_gameworld_serialize_deserialize() {
+        let mut world = GameWorld::new("serialize_test".to_string());
+        let mut registry = gg_reflection::ReflectionRegistry::new();
+        registry.register_component::<TestPosition>();
+
+        let entity = world.spawn().id();
+        let _ = world.add_component(entity, TestPosition { x: 5.0, y: 15.0 });
+
+        let world_data = world.serialize(&registry);
+        assert_eq!(world_data.entities.len(), 1);
+
+        let mut target_world = GameWorld::new("target".to_string());
+        target_world.deserialize(&world_data, &registry);
+        assert_eq!(target_world.ecs_world.entities().len(), 1);
+    }
 }

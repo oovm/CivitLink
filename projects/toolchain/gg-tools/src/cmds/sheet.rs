@@ -13,7 +13,9 @@ pub fn cmd_sheet(command: &SheetCommands) -> GResult<()> {
     let (workspace, sheet_command) = match command {
         SheetCommands::Init { workspace } => (workspace.as_str(), gg_sheet::cli::SheetCommands::Init),
         SheetCommands::Check { workspace } => (workspace.as_str(), gg_sheet::cli::SheetCommands::Check),
-        SheetCommands::Generate { workspace } => (workspace.as_str(), gg_sheet::cli::SheetCommands::Generate),
+        SheetCommands::Generate { workspace, format } => {
+            (workspace.as_str(), gg_sheet::cli::SheetCommands::Generate { format: format.clone() })
+        }
         SheetCommands::Watch { workspace } => (workspace.as_str(), gg_sheet::cli::SheetCommands::Watch),
     };
 

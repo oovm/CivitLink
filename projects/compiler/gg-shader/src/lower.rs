@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use gg_core::{GError, GErrorKind, GResult};
 use naga;
-use oak_valkyrie::ast::{Shader, Item, MicroDefinition, Namespace, Statement};
+use oak_valkyrie::ast::{ShaderDeclaration, StatementNode, MicroDeclaration, NamespaceDeclaration};
 
 /// gs AST → naga IR 转换器
 ///
@@ -33,27 +33,23 @@ impl GslLowerer {
     }
 
     /// 将 oak-valkyrie 的 Shader AST 转换为 naga Module
-    pub fn lower(&mut self, shader: &Shader) -> GResult<naga::Module> {
+    pub fn lower(&mut self, shader: &ShaderDeclaration) -> GResult<naga::Module> {
         self.local_vars.clear();
         self.global_vars.clear();
         self.type_cache.clear();
 
         let mut module = naga::Module::default();
 
-        // 处理 shader 内的 items，提取 uniforms 和 functions
         let mut uniforms = Vec::new();
         let mut functions = Vec::new();
 
         for item in &shader.items {
             match item {
-                Item::Micro(micro) => {
-                    // 处理 micro 函数
+                StatementNode::Micro(micro) => {
                 }
-                Item::Namespace(namespace) => {
-                    // 处理命名空间
+                StatementNode::Namespace(namespace) => {
                 }
-                Item::Statement(stmt) => {
-                    // 处理语句
+                StatementNode::Statement(stmt) => {
                 }
                 _ => {}
             }

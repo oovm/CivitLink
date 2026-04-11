@@ -3,6 +3,7 @@ use crate::{
     style::{FontStyle, LayoutStyle, SizeValue, Style},
     widget::Widget,
 };
+use gg_core::GResult;
 
 /// 文本框控件
 ///
@@ -52,7 +53,7 @@ impl TextBox {
 }
 
 impl Widget for TextBox {
-    fn build(&self, tree: &mut UiTree) -> UiNodeId {
+    fn build(&mut self, tree: &mut UiTree) -> GResult<UiNodeId> {
         let width_value = if let Some(max_w) = self.max_width { SizeValue::Px(max_w) } else { SizeValue::Auto };
 
         let style = Style { layout: LayoutStyle { width: width_value, ..self.style.layout.clone() }, ..self.style.clone() };
@@ -63,7 +64,8 @@ impl Widget for TextBox {
             UiNodeData::Text { content: self.text.clone() },
         );
 
-        id
+        self.node_id = Some(id);
+        Ok(id)
     }
 
     fn update(&self, tree: &mut UiTree) {

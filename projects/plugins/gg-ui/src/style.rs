@@ -68,6 +68,10 @@ pub struct LayoutStyle {
     pub padding: f32,
     /// 外边距
     pub margin: f32,
+    /// 左外边距
+    pub margin_left: f32,
+    /// 上外边距
+    pub margin_top: f32,
     /// 宽度
     pub width: SizeValue,
     /// 高度
@@ -88,6 +92,8 @@ impl Default for LayoutStyle {
             gap: 0.0,
             padding: 0.0,
             margin: 0.0,
+            margin_left: 0.0,
+            margin_top: 0.0,
             width: SizeValue::Auto,
             height: SizeValue::Auto,
             min_width: SizeValue::Auto,
@@ -141,6 +147,18 @@ impl LayoutStyle {
     /// 设置外边距
     pub fn with_margin(mut self, margin: f32) -> Self {
         self.margin = margin;
+        self
+    }
+
+    /// 设置左外边距
+    pub fn with_margin_left(mut self, margin_left: f32) -> Self {
+        self.margin_left = margin_left;
+        self
+    }
+
+    /// 设置上外边距
+    pub fn with_margin_top(mut self, margin_top: f32) -> Self {
+        self.margin_top = margin_top;
         self
     }
 
@@ -245,6 +263,8 @@ pub struct Style {
     pub overflow: Overflow,
     /// 图片纹理路径
     pub image_path: Option<String>,
+    /// 不透明度（0.0 完全透明，1.0 完全不透明）
+    pub opacity: f32,
 }
 
 impl Default for Style {
@@ -258,6 +278,7 @@ impl Default for Style {
             font: None,
             overflow: Overflow::default(),
             image_path: None,
+            opacity: 1.0,
         }
     }
 }
@@ -313,6 +334,12 @@ impl Style {
     /// 设置图片纹理路径
     pub fn with_image_path(mut self, path: impl Into<String>) -> Self {
         self.image_path = Some(path.into());
+        self
+    }
+
+    /// 设置不透明度
+    pub fn with_opacity(mut self, opacity: f32) -> Self {
+        self.opacity = opacity;
         self
     }
 }

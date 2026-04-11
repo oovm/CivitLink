@@ -35,7 +35,7 @@ impl DialogueSaveState {
 
         let portrait_states: Vec<PortraitState> = {
             let mut portraits = Vec::new();
-            for &entity in world.entities() {
+            for entity in world.entities() {
                 if let Some(portrait) = world.get_component::<PortraitState>(entity) {
                     portraits.push(portrait.clone());
                 }

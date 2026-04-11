@@ -5,6 +5,8 @@
 
 /// 调试信息
 pub mod debug_info;
+/// 调试协议
+pub mod debug_protocol;
 /// 字节码格式定义
 pub mod format;
 /// 宿主接口
@@ -19,6 +21,10 @@ pub mod reader;
 pub mod writer;
 
 pub use debug_info::{DebugInfo, SourceLocation};
+pub use debug_protocol::{
+    BasicDebugController, BasicDebugProtocol, Breakpoint, BreakpointId, DebugController, DebugEvent,
+    DebugProtocol, DebugTermination, DebugValue, StackFrameInfo, StepMode,
+};
 pub use format::{BytecodeFunction, BytecodeInstruction, BytecodeModule, BytecodeOpCode, BytecodeValue};
 pub use host::Host;
 pub use interpreter::{BytecodeInterpreter, InterpretResult, InterpreterFrame};

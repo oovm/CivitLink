@@ -10,17 +10,32 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("========================================");
     println!();
 
-    // 创建游戏配置
-    let config = PlatformerConfig::default();
+    let config = load_config().unwrap_or_else(|e| {
+        eprintln!("Failed to load config: {}, using defaults", e);
+        PlatformerConfig::default()
+    });
 
-    // 创建 Platformer 引擎实例
     let mut engine = PlatformerEngine::new(config, false);
 
-    // 初始化引擎
     engine.initialize()?;
 
-    // 运行游戏
     engine.run()?;
 
     Ok(())
+}
+
+/// 从 game.toml 加载配置
+///
+/// 依次尝试从当前目录和 template 子目录加载 game.toml，
+/// 若均失败则返回错误。
+fn load_config() -> Result<PlatformerConfig, Box<dyn std::error::Error>> {
+    let paths = ["game.toml", "template/game.toml"];
+    for path in &paths {
+        if let Ok(content) = std::fs::read_to_string(path) {
+            let config: PlatformerConfig = toml::from_str(&content)?;
+            println!("Loaded config from: {}", path);
+            return Ok(config);
+        }
+    }
+    Err("No game.toml found".into())
 }

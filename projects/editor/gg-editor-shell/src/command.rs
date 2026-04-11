@@ -23,8 +23,10 @@ pub trait Command {
 ///
 /// 维护撤销栈和重做栈，支持命令的执行、撤销和重做操作。
 pub struct CommandManager {
-    undo_stack: Vec<Box<dyn Command>>,
-    redo_stack: Vec<Box<dyn Command>>,
+    /// 撤销栈
+    pub(crate) undo_stack: Vec<Box<dyn Command>>,
+    /// 重做栈
+    pub(crate) redo_stack: Vec<Box<dyn Command>>,
 }
 
 impl CommandManager {

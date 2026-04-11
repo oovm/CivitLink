@@ -8,9 +8,12 @@
 
 /// 内置着色器模块
 pub mod builtin;
-/// GG Shader 编译器公共 API
-pub mod compiler;
-/// gs AST → naga IR 转换模块
-pub mod lower;
 /// naga IR 序列化模块
 pub mod serialize;
+
+#[cfg(feature = "valkyrie-compiler")]
+/// GG Shader 编译器公共 API
+pub mod compiler;
+#[cfg(feature = "valkyrie-compiler")]
+/// gs AST → naga IR 转换模块
+pub mod lower;

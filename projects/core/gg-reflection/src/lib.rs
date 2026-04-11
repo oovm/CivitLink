@@ -170,16 +170,68 @@ impl TypeRegistration {
     }
 }
 
+/// 反射组件 trait，提供通过反射动态操作 ECS 组件的能力
+pub trait ReflectComponent: Send + Sync {
+    /// 向世界中的实体插入反射组件值
+    fn insert(&self, world: &mut gg_ecs::World, entity: gg_ecs::Entity, value: Box<dyn PartialReflect>);
+
+    /// 从世界中的实体移除组件
+    fn remove(&self, world: &mut gg_ecs::World, entity: gg_ecs::Entity);
+
+    /// 获取世界中实体的组件不可变反射引用
+    fn get<'a>(&self, world: &'a gg_ecs::World, entity: gg_ecs::Entity) -> Option<&'a dyn PartialReflect>;
+
+    /// 获取世界中实体的组件可变反射引用
+    fn get_mut<'a>(&self, world: &'a mut gg_ecs::World, entity: gg_ecs::Entity) -> Option<&'a mut dyn PartialReflect>;
+
+    /// 克隆世界中实体的组件值为反射装箱值
+    fn clone_value(&self, world: &gg_ecs::World, entity: gg_ecs::Entity) -> Option<Box<dyn PartialReflect>>;
+}
+
+/// 泛型反射组件实现，为满足 `Component + PartialReflect + Clone` 的类型提供 `ReflectComponent`
+pub struct ReflectComponentFor<T> {
+    _marker: std::marker::PhantomData<T>,
+}
+
+impl<T: gg_ecs::Component + PartialReflect + Clone + 'static> ReflectComponent for ReflectComponentFor<T> {
+    fn insert(&self, world: &mut gg_ecs::World, entity: gg_ecs::Entity, value: Box<dyn PartialReflect>) {
+        if let Some(component) = value.as_any().downcast_ref::<T>() {
+            let _ = world.add_component(entity, component.clone());
+        }
+    }
+
+    fn remove(&self, world: &mut gg_ecs::World, entity: gg_ecs::Entity) {
+        let _ = world.remove_component::<T>(entity);
+    }
+
+    fn get<'a>(&self, world: &'a gg_ecs::World, entity: gg_ecs::Entity) -> Option<&'a dyn PartialReflect> {
+        world.get_component::<T>(entity).map(|c| c as &dyn PartialReflect)
+    }
+
+    fn get_mut<'a>(&self, world: &'a mut gg_ecs::World, entity: gg_ecs::Entity) -> Option<&'a mut dyn PartialReflect> {
+        world.get_component_mut::<T>(entity).map(|c| c as &mut dyn PartialReflect)
+    }
+
+    fn clone_value(&self, world: &gg_ecs::World, entity: gg_ecs::Entity) -> Option<Box<dyn PartialReflect>> {
+        world.get_component::<T>(entity).map(|c| c.clone_reflect())
+    }
+}
+
 /// 反射注册表，管理所有可反射类型
 pub struct ReflectionRegistry {
     /// 类型注册映射
     registrations: HashMap<TypeId, TypeRegistration>,
+    /// 反射组件映射
+    reflect_components: HashMap<TypeId, Box<dyn ReflectComponent>>,
 }
 
 impl ReflectionRegistry {
     /// 创建空的反射注册表
     pub fn new() -> Self {
-        Self { registrations: HashMap::new() }
+        Self {
+            registrations: HashMap::new(),
+            reflect_components: HashMap::new(),
+        }
     }
 
     /// 注册类型 `T`
@@ -211,6 +263,40 @@ impl ReflectionRegistry {
     /// 检查类型是否已注册
     pub fn is_registered(&self, type_id: TypeId) -> bool {
         self.registrations.contains_key(&type_id)
+    }
+
+    /// 注册反射组件类型 `T`
+    ///
+    /// 同时调用 `register::<T>()` 注册类型信息，
+    /// 并创建 `ReflectComponentFor::<T>` 插入反射组件映射。
+    pub fn register_component<T: gg_ecs::Component + PartialReflect + Clone + 'static>(&mut self) {
+        self.register::<T>();
+        self.reflect_components.insert(TypeId::of::<T>(), Box::new(ReflectComponentFor::<T> { _marker: std::marker::PhantomData }));
+    }
+
+    /// 根据类型 ID 获取反射组件操作接口
+    pub fn get_component_reflect(&self, type_id: TypeId) -> Option<&dyn ReflectComponent> {
+        self.reflect_components.get(&type_id).map(|rc| rc.as_ref())
+    }
+
+    /// 根据完整类型名称获取类型注册信息
+    pub fn get_by_name(&self, name: &str) -> Option<&TypeRegistration> {
+        self.registrations.values().find(|r| r.type_info().type_name == name)
+    }
+
+    /// 根据简短类型名称获取类型注册信息
+    pub fn get_by_short_name(&self, short_name: &str) -> Option<&TypeRegistration> {
+        self.registrations.values().find(|r| r.type_info().short_name == short_name)
+    }
+
+    /// 迭代所有类型注册信息
+    pub fn iter(&self) -> impl Iterator<Item = &TypeRegistration> {
+        self.registrations.values()
+    }
+
+    /// 迭代所有反射组件类型
+    pub fn iter_component_types(&self) -> impl Iterator<Item = (TypeId, &dyn ReflectComponent)> {
+        self.reflect_components.iter().map(|(&type_id, rc)| (type_id, rc.as_ref()))
     }
 }
 
@@ -310,7 +396,177 @@ impl<T: PartialReflect> PropertyEditor for StructPropertyEditor<T> {
 /// 预导入模块，包含反射系统常用类型
 pub mod prelude {
     pub use crate::{
-        PartialReflect, PropertyEditor, PropertyInfo, ReflectionRegistry, StructPropertyEditor, TypeInfo, TypeRegistration,
+        PartialReflect, PropertyEditor, PropertyInfo, ReflectComponent, ReflectComponentFor, ReflectionRegistry,
+        StructPropertyEditor, TypeInfo, TypeRegistration,
     };
     pub use gg_macros::Reflect;
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+    use gg_ecs::World;
+    use std::any::TypeId;
+
+    #[derive(Clone, Debug, PartialEq)]
+    struct Health(f32);
+
+    impl PartialReflect for Health {
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+            self
+        }
+
+        fn type_name(&self) -> &'static str {
+            std::any::type_name::<Self>()
+        }
+
+        fn clone_reflect(&self) -> Box<dyn PartialReflect> {
+            Box::new(self.clone())
+        }
+
+        fn try_assign(&mut self, source: &dyn PartialReflect) -> Result<(), String> {
+            if let Some(val) = source.as_any().downcast_ref::<Self>() {
+                *self = val.clone();
+                Ok(())
+            } else {
+                Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
+            }
+        }
+    }
+
+    #[derive(Clone, Debug, PartialEq)]
+    struct Name(String);
+
+    impl PartialReflect for Name {
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+
+        fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+            self
+        }
+
+        fn type_name(&self) -> &'static str {
+            std::any::type_name::<Self>()
+        }
+
+        fn clone_reflect(&self) -> Box<dyn PartialReflect> {
+            Box::new(self.clone())
+        }
+
+        fn try_assign(&mut self, source: &dyn PartialReflect) -> Result<(), String> {
+            if let Some(val) = source.as_any().downcast_ref::<Self>() {
+                *self = val.clone();
+                Ok(())
+            } else {
+                Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
+            }
+        }
+    }
+
+    #[test]
+    fn test_reflect_component_insert_get_remove() {
+        let mut registry = ReflectionRegistry::new();
+        registry.register_component::<Health>();
+
+        let mut world = World::new();
+        let entity = world.spawn().id();
+
+        let rc = registry.get_component_reflect(TypeId::of::<Health>()).unwrap();
+        rc.insert(&mut world, entity, Box::new(Health(100.0)));
+
+        let value = rc.get(&world, entity).unwrap();
+        let health = value.as_any().downcast_ref::<Health>().unwrap();
+        assert_eq!(health.0, 100.0);
+
+        rc.remove(&mut world, entity);
+        assert!(rc.get(&world, entity).is_none());
+    }
+
+    #[test]
+    fn test_reflect_component_get_mut() {
+        let mut registry = ReflectionRegistry::new();
+        registry.register_component::<Health>();
+
+        let mut world = World::new();
+        let entity = world.spawn().id();
+
+        let rc = registry.get_component_reflect(TypeId::of::<Health>()).unwrap();
+        rc.insert(&mut world, entity, Box::new(Health(50.0)));
+
+        {
+            let value_mut = rc.get_mut(&mut world, entity).unwrap();
+            let health = value_mut.as_any_mut().downcast_mut::<Health>().unwrap();
+            health.0 = 75.0;
+        }
+
+        let value = rc.get(&world, entity).unwrap();
+        let health = value.as_any().downcast_ref::<Health>().unwrap();
+        assert_eq!(health.0, 75.0);
+    }
+
+    #[test]
+    fn test_reflect_component_clone_value() {
+        let mut registry = ReflectionRegistry::new();
+        registry.register_component::<Health>();
+
+        let mut world = World::new();
+        let entity = world.spawn().id();
+
+        let rc = registry.get_component_reflect(TypeId::of::<Health>()).unwrap();
+        rc.insert(&mut world, entity, Box::new(Health(42.0)));
+
+        let cloned = rc.clone_value(&world, entity).unwrap();
+        let health = cloned.as_any().downcast_ref::<Health>().unwrap();
+        assert_eq!(health.0, 42.0);
+    }
+
+    #[test]
+    fn test_registry_get_by_name() {
+        let mut registry = ReflectionRegistry::new();
+        registry.register::<Health>();
+
+        let type_name = std::any::type_name::<Health>();
+        let found = registry.get_by_name(type_name).unwrap();
+        assert_eq!(found.type_info().type_name, type_name);
+
+        assert!(registry.get_by_name("nonexistent::Type").is_none());
+    }
+
+    #[test]
+    fn test_registry_get_by_short_name() {
+        let mut registry = ReflectionRegistry::new();
+        registry.register::<Health>();
+
+        let found = registry.get_by_short_name("Health").unwrap();
+        assert_eq!(found.type_info().short_name, "Health");
+
+        assert!(registry.get_by_short_name("NonExistent").is_none());
+    }
+
+    #[test]
+    fn test_registry_iter() {
+        let mut registry = ReflectionRegistry::new();
+        registry.register::<Health>();
+        registry.register::<Name>();
+
+        let names: Vec<&str> = registry.iter().map(|r| r.type_info().short_name.as_str()).collect();
+        assert!(names.contains(&"Health"));
+        assert!(names.contains(&"Name"));
+    }
+
+    #[test]
+    fn test_registry_iter_component_types() {
+        let mut registry = ReflectionRegistry::new();
+        registry.register_component::<Health>();
+        registry.register_component::<Name>();
+
+        let type_ids: Vec<TypeId> = registry.iter_component_types().map(|(id, _)| id).collect();
+        assert!(type_ids.contains(&TypeId::of::<Health>()));
+        assert!(type_ids.contains(&TypeId::of::<Name>()));
+    }
 }

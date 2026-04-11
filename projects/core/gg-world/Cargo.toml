@@ -10,3 +10,6 @@ gg-ecs = { workspace = true }
 gg-asset = { workspace = true }
 gg-reflection = { workspace = true }
 gg-error = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+ron = { workspace = true }

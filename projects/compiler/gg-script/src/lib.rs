@@ -52,7 +52,7 @@ impl ScriptCompiler {
 
     /// 编译 Valkyrie 脚本源码为 IR 模块（跳过优化和字节码序列化）
     pub fn compile_to_ir(&self, source: &str, module_name: &str) -> GResult<IrModule> {
-        let language = ValkyrieLanguage::with_shader_support();
+        let language = ValkyrieLanguage::default().with_shader_support();
         let builder = ValkyrieBuilder::new(&language);
         let source_text = SourceText::new(source);
         let mut cache = oak_core::parser::ParseSession::<ValkyrieLanguage>::default();

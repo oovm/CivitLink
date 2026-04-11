@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    codegen::{self, CodegenConfig},
+    codegen::{self, CodegenConfig, OutputFormat},
     config::SheetConfig,
     error::{SheetError, SheetResult},
     merge::merge_tables,
@@ -21,6 +21,8 @@ pub struct SheetCompiler {
     sheet_dir: PathBuf,
     /// 输出目录
     output_dir: PathBuf,
+    /// 输出格式
+    format: OutputFormat,
     /// 文件内容哈希缓存（用于增量编译）
     file_hashes: HashMap<PathBuf, u64>,
 }
@@ -28,7 +30,13 @@ pub struct SheetCompiler {
 impl SheetCompiler {
     /// 创建新的配置表编译器
     pub fn new(sheet_dir: impl Into<PathBuf>, output_dir: impl Into<PathBuf>) -> Self {
-        Self { sheet_dir: sheet_dir.into(), output_dir: output_dir.into(), file_hashes: HashMap::new() }
+        Self { sheet_dir: sheet_dir.into(), output_dir: output_dir.into(), format: OutputFormat::Valkyrie, file_hashes: HashMap::new() }
+    }
+
+    /// 设置输出格式
+    pub fn with_format(mut self, format: OutputFormat) -> Self {
+        self.format = format;
+        self
     }
 
     /// 从配置创建编译器
@@ -36,6 +44,7 @@ impl SheetCompiler {
         Self {
             sheet_dir: PathBuf::from(&config.sheet_dir),
             output_dir: PathBuf::from(&config.output_dir),
+            format: OutputFormat::Valkyrie,
             file_hashes: HashMap::new(),
         }
     }
@@ -91,7 +100,8 @@ impl SheetCompiler {
         let raw_table = load_table(path)?;
         let table = SheetTable::from_raw(raw_table)?;
 
-        let config = CodegenConfig::new(self.output_dir.clone());
+        let mut config = CodegenConfig::new(self.output_dir.clone());
+        config.format = self.format.clone();
         let code = codegen::generate_table(&table, &config)?;
 
         let output_path = self.output_path(&table.name);
@@ -126,7 +136,8 @@ impl SheetCompiler {
         let sorted_tables = sort_by_dependency(&tables);
 
         for table in &sorted_tables {
-            let config = CodegenConfig::new(self.output_dir.clone());
+            let mut config = CodegenConfig::new(self.output_dir.clone());
+            config.format = self.format.clone();
             let code = codegen::generate_table(table, &config)?;
 
             let output_path = self.output_path(&table.name);
@@ -148,7 +159,11 @@ impl SheetCompiler {
 
     /// 获取输出文件路径
     fn output_path(&self, table_name: &str) -> PathBuf {
-        self.output_dir.join(format!("{}Table.v", table_name))
+        let ext = match self.format {
+            OutputFormat::Rust => "rs",
+            OutputFormat::Valkyrie => "v",
+        };
+        self.output_dir.join(format!("{}Table.{}", table_name, ext))
     }
 }
 

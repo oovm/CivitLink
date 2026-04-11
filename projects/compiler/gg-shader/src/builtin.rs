@@ -170,6 +170,124 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4f {
 }
 "#;
 
+/// 圆角矩形着色器 WGSL 源码
+///
+/// 使用 SDF（有符号距离场）技术渲染圆角矩形。
+/// 顶点着色器将单位四边形通过 MVP 矩阵变换到屏幕空间，
+/// 片段着色器计算圆角矩形的 SDF 并进行抗锯齿处理。
+pub const ROUNDED_RECT_SHADER_WGSL: &str = r#"
+struct VertexInput {
+    @location(0) position: vec2f,
+    @location(1) uv: vec2f,
+}
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4f,
+    @location(0) local_pos: vec2f,
+}
+
+struct Uniforms {
+    mvp: mat4x4f,
+    rect_size: vec4f,
+    color: vec4f,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+@vertex
+fn vs_main(input: VertexInput) -> VertexOutput {
+    var output: VertexOutput;
+    output.clip_position = uniforms.mvp * vec4f(input.position, 0.0, 1.0);
+    output.local_pos = input.uv * uniforms.rect_size.xy;
+    return output;
+}
+
+@fragment
+fn fs_main(input: VertexOutput) -> @location(0) vec4f {
+    let half_size = uniforms.rect_size.xy * 0.5;
+    let r = uniforms.rect_size.z;
+    let center = half_size;
+    let d = length(max(abs(input.local_pos - center) - half_size + r, vec2f(0.0))) - r;
+    let aa_width = 1.0;
+    let alpha = 1.0 - smoothstep(-aa_width, aa_width, d);
+    if (alpha <= 0.0) {
+        discard;
+    }
+    return vec4f(uniforms.color.rgb, uniforms.color.a * alpha);
+}
+"#;
+
+/// 椭圆着色器 WGSL 源码
+///
+/// 使用 SDF（有符号距离场）技术渲染椭圆和圆形，
+/// 支持填充和描边模式，以及抗锯齿边缘处理。
+/// 圆形是椭圆的特例（radius_x == radius_y）。
+pub const ELLIPSE_SHADER_WGSL: &str = r#"
+struct VertexInput {
+    @location(0) position: vec2f,
+    @location(1) uv: vec2f,
+}
+
+struct VertexOutput {
+    @builtin(position) clip_position: vec4f,
+    @location(0) local_pos: vec2f,
+}
+
+struct Uniforms {
+    mvp: mat4x4f,
+    ellipse_params: vec4f,
+    fill_color: vec4f,
+    border_params: vec4f,
+}
+
+@group(0) @binding(0) var<uniform> uniforms: Uniforms;
+
+@vertex
+fn vs_main(input: VertexInput) -> VertexOutput {
+    var output: VertexOutput;
+    output.clip_position = uniforms.mvp * vec4f(input.position, 0.0, 1.0);
+    output.local_pos = input.uv * uniforms.ellipse_params.zw;
+    return output;
+}
+
+@fragment
+fn fs_main(input: VertexOutput) -> @location(0) vec4f {
+    let center = uniforms.ellipse_params.zw * 0.5;
+    let radius_x = uniforms.ellipse_params.z;
+    let radius_y = uniforms.ellipse_params.w;
+    let border_width = uniforms.border_params.x;
+    let border_color = uniforms.border_params.yzw;
+
+    let offset = input.local_pos - center;
+    let normalized = offset / vec2f(radius_x, radius_y);
+    let d = length(normalized) - 1.0;
+
+    let aa_width = 1.0 / min(radius_x, radius_y);
+
+    if (border_width > 0.0) {
+        let inner_d = length(offset / vec2f(max(radius_x - border_width, 0.0), max(radius_y - border_width, 0.0))) - 1.0;
+        let outer_alpha = 1.0 - smoothstep(-aa_width, aa_width, d);
+        let inner_alpha = smoothstep(-aa_width, aa_width, inner_d);
+
+        let ring_alpha = outer_alpha * inner_alpha;
+        let fill_alpha = outer_alpha * (1.0 - inner_alpha);
+
+        let final_alpha = ring_alpha + fill_alpha;
+        if (final_alpha <= 0.0) {
+            discard;
+        }
+        let color = border_color * ring_alpha + uniforms.fill_color.rgb * fill_alpha;
+        return vec4f(color, final_alpha * max(uniforms.fill_color.a, ring_alpha > 0.0 ? 1.0 : 0.0));
+    } else {
+        let alpha = 1.0 - smoothstep(-aa_width, aa_width, d);
+        if (alpha <= 0.0) {
+            discard;
+        }
+        return vec4f(uniforms.fill_color.rgb, uniforms.fill_color.a * alpha);
+    }
+}
+"#;
+
 /// 从 WGSL 源码构建 naga Module
 fn parse_wgsl(source: &str, label: &str) -> GResult<naga::Module> {
     naga::front::wgsl::parse_str(source).map_err(|e| GError {
@@ -191,4 +309,14 @@ pub fn builtin_transition_shader() -> GResult<naga::Module> {
 /// 构建批渲染精灵着色器的 naga Module
 pub fn builtin_batch_sprite_shader() -> GResult<naga::Module> {
     parse_wgsl(BATCH_SPRITE_SHADER_WGSL, "batch_sprite")
+}
+
+/// 构建圆角矩形着色器的 naga Module
+pub fn builtin_rounded_rect_shader() -> GResult<naga::Module> {
+    parse_wgsl(ROUNDED_RECT_SHADER_WGSL, "rounded_rect")
+}
+
+/// 构建椭圆着色器的 naga Module
+pub fn builtin_ellipse_shader() -> GResult<naga::Module> {
+    parse_wgsl(ELLIPSE_SHADER_WGSL, "ellipse")
 }

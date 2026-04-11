@@ -4,7 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-gg-core = { path = "../../core/gg-core" }
-gg-ecs = { path = "../../core/gg-ecs" }
-gg-render = { path = "../../core/gg-render" }
-gg-ui = { path = "../../plugins/gg-ui" }
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-world = { workspace = true }
+gg-render = { workspace = true }
+gg-editor-render = { workspace = true }
+gg-ui = { workspace = true }
+winit = { workspace = true }

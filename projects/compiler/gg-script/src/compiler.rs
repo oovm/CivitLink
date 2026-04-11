@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ir::{IrFunction, IrModule, IrValue, OpCode};
 use oak_valkyrie::{
-    ast::{Block, Expr, Item, MicroDefinition, Statement, ValkyrieRoot},
+    ast::{Block, MicroDeclaration, Pattern, Statement, StatementNode, StringSegment, TermExpression, ValkyrieRoot},
     lexer::token_type::ValkyrieTokenType,
 };
 
@@ -64,24 +64,27 @@ impl ValkyrieCompiler {
     }
 
     /// 编译顶层 Item
-    fn compile_item(&mut self, item: &Item) -> GResult<()> {
+    fn compile_item(&mut self, item: &StatementNode) -> GResult<()> {
         match item {
-            Item::Micro(micro) => {
+            StatementNode::Micro(micro) => {
                 let func = self.compile_micro(micro)?;
                 self.module.add_function(func);
             }
-            Item::Namespace(namespace) => {
+            StatementNode::Namespace(namespace) => {
                 for inner_item in &namespace.items {
                     self.compile_item(inner_item)?;
                 }
             }
-            Item::Statement(stmt) => {
+            StatementNode::Let(let_stmt) => {
                 let mut instructions = Vec::new();
-                self.compile_statement(stmt, &mut instructions)?;
+                self.compile_statement(&Statement::Let((**let_stmt).clone()), &mut instructions)?;
             }
-            Item::Shader(shader) => {
-                // 编译 shader 定义
-                // 目前我们只需要解析 shader 结构，具体的 shader 编译会在 gg-shader 中处理
+            StatementNode::ExprStmt(expr_stmt) => {
+                let mut instructions = Vec::new();
+                self.compile_statement(&Statement::ExprStmt((**expr_stmt).clone()), &mut instructions)?;
+            }
+            StatementNode::Shader(shader) => {
+                let _ = shader;
             }
             _ => {}
         }
@@ -91,7 +94,7 @@ impl ValkyrieCompiler {
     /// 编译 micro 函数定义
     ///
     /// 为每个 micro 函数生成 IrFunction，包含参数、局部变量和指令序列。
-    fn compile_micro(&mut self, micro: &MicroDefinition) -> GResult<IrFunction> {
+    fn compile_micro(&mut self, micro: &MicroDeclaration) -> GResult<IrFunction> {
         self.locals.clear();
         self.next_local = 0;
         self.loop_stack.clear();
@@ -123,16 +126,16 @@ impl ValkyrieCompiler {
     /// 编译语句
     fn compile_statement(&mut self, stmt: &Statement, instructions: &mut Vec<OpCode>) -> GResult<()> {
         match stmt {
-            Statement::Let { pattern, expr, .. } => {
-                self.compile_expr(expr, instructions)?;
-                let var_name = match pattern {
-                    oak_valkyrie::ast::Pattern::Variable { name, .. } => name.name.clone(),
-                    oak_valkyrie::ast::Pattern::Wildcard { .. } => {
+            Statement::Let(let_stmt) => {
+                self.compile_expr(&let_stmt.expr, instructions)?;
+                let var_name = match &let_stmt.pattern {
+                    Pattern::Variable(var) => var.name.name.clone(),
+                    Pattern::Wildcard(_) => {
                         instructions.push(OpCode::Pop);
                         return Ok(());
                     }
                     _ => {
-                        return Err(GError { kind: GErrorKind::Runtime, message: format!("Unsupported let pattern type") });
+                        return Err(GError { kind: GErrorKind::Runtime, message: "Unsupported let pattern type".to_string() });
                     }
                 };
                 let idx = self.next_local;
@@ -140,9 +143,9 @@ impl ValkyrieCompiler {
                 self.next_local += 1;
                 instructions.push(OpCode::StoreLocal(idx));
             }
-            Statement::ExprStmt { expr, semi, .. } => {
-                self.compile_expr(expr, instructions)?;
-                if *semi {
+            Statement::ExprStmt(expr_stmt) => {
+                self.compile_expr(&expr_stmt.expr, instructions)?;
+                if expr_stmt.semi {
                     instructions.push(OpCode::Pop);
                 }
             }
@@ -151,89 +154,105 @@ impl ValkyrieCompiler {
     }
 
     /// 编译表达式
-    fn compile_expr(&mut self, expr: &Expr, instructions: &mut Vec<OpCode>) -> GResult<()> {
+    fn compile_expr(&mut self, expr: &TermExpression, instructions: &mut Vec<OpCode>) -> GResult<()> {
         match expr {
-            Expr::Ident(ident) => match self.locals.get(&ident.name) {
-                Some(&idx) => {
-                    instructions.push(OpCode::LoadLocal(idx));
-                }
-                None => {
-                    instructions.push(OpCode::LoadNull);
-                }
-            },
-
-            Expr::Path(name_path) => {
-                if let Some(first) = name_path.parts.first() {
+            TermExpression::NamePath(name_path) => {
+                if name_path.parts.len() == 1 {
+                    let first = &name_path.parts[0];
                     match self.locals.get(&first.name) {
                         Some(&idx) => {
                             instructions.push(OpCode::LoadLocal(idx));
                         }
                         None => {
-                            instructions.push(OpCode::LoadNull);
+                            return Err(GError { kind: GErrorKind::Runtime, message: format!("Undefined variable: {}", first.name) });
                         }
                     }
-                }
-                else {
+                } else if let Some(first) = name_path.parts.first() {
+                    match self.locals.get(&first.name) {
+                        Some(&idx) => {
+                            instructions.push(OpCode::LoadLocal(idx));
+                        }
+                        None => {
+                            return Err(GError { kind: GErrorKind::Runtime, message: format!("Undefined variable: {}", first.name) });
+                        }
+                    }
+                } else {
                     instructions.push(OpCode::LoadNull);
                 }
             }
 
-            Expr::Bool { value, .. } => {
+            TermExpression::Bool { value, .. } => {
                 if *value {
                     instructions.push(OpCode::LoadTrue);
-                }
-                else {
+                } else {
                     instructions.push(OpCode::LoadFalse);
                 }
             }
 
-            Expr::StringLiteral(string_literal) => {
-                let content = string_literal
-                    .segments
-                    .iter()
-                    .map(|seg| match seg {
-                        oak_valkyrie::ast::StringSegment::Text { content, .. } => content.as_str(),
-                        oak_valkyrie::ast::StringSegment::Interpolation { .. } => "",
-                    })
-                    .collect::<String>();
-                if content.parse::<i64>().is_ok() {
-                    let value = content.parse::<i64>().unwrap();
-                    let idx = self.module.add_constant(IrValue::Int(value));
-                    instructions.push(OpCode::LoadConst(idx));
-                }
-                else if content.parse::<f64>().is_ok() {
-                    let value = content.parse::<f64>().unwrap();
-                    let idx = self.module.add_constant(IrValue::Float(value));
-                    instructions.push(OpCode::LoadConst(idx));
-                }
-                else {
+            TermExpression::StringLiteral(string_literal) => {
+                let has_interpolation = string_literal.segments.iter().any(|seg| {
+                    matches!(seg, StringSegment::Interpolation(_))
+                });
+
+                if !has_interpolation {
+                    let content: String = string_literal.segments.iter()
+                        .filter_map(|seg| match seg {
+                            StringSegment::Text(text_seg) => Some(text_seg.content.as_str()),
+                            _ => None,
+                        })
+                        .collect();
                     let idx = self.module.add_constant(IrValue::String(content));
                     instructions.push(OpCode::LoadConst(idx));
+                } else {
+                    let mut concat_count = 0;
+                    for seg in &string_literal.segments {
+                        match seg {
+                            StringSegment::Text(text_seg) => {
+                                if !text_seg.content.is_empty() {
+                                    let idx = self.module.add_constant(IrValue::String(text_seg.content.clone()));
+                                    instructions.push(OpCode::LoadConst(idx));
+                                    concat_count += 1;
+                                }
+                            }
+                            StringSegment::Interpolation(interp_seg) => {
+                                self.compile_expr(&interp_seg.expr, instructions)?;
+                                concat_count += 1;
+                            }
+                        }
+                    }
+                    if concat_count > 0 {
+                        instructions.push(OpCode::StringConcat(concat_count));
+                    } else {
+                        let idx = self.module.add_constant(IrValue::String(String::new()));
+                        instructions.push(OpCode::LoadConst(idx));
+                    }
                 }
             }
 
-            Expr::Binary { left, op, right, .. } => {
-                self.compile_expr(left, instructions)?;
-                self.compile_expr(right, instructions)?;
-                let opcode = self.binary_op_to_opcode(op)?;
+            TermExpression::Binary(node) => {
+                self.compile_expr(&node.lhs, instructions)?;
+                self.compile_expr(&node.rhs, instructions)?;
+                let opcode = self.binary_op_to_opcode(&node.operator)?;
                 instructions.push(opcode);
             }
 
-            Expr::Unary { op, expr, .. } => {
-                self.compile_expr(expr, instructions)?;
-                let opcode = self.unary_op_to_opcode(op)?;
+            TermExpression::Unary(node) => {
+                self.compile_expr(&node.base, instructions)?;
+                let opcode = self.unary_op_to_opcode(&node.operator)?;
                 instructions.push(opcode);
             }
 
-            Expr::Call { callee, args, .. } => {
-                if let Expr::Ident(ident) = callee.as_ref() {
-                    let name = ident.name.clone();
-                    if BUILTIN_FUNCTIONS.contains(&name.as_str()) {
-                        for arg in args {
-                            self.compile_expr(arg, instructions)?;
+            TermExpression::ApplyCall { callee, args, .. } => {
+                if let TermExpression::NamePath(name_path) = callee.as_ref() {
+                    if name_path.parts.len() == 1 {
+                        let name = name_path.parts[0].name.clone();
+                        if BUILTIN_FUNCTIONS.contains(&name.as_str()) {
+                            for arg in args {
+                                self.compile_expr(arg, instructions)?;
+                            }
+                            instructions.push(OpCode::HostCall(name, args.len()));
+                            return Ok(());
                         }
-                        instructions.push(OpCode::HostCall(name, args.len()));
-                        return Ok(());
                     }
                 }
 
@@ -241,11 +260,15 @@ impl ValkyrieCompiler {
                     self.compile_expr(arg, instructions)?;
                 }
 
-                if let Expr::Ident(ident) = callee.as_ref() {
-                    let string_idx = self.module.add_constant(IrValue::String(ident.name.clone()));
-                    instructions.push(OpCode::LoadConst(string_idx));
-                }
-                else {
+                if let TermExpression::NamePath(name_path) = callee.as_ref() {
+                    if name_path.parts.len() == 1 {
+                        let string_idx = self.module.add_constant(IrValue::String(name_path.parts[0].name.clone()));
+                        instructions.push(OpCode::LoadConst(string_idx));
+                    } else {
+                        self.compile_expr(callee, instructions)?;
+                        instructions.push(OpCode::LoadNull);
+                    }
+                } else {
                     self.compile_expr(callee, instructions)?;
                     instructions.push(OpCode::LoadNull);
                 }
@@ -253,11 +276,33 @@ impl ValkyrieCompiler {
                 instructions.push(OpCode::Call(args.len()));
             }
 
-            Expr::Paren { expr, .. } => {
+            TermExpression::DotCall { receiver, field, .. } => {
+                self.compile_expr(receiver, instructions)?;
+                instructions.push(OpCode::GetField(field.name.clone()));
+            }
+
+            TermExpression::Index { receiver, index, .. } => {
+                self.compile_expr(receiver, instructions)?;
+                self.compile_expr(index, instructions)?;
+                instructions.push(OpCode::GetIndex);
+            }
+
+            TermExpression::Object { fields, .. } => {
+                for (_name, value_expr) in fields {
+                    if let Some(expr) = value_expr {
+                        self.compile_expr(expr, instructions)?;
+                    } else {
+                        instructions.push(OpCode::LoadNull);
+                    }
+                }
+                instructions.push(OpCode::NewObject(fields.len()));
+            }
+
+            TermExpression::Paren { expr, .. } => {
                 self.compile_expr(expr, instructions)?;
             }
 
-            Expr::If { condition, then_branch, else_branch, .. } => {
+            TermExpression::If { condition, then_branch, else_branch, .. } => {
                 self.compile_expr(condition, instructions)?;
 
                 let then_jump = instructions.len();
@@ -274,23 +319,62 @@ impl ValkyrieCompiler {
                     self.compile_block(else_branch, instructions)?;
 
                     instructions[else_jump] = OpCode::Jump(instructions.len());
-                }
-                else {
+                } else {
                     instructions[then_jump] = OpCode::JumpIfFalse(instructions.len());
                 }
             }
 
-            Expr::Return { expr, .. } => {
-                if let Some(return_expr) = expr {
-                    self.compile_expr(return_expr, instructions)?;
+            TermExpression::Match { scrutinee, arms, .. } => {
+                self.compile_expr(scrutinee, instructions)?;
+                let scrutinee_local = self.next_local;
+                self.locals.insert(format!("__match_scrutinee_{}", scrutinee_local), scrutinee_local);
+                self.next_local += 1;
+                instructions.push(OpCode::StoreLocal(scrutinee_local));
+
+                let mut end_jumps = Vec::new();
+
+                for (i, arm) in arms.iter().enumerate() {
+                    let is_last = i == arms.len() - 1;
+                    let is_wildcard = self.is_wildcard_pattern(&arm.pattern);
+
+                    if is_wildcard {
+                        self.compile_expr(&arm.body, instructions)?;
+                    } else {
+                        instructions.push(OpCode::LoadLocal(scrutinee_local));
+                        self.compile_match_pattern(&arm.pattern, instructions)?;
+                        instructions.push(OpCode::Eq);
+
+                        let jump_if_false = instructions.len();
+                        instructions.push(OpCode::JumpIfFalse(0));
+
+                        self.compile_expr(&arm.body, instructions)?;
+
+                        let end_jump = instructions.len();
+                        instructions.push(OpCode::Jump(0));
+                        end_jumps.push(end_jump);
+
+                        instructions[jump_if_false] = OpCode::JumpIfFalse(instructions.len());
+                    }
+
+                    let _ = is_last;
                 }
-                else {
+
+                let end_addr = instructions.len();
+                for jump_addr in end_jumps {
+                    instructions[jump_addr] = OpCode::Jump(end_addr);
+                }
+            }
+
+            TermExpression::Return(ret) => {
+                if let Some(return_expr) = ret.base.as_ref() {
+                    self.compile_expr(return_expr, instructions)?;
+                } else {
                     instructions.push(OpCode::LoadNull);
                 }
                 instructions.push(OpCode::Return);
             }
 
-            Expr::Loop { condition, body, .. } => {
+            TermExpression::Loop { condition, body, .. } => {
                 let loop_start = instructions.len();
 
                 let loop_ctx = LoopContext { loop_start, break_jumps: Vec::new() };
@@ -312,8 +396,7 @@ impl ValkyrieCompiler {
                             instructions[jump_addr] = OpCode::Jump(loop_end);
                         }
                     }
-                }
-                else {
+                } else {
                     self.compile_block(body, instructions)?;
                     instructions.push(OpCode::Jump(loop_start));
 
@@ -326,30 +409,58 @@ impl ValkyrieCompiler {
                 }
             }
 
-            Expr::Break { .. } => {
+            TermExpression::Break(_) => {
                 if let Some(ctx) = self.loop_stack.last_mut() {
                     let jump_addr = instructions.len();
                     instructions.push(OpCode::Jump(0));
                     ctx.break_jumps.push(jump_addr);
-                }
-                else {
+                } else {
                     return Err(GError { kind: GErrorKind::Runtime, message: "Break outside of loop".to_string() });
                 }
             }
 
-            Expr::Continue { .. } => {
+            TermExpression::Continue(_) => {
                 if let Some(ctx) = self.loop_stack.last() {
                     instructions.push(OpCode::Jump(ctx.loop_start));
-                }
-                else {
+                } else {
                     return Err(GError { kind: GErrorKind::Runtime, message: "Continue outside of loop".to_string() });
                 }
             }
 
-            Expr::Block(block) => {
+            TermExpression::Block(block) => {
                 self.compile_block(block, instructions)?;
             }
 
+            _ => {
+                instructions.push(OpCode::LoadNull);
+            }
+        }
+        Ok(())
+    }
+
+    /// 检查模式是否为通配符（匹配所有值）
+    fn is_wildcard_pattern(&self, pattern: &Pattern) -> bool {
+        match pattern {
+            Pattern::Wildcard(_) => true,
+            Pattern::Variable(var) => var.name.name.starts_with('_'),
+            _ => false,
+        }
+    }
+
+    /// 将匹配模式编译为用于比较的值
+    fn compile_match_pattern(&mut self, pattern: &Pattern, instructions: &mut Vec<OpCode>) -> GResult<()> {
+        match pattern {
+            Pattern::Variable(var) => {
+                if var.name.name.starts_with('_') {
+                    instructions.push(OpCode::LoadTrue);
+                } else {
+                    let idx = self.module.add_constant(IrValue::String(var.name.name.clone()));
+                    instructions.push(OpCode::LoadConst(idx));
+                }
+            }
+            Pattern::Wildcard(_) => {
+                instructions.push(OpCode::LoadTrue);
+            }
             _ => {
                 instructions.push(OpCode::LoadNull);
             }

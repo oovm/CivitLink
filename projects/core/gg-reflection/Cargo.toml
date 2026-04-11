@@ -7,4 +7,5 @@ license = { workspace = true }
 
 [dependencies]
 gg-core = { workspace = true }
+gg-ecs = { workspace = true }
 gg-macros = { workspace = true }

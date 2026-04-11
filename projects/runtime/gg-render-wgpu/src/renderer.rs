@@ -15,7 +15,8 @@ use winit::{
 use crate::{
     glyph_cache::GlyphCache,
     pipeline::{
-        BatchSpritePipeline, RenderItem, RenderItemType, SpritePipeline, SpriteUniforms, TransitionPipeline, TransitionUniforms,
+        BatchSpritePipeline, EllipsePipeline, EllipseUniforms, RenderItem, RenderItemType, RoundedRectPipeline,
+        RoundedRectUniforms, SpritePipeline, SpriteUniforms, TransitionPipeline, TransitionUniforms,
     },
     sprite_batch::{SpriteBatch, SpriteBatcher},
     texture_cache::TextureCache,
@@ -107,6 +108,10 @@ pub struct WgpuRenderer {
     batch_sprite_pipeline: BatchSpritePipeline,
     /// 过渡渲染管线
     transition_pipeline: TransitionPipeline,
+    /// 圆角矩形渲染管线
+    rounded_rect_pipeline: RoundedRectPipeline,
+    /// 椭圆渲染管线
+    ellipse_pipeline: EllipsePipeline,
     /// 是否应该关闭窗口
     should_close: bool,
     /// 待处理的窗口事件
@@ -236,22 +241,6 @@ impl WgpuRenderer {
         }
     }
 
-    /// 生成圆形的三角扇形顶点
-    ///
-    /// 返回 (vertices, indices)，使用 32 段近似圆。
-    fn generate_circle_geometry(center: [f32; 2], radius: f32, segments: u32) -> (Vec<[f32; 2]>, Vec<u16>) {
-        let mut vertices = vec![center];
-        for i in 0..=segments {
-            let angle = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
-            vertices.push([center[0] + radius * angle.cos(), center[1] + radius * angle.sin()]);
-        }
-        let mut indices = Vec::new();
-        for i in 1..=segments {
-            indices.extend_from_slice(&[0, i as u16, (i + 1) as u16]);
-        }
-        (vertices, indices)
-    }
-
     /// 创建离屏渲染目标
     ///
     /// 创建一个指定尺寸的离屏纹理，可作为渲染目标使用。
@@ -349,6 +338,8 @@ impl WgpuRenderer {
 
         let mut sprite_batcher = SpriteBatcher::new();
         let mut transition_items: Vec<RenderItem> = Vec::new();
+        let mut rounded_rect_items: Vec<RoundedRectRenderItem> = Vec::new();
+        let mut ellipse_items: Vec<EllipseRenderItem> = Vec::new();
 
         for ic in &indexed {
             let cmd = &commands[ic.index];
@@ -408,15 +399,31 @@ impl WgpuRenderer {
                         cursor_x += advance;
                     }
                 }
-                DrawCommand::Rect { rect, color, .. } => {
-                    let transform = Transform { position: [rect.x, rect.y], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
-                    let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], &view_projection);
-                    sprite_batcher.push(
-                        self.white_pixel_texture,
-                        mvp,
-                        [color.r, color.g, color.b, color.a],
-                        [0.0, 0.0, 1.0, 1.0],
-                    );
+                DrawCommand::Rect { rect, color, corner_radius } => {
+                    if *corner_radius > 0.0 {
+                        let clamped_radius = corner_radius.min(rect.width.min(rect.height) * 0.5);
+                        let transform = Transform { position: [rect.x, rect.y], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
+                        let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], &view_projection);
+                        let uniforms = RoundedRectUniforms {
+                            mvp,
+                            rect_size: [rect.width, rect.height, clamped_radius, 0.0],
+                            color: [color.r, color.g, color.b, color.a],
+                        };
+                        let uniform_buffer =
+                            self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
+                        let uniform_bind_group =
+                            self.rounded_rect_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
+                        rounded_rect_items.push(RoundedRectRenderItem { uniform_bind_group, uniform_buffer });
+                    } else {
+                        let transform = Transform { position: [rect.x, rect.y], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
+                        let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], &view_projection);
+                        sprite_batcher.push(
+                            self.white_pixel_texture,
+                            mvp,
+                            [color.r, color.g, color.b, color.a],
+                            [0.0, 0.0, 1.0, 1.0],
+                        );
+                    }
                 }
                 DrawCommand::Line { start, end, color, width } => {
                     let dx = end[0] - start[0];
@@ -435,37 +442,49 @@ impl WgpuRenderer {
                         [0.0, 0.0, 1.0, 1.0],
                     );
                 }
-                DrawCommand::Circle { center, radius, color, .. } => {
+                DrawCommand::Circle { center, radius, color, filled, border_width, border_color } => {
+                    let size = [radius * 2.0, radius * 2.0];
                     let transform = Transform {
                         position: [center[0] - radius, center[1] - radius],
                         scale: [1.0, 1.0],
                         rotation: 0.0,
                         z_index: 0.0,
                     };
-                    let size = [radius * 2.0, radius * 2.0];
                     let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
-                    sprite_batcher.push(
-                        self.white_pixel_texture,
+                    let effective_border_width = if *filled { 0.0 } else { *border_width };
+                    let uniforms = EllipseUniforms {
                         mvp,
-                        [color.r, color.g, color.b, color.a],
-                        [0.0, 0.0, 1.0, 1.0],
-                    );
+                        ellipse_params: [0.0, 0.0, size[0], size[1]],
+                        fill_color: [color.r, color.g, color.b, color.a],
+                        border_params: [effective_border_width, border_color[0], border_color[1], border_color[2]],
+                    };
+                    let uniform_buffer =
+                        self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
+                    let uniform_bind_group =
+                        self.ellipse_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
+                    ellipse_items.push(EllipseRenderItem { uniform_bind_group, uniform_buffer });
                 }
-                DrawCommand::Ellipse { center, radii, color, .. } => {
+                DrawCommand::Ellipse { center, radii, color, filled, border_width, border_color } => {
+                    let size = [radii[0] * 2.0, radii[1] * 2.0];
                     let transform = Transform {
                         position: [center[0] - radii[0], center[1] - radii[1]],
                         scale: [1.0, 1.0],
                         rotation: 0.0,
                         z_index: 0.0,
                     };
-                    let size = [radii[0] * 2.0, radii[1] * 2.0];
                     let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
-                    sprite_batcher.push(
-                        self.white_pixel_texture,
+                    let effective_border_width = if *filled { 0.0 } else { *border_width };
+                    let uniforms = EllipseUniforms {
                         mvp,
-                        [color.r, color.g, color.b, color.a],
-                        [0.0, 0.0, 1.0, 1.0],
-                    );
+                        ellipse_params: [0.0, 0.0, size[0], size[1]],
+                        fill_color: [color.r, color.g, color.b, color.a],
+                        border_params: [effective_border_width, border_color[0], border_color[1], border_color[2]],
+                    };
+                    let uniform_buffer =
+                        self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
+                    let uniform_bind_group =
+                        self.ellipse_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
+                    ellipse_items.push(EllipseRenderItem { uniform_bind_group, uniform_buffer });
                 }
                 DrawCommand::Transition { old_texture, new_texture, progress, kind } => {
                     let old_id = old_texture.unwrap_or(self.white_pixel_texture);
@@ -559,9 +578,33 @@ impl WgpuRenderer {
             render_pass.draw_indexed(0..6, 0, 0..1);
         }
 
+        for item in &rounded_rect_items {
+            render_pass.set_pipeline(self.rounded_rect_pipeline.pipeline());
+            render_pass.set_vertex_buffer(0, self.rounded_rect_pipeline.vertex_buffer().slice(..));
+            render_pass.set_index_buffer(self.rounded_rect_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_bind_group(0, &item.uniform_bind_group, &[]);
+            render_pass.draw_indexed(0..6, 0, 0..1);
+        }
+
+        for item in &ellipse_items {
+            render_pass.set_pipeline(self.ellipse_pipeline.pipeline());
+            render_pass.set_vertex_buffer(0, self.ellipse_pipeline.vertex_buffer().slice(..));
+            render_pass.set_index_buffer(self.ellipse_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_bind_group(0, &item.uniform_bind_group, &[]);
+            render_pass.draw_indexed(0..6, 0, 0..1);
+        }
+
         drop(render_pass);
 
         for RenderItem { uniform_buffer, .. } in transition_items {
+            self.uniform_pool.mark_used(uniform_buffer);
+        }
+
+        for RoundedRectRenderItem { uniform_buffer, .. } in rounded_rect_items {
+            self.uniform_pool.mark_used(uniform_buffer);
+        }
+
+        for EllipseRenderItem { uniform_buffer, .. } in ellipse_items {
             self.uniform_pool.mark_used(uniform_buffer);
         }
 
@@ -659,6 +702,8 @@ impl WgpuRenderer {
         let sprite_pipeline = SpritePipeline::new(&device, config.format);
         let batch_sprite_pipeline = BatchSpritePipeline::new(&device, config.format);
         let transition_pipeline = TransitionPipeline::new(&device, config.format);
+        let rounded_rect_pipeline = RoundedRectPipeline::new(&device, config.format);
+        let ellipse_pipeline = EllipsePipeline::new(&device, config.format);
 
         let mut texture_cache = TextureCache::new();
         let white_pixel_data: [u8; 4] = [255, 255, 255, 255];
@@ -669,7 +714,10 @@ impl WgpuRenderer {
 
         let glyph_cache = GlyphCache::new();
 
-        let buffer_size = std::cmp::max(std::mem::size_of::<SpriteUniforms>(), std::mem::size_of::<TransitionUniforms>());
+        let buffer_size = std::cmp::max(
+            std::mem::size_of::<SpriteUniforms>(),
+            std::cmp::max(std::mem::size_of::<TransitionUniforms>(), std::cmp::max(std::mem::size_of::<RoundedRectUniforms>(), std::mem::size_of::<EllipseUniforms>())),
+        );
         let uniform_pool = UniformPool::new(buffer_size);
 
         Ok(Self {
@@ -684,6 +732,8 @@ impl WgpuRenderer {
             sprite_pipeline,
             batch_sprite_pipeline,
             transition_pipeline,
+            rounded_rect_pipeline,
+            ellipse_pipeline,
             should_close: false,
             pending_events: Vec::new(),
             frame_output: None,
@@ -717,6 +767,8 @@ impl WgpuRenderer {
         let sprite_pipeline = SpritePipeline::new(&device, config.format);
         let batch_sprite_pipeline = BatchSpritePipeline::new(&device, config.format);
         let transition_pipeline = TransitionPipeline::new(&device, config.format);
+        let rounded_rect_pipeline = RoundedRectPipeline::new(&device, config.format);
+        let ellipse_pipeline = EllipsePipeline::new(&device, config.format);
 
         let mut texture_cache = TextureCache::new();
         let white_pixel_data: [u8; 4] = [255, 255, 255, 255];
@@ -727,7 +779,10 @@ impl WgpuRenderer {
 
         let glyph_cache = GlyphCache::new();
 
-        let buffer_size = std::cmp::max(std::mem::size_of::<SpriteUniforms>(), std::mem::size_of::<TransitionUniforms>());
+        let buffer_size = std::cmp::max(
+            std::mem::size_of::<SpriteUniforms>(),
+            std::cmp::max(std::mem::size_of::<TransitionUniforms>(), std::cmp::max(std::mem::size_of::<RoundedRectUniforms>(), std::mem::size_of::<EllipseUniforms>())),
+        );
         let uniform_pool = UniformPool::new(buffer_size);
 
         Ok(Self {
@@ -742,6 +797,8 @@ impl WgpuRenderer {
             sprite_pipeline,
             batch_sprite_pipeline,
             transition_pipeline,
+            rounded_rect_pipeline,
+            ellipse_pipeline,
             should_close: false,
             pending_events: Vec::new(),
             frame_output: None,
@@ -829,6 +886,8 @@ impl WgpuRenderer {
         let sprite_pipeline = SpritePipeline::new(&device, config.format);
         let batch_sprite_pipeline = BatchSpritePipeline::new(&device, config.format);
         let transition_pipeline = TransitionPipeline::new(&device, config.format);
+        let rounded_rect_pipeline = RoundedRectPipeline::new(&device, config.format);
+        let ellipse_pipeline = EllipsePipeline::new(&device, config.format);
 
         let mut texture_cache = TextureCache::new();
         let white_pixel_data: [u8; 4] = [255, 255, 255, 255];
@@ -839,7 +898,10 @@ impl WgpuRenderer {
 
         let glyph_cache = GlyphCache::new();
 
-        let buffer_size = std::cmp::max(std::mem::size_of::<SpriteUniforms>(), std::mem::size_of::<TransitionUniforms>());
+        let buffer_size = std::cmp::max(
+            std::mem::size_of::<SpriteUniforms>(),
+            std::cmp::max(std::mem::size_of::<TransitionUniforms>(), std::cmp::max(std::mem::size_of::<RoundedRectUniforms>(), std::mem::size_of::<EllipseUniforms>())),
+        );
         let uniform_pool = UniformPool::new(buffer_size);
 
         Ok(Self {
@@ -853,6 +915,8 @@ impl WgpuRenderer {
             sprite_pipeline,
             batch_sprite_pipeline,
             transition_pipeline,
+            rounded_rect_pipeline,
+            ellipse_pipeline,
             should_close: false,
             pending_events: Vec::new(),
             frame_output: None,
@@ -885,6 +949,26 @@ struct IndexedCommand {
     z_index: f32,
     /// 是否为过渡命令（过渡命令始终最后渲染）
     is_transition: bool,
+}
+
+/// 圆角矩形渲染项
+///
+/// 包含圆角矩形绘制所需的 uniform 绑定组和缓冲区。
+struct RoundedRectRenderItem {
+    /// uniform 绑定组
+    uniform_bind_group: wgpu::BindGroup,
+    /// uniform 缓冲区（用于帧间复用）
+    uniform_buffer: wgpu::Buffer,
+}
+
+/// 椭圆渲染项
+///
+/// 包含椭圆绘制所需的 uniform 绑定组和缓冲区。
+struct EllipseRenderItem {
+    /// uniform 绑定组
+    uniform_bind_group: wgpu::BindGroup,
+    /// uniform 缓冲区（用于帧间复用）
+    uniform_buffer: wgpu::Buffer,
 }
 
 impl Renderer for WgpuRenderer {
@@ -978,6 +1062,8 @@ impl Renderer for WgpuRenderer {
         // 阶段 3：收集精灵批次和过渡渲染项
         let mut sprite_batcher = SpriteBatcher::new();
         let mut transition_items: Vec<RenderItem> = Vec::new();
+        let mut rounded_rect_items: Vec<RoundedRectRenderItem> = Vec::new();
+        let mut ellipse_items: Vec<EllipseRenderItem> = Vec::new();
 
         for ic in &indexed {
             let cmd = &commands[ic.index];
@@ -1037,15 +1123,31 @@ impl Renderer for WgpuRenderer {
                         cursor_x += advance;
                     }
                 }
-                DrawCommand::Rect { rect, color, .. } => {
-                    let transform = Transform { position: [rect.x, rect.y], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
-                    let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], &view_projection);
-                    sprite_batcher.push(
-                        self.white_pixel_texture,
-                        mvp,
-                        [color.r, color.g, color.b, color.a],
-                        [0.0, 0.0, 1.0, 1.0],
-                    );
+                DrawCommand::Rect { rect, color, corner_radius } => {
+                    if *corner_radius > 0.0 {
+                        let clamped_radius = corner_radius.min(rect.width.min(rect.height) * 0.5);
+                        let transform = Transform { position: [rect.x, rect.y], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
+                        let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], &view_projection);
+                        let uniforms = RoundedRectUniforms {
+                            mvp,
+                            rect_size: [rect.width, rect.height, clamped_radius, 0.0],
+                            color: [color.r, color.g, color.b, color.a],
+                        };
+                        let uniform_buffer =
+                            self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
+                        let uniform_bind_group =
+                            self.rounded_rect_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
+                        rounded_rect_items.push(RoundedRectRenderItem { uniform_bind_group, uniform_buffer });
+                    } else {
+                        let transform = Transform { position: [rect.x, rect.y], scale: [1.0, 1.0], rotation: 0.0, z_index: 0.0 };
+                        let mvp = Self::compute_sprite_mvp(&transform, [rect.width, rect.height], &view_projection);
+                        sprite_batcher.push(
+                            self.white_pixel_texture,
+                            mvp,
+                            [color.r, color.g, color.b, color.a],
+                            [0.0, 0.0, 1.0, 1.0],
+                        );
+                    }
                 }
                 DrawCommand::Line { start, end, color, width } => {
                     let dx = end[0] - start[0];
@@ -1064,37 +1166,49 @@ impl Renderer for WgpuRenderer {
                         [0.0, 0.0, 1.0, 1.0],
                     );
                 }
-                DrawCommand::Circle { center, radius, color, .. } => {
+                DrawCommand::Circle { center, radius, color, filled, border_width, border_color } => {
+                    let size = [radius * 2.0, radius * 2.0];
                     let transform = Transform {
                         position: [center[0] - radius, center[1] - radius],
                         scale: [1.0, 1.0],
                         rotation: 0.0,
                         z_index: 0.0,
                     };
-                    let size = [radius * 2.0, radius * 2.0];
                     let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
-                    sprite_batcher.push(
-                        self.white_pixel_texture,
+                    let effective_border_width = if *filled { 0.0 } else { *border_width };
+                    let uniforms = EllipseUniforms {
                         mvp,
-                        [color.r, color.g, color.b, color.a],
-                        [0.0, 0.0, 1.0, 1.0],
-                    );
+                        ellipse_params: [0.0, 0.0, size[0], size[1]],
+                        fill_color: [color.r, color.g, color.b, color.a],
+                        border_params: [effective_border_width, border_color[0], border_color[1], border_color[2]],
+                    };
+                    let uniform_buffer =
+                        self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
+                    let uniform_bind_group =
+                        self.ellipse_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
+                    ellipse_items.push(EllipseRenderItem { uniform_bind_group, uniform_buffer });
                 }
-                DrawCommand::Ellipse { center, radii, color, .. } => {
+                DrawCommand::Ellipse { center, radii, color, filled, border_width, border_color } => {
+                    let size = [radii[0] * 2.0, radii[1] * 2.0];
                     let transform = Transform {
                         position: [center[0] - radii[0], center[1] - radii[1]],
                         scale: [1.0, 1.0],
                         rotation: 0.0,
                         z_index: 0.0,
                     };
-                    let size = [radii[0] * 2.0, radii[1] * 2.0];
                     let mvp = Self::compute_sprite_mvp(&transform, size, &view_projection);
-                    sprite_batcher.push(
-                        self.white_pixel_texture,
+                    let effective_border_width = if *filled { 0.0 } else { *border_width };
+                    let uniforms = EllipseUniforms {
                         mvp,
-                        [color.r, color.g, color.b, color.a],
-                        [0.0, 0.0, 1.0, 1.0],
-                    );
+                        ellipse_params: [0.0, 0.0, size[0], size[1]],
+                        fill_color: [color.r, color.g, color.b, color.a],
+                        border_params: [effective_border_width, border_color[0], border_color[1], border_color[2]],
+                    };
+                    let uniform_buffer =
+                        self.uniform_pool.allocate(&self.device, &self.queue, bytemuck::cast_slice(&[uniforms]));
+                    let uniform_bind_group =
+                        self.ellipse_pipeline.create_uniform_bind_group(&self.device, &uniform_buffer);
+                    ellipse_items.push(EllipseRenderItem { uniform_bind_group, uniform_buffer });
                 }
                 DrawCommand::Transition { old_texture, new_texture, progress, kind } => {
                     let old_id = old_texture.unwrap_or(self.white_pixel_texture);
@@ -1199,9 +1313,34 @@ impl Renderer for WgpuRenderer {
             render_pass.draw_indexed(0..6, 0, 0..1);
         }
 
+        // 绘制圆角矩形
+        for item in &rounded_rect_items {
+            render_pass.set_pipeline(self.rounded_rect_pipeline.pipeline());
+            render_pass.set_vertex_buffer(0, self.rounded_rect_pipeline.vertex_buffer().slice(..));
+            render_pass.set_index_buffer(self.rounded_rect_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_bind_group(0, &item.uniform_bind_group, &[]);
+            render_pass.draw_indexed(0..6, 0, 0..1);
+        }
+
+        for item in &ellipse_items {
+            render_pass.set_pipeline(self.ellipse_pipeline.pipeline());
+            render_pass.set_vertex_buffer(0, self.ellipse_pipeline.vertex_buffer().slice(..));
+            render_pass.set_index_buffer(self.ellipse_pipeline.index_buffer().slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.set_bind_group(0, &item.uniform_bind_group, &[]);
+            render_pass.draw_indexed(0..6, 0, 0..1);
+        }
+
         drop(render_pass);
 
         for RenderItem { uniform_buffer, .. } in transition_items {
+            self.uniform_pool.mark_used(uniform_buffer);
+        }
+
+        for RoundedRectRenderItem { uniform_buffer, .. } in rounded_rect_items {
+            self.uniform_pool.mark_used(uniform_buffer);
+        }
+
+        for EllipseRenderItem { uniform_buffer, .. } in ellipse_items {
             self.uniform_pool.mark_used(uniform_buffer);
         }
 

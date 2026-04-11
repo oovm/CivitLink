@@ -1,7 +1,35 @@
 //! Platformer 引擎组件定义
 //! 定义游戏中使用的各种 ECS 组件
 
-use gg_ecs::Component;
+use gg_ecs::{Component, Entity};
+use gg_render::DrawCommand;
+
+/// 绘制命令缓冲区
+///
+/// 作为全局资源存储在 World 中，RenderSystem 将绘制命令写入此缓冲区，
+/// 引擎在 tick 之后读取缓冲区内容并提交给实际渲染器。
+#[derive(Debug, Default)]
+pub struct DrawCommandBuffer {
+    /// 待执行的绘制命令列表
+    pub commands: Vec<DrawCommand>,
+}
+
+impl DrawCommandBuffer {
+    /// 创建空的绘制命令缓冲区
+    pub fn new() -> Self {
+        Self { commands: Vec::new() }
+    }
+
+    /// 清空所有绘制命令
+    pub fn clear(&mut self) {
+        self.commands.clear();
+    }
+
+    /// 添加一条绘制命令
+    pub fn push(&mut self, command: DrawCommand) {
+        self.commands.push(command);
+    }
+}
 
 /// 变换组件
 /// 包含实体的位置和旋转信息
@@ -130,16 +158,27 @@ pub struct Health {
 
 /// 玩家组件
 /// 标记实体为玩家
-#[derive(Debug, Default, Component)]
+#[derive(Debug, Component)]
 pub struct Player {
-    /// 玩家 ID
-    pub id: u32,
+    /// 玩家实体标识
+    pub id: Entity,
     /// 是否可以跳跃
     pub can_jump: bool,
     /// 跳跃次数
     pub jump_count: u32,
     /// 最大跳跃次数
     pub max_jump_count: u32,
+}
+
+impl Default for Player {
+    fn default() -> Self {
+        Self {
+            id: Entity::new(0, 0),
+            can_jump: false,
+            jump_count: 0,
+            max_jump_count: 0,
+        }
+    }
 }
 
 /// 平台组件
@@ -205,7 +244,7 @@ impl Default for Collectible {
 pub struct AI {
     /// AI 行为模式
     pub behavior: AIBehavior,
-    /// 巡逻路径
+    /// 巡逻路径点坐标列表
     pub patrol_path: Vec<(f32, f32)>,
     /// 当前路径点索引
     pub current_path_index: usize,
@@ -225,7 +264,7 @@ impl Default for AI {
 }
 
 /// AI 行为模式
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum AIBehavior {
     /// 巡逻
     Patrol,

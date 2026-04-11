@@ -9,6 +9,21 @@ use crate::{
     types::SheetType,
 };
 
+/// 代码生成输出格式
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OutputFormat {
+    /// 生成 Valkyrie 脚本（.v 文件）
+    Valkyrie,
+    /// 生成 Rust 代码（.rs 文件）
+    Rust,
+}
+
+impl Default for OutputFormat {
+    fn default() -> Self {
+        OutputFormat::Valkyrie
+    }
+}
+
 /// 代码生成配置
 #[derive(Debug, Clone)]
 pub struct CodegenConfig {
@@ -16,17 +31,27 @@ pub struct CodegenConfig {
     pub output_dir: PathBuf,
     /// 命名空间前缀（可选）
     pub namespace: Option<String>,
+    /// 输出格式
+    pub format: OutputFormat,
 }
 
 impl CodegenConfig {
     /// 创建新的代码生成配置
     pub fn new(output_dir: PathBuf) -> Self {
-        Self { output_dir, namespace: None }
+        Self { output_dir, namespace: None, format: OutputFormat::Valkyrie }
+    }
+}
+
+/// 为表格生成代码
+pub fn generate_table(table: &SheetTable, config: &CodegenConfig) -> SheetResult<String> {
+    match config.format {
+        OutputFormat::Valkyrie => generate_table_valkyrie(table, config),
+        OutputFormat::Rust => crate::rust_codegen::generate_table_rust(table, config),
     }
 }
 
 /// 为表格生成 Valkyrie 脚本代码
-pub fn generate_table(table: &SheetTable, config: &CodegenConfig) -> SheetResult<String> {
+fn generate_table_valkyrie(table: &SheetTable, config: &CodegenConfig) -> SheetResult<String> {
     match table.kind {
         TableKind::List => generate_list_table(table, config),
         TableKind::Dict => generate_dict_table(table, config),

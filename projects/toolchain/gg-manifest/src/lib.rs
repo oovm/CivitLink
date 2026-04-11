@@ -7,6 +7,9 @@
 pub mod manifest;
 /// 引擎清单模板
 pub mod template;
+/// 游戏配置类型定义
+pub mod game_config;
 
 pub use manifest::{DisplaySection, EngineManifest, EngineSection, GameType, ModulesSection, PlatformEntry, ToolchainSection};
 pub use template::{arpg_asset_dirs, arpg_template, custom_template, visual_novel_asset_dirs, visual_novel_template};
+pub use game_config::{AudioSection, GameConfig, GameSection};

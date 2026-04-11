@@ -3,9 +3,16 @@
 //! GG 引擎字节码虚拟机模块
 //! 基于 gg-bytecode 的字节码解释器，提供脚本执行能力
 
-pub use gg_bytecode::{BytecodeModule, BytecodeValue, Host, InterpretResult as VmResult, InterpreterFrame as CallFrame};
+/// VM 调试器模块
+pub mod debugger;
 
-use gg_bytecode::{BytecodeInterpreter, BytecodeReader, BytecodeWriter};
+pub use gg_bytecode::{BytecodeModule, BytecodeValue, Host, InterpretResult as VmResult, InterpreterFrame as CallFrame};
+pub use debugger::VmDebugger;
+
+use std::cell::RefCell;
+use std::rc::Rc;
+
+use gg_bytecode::{BytecodeInterpreter, BytecodeReader, BytecodeWriter, DebugController};
 use gg_ir::IrModule;
 
 /// 字节码虚拟机
@@ -64,6 +71,31 @@ impl Vm {
     /// 是否正在运行
     pub fn is_running(&self) -> bool {
         self.interpreter.running
+    }
+
+    /// 设置调试控制器
+    pub fn set_debug_controller(&mut self, controller: Option<Rc<RefCell<dyn DebugController>>>) {
+        self.interpreter.set_debug_controller(controller);
+    }
+
+    /// 检查虚拟机是否因调试而暂停
+    pub fn is_debug_paused(&self) -> bool {
+        self.interpreter.is_debug_paused()
+    }
+
+    /// 恢复调试暂停的执行
+    pub fn resume(&mut self) {
+        self.interpreter.resume();
+    }
+
+    /// 获取调用栈的克隆副本，用于调试检查
+    pub fn debug_call_stack(&self) -> Vec<CallFrame> {
+        self.interpreter.debug_call_stack()
+    }
+
+    /// 获取指定栈帧的局部变量列表
+    pub fn debug_local_variables(&self, frame_index: usize) -> Vec<(String, BytecodeValue)> {
+        self.interpreter.debug_local_variables(frame_index)
     }
 }
 

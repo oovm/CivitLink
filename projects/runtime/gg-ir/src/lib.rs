@@ -101,6 +101,23 @@ pub enum OpCode {
     Pop,
     /// 复制栈顶
     Dup,
+
+    /// 从对象获取字段值（字段名）
+    GetField(String),
+    /// 设置对象的字段值（字段名）
+    SetField(String),
+    /// 按索引获取元素（栈: [容器, 索引] -> [值]）
+    GetIndex,
+    /// 按索引设置元素（栈: [容器, 索引, 值] -> []）
+    SetIndex,
+    /// 创建具有 field_count 个字段的新对象
+    NewObject(usize),
+    /// 创建具有 element_count 个元素的新列表
+    NewList(usize),
+    /// 创建具有 pair_count 个键值对的新映射
+    NewMap(usize),
+    /// 将 count 个字符串拼接为一个
+    StringConcat(usize),
 }
 
 /// IR 函数

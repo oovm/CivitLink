@@ -28,11 +28,14 @@ pub enum SheetCommands {
         #[arg(long, default_value = ".")]
         workspace: String,
     },
-    /// 生成 Valkyrie 脚本
+    /// 生成代码
     Generate {
         /// 工作目录
         #[arg(long, default_value = ".")]
         workspace: String,
+        /// 输出格式（valkyrie 或 rust）
+        #[arg(long, default_value = "valkyrie")]
+        format: String,
     },
     /// 监听配置表变化
     Watch {
@@ -138,5 +141,10 @@ pub enum Commands {
         /// 工作目录
         #[arg(long, default_value = ".")]
         workspace: String,
+    },
+    /// 打开已有的项目
+    Open {
+        /// 项目目录路径
+        path: Option<String>,
     },
 }

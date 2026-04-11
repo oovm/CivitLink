@@ -283,19 +283,20 @@ impl NativeRenderer {
     }
 
     /// 渲染圆形绘制命令
-    fn draw_circle(rc: &mut impl PietRenderContext<Image = PietImage>, center: &[f32; 2], radius: f32, color: &Color, filled: bool) {
+    fn draw_circle(rc: &mut impl PietRenderContext<Image = PietImage>, center: &[f32; 2], radius: f32, color: &Color, filled: bool, border_width: f32, border_color: &[f32; 4]) {
         let brush = rc.solid_brush(Self::to_piet_color(color));
         let circle = Circle::new(Point::new(center[0] as f64, center[1] as f64), radius as f64);
 
         if filled {
             rc.fill(circle, &brush);
         } else {
-            rc.stroke(circle, &brush, 1.0);
+            let stroke_brush = rc.solid_brush(piet_common::Color::rgba(border_color[0] as f64, border_color[1] as f64, border_color[2] as f64, border_color[3] as f64));
+            rc.stroke(circle, &stroke_brush, border_width as f64);
         }
     }
 
     /// 渲染椭圆绘制命令
-    fn draw_ellipse(rc: &mut impl PietRenderContext<Image = PietImage>, center: &[f32; 2], radii: &[f32; 2], color: &Color, filled: bool) {
+    fn draw_ellipse(rc: &mut impl PietRenderContext<Image = PietImage>, center: &[f32; 2], radii: &[f32; 2], color: &Color, filled: bool, border_width: f32, border_color: &[f32; 4]) {
         let brush = rc.solid_brush(Self::to_piet_color(color));
         let ellipse = Ellipse::new(
             Point::new(center[0] as f64, center[1] as f64),
@@ -306,7 +307,8 @@ impl NativeRenderer {
         if filled {
             rc.fill(ellipse, &brush);
         } else {
-            rc.stroke(ellipse, &brush, 1.0);
+            let stroke_brush = rc.solid_brush(piet_common::Color::rgba(border_color[0] as f64, border_color[1] as f64, border_color[2] as f64, border_color[3] as f64));
+            rc.stroke(ellipse, &stroke_brush, border_width as f64);
         }
     }
 
@@ -500,16 +502,20 @@ impl Renderer for NativeRenderer {
                     radius,
                     color,
                     filled,
+                    border_width,
+                    border_color,
                 } => {
-                    Self::draw_circle(&mut rc, center, *radius, color, *filled);
+                    Self::draw_circle(&mut rc, center, *radius, color, *filled, *border_width, border_color);
                 }
                 DrawCommand::Ellipse {
                     center,
                     radii,
                     color,
                     filled,
+                    border_width,
+                    border_color,
                 } => {
-                    Self::draw_ellipse(&mut rc, center, radii, color, *filled);
+                    Self::draw_ellipse(&mut rc, center, radii, color, *filled, *border_width, border_color);
                 }
                 DrawCommand::Transition {
                     old_texture,

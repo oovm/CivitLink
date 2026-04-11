@@ -1,0 +1,15 @@
+[package]
+name = "gg-editor-render"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-render = { workspace = true }
+gg-render-wgpu = { workspace = true }
+gg-ui = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+winit = { workspace = true }

@@ -3,13 +3,17 @@
 use crate::{
     command::CommandManager,
     context::{EditorConfig, EditorContext},
-    event::{EditorEvent, EventBus},
+    docking::{DockRegion, DockingLayout},
+    event::{EditorEvent, EventBus, Key, MouseButton},
     panel::EditorPanel,
     plugin::EditorPlugin,
     service::{DefaultWindowService, ServiceRegistry},
 };
-use gg_core::GResult;
-use gg_ui::{LayoutEngine, UiTree};
+use gg_core::{GError, GErrorKind, GResult};
+use gg_editor_render::EditorRenderer;
+use gg_render::{Color, SurfaceInfo};
+use gg_ui::{LayoutEngine, LayoutResult, Style, UiNodeData, UiNodeId, UiTree};
+use gg_world::GameWorld;
 
 /// 编辑器壳程序
 ///
@@ -34,6 +38,18 @@ pub struct EditorShell {
     window_service: DefaultWindowService,
     /// 编辑器配置
     editor_config: EditorConfig,
+    /// 编辑器渲染器实例（仅在有渲染器运行时为 Some）
+    editor_renderer: Option<EditorRenderer>,
+    /// 当前窗口尺寸 (宽, 高)
+    window_size: (u32, u32),
+    /// Docking 布局管理器
+    docking_layout: DockingLayout,
+    /// 当前鼠标位置 (x, y)
+    cursor_position: (f32, f32),
+    /// 游戏世界实例
+    world: GameWorld,
+    /// 面板名称到其 UI 根节点 ID 的映射
+    panel_root_nodes: Vec<(String, UiNodeId)>,
 }
 
 impl EditorShell {
@@ -49,6 +65,12 @@ impl EditorShell {
             is_running: false,
             window_service: DefaultWindowService::new(),
             editor_config: EditorConfig::default(),
+            editor_renderer: None,
+            window_size: (1280, 720),
+            docking_layout: DockingLayout::default_layout(),
+            cursor_position: (0.0, 0.0),
+            world: GameWorld::new("editor_world".to_string()),
+            panel_root_nodes: Vec::new(),
         }
     }
 
@@ -58,7 +80,7 @@ impl EditorShell {
     pub fn register_panel(&mut self, panel: Box<dyn EditorPanel>) {
         let panel_name = panel.name().to_string();
         self.panels.push(panel);
-        let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
+        let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events, &mut self.world);
         if let Some(panel) = self.panels.last_mut() {
             panel.on_register(&mut context);
         }
@@ -79,7 +101,7 @@ impl EditorShell {
     pub fn unregister_panel(&mut self, name: &str) {
         if let Some(pos) = self.panels.iter().position(|p| p.name() == name) {
             let mut panel = self.panels.remove(pos);
-            let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
+            let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events, &mut self.world);
             panel.on_unregister(&mut context);
             self.events.publish(EditorEvent::PanelUnregistered { panel_name: name.to_string() });
         }
@@ -140,22 +162,142 @@ impl EditorShell {
         &mut self.editor_config
     }
 
+    /// 获取 Docking 布局管理器引用
+    pub fn docking_layout(&self) -> &DockingLayout {
+        &self.docking_layout
+    }
+
+    /// 获取 Docking 布局管理器可变引用
+    pub fn docking_layout_mut(&mut self) -> &mut DockingLayout {
+        &mut self.docking_layout
+    }
+
+    /// 获取游戏世界引用
+    pub fn world(&self) -> &GameWorld {
+        &self.world
+    }
+
+    /// 获取游戏世界可变引用
+    pub fn world_mut(&mut self) -> &mut GameWorld {
+        &mut self.world
+    }
+
     /// 执行一帧
     ///
     /// 先处理待处理事件，再处理窗口焦点事件，
-    /// 然后构建所有可见面板的 UI 节点树，计算布局，最后渲染。
+    /// 然后构建所有可见面板的 UI 节点树，使用 DockingLayout 计算面板布局，
+    /// 将布局结果应用到面板根节点，对每个面板子树进行 Flexbox 布局计算，
+    /// 最后添加区域分隔条 UI 节点。
     pub fn tick(&mut self) -> GResult<()> {
-        self.events.process_pending();
+        let pending_events = self.events.process_pending();
         for window_id in self.window_service.drain_pending_focus() {
             self.events.publish(EditorEvent::WindowFocused { window_id });
         }
-        let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
-        for panel in &mut self.panels {
-            if panel.is_visible() {
-                panel.build_ui(&mut context, &mut self.ui_tree)?;
+        for event in &pending_events {
+            let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events, &mut self.world);
+            for panel in &mut self.panels {
+                panel.on_event(event, &mut context);
             }
         }
-        LayoutEngine::compute(&mut self.ui_tree, 800.0, 600.0);
+
+        let editor_root_id = self.ui_tree.create_node(
+            "editor_root",
+            Style::new(),
+            UiNodeData::Container,
+        );
+
+        let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events, &mut self.world);
+        self.panel_root_nodes.clear();
+
+        for panel in &mut self.panels {
+            if panel.is_visible() {
+                let root_before = self.ui_tree.root();
+                panel.build_ui(&mut context, &mut self.ui_tree)?;
+                let root_after = self.ui_tree.root();
+
+                if root_after != root_before {
+                    if let Some(panel_root_id) = root_after {
+                        if panel_root_id != editor_root_id {
+                            self.ui_tree.add_child(editor_root_id, panel_root_id);
+                            self.panel_root_nodes.push((panel.name().to_string(), panel_root_id));
+                        }
+                    }
+                }
+            }
+        }
+
+        self.ui_tree.set_root(editor_root_id);
+
+        if let Some(node) = self.ui_tree.get_mut(editor_root_id) {
+            node.layout_result = Some(LayoutResult::new(
+                0.0,
+                0.0,
+                self.window_size.0 as f32,
+                self.window_size.1 as f32,
+            ));
+        }
+
+        let panel_layouts = self
+            .docking_layout
+            .compute(&self.panels, self.window_size.0 as f32, self.window_size.1 as f32);
+
+        for layout in &panel_layouts {
+            if let Some((_, node_id)) = self.panel_root_nodes.iter().find(|(name, _)| name == &layout.name) {
+                LayoutEngine::compute_subtree(
+                    &mut self.ui_tree,
+                    *node_id,
+                    layout.width,
+                    layout.height,
+                );
+                if let Some(node) = self.ui_tree.get_mut(*node_id) {
+                    node.layout_result = Some(LayoutResult::new(
+                        layout.x,
+                        layout.y,
+                        layout.width,
+                        layout.height,
+                    ));
+                }
+            }
+        }
+
+        let split_color = Color::new(0.5, 0.5, 0.5, 1.0);
+        let split_thickness = 2.0f32;
+        let win_w = self.window_size.0 as f32;
+        let win_h = self.window_size.1 as f32;
+        let bottom_height = self.docking_layout.bottom.as_ref().map(|b| b.size).unwrap_or(0.0);
+
+        for split in &self.docking_layout.splits {
+            let (x, y, w, h) = match split.region {
+                DockRegion::Left => {
+                    (split.position - split_thickness / 2.0, 0.0, split_thickness, win_h - bottom_height)
+                }
+                DockRegion::Right => {
+                    (win_w - split.position - split_thickness / 2.0, 0.0, split_thickness, win_h - bottom_height)
+                }
+                DockRegion::Bottom => {
+                    (0.0, win_h - split.position - split_thickness / 2.0, win_w, split_thickness)
+                }
+                DockRegion::Center => continue,
+            };
+
+            let region_name = match split.region {
+                DockRegion::Left => "left",
+                DockRegion::Right => "right",
+                DockRegion::Bottom => "bottom",
+                DockRegion::Center => continue,
+            };
+            let split_node_id = self.ui_tree.create_node(
+                format!("split_{}", region_name),
+                Style::new().with_background_color(split_color),
+                UiNodeData::Container,
+            );
+            self.ui_tree.add_child(editor_root_id, split_node_id);
+
+            if let Some(node) = self.ui_tree.get_mut(split_node_id) {
+                node.layout_result = Some(LayoutResult::new(x, y, w, h));
+            }
+        }
+
         Ok(())
     }
 
@@ -166,7 +308,7 @@ impl EditorShell {
     pub fn run(&mut self) -> GResult<()> {
         self.is_running = true;
         {
-            let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
+            let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events, &mut self.world);
             for plugin in &mut self.plugins {
                 plugin.initialize(&mut context);
             }
@@ -175,11 +317,137 @@ impl EditorShell {
             self.tick()?;
         }
         {
-            let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events);
+            let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events, &mut self.world);
             for plugin in &mut self.plugins {
                 plugin.shutdown(&mut context);
             }
         }
+        Ok(())
+    }
+
+    /// 使用渲染器运行主循环（桌面平台）
+    ///
+    /// 创建 winit 事件循环和编辑器渲染器，进入桌面事件驱动的主循环。
+    /// 处理窗口事件（调整大小、关闭等），每帧执行 tick 和渲染。
+    ///
+    /// 由于 winit 的事件循环需要获取 EditorShell 的所有权，
+    /// 调用此方法后 `self` 将被替换为默认的空壳程序。
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn run_with_renderer(&mut self) -> GResult<()> {
+        let event_loop = winit::event_loop::EventLoop::new().map_err(|e| GError {
+            kind: GErrorKind::Platform,
+            message: format!("无法创建事件循环: {}", e),
+        })?;
+
+        let surface_info = SurfaceInfo::new(self.window_size.0, self.window_size.1, "GG Editor");
+        let renderer = EditorRenderer::new(&event_loop, surface_info)?;
+        self.editor_renderer = Some(renderer);
+        self.is_running = true;
+
+        {
+            let mut context = EditorContext::new(&mut self.services, &mut self.commands, &mut self.events, &mut self.world);
+            for plugin in &mut self.plugins {
+                plugin.initialize(&mut context);
+            }
+        }
+
+        let mut shell = std::mem::take(self);
+        let mut plugins_shut_down = false;
+
+        #[allow(deprecated)]
+        event_loop
+            .run(move |event, elwt| {
+                match event {
+                    winit::event::Event::WindowEvent { event, .. } => match event {
+                        winit::event::WindowEvent::Resized(physical_size) => {
+                            shell.window_size = (physical_size.width, physical_size.height);
+                            if let Some(ref mut renderer) = shell.editor_renderer {
+                                renderer.resize(physical_size.width, physical_size.height);
+                            }
+                        }
+                        winit::event::WindowEvent::CloseRequested => {
+                            shell.shutdown();
+                        }
+                        winit::event::WindowEvent::Focused(_focused) => {}
+                        winit::event::WindowEvent::MouseInput { state, button, .. } => {
+                            let mouse_button = match button {
+                                winit::event::MouseButton::Left => MouseButton::Left,
+                                winit::event::MouseButton::Right => MouseButton::Right,
+                                winit::event::MouseButton::Middle => MouseButton::Middle,
+                                _ => return,
+                            };
+                            let event = match state {
+                                winit::event::ElementState::Pressed => EditorEvent::MouseDown {
+                                    button: mouse_button,
+                                    position: shell.cursor_position,
+                                },
+                                winit::event::ElementState::Released => EditorEvent::MouseUp {
+                                    button: mouse_button,
+                                    position: shell.cursor_position,
+                                },
+                            };
+                            shell.events.publish(event);
+                        }
+                        winit::event::WindowEvent::CursorMoved { position, .. } => {
+                            shell.cursor_position = (position.x as f32, position.y as f32);
+                            shell.events.publish(EditorEvent::MouseMove {
+                                position: shell.cursor_position,
+                            });
+                        }
+                        winit::event::WindowEvent::MouseWheel { delta, .. } => {
+                            let d = match delta {
+                                winit::event::MouseScrollDelta::LineDelta(x, y) => (x * 20.0, y * 20.0),
+                                winit::event::MouseScrollDelta::PixelDelta(p) => (p.x as f32, p.y as f32),
+                            };
+                            shell.events.publish(EditorEvent::MouseWheel {
+                                delta: d,
+                                position: shell.cursor_position,
+                            });
+                        }
+                        winit::event::WindowEvent::KeyboardInput { event, .. } => {
+                            let key = winit_key_to_key(event.logical_key);
+                            if let Some(key) = key {
+                                let event = match event.state {
+                                    winit::event::ElementState::Pressed => EditorEvent::KeyDown { key },
+                                    winit::event::ElementState::Released => EditorEvent::KeyUp { key },
+                                };
+                                shell.events.publish(event);
+                            }
+                        }
+                        _ => {}
+                    },
+                    winit::event::Event::AboutToWait => {
+                        if !shell.is_running && !plugins_shut_down {
+                            {
+                                let mut context = EditorContext::new(
+                                    &mut shell.services,
+                                    &mut shell.commands,
+                                    &mut shell.events,
+                                    &mut shell.world,
+                                );
+                                for plugin in &mut shell.plugins {
+                                    plugin.shutdown(&mut context);
+                                }
+                            }
+                            plugins_shut_down = true;
+                            elwt.exit();
+                            return;
+                        }
+                        if shell.is_running {
+                            let _ = shell.tick();
+                            if let Some(ref mut renderer) = shell.editor_renderer {
+                                let _ = renderer.render_frame(&shell.ui_tree);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            })
+            .map_err(|e| GError {
+                kind: GErrorKind::Platform,
+                message: format!("事件循环错误: {}", e),
+            })?;
+
         Ok(())
     }
 
@@ -192,5 +460,84 @@ impl EditorShell {
 impl Default for EditorShell {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// 将 winit 逻辑键转换为引擎 Key 枚举
+fn winit_key_to_key(key: winit::keyboard::Key) -> Option<Key> {
+    match key {
+        winit::keyboard::Key::Character(ref c) => match c.as_str() {
+            "a" | "A" => Some(Key::A),
+            "b" | "B" => Some(Key::B),
+            "c" | "C" => Some(Key::C),
+            "d" | "D" => Some(Key::D),
+            "e" | "E" => Some(Key::E),
+            "f" | "F" => Some(Key::F),
+            "g" | "G" => Some(Key::G),
+            "h" | "H" => Some(Key::H),
+            "i" | "I" => Some(Key::I),
+            "j" | "J" => Some(Key::J),
+            "k" | "K" => Some(Key::K),
+            "l" | "L" => Some(Key::L),
+            "m" | "M" => Some(Key::M),
+            "n" | "N" => Some(Key::N),
+            "o" | "O" => Some(Key::O),
+            "p" | "P" => Some(Key::P),
+            "q" | "Q" => Some(Key::Q),
+            "r" | "R" => Some(Key::R),
+            "s" | "S" => Some(Key::S),
+            "t" | "T" => Some(Key::T),
+            "u" | "U" => Some(Key::U),
+            "v" | "V" => Some(Key::V),
+            "w" | "W" => Some(Key::W),
+            "x" | "X" => Some(Key::X),
+            "y" | "Y" => Some(Key::Y),
+            "z" | "Z" => Some(Key::Z),
+            "0" => Some(Key::Num0),
+            "1" => Some(Key::Num1),
+            "2" => Some(Key::Num2),
+            "3" => Some(Key::Num3),
+            "4" => Some(Key::Num4),
+            "5" => Some(Key::Num5),
+            "6" => Some(Key::Num6),
+            "7" => Some(Key::Num7),
+            "8" => Some(Key::Num8),
+            "9" => Some(Key::Num9),
+            _ => None,
+        },
+        winit::keyboard::Key::Named(named) => match named {
+            winit::keyboard::NamedKey::Escape => Some(Key::Escape),
+            winit::keyboard::NamedKey::Enter => Some(Key::Enter),
+            winit::keyboard::NamedKey::Space => Some(Key::Space),
+            winit::keyboard::NamedKey::Tab => Some(Key::Tab),
+            winit::keyboard::NamedKey::Backspace => Some(Key::Backspace),
+            winit::keyboard::NamedKey::Delete => Some(Key::Delete),
+            winit::keyboard::NamedKey::Insert => Some(Key::Insert),
+            winit::keyboard::NamedKey::Home => Some(Key::Home),
+            winit::keyboard::NamedKey::End => Some(Key::End),
+            winit::keyboard::NamedKey::PageUp => Some(Key::PageUp),
+            winit::keyboard::NamedKey::PageDown => Some(Key::PageDown),
+            winit::keyboard::NamedKey::ArrowUp => Some(Key::ArrowUp),
+            winit::keyboard::NamedKey::ArrowDown => Some(Key::ArrowDown),
+            winit::keyboard::NamedKey::ArrowLeft => Some(Key::ArrowLeft),
+            winit::keyboard::NamedKey::ArrowRight => Some(Key::ArrowRight),
+            winit::keyboard::NamedKey::F1 => Some(Key::F1),
+            winit::keyboard::NamedKey::F2 => Some(Key::F2),
+            winit::keyboard::NamedKey::F3 => Some(Key::F3),
+            winit::keyboard::NamedKey::F4 => Some(Key::F4),
+            winit::keyboard::NamedKey::F5 => Some(Key::F5),
+            winit::keyboard::NamedKey::F6 => Some(Key::F6),
+            winit::keyboard::NamedKey::F7 => Some(Key::F7),
+            winit::keyboard::NamedKey::F8 => Some(Key::F8),
+            winit::keyboard::NamedKey::F9 => Some(Key::F9),
+            winit::keyboard::NamedKey::F10 => Some(Key::F10),
+            winit::keyboard::NamedKey::F11 => Some(Key::F11),
+            winit::keyboard::NamedKey::F12 => Some(Key::F12),
+            winit::keyboard::NamedKey::Shift => Some(Key::Shift),
+            winit::keyboard::NamedKey::Control => Some(Key::Control),
+            winit::keyboard::NamedKey::Alt => Some(Key::Alt),
+            _ => None,
+        },
+        _ => None,
     }
 }

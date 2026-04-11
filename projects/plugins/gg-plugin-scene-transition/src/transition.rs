@@ -2,7 +2,7 @@
 //! 提供转场状态组件和转场管理器
 
 use gg_core::GResult;
-use gg_ecs::{Component, Entity, World};
+use gg_ecs::{Entity, World};
 use gg_galgame_schema::components::{SceneBackground, SlideDirection, TransitionType};
 
 /// 转场状态组件
@@ -23,8 +23,6 @@ pub struct TransitionState {
     /// 新背景资源路径
     pub new_background_path: Option<String>,
 }
-
-impl Component for TransitionState {}
 
 impl TransitionState {
     /// 创建新的转场状态

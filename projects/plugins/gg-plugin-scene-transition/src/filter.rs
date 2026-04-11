@@ -2,7 +2,7 @@
 //! 提供滤镜状态组件、滤镜系统和滤镜管理器
 
 use gg_core::GResult;
-use gg_ecs::{Component, System, World};
+use gg_ecs::{System, World};
 use gg_galgame_schema::components::{AmbientFilter, SceneBackground};
 
 /// 氛围滤镜过渡状态组件
@@ -23,8 +23,6 @@ pub struct FilterState {
     /// 过渡是否已完成
     pub is_complete: bool,
 }
-
-impl Component for FilterState {}
 
 impl FilterState {
     /// 创建新的滤镜过渡状态

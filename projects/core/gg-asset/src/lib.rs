@@ -255,13 +255,15 @@ pub struct AssetServer {
     /// 已注册的资源加载器，按资源类型索引
     loaders: HashMap<TypeId, Box<dyn ErasedAssetLoader>>,
     /// 资源加载状态，按资源唯一标识索引
-    load_states: DashMap<u64, LoadState>,
+    pub load_states: DashMap<u64, LoadState>,
+    /// 资源加载完成回调，按资源类型索引
+    on_load_callbacks: HashMap<TypeId, Vec<Box<dyn Fn(u64) + Send + Sync>>>,
 }
 
 impl AssetServer {
     /// 创建新的资源服务器
     pub fn new() -> Self {
-        Self { cache: AssetCache::new(), loaders: HashMap::new(), load_states: DashMap::new() }
+        Self { cache: AssetCache::new(), loaders: HashMap::new(), load_states: DashMap::new(), on_load_callbacks: HashMap::new() }
     }
 
     /// 注册资源加载器
@@ -276,7 +278,8 @@ impl AssetServer {
     ///
     /// 如果资源已在缓存中，直接返回现有句柄。
     /// 否则使用已注册的加载器异步加载资源，
-    /// 加载过程中会追踪资源状态。
+    /// 加载过程中会追踪资源状态，
+    /// 加载成功后会调用所有已注册的 `on_load` 回调。
     pub async fn load<T: Asset>(&self, path: &str) -> Result<Handle<T>, AssetError> {
         if let Some(handle) = self.cache.get_handle::<T>(path) {
             return Ok(handle);
@@ -296,6 +299,13 @@ impl AssetServer {
                 let asset = asset_box.downcast::<T>().map_err(|_| AssetError::TypeMismatch)?;
                 let handle = self.cache.insert_with_id(id, path, *asset);
                 self.load_states.insert(id, LoadState::Loaded);
+
+                if let Some(callbacks) = self.on_load_callbacks.get(&type_id) {
+                    for callback in callbacks {
+                        callback(handle.id);
+                    }
+                }
+
                 Ok(handle)
             }
             Err(e) => {
@@ -303,6 +313,16 @@ impl AssetServer {
                 Err(e)
             }
         }
+    }
+
+    /// 注册资源加载完成回调
+    ///
+    /// 当指定类型 `T` 的资源通过 `load` 方法异步加载成功后，
+    /// 将调用所有已注册的回调，传入资源句柄的唯一标识。
+    /// 通过 `add_asset` 同步添加的资源不会触发回调。
+    pub fn on_load<T: Asset>(&mut self, callback: impl Fn(u64) + Send + Sync + 'static) {
+        let type_id = TypeId::of::<T>();
+        self.on_load_callbacks.entry(type_id).or_default().push(Box::new(callback));
     }
 
     /// 添加资源到服务器
@@ -500,6 +520,102 @@ impl Asset for ImageAsset {
     }
 }
 
+/// 音频格式
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AudioFormat {
+    /// WAV 格式
+    Wav,
+    /// OGG 格式
+    Ogg,
+    /// MP3 格式
+    Mp3,
+    /// FLAC 格式
+    Flac,
+}
+
+impl AudioFormat {
+    /// 根据文件扩展名获取音频格式
+    pub fn from_extension(ext: &str) -> Option<AudioFormat> {
+        match ext.to_lowercase().as_str() {
+            "wav" => Some(AudioFormat::Wav),
+            "ogg" => Some(AudioFormat::Ogg),
+            "mp3" => Some(AudioFormat::Mp3),
+            "flac" => Some(AudioFormat::Flac),
+            _ => None,
+        }
+    }
+}
+
+/// 音频资源
+///
+/// 封装音频原始数据、格式及基本信息。
+pub struct AudioAsset {
+    /// 音频原始数据
+    data: Vec<u8>,
+    /// 音频格式
+    format: AudioFormat,
+    /// 声道数
+    channels: u16,
+    /// 采样率
+    sample_rate: u32,
+}
+
+impl AudioAsset {
+    /// 创建新的音频资源
+    pub fn new(data: Vec<u8>, format: AudioFormat, channels: u16, sample_rate: u32) -> Self {
+        Self { data, format, channels, sample_rate }
+    }
+
+    /// 获取音频原始数据
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+
+    /// 获取音频格式
+    pub fn format(&self) -> AudioFormat {
+        self.format
+    }
+
+    /// 获取声道数
+    pub fn channels(&self) -> u16 {
+        self.channels
+    }
+
+    /// 获取采样率
+    pub fn sample_rate(&self) -> u32 {
+        self.sample_rate
+    }
+}
+
+impl Asset for AudioAsset {
+    fn type_name() -> &'static str
+    where
+        Self: Sized,
+    {
+        "AudioAsset"
+    }
+}
+
+/// 音频资源加载器
+///
+/// 从文件系统异步加载音频文件为 `AudioAsset`，
+/// 根据文件扩展名判断音频格式，声道数和采样率使用默认值。
+pub struct AudioLoader;
+
+impl AssetLoader<AudioAsset> for AudioLoader {
+    async fn load(&self, path: &Path) -> Result<AudioAsset, AssetError> {
+        let data = tokio::fs::read(path)
+            .await
+            .map_err(|e| AssetError::LoadError(format!("Failed to read audio file: {}", e)))?;
+
+        let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+        let format = AudioFormat::from_extension(extension)
+            .ok_or_else(|| AssetError::LoadError(format!("Unsupported audio format: {}", extension)))?;
+
+        Ok(AudioAsset::new(data, format, 2, 44100))
+    }
+}
+
 /// 图像资源加载器
 ///
 /// 从文件系统异步加载 PNG/JPG 图像文件为 `ImageAsset`。
@@ -521,11 +637,166 @@ impl AssetLoader<ImageAsset> for ImageLoader {
     }
 }
 
+/// 字体资源
+///
+/// 封装字体原始数据和解析后的字体对象。
+pub struct FontAsset {
+    /// 字体原始数据
+    data: Vec<u8>,
+    /// 解析后的字体对象
+    font: ab_glyph::FontArc,
+}
+
+impl FontAsset {
+    /// 创建新的字体资源
+    ///
+    /// 如果字体数据解析失败，返回 `AssetError::LoadError`。
+    pub fn new(data: Vec<u8>) -> Result<Self, AssetError> {
+        let font = ab_glyph::FontArc::try_from_vec(data.clone())
+            .map_err(|e| AssetError::LoadError(format!("Failed to parse font: {}", e)))?;
+        Ok(Self { data, font })
+    }
+
+    /// 获取字体原始数据
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+
+    /// 获取字体对象的引用
+    pub fn font(&self) -> &ab_glyph::FontArc {
+        &self.font
+    }
+}
+
+impl Asset for FontAsset {
+    fn type_name() -> &'static str
+    where
+        Self: Sized,
+    {
+        "FontAsset"
+    }
+}
+
+/// 字体资源加载器
+///
+/// 从文件系统异步加载 TTF/OTF 字体文件为 `FontAsset`，
+/// 使用 `ab_glyph` 解析字体数据。
+pub struct FontLoader;
+
+impl AssetLoader<FontAsset> for FontLoader {
+    async fn load(&self, path: &Path) -> Result<FontAsset, AssetError> {
+        let data = tokio::fs::read(path)
+            .await
+            .map_err(|e| AssetError::LoadError(format!("Failed to read font file: {}", e)))?;
+
+        FontAsset::new(data)
+    }
+}
+
 /// 预导入模块
 pub mod prelude {
     /// 重新导出 gg-asset 核心类型
     pub use crate::{
-        Asset, AssetCache, AssetError, AssetLoader, AssetServer, BinaryAsset, BinaryLoader, Handle, ImageAsset,
-        ImageLoader, LoadState, TextAsset, TextLoader,
+        Asset, AssetCache, AssetError, AssetLoader, AssetServer, AudioAsset, AudioFormat, AudioLoader, BinaryAsset,
+        BinaryLoader, FontAsset, FontLoader, Handle, ImageAsset, ImageLoader, LoadState, TextAsset, TextLoader,
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Arc, Mutex};
+
+    #[test]
+    fn test_audio_format_from_extension() {
+        assert_eq!(AudioFormat::from_extension("wav"), Some(AudioFormat::Wav));
+        assert_eq!(AudioFormat::from_extension("ogg"), Some(AudioFormat::Ogg));
+        assert_eq!(AudioFormat::from_extension("mp3"), Some(AudioFormat::Mp3));
+        assert_eq!(AudioFormat::from_extension("flac"), Some(AudioFormat::Flac));
+        assert_eq!(AudioFormat::from_extension("WAV"), Some(AudioFormat::Wav));
+        assert_eq!(AudioFormat::from_extension("Mp3"), Some(AudioFormat::Mp3));
+        assert_eq!(AudioFormat::from_extension("txt"), None);
+        assert_eq!(AudioFormat::from_extension(""), None);
+    }
+
+    #[test]
+    fn test_audio_asset_creation() {
+        let data = vec![1u8, 2, 3, 4];
+        let asset = AudioAsset::new(data.clone(), AudioFormat::Wav, 2, 44100);
+
+        assert_eq!(asset.data(), &data);
+        assert_eq!(asset.format(), AudioFormat::Wav);
+        assert_eq!(asset.channels(), 2);
+        assert_eq!(asset.sample_rate(), 44100);
+    }
+
+    #[test]
+    fn test_audio_asset_default_values() {
+        let asset = AudioAsset::new(vec![], AudioFormat::Ogg, 2, 44100);
+        assert_eq!(asset.channels(), 2);
+        assert_eq!(asset.sample_rate(), 44100);
+    }
+
+    #[test]
+    fn test_on_load_callback_triggered() {
+        let mut server = AssetServer::new();
+        let called = Arc::new(Mutex::new(false));
+        let called_clone = called.clone();
+
+        server.on_load::<TextAsset>(move |_id| {
+            *called_clone.lock().unwrap() = true;
+        });
+
+        server.register_loader::<TextAsset, TextLoader>(TextLoader);
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(server.load::<TextAsset>("nonexistent.txt"));
+
+        assert!(result.is_err());
+        assert!(!*called.lock().unwrap());
+    }
+
+    #[test]
+    fn test_on_load_callback_with_add_asset_not_triggered() {
+        let mut server = AssetServer::new();
+        let called = Arc::new(Mutex::new(false));
+        let called_clone = called.clone();
+
+        server.on_load::<TextAsset>(move |_id| {
+            *called_clone.lock().unwrap() = true;
+        });
+
+        let _handle = server.add_asset("test.txt", TextAsset::new("test", "hello".to_string()));
+
+        assert!(!*called.lock().unwrap());
+    }
+
+    #[test]
+    fn test_multiple_on_load_callbacks() {
+        let mut server = AssetServer::new();
+        let count = Arc::new(Mutex::new(0u32));
+        let count_clone1 = count.clone();
+        let count_clone2 = count.clone();
+
+        server.on_load::<BinaryAsset>(move |_id| {
+            *count_clone1.lock().unwrap() += 1;
+        });
+        server.on_load::<BinaryAsset>(move |_id| {
+            *count_clone2.lock().unwrap() += 10;
+        });
+
+        server.register_loader::<BinaryAsset, BinaryLoader>(BinaryLoader);
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let result = rt.block_on(server.load::<BinaryAsset>("nonexistent.bin"));
+
+        assert!(result.is_err());
+        assert_eq!(*count.lock().unwrap(), 0);
+    }
+
+    #[test]
+    fn test_font_asset_invalid_data() {
+        let result = FontAsset::new(vec![0u8; 4]);
+        assert!(result.is_err());
+    }
 }

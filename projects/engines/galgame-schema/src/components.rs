@@ -1,7 +1,6 @@
 //! GG Galgame Schema 核心组件模块
 //! 定义 Galgame 引擎所需的所有 ECS 组件类型
 
-use gg_ecs::Component;
 use gg_render::TextureId;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -165,8 +164,6 @@ pub struct DialogueNode {
     pub next_node_id: Option<String>,
 }
 
-impl Component for DialogueNode {}
-
 /// 角色定义
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CharacterDef {
@@ -183,8 +180,6 @@ pub struct CharacterDef {
     /// 角色名字颜色（RGBA）
     pub color: Option<[f32; 4]>,
 }
-
-impl Component for CharacterDef {}
 
 /// 立绘状态
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -213,8 +208,6 @@ pub struct PortraitState {
     #[serde(skip)]
     pub texture_height: f32,
 }
-
-impl Component for PortraitState {}
 
 /// 氛围滤镜枚举
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -260,8 +253,6 @@ pub struct SceneBackground {
     pub texture_id: TextureId,
 }
 
-impl Component for SceneBackground {}
-
 /// 音效触发器
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SeTrigger {
@@ -287,8 +278,6 @@ pub struct AudioControl {
     /// 待播放音效列表
     pub pending_se: Vec<SeTrigger>,
 }
-
-impl Component for AudioControl {}
 
 /// 选项状态
 ///

@@ -16,25 +16,10 @@ pub fn cmd_new_game(game_name: &str) -> GResult<()> {
         message: format!("Failed to create game directory '{}': {}", game_name, e),
     })?;
 
-    let game_toml = format!(
-        r#"[game]
-name = "{}"
-version = "0.1.0"
-initial_scene = "start"
-
-[display]
-width = 1280
-height = 720
-fullscreen = false
-
-[audio]
-master_volume = 1.0
-bgm_volume = 0.8
-se_volume = 1.0
-"#,
-        game_name
-    );
-    std::fs::write(game_dir.join("game.toml"), game_toml)
+    let mut game_config = gg_manifest::GameConfig::default();
+    game_config.game.name = game_name.to_string();
+    game_config.display.title = game_name.to_string();
+    game_config.save_to_file(&game_dir.join("game.toml"))
         .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write game.toml: {}", e) })?;
 
     std::fs::create_dir_all(game_dir.join("scripts"))

@@ -10,6 +10,7 @@ pub mod config;
 pub mod error;
 pub mod merge;
 pub mod reader;
+pub mod rust_codegen;
 pub mod schema;
 pub mod types;
 pub mod validate;

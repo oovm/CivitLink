@@ -38,7 +38,7 @@ impl GgShaderCompiler {
     /// 仅编译第一个着色器块，忽略命名空间和 micro 函数。
     pub fn compile(&self, source: &str) -> GResult<naga::Module> {
         // 使用 oak-valkyrie 解析 gs 源码
-        let language = ValkyrieLanguage::with_shader_support();
+        let language = ValkyrieLanguage::default().with_shader_support();
         let builder = ValkyrieBuilder::new(&language);
         let source_text = SourceText::new(source);
         let mut cache = ParseSession::<ValkyrieLanguage>::default();
@@ -57,7 +57,7 @@ impl GgShaderCompiler {
 
         // 查找第一个 shader 定义
         let shader = root.items.iter().find_map(|item| match item {
-            oak_valkyrie::ast::Item::Shader(shader) => Some(shader),
+            oak_valkyrie::ast::StatementNode::Shader(shader) => Some(shader),
             _ => None,
         }).ok_or_else(|| GError {
             kind: GErrorKind::Other,

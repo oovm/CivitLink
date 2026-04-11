@@ -1,7 +1,8 @@
 //! 对话系统、选项系统、打字机效果系统和等待系统模块
 //! 实现 DialogueSystem、ChoiceSystem、TypewriterSystem 和 WaitSystem
 
-use crate::schema::{ChoiceState, DialogueHistory, DialogueNode, GameVariables, HistoryEntry, WaitTimer};
+use crate::expression::ExpressionEvaluator;
+use crate::schema::{ChoiceState, DeltaTime, DialogueHistory, DialogueNode, GameVariables, HistoryEntry, WaitTimer};
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::{System, World};
 

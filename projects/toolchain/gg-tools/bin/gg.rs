@@ -33,5 +33,6 @@ fn main() -> gg_tools::GResult<()> {
         }
         gg_tools::Commands::Lsp { workspace } => gg_tools::cmds::lsp::cmd_lsp(&workspace),
         gg_tools::Commands::Mcp { workspace } => gg_tools::cmds::mcp::cmd_mcp(&workspace),
+        gg_tools::Commands::Open { path } => gg_tools::cmds::open::cmd_open(path.as_deref()),
     }
 }

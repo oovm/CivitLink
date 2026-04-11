@@ -81,6 +81,10 @@ pub enum DrawCommand {
         color: Color,
         /// 是否填充；`true` 为填充，`false` 为描边
         filled: bool,
+        /// 描边宽度（像素）；`0.0` 表示不描边，`>0` 表示描边宽度
+        border_width: f32,
+        /// 描边颜色 RGBA `[r, g, b, a]`
+        border_color: [f32; 4],
     },
     /// 椭圆绘制
     Ellipse {
@@ -92,6 +96,10 @@ pub enum DrawCommand {
         color: Color,
         /// 是否填充；`true` 为填充，`false` 为描边
         filled: bool,
+        /// 描边宽度（像素）；`0.0` 表示不描边，`>0` 表示描边宽度
+        border_width: f32,
+        /// 描边颜色 RGBA `[r, g, b, a]`
+        border_color: [f32; 4],
     },
     /// 过渡动画
     Transition {

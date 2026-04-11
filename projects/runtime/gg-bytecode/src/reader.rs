@@ -188,6 +188,14 @@ impl BytecodeReader {
             }
             BytecodeOpCode::Pop => BytecodeInstruction::Pop,
             BytecodeOpCode::Dup => BytecodeInstruction::Dup,
+            BytecodeOpCode::GetField => BytecodeInstruction::GetField { name_index: reader.read_u32()? },
+            BytecodeOpCode::SetField => BytecodeInstruction::SetField { name_index: reader.read_u32()? },
+            BytecodeOpCode::GetIndex => BytecodeInstruction::GetIndex,
+            BytecodeOpCode::SetIndex => BytecodeInstruction::SetIndex,
+            BytecodeOpCode::NewObject => BytecodeInstruction::NewObject { field_count: reader.read_u32()? },
+            BytecodeOpCode::NewList => BytecodeInstruction::NewList { element_count: reader.read_u32()? },
+            BytecodeOpCode::NewMap => BytecodeInstruction::NewMap { pair_count: reader.read_u32()? },
+            BytecodeOpCode::StringConcat => BytecodeInstruction::StringConcat { count: reader.read_u32()? },
         };
 
         Ok(instruction)

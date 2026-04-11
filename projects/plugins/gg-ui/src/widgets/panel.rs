@@ -3,6 +3,7 @@ use crate::{
     style::Style,
     widget::Widget,
 };
+use gg_core::GResult;
 
 /// 面板控件
 ///
@@ -41,14 +42,15 @@ impl Default for Panel {
 }
 
 impl Widget for Panel {
-    fn build(&self, tree: &mut UiTree) -> UiNodeId {
+    fn build(&mut self, tree: &mut UiTree) -> GResult<UiNodeId> {
         let id = tree.create_node("Panel", self.style.clone(), UiNodeData::Container);
 
         for &child_id in &self.children {
             tree.add_child(id, child_id);
         }
 
-        id
+        self.node_id = Some(id);
+        Ok(id)
     }
 
     fn update(&self, _tree: &mut UiTree) {}

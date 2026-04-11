@@ -10,6 +10,7 @@ pub mod mcp;
 pub mod meta;
 pub mod mod_converter;
 pub mod new_game;
+pub mod open;
 pub mod package;
 pub mod run;
 pub mod script_bench;

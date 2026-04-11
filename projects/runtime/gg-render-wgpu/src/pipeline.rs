@@ -519,6 +519,276 @@ impl BatchSpritePipeline {
     }
 }
 
+/// 圆角矩形着色器 uniform 数据
+///
+/// 包含 MVP 变换矩阵、矩形尺寸和圆角半径、填充颜色。
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub struct RoundedRectUniforms {
+    /// MVP 变换矩阵
+    pub mvp: [[f32; 4]; 4],
+    /// 矩形参数 `[width, height, corner_radius, 0.0]`
+    pub rect_size: [f32; 4],
+    /// 填充颜色 RGBA
+    pub color: [f32; 4],
+}
+
+/// 圆角矩形渲染管线
+///
+/// 使用 SDF（有符号距离场）技术渲染圆角矩形，
+/// 支持可配置的圆角半径和抗锯齿边缘。
+pub struct RoundedRectPipeline {
+    /// wgpu 渲染管线
+    pipeline: wgpu::RenderPipeline,
+    /// uniform 缓冲区绑定组布局
+    uniform_layout: wgpu::BindGroupLayout,
+    /// 顶点缓冲区
+    vertex_buffer: wgpu::Buffer,
+    /// 索引缓冲区
+    index_buffer: wgpu::Buffer,
+}
+
+impl RoundedRectPipeline {
+    /// 创建圆角矩形渲染管线
+    ///
+    /// # 参数
+    ///
+    /// - `device` - wgpu 设备
+    /// - `format` - 渲染目标纹理格式
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        let shader_source = GpuShaderSource::from_naga(
+            gg_shader::builtin::builtin_rounded_rect_shader()
+                .expect("内置圆角矩形着色器编译失败")
+        );
+        let shader = shader_source.create_shader_module(device, "rounded_rect_shader");
+
+        let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("rounded_rect_uniform_layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("rounded_rect_pipeline_layout"),
+            bind_group_layouts: &[Some(&uniform_layout)],
+            immediate_size: 0,
+        });
+
+        let pipeline = create_render_pipeline(
+            device,
+            &pipeline_layout,
+            &shader,
+            format,
+            wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![
+                        0 => Float32x2,
+                        1 => Float32x2,
+                    ],
+                }],
+            },
+        );
+
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("rounded_rect_vertex_buffer"),
+            contents: bytemuck::cast_slice(&QUAD_VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("rounded_rect_index_buffer"),
+            contents: bytemuck::cast_slice(&QUAD_INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        Self { pipeline, uniform_layout, vertex_buffer, index_buffer }
+    }
+
+    /// 获取渲染管线的引用
+    pub fn pipeline(&self) -> &wgpu::RenderPipeline {
+        &self.pipeline
+    }
+
+    /// 获取 uniform 绑定组布局的引用
+    pub fn uniform_layout(&self) -> &wgpu::BindGroupLayout {
+        &self.uniform_layout
+    }
+
+    /// 获取顶点缓冲区的引用
+    pub fn vertex_buffer(&self) -> &wgpu::Buffer {
+        &self.vertex_buffer
+    }
+
+    /// 获取索引缓冲区的引用
+    pub fn index_buffer(&self) -> &wgpu::Buffer {
+        &self.index_buffer
+    }
+
+    /// 创建 uniform 绑定组
+    ///
+    /// # 参数
+    ///
+    /// - `device` - wgpu 设备
+    /// - `buffer` - uniform 缓冲区
+    pub fn create_uniform_bind_group(&self, device: &wgpu::Device, buffer: &wgpu::Buffer) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("rounded_rect_uniform_bind_group"),
+            layout: &self.uniform_layout,
+            entries: &[wgpu::BindGroupEntry { binding: 0, resource: buffer.as_entire_binding() }],
+        })
+    }
+}
+
+/// 椭圆着色器 uniform 数据
+///
+/// 包含 MVP 变换矩阵、椭圆参数、填充颜色和边框参数。
+/// 圆形是椭圆的特例（radius_x == radius_y）。
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub struct EllipseUniforms {
+    /// MVP 变换矩阵
+    pub mvp: [[f32; 4]; 4],
+    /// 椭圆参数 `[0.0, 0.0, radius_x, radius_y]`
+    pub ellipse_params: [f32; 4],
+    /// 填充颜色 RGBA
+    pub fill_color: [f32; 4],
+    /// 边框参数 `[border_width, border_color_r, border_color_g, border_color_b]`
+    pub border_params: [f32; 4],
+}
+
+/// 椭圆渲染管线
+///
+/// 使用 SDF（有符号距离场）技术渲染椭圆和圆形，
+/// 支持填充和描边模式，以及抗锯齿边缘处理。
+/// 圆形是椭圆的特例（radius_x == radius_y）。
+pub struct EllipsePipeline {
+    /// wgpu 渲染管线
+    pipeline: wgpu::RenderPipeline,
+    /// uniform 缓冲区绑定组布局
+    uniform_layout: wgpu::BindGroupLayout,
+    /// 顶点缓冲区
+    vertex_buffer: wgpu::Buffer,
+    /// 索引缓冲区
+    index_buffer: wgpu::Buffer,
+}
+
+impl EllipsePipeline {
+    /// 创建椭圆渲染管线
+    ///
+    /// # 参数
+    ///
+    /// - `device` - wgpu 设备
+    /// - `format` - 渲染目标纹理格式
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        let shader_source = GpuShaderSource::from_naga(
+            gg_shader::builtin::builtin_ellipse_shader()
+                .expect("内置椭圆着色器编译失败")
+        );
+        let shader = shader_source.create_shader_module(device, "ellipse_shader");
+
+        let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("ellipse_uniform_layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("ellipse_pipeline_layout"),
+            bind_group_layouts: &[Some(&uniform_layout)],
+            immediate_size: 0,
+        });
+
+        let pipeline = create_render_pipeline(
+            device,
+            &pipeline_layout,
+            &shader,
+            format,
+            wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![
+                        0 => Float32x2,
+                        1 => Float32x2,
+                    ],
+                }],
+            },
+        );
+
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("ellipse_vertex_buffer"),
+            contents: bytemuck::cast_slice(&QUAD_VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("ellipse_index_buffer"),
+            contents: bytemuck::cast_slice(&QUAD_INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        Self { pipeline, uniform_layout, vertex_buffer, index_buffer }
+    }
+
+    /// 获取渲染管线的引用
+    pub fn pipeline(&self) -> &wgpu::RenderPipeline {
+        &self.pipeline
+    }
+
+    /// 获取 uniform 绑定组布局的引用
+    pub fn uniform_layout(&self) -> &wgpu::BindGroupLayout {
+        &self.uniform_layout
+    }
+
+    /// 获取顶点缓冲区的引用
+    pub fn vertex_buffer(&self) -> &wgpu::Buffer {
+        &self.vertex_buffer
+    }
+
+    /// 获取索引缓冲区的引用
+    pub fn index_buffer(&self) -> &wgpu::Buffer {
+        &self.index_buffer
+    }
+
+    /// 创建 uniform 绑定组
+    ///
+    /// # 参数
+    ///
+    /// - `device` - wgpu 设备
+    /// - `buffer` - uniform 缓冲区
+    pub fn create_uniform_bind_group(&self, device: &wgpu::Device, buffer: &wgpu::Buffer) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("ellipse_uniform_bind_group"),
+            layout: &self.uniform_layout,
+            entries: &[wgpu::BindGroupEntry { binding: 0, resource: buffer.as_entire_binding() }],
+        })
+    }
+}
+
 /// 创建渲染管线
 ///
 /// 辅助函数，创建启用了 alpha 混合的 wgpu 渲染管线。

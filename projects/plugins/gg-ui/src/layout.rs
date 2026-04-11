@@ -38,6 +38,21 @@ impl LayoutEngine {
         }
     }
 
+    /// 计算子树布局
+    ///
+    /// 从指定节点开始，递归计算该节点及其所有后代的布局。
+    /// 节点的位置从 (0, 0) 开始计算。
+    ///
+    /// # 参数
+    ///
+    /// - `tree` - UI 节点树
+    /// - `node_id` - 起始节点 ID
+    /// - `available_width` - 可用宽度
+    /// - `available_height` - 可用高度
+    pub fn compute_subtree(tree: &mut UiTree, node_id: UiNodeId, available_width: f32, available_height: f32) {
+        Self::compute_node(tree, node_id, 0.0, 0.0, available_width, available_height);
+    }
+
     /// 计算单个节点的布局（递归）
     fn compute_node(tree: &mut UiTree, node_id: UiNodeId, x: f32, y: f32, available_width: f32, available_height: f32) {
         let (style, children, data) = {

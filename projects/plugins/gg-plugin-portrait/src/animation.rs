@@ -2,7 +2,7 @@
 //! 提供立绘动画状态组件和立绘管理器，负责立绘的显示、隐藏、表情切换和高亮管理
 
 use gg_core::{GError, GErrorKind, GResult};
-use gg_ecs::{Component, Entity, World};
+use gg_ecs::{Entity, World};
 use gg_galgame_schema::components::{PortraitPosition, PortraitState, SlideDirection, TransitionType};
 use gg_render::TextureId;
 
@@ -20,6 +20,8 @@ pub struct PortraitAnimationState {
     pub elapsed_secs: f32,
     /// 动画是否已完成
     pub is_complete: bool,
+    /// 是否为淡出动画
+    pub is_fading_out: bool,
 }
 
 impl PortraitAnimationState {
@@ -35,7 +37,21 @@ impl PortraitAnimationState {
             TransitionType::Slide { duration_secs, .. } => *duration_secs,
         };
         let is_complete = matches!(animation_type, TransitionType::None);
-        Self { animation_type, progress: 0.0, duration_secs, elapsed_secs: 0.0, is_complete }
+        Self { animation_type, progress: 0.0, duration_secs, elapsed_secs: 0.0, is_complete, is_fading_out: false }
+    }
+
+    /// 创建淡出动画状态
+    ///
+    /// 使用指定的过渡类型创建动画，并将 `is_fading_out` 设置为 `true`。
+    /// 淡出时透明度从 1 减少到 0。
+    ///
+    /// # 参数
+    ///
+    /// - `animation_type` - 过渡动画类型
+    pub fn new_fade_out(animation_type: TransitionType) -> Self {
+        let mut state = Self::new(animation_type);
+        state.is_fading_out = true;
+        state
     }
 
     /// 更新动画进度
@@ -66,7 +82,14 @@ impl PortraitAnimationState {
     /// 对于其他动画类型，返回 1.0。
     pub fn current_opacity(&self) -> f32 {
         match &self.animation_type {
-            TransitionType::Fade { .. } | TransitionType::CrossDissolve { .. } => self.progress,
+            TransitionType::Fade { .. } => {
+                if self.is_fading_out {
+                    1.0 - self.progress
+                } else {
+                    self.progress
+                }
+            }
+            TransitionType::CrossDissolve { .. } => self.progress,
             _ => 1.0,
         }
     }
@@ -94,8 +117,6 @@ impl PortraitAnimationState {
         }
     }
 }
-
-impl Component for PortraitAnimationState {}
 
 /// 立绘管理器
 ///

@@ -90,6 +90,22 @@ pub enum BytecodeOpCode {
     SetComponent = 0x64,
     /// 调用宿主函数
     HostCall = 0x70,
+    /// 获取字段
+    GetField = 0x82,
+    /// 设置字段
+    SetField = 0x83,
+    /// 按索引获取
+    GetIndex = 0x84,
+    /// 按索引设置
+    SetIndex = 0x85,
+    /// 创建新对象
+    NewObject = 0x86,
+    /// 创建新列表
+    NewList = 0x87,
+    /// 创建新映射
+    NewMap = 0x88,
+    /// 字符串拼接
+    StringConcat = 0x89,
     /// 弹出栈顶
     Pop = 0x80,
     /// 复制栈顶
@@ -134,6 +150,14 @@ impl BytecodeOpCode {
             0x70 => Some(BytecodeOpCode::HostCall),
             0x80 => Some(BytecodeOpCode::Pop),
             0x81 => Some(BytecodeOpCode::Dup),
+            0x82 => Some(BytecodeOpCode::GetField),
+            0x83 => Some(BytecodeOpCode::SetField),
+            0x84 => Some(BytecodeOpCode::GetIndex),
+            0x85 => Some(BytecodeOpCode::SetIndex),
+            0x86 => Some(BytecodeOpCode::NewObject),
+            0x87 => Some(BytecodeOpCode::NewList),
+            0x88 => Some(BytecodeOpCode::NewMap),
+            0x89 => Some(BytecodeOpCode::StringConcat),
             _ => None,
         }
     }
@@ -250,6 +274,40 @@ pub enum BytecodeInstruction {
     Pop,
     /// 复制栈顶
     Dup,
+    /// 获取对象字段
+    GetField {
+        /// 字段名字符串池索引
+        name_index: u32,
+    },
+    /// 设置对象字段
+    SetField {
+        /// 字段名字符串池索引
+        name_index: u32,
+    },
+    /// 按索引获取元素
+    GetIndex,
+    /// 按索引设置元素
+    SetIndex,
+    /// 创建新对象
+    NewObject {
+        /// 字段数量
+        field_count: u32,
+    },
+    /// 创建新列表
+    NewList {
+        /// 元素数量
+        element_count: u32,
+    },
+    /// 创建新映射
+    NewMap {
+        /// 键值对数量
+        pair_count: u32,
+    },
+    /// 字符串拼接
+    StringConcat {
+        /// 拼接数量
+        count: u32,
+    },
 }
 
 impl BytecodeInstruction {
@@ -290,6 +348,14 @@ impl BytecodeInstruction {
             BytecodeInstruction::HostCall { .. } => BytecodeOpCode::HostCall,
             BytecodeInstruction::Pop => BytecodeOpCode::Pop,
             BytecodeInstruction::Dup => BytecodeOpCode::Dup,
+            BytecodeInstruction::GetField { .. } => BytecodeOpCode::GetField,
+            BytecodeInstruction::SetField { .. } => BytecodeOpCode::SetField,
+            BytecodeInstruction::GetIndex => BytecodeOpCode::GetIndex,
+            BytecodeInstruction::SetIndex => BytecodeOpCode::SetIndex,
+            BytecodeInstruction::NewObject { .. } => BytecodeOpCode::NewObject,
+            BytecodeInstruction::NewList { .. } => BytecodeOpCode::NewList,
+            BytecodeInstruction::NewMap { .. } => BytecodeOpCode::NewMap,
+            BytecodeInstruction::StringConcat { .. } => BytecodeOpCode::StringConcat,
         }
     }
 }

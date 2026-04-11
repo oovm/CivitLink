@@ -3,15 +3,16 @@
 
 use crate::components::*;
 use crate::config::PlatformerConfig;
+use crate::systems::InputState;
 use crate::systems::*;
-use gg_asset::AssetManager;
-use gg_core::{GResult, plugin::Plugin};
+use gg_asset::AssetServer;
+use gg_core::GResult;
 use gg_ecs::World;
-use gg_platform_desktop::DesktopFileSystem;
 use gg_render::{RenderContext, Renderer, SurfaceInfo};
 use gg_render_wgpu::WgpuRenderer;
 use gg_ui::{LayoutEngine, UiRenderer, UiTree};
-use winit::{event::Event, event_loop::EventLoop};
+use winit::event::{ElementState, Event, WindowEvent};
+use winit::event_loop::EventLoop;
 
 /// Platformer 引擎
 ///
@@ -25,28 +26,14 @@ pub struct PlatformerEngine {
     pub config: PlatformerConfig,
     /// ECS 世界
     pub world: World,
-    /// 资源管理器
-    pub asset_manager: AssetManager,
+    /// 资源服务器
+    pub asset_server: AssetServer,
     /// 是否编辑器模式
     pub is_editor_mode: bool,
     /// WGPU 渲染器
     renderer: Option<WgpuRenderer>,
     /// UI 节点树
     ui_tree: UiTree,
-    /// 输入系统
-    input_system: InputSystem,
-    /// 物理系统
-    physics_system: PhysicsSystem,
-    /// 移动系统
-    movement_system: MovementSystem,
-    /// 碰撞系统
-    collision_system: CollisionSystem,
-    /// 收集系统
-    collectible_system: CollectibleSystem,
-    /// AI 系统
-    ai_system: AISystem,
-    /// 渲染系统
-    render_system: RenderSystem,
 }
 
 impl PlatformerEngine {
@@ -57,51 +44,44 @@ impl PlatformerEngine {
     /// - `config` - 游戏配置
     /// - `is_editor_mode` - 是否启用编辑器模式
     pub fn new(config: PlatformerConfig, is_editor_mode: bool) -> Self {
-        let screen_width = config.display.width as f32;
-        let screen_height = config.display.height as f32;
-
         Self {
             config,
             world: World::new(),
-            asset_manager: AssetManager::new(Box::new(DesktopFileSystem::new())),
+            asset_server: AssetServer::new(),
             is_editor_mode,
             renderer: None,
             ui_tree: UiTree::new(),
-            input_system: InputSystem::new(config.input.move_speed, config.input.jump_force),
-            physics_system: PhysicsSystem::new(
-                config.gameplay.gravity,
-                config.gameplay.max_fall_speed,
-                config.gameplay.ground_friction,
-                config.gameplay.air_friction,
-            ),
-            movement_system: MovementSystem::new(screen_width, screen_height),
-            collision_system: CollisionSystem::new(0xFFFF),
-            collectible_system: CollectibleSystem::new(),
-            ai_system: AISystem::new(screen_width, screen_height),
-            render_system: RenderSystem::new(screen_width, screen_height),
         }
     }
 
     /// 初始化引擎
     ///
-    /// 创建渲染器、窗口，注册所有系统并加载游戏资源。
+    /// 注册输入状态资源，创建并注册所有系统，创建游戏实体。
     pub fn initialize(&mut self) -> GResult<()> {
-        // 注册系统
-        self.world.add_system("input", Box::new(&mut self.input_system));
-        self.world.add_system("physics", Box::new(&mut self.physics_system));
-        self.world.add_system("movement", Box::new(&mut self.movement_system));
-        self.world.add_system("collision", Box::new(&mut self.collision_system));
-        self.world.add_system("collectible", Box::new(&mut self.collectible_system));
-        self.world.add_system("ai", Box::new(&mut self.ai_system));
-        self.world.add_system("render", Box::new(&mut self.render_system));
+        let screen_width = self.config.display.width as f32;
+        let screen_height = self.config.display.height as f32;
 
-        // 创建玩家实体
+        self.world.insert_resource(InputState::default());
+        self.world.insert_resource(DrawCommandBuffer::default());
+
+        self.world.register_system(Box::new(InputSystem::new(
+            self.config.input.move_speed,
+            self.config.input.jump_force,
+        )));
+        self.world.register_system(Box::new(PhysicsSystem::new(
+            self.config.gameplay.gravity,
+            self.config.gameplay.max_fall_speed,
+            self.config.gameplay.ground_friction,
+            self.config.gameplay.air_friction,
+        )));
+        self.world.register_system(Box::new(MovementSystem::new(screen_width, screen_height)));
+        self.world.register_system(Box::new(CollisionSystem::new(0xFFFF)));
+        self.world.register_system(Box::new(CollectibleSystem::new()));
+        self.world.register_system(Box::new(AISystem::new(screen_width, screen_height)));
+        self.world.register_system(Box::new(RenderSystem::new(screen_width, screen_height)));
+
         self.create_player();
-
-        // 创建平台实体
         self.create_platforms();
-
-        // 创建可收集物品实体
         self.create_collectibles();
 
         Ok(())
@@ -109,9 +89,8 @@ impl PlatformerEngine {
 
     /// 创建玩家实体
     fn create_player(&mut self) {
-        let player_entity = self.world.spawn();
+        let player_entity = self.world.spawn().id();
 
-        // 添加变换组件
         self.world.add_component(player_entity, Transform {
             x: 100.0,
             y: 400.0,
@@ -119,10 +98,8 @@ impl PlatformerEngine {
             scale: 1.0,
         }).unwrap();
 
-        // 添加速度组件
         self.world.add_component(player_entity, Velocity::default()).unwrap();
 
-        // 添加精灵组件
         self.world.add_component(player_entity, Sprite {
             path: "player.png".to_string(),
             width: 32.0,
@@ -130,14 +107,12 @@ impl PlatformerEngine {
             visible: true,
         }).unwrap();
 
-        // 添加碰撞体组件
         self.world.add_component(player_entity, Collider {
             collider_type: ColliderType::Rectangle { width: 32.0, height: 32.0 },
             layer: self.config.physics.player_layer,
             mask: self.config.physics.platform_layer | self.config.physics.collectible_layer,
         }).unwrap();
 
-        // 添加物理体组件
         self.world.add_component(player_entity, PhysicsBody {
             mass: 1.0,
             gravity_scale: 1.0,
@@ -147,15 +122,13 @@ impl PlatformerEngine {
             ground_normal: (0.0, 1.0),
         }).unwrap();
 
-        // 添加生命值组件
         self.world.add_component(player_entity, Health {
             current: self.config.gameplay.player_health,
             max: self.config.gameplay.player_health,
         }).unwrap();
 
-        // 添加玩家组件
         self.world.add_component(player_entity, Player {
-            id: 1,
+            id: player_entity,
             can_jump: true,
             jump_count: 0,
             max_jump_count: 2,
@@ -164,8 +137,7 @@ impl PlatformerEngine {
 
     /// 创建平台实体
     fn create_platforms(&mut self) {
-        // 创建地面平台
-        let ground_entity = self.world.spawn();
+        let ground_entity = self.world.spawn().id();
         self.world.add_component(ground_entity, Transform {
             x: 400.0,
             y: 550.0,
@@ -187,8 +159,7 @@ impl PlatformerEngine {
         }).unwrap();
         self.world.add_component(ground_entity, Platform::default()).unwrap();
 
-        // 创建平台 1
-        let platform1_entity = self.world.spawn();
+        let platform1_entity = self.world.spawn().id();
         self.world.add_component(platform1_entity, Transform {
             x: 200.0,
             y: 400.0,
@@ -210,8 +181,7 @@ impl PlatformerEngine {
         }).unwrap();
         self.world.add_component(platform1_entity, Platform::default()).unwrap();
 
-        // 创建平台 2
-        let platform2_entity = self.world.spawn();
+        let platform2_entity = self.world.spawn().id();
         self.world.add_component(platform2_entity, Transform {
             x: 500.0,
             y: 300.0,
@@ -236,8 +206,7 @@ impl PlatformerEngine {
 
     /// 创建可收集物品实体
     fn create_collectibles(&mut self) {
-        // 创建金币 1
-        let coin1_entity = self.world.spawn();
+        let coin1_entity = self.world.spawn().id();
         self.world.add_component(coin1_entity, Transform {
             x: 200.0,
             y: 350.0,
@@ -251,8 +220,7 @@ impl PlatformerEngine {
         }).unwrap();
         self.world.add_component(coin1_entity, Collectible::default()).unwrap();
 
-        // 创建金币 2
-        let coin2_entity = self.world.spawn();
+        let coin2_entity = self.world.spawn().id();
         self.world.add_component(coin2_entity, Transform {
             x: 500.0,
             y: 250.0,
@@ -314,6 +282,35 @@ impl PlatformerEngine {
                     match event {
                         Event::WindowEvent { event, .. } => {
                             renderer.handle_window_event(&event);
+                            match &event {
+                                WindowEvent::KeyboardInput { event, .. } => {
+                                    let pressed = event.state == ElementState::Pressed;
+                                    match event.physical_key {
+                                        winit::keyboard::PhysicalKey::Code(code) => {
+                                            if let Some(input) = self.world.get_resource_mut::<InputState>() {
+                                                match code {
+                                                    winit::keyboard::KeyCode::ArrowLeft
+                                                    | winit::keyboard::KeyCode::KeyA => {
+                                                        input.left_pressed = pressed;
+                                                    }
+                                                    winit::keyboard::KeyCode::ArrowRight
+                                                    | winit::keyboard::KeyCode::KeyD => {
+                                                        input.right_pressed = pressed;
+                                                    }
+                                                    winit::keyboard::KeyCode::ArrowUp
+                                                    | winit::keyboard::KeyCode::KeyW
+                                                    | winit::keyboard::KeyCode::Space => {
+                                                        input.jump_pressed = pressed;
+                                                    }
+                                                    _ => {}
+                                                }
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                                _ => {}
+                            }
                             if renderer.should_close() {
                                 elwt.exit();
                             }
@@ -366,10 +363,5 @@ impl PlatformerEngine {
         renderer.present()?;
 
         Ok(())
-    }
-
-    /// 设置按键状态
-    pub fn set_key_state(&mut self, key: &str, pressed: bool) {
-        self.input_system.set_key_state(key, pressed);
     }
 }

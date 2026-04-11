@@ -3,21 +3,30 @@
 
 use crate::components::*;
 use gg_core::GResult;
-use gg_ecs::{Query, System, World};
+use gg_ecs::{Entity, System, World};
+use gg_render::{Color, DrawCommand, Rect};
+use std::collections::HashSet;
+
+/// 输入状态资源
+///
+/// 存储当前帧的按键状态，由引擎事件循环写入，由输入系统读取。
+#[derive(Debug, Default)]
+pub struct InputState {
+    /// 左方向键是否按下
+    pub left_pressed: bool,
+    /// 右方向键是否按下
+    pub right_pressed: bool,
+    /// 跳跃键是否按下
+    pub jump_pressed: bool,
+}
 
 /// 输入系统
-/// 处理玩家输入
+/// 处理玩家输入，从 World 的 InputState 资源读取按键状态
 pub struct InputSystem {
     /// 移动速度
     move_speed: f32,
     /// 跳跃力度
     jump_force: f32,
-    /// 左方向键是否按下
-    left_pressed: bool,
-    /// 右方向键是否按下
-    right_pressed: bool,
-    /// 跳跃键是否按下
-    jump_pressed: bool,
 }
 
 impl InputSystem {
@@ -26,44 +35,49 @@ impl InputSystem {
         Self {
             move_speed,
             jump_force,
-            left_pressed: false,
-            right_pressed: false,
-            jump_pressed: false,
-        }
-    }
-
-    /// 设置按键状态
-    pub fn set_key_state(&mut self, key: &str, pressed: bool) {
-        match key {
-            "Left" => self.left_pressed = pressed,
-            "Right" => self.right_pressed = pressed,
-            "Space" => self.jump_pressed = pressed,
-            _ => {},
         }
     }
 }
 
 impl System for InputSystem {
-    fn run(&mut self, world: &mut World) -> GResult<()> {
-        let mut query = world.query::<(&mut Velocity, &mut Player, &PhysicsBody)>();
+    fn name(&self) -> &str {
+        "input_system"
+    }
 
-        for (velocity, player, physics_body) in query.iter_mut() {
-            // 处理水平移动
-            if self.left_pressed {
-                velocity.dx = -self.move_speed;
-            } else if self.right_pressed {
-                velocity.dx = self.move_speed;
+    fn execute(&mut self, world: &mut World) -> GResult<()> {
+        let (left, right, jump) = world
+            .get_resource::<InputState>()
+            .map(|s| (s.left_pressed, s.right_pressed, s.jump_pressed))
+            .unwrap_or((false, false, false));
+
+        let entities: Vec<Entity> = world.query::<Player>().map(|(e, _)| e).collect();
+        for entity in entities {
+            let move_speed = self.move_speed;
+            let jump_force = self.jump_force;
+            let on_ground = world.get_component::<PhysicsBody>(entity).map(|pb| pb.on_ground).unwrap_or(false);
+            let can_jump = world.get_component::<Player>(entity).map(|p| p.can_jump).unwrap_or(false);
+            if left {
+                if let Some(velocity) = world.get_component_mut::<Velocity>(entity) {
+                    velocity.dx = -move_speed;
+                }
+            } else if right {
+                if let Some(velocity) = world.get_component_mut::<Velocity>(entity) {
+                    velocity.dx = move_speed;
+                }
             } else {
-                velocity.dx = 0.0;
+                if let Some(velocity) = world.get_component_mut::<Velocity>(entity) {
+                    velocity.dx = 0.0;
+                }
             }
-
-            // 处理跳跃
-            if self.jump_pressed && player.can_jump && physics_body.on_ground {
-                velocity.dy = -self.jump_force;
-                player.jump_count = 1;
+            if jump && can_jump && on_ground {
+                if let Some(velocity) = world.get_component_mut::<Velocity>(entity) {
+                    velocity.dy = -jump_force;
+                }
+                if let Some(player) = world.get_component_mut::<Player>(entity) {
+                    player.jump_count = 1;
+                }
             }
         }
-
         Ok(())
     }
 }
@@ -94,28 +108,42 @@ impl PhysicsSystem {
 }
 
 impl System for PhysicsSystem {
-    fn run(&mut self, world: &mut World) -> GResult<()> {
-        let mut query = world.query::<(&mut Velocity, &mut PhysicsBody)>();
+    fn name(&self) -> &str {
+        "physics_system"
+    }
 
-        for (velocity, physics_body) in query.iter_mut() {
-            if physics_body.affected_by_gravity && !physics_body.is_static {
-                // 应用重力
-                velocity.dy += self.gravity * physics_body.gravity_scale;
-
-                // 限制最大下落速度
-                if velocity.dy > self.max_fall_speed {
-                    velocity.dy = self.max_fall_speed;
+    fn execute(&mut self, world: &mut World) -> GResult<()> {
+        let entities: Vec<Entity> = world.query::<PhysicsBody>().map(|(e, _)| e).collect();
+        for entity in entities {
+            let gravity = self.gravity;
+            let max_fall_speed = self.max_fall_speed;
+            let ground_friction = self.ground_friction;
+            let air_friction = self.air_friction;
+            let (affected_by_gravity, is_static, on_ground, gravity_scale) = {
+                let pb = match world.get_component::<PhysicsBody>(entity) {
+                    Some(pb) => pb,
+                    None => continue,
+                };
+                (pb.affected_by_gravity, pb.is_static, pb.on_ground, pb.gravity_scale)
+            };
+            if affected_by_gravity && !is_static {
+                if let Some(velocity) = world.get_component_mut::<Velocity>(entity) {
+                    velocity.dy += gravity * gravity_scale;
+                    if velocity.dy > max_fall_speed {
+                        velocity.dy = max_fall_speed;
+                    }
                 }
             }
-
-            // 应用摩擦力
-            if physics_body.on_ground {
-                velocity.dx *= self.ground_friction;
+            if on_ground {
+                if let Some(velocity) = world.get_component_mut::<Velocity>(entity) {
+                    velocity.dx *= ground_friction;
+                }
             } else {
-                velocity.dx *= self.air_friction;
+                if let Some(velocity) = world.get_component_mut::<Velocity>(entity) {
+                    velocity.dx *= air_friction;
+                }
             }
         }
-
         Ok(())
     }
 }
@@ -140,31 +168,37 @@ impl MovementSystem {
 }
 
 impl System for MovementSystem {
-    fn run(&mut self, world: &mut World) -> GResult<()> {
-        let mut query = world.query::<(&mut Transform, &Velocity, &PhysicsBody)>();
+    fn name(&self) -> &str {
+        "movement_system"
+    }
 
-        for (transform, velocity, physics_body) in query.iter_mut() {
-            if !physics_body.is_static {
-                // 更新位置
-                transform.x += velocity.dx;
-                transform.y += velocity.dy;
-
-                // 边界检查
+    fn execute(&mut self, world: &mut World) -> GResult<()> {
+        let entities: Vec<Entity> = world.query::<Velocity>().map(|(e, _)| e).collect();
+        for entity in entities {
+            let is_static = world.get_component::<PhysicsBody>(entity).map(|pb| pb.is_static).unwrap_or(false);
+            if is_static {
+                continue;
+            }
+            let (dx, dy) = world.get_component::<Velocity>(entity).map(|v| (v.dx, v.dy)).unwrap_or((0.0, 0.0));
+            let screen_width = self.screen_width;
+            let screen_height = self.screen_height;
+            if let Some(transform) = world.get_component_mut::<Transform>(entity) {
+                transform.x += dx;
+                transform.y += dy;
                 if transform.x < 0.0 {
                     transform.x = 0.0;
                 }
-                if transform.x > self.screen_width {
-                    transform.x = self.screen_width;
+                if transform.x > screen_width {
+                    transform.x = screen_width;
                 }
                 if transform.y < 0.0 {
                     transform.y = 0.0;
                 }
-                if transform.y > self.screen_height {
-                    transform.y = self.screen_height;
+                if transform.y > screen_height {
+                    transform.y = screen_height;
                 }
             }
         }
-
         Ok(())
     }
 }
@@ -218,24 +252,26 @@ impl CollisionSystem {
 }
 
 impl System for CollisionSystem {
-    fn run(&mut self, world: &mut World) -> GResult<()> {
+    fn name(&self) -> &str {
+        "collision_system"
+    }
+
+    fn execute(&mut self, world: &mut World) -> GResult<()> {
         let entities = world.entities().to_vec();
 
-        // 重置地面状态
-        let mut physics_query = world.query::<&mut PhysicsBody>();
-        for physics_body in physics_query.iter_mut() {
-            physics_body.on_ground = false;
+        let physics_entities: Vec<Entity> = world.query::<PhysicsBody>().map(|(e, _)| e).collect();
+        for entity in physics_entities {
+            if let Some(physics_body) = world.get_component_mut::<PhysicsBody>(entity) {
+                physics_body.on_ground = false;
+            }
         }
 
-        // 使用空间分区优化碰撞检测
-        // 这里使用简单的网格分区，实际项目中可以使用更复杂的空间分区算法
-        let mut grid: std::collections::HashMap<(i32, i32), Vec<u32>> = std::collections::HashMap::new();
-        let cell_size = 64.0; // 网格单元格大小
+        let mut grid: std::collections::HashMap<(i32, i32), Vec<Entity>> = std::collections::HashMap::new();
+        let cell_size = 64.0;
 
-        // 第一步：将实体分配到网格中
         for &entity in &entities {
             if let Some(transform) = world.get_component::<Transform>(entity) {
-                if world.has_component::<Collider>(entity) {
+                if world.get_component::<Collider>(entity).is_some() {
                     let cell_x = (transform.x / cell_size) as i32;
                     let cell_y = (transform.y / cell_size) as i32;
                     grid.entry((cell_x, cell_y)).or_default().push(entity);
@@ -243,9 +279,7 @@ impl System for CollisionSystem {
             }
         }
 
-        // 第二步：只检查同一网格和相邻网格中的实体
         for ((cell_x, cell_y), cell_entities) in &grid {
-            // 检查当前网格中的实体对
             for i in 0..cell_entities.len() {
                 for j in i + 1..cell_entities.len() {
                     let entity1 = cell_entities[i];
@@ -254,11 +288,10 @@ impl System for CollisionSystem {
                 }
             }
 
-            // 检查与相邻网格的实体
             for dx in -1..=1 {
                 for dy in -1..=1 {
                     if dx == 0 && dy == 0 {
-                        continue; // 跳过当前网格，已经检查过了
+                        continue;
                     }
                     let neighbor_cell = (cell_x + dx, cell_y + dy);
                     if let Some(neighbor_entities) = grid.get(&neighbor_cell) {
@@ -278,61 +311,67 @@ impl System for CollisionSystem {
 
 impl CollisionSystem {
     /// 检查并处理两个实体之间的碰撞
-    fn check_and_handle_collision(&self, world: &mut World, entity1: u32, entity2: u32) {
-        // 检查两个实体是否都有碰撞体和变换组件
-        if let (Some(collider1), Some(transform1)) = (
-            world.get_component::<Collider>(entity1),
-            world.get_component::<Transform>(entity1),
-        ) {
-            if let (Some(collider2), Some(transform2)) = (
-                world.get_component::<Collider>(entity2),
-                world.get_component::<Transform>(entity2),
-            ) {
-                // 检查碰撞
-                if self.check_collision(collider1, transform1, collider2, transform2) {
-                    // 处理碰撞响应
-                    self.handle_collision(world, entity1, entity2);
-                }
+    fn check_and_handle_collision(&self, world: &mut World, entity1: Entity, entity2: Entity) {
+        let has_collision = {
+            let collider1 = world.get_component::<Collider>(entity1);
+            let transform1 = world.get_component::<Transform>(entity1);
+            let collider2 = world.get_component::<Collider>(entity2);
+            let transform2 = world.get_component::<Transform>(entity2);
+            match (collider1, transform1, collider2, transform2) {
+                (Some(c1), Some(t1), Some(c2), Some(t2)) => self.check_collision(c1, t1, c2, t2),
+                _ => false,
             }
+        };
+        if has_collision {
+            self.handle_collision(world, entity1, entity2);
         }
     }
 
     /// 处理碰撞响应
-    fn handle_collision(&self, world: &mut World, entity1: u32, entity2: u32) {
-        // 检查是否是玩家与平台的碰撞
-        if world.has_component::<Player>(entity1) && world.has_component::<Platform>(entity2) {
-            // 处理玩家与平台的碰撞
-            if let (Some(mut transform1), Some(mut velocity1), Some(mut physics_body1), Some(transform2), Some(collider2)) = (
-                world.get_component_mut::<Transform>(entity1),
-                world.get_component_mut::<Velocity>(entity1),
-                world.get_component_mut::<PhysicsBody>(entity1),
-                world.get_component::<Transform>(entity2),
-                world.get_component::<Collider>(entity2),
-            ) {
-                // 检查玩家是否在平台上方
-                if transform1.y < transform2.y {
-                    // 标记玩家在地面上
-                    physics_body1.on_ground = true;
-                    physics_body1.ground_normal = (0.0, 1.0);
+    fn handle_collision(&self, world: &mut World, entity1: Entity, entity2: Entity) {
+        let is_player_platform = world.get_component::<Player>(entity1).is_some()
+            && world.get_component::<Platform>(entity2).is_some();
 
-                    // 调整玩家位置
-                    if let ColliderType::Rectangle { height: h2, .. } = collider2.collider_type {
-                        transform1.y = transform2.y - h2 / 2.0 - 16.0; // 16.0 是玩家高度的一半
+        if is_player_platform {
+            let player_above = {
+                let t1 = world.get_component::<Transform>(entity1);
+                let t2 = world.get_component::<Transform>(entity2);
+                t1.and_then(|t1| t2.map(|t2| t1.y < t2.y))
+            };
+
+            let collider2_height = world.get_component::<Collider>(entity2).and_then(|c| {
+                if let ColliderType::Rectangle { height, .. } = &c.collider_type {
+                    Some(*height)
+                } else {
+                    None
+                }
+            });
+
+            let transform2_y = world.get_component::<Transform>(entity2).map(|t| t.y);
+
+            if let Some(true) = player_above {
+                if let Some(physics_body) = world.get_component_mut::<PhysicsBody>(entity1) {
+                    physics_body.on_ground = true;
+                    physics_body.ground_normal = (0.0, 1.0);
+                }
+                if let (Some(h2), Some(t2y)) = (collider2_height, transform2_y) {
+                    if let Some(transform) = world.get_component_mut::<Transform>(entity1) {
+                        transform.y = t2y - h2 / 2.0 - 16.0;
                     }
-
-                    // 重置垂直速度
-                    velocity1.dy = 0.0;
+                }
+                if let Some(velocity) = world.get_component_mut::<Velocity>(entity1) {
+                    velocity.dy = 0.0;
                 }
             }
         }
 
-        // 检查是否是玩家与可收集物品的碰撞
-        if world.has_component::<Player>(entity1) && world.has_component::<Collectible>(entity2) {
-            // 处理玩家收集物品
-            if let Some(mut collectible) = world.get_component_mut::<Collectible>(entity2) {
+        let is_player_collectible = world.get_component::<Player>(entity1).is_some()
+            && world.get_component::<Collectible>(entity2).is_some();
+
+        if is_player_collectible {
+            if let Some(collectible) = world.get_component_mut::<Collectible>(entity2) {
                 if !collectible.collected {
                     collectible.collected = true;
-                    // 这里可以添加收集物品的逻辑，如增加分数等
                 }
             }
         }
@@ -344,6 +383,8 @@ impl CollisionSystem {
 pub struct CollectibleSystem {
     /// 分数
     score: u32,
+    /// 已计分的实体集合
+    scored_entities: HashSet<Entity>,
 }
 
 impl CollectibleSystem {
@@ -351,22 +392,34 @@ impl CollectibleSystem {
     pub fn new() -> Self {
         Self {
             score: 0,
+            scored_entities: HashSet::new(),
         }
+    }
+
+    /// 获取当前分数
+    pub fn score(&self) -> u32 {
+        self.score
     }
 }
 
 impl System for CollectibleSystem {
-    fn run(&mut self, world: &mut World) -> GResult<()> {
-        let mut query = world.query::<(&mut Collectible, &Transform)>();
+    fn name(&self) -> &str {
+        "collectible_system"
+    }
 
-        for (collectible, transform) in query.iter_mut() {
-            if collectible.collected {
-                // 增加分数
-                self.score += collectible.value;
-                // 这里可以添加其他收集物品的逻辑
+    fn execute(&mut self, world: &mut World) -> GResult<()> {
+        let entities: Vec<Entity> = world.query::<Collectible>().map(|(e, _)| e).collect();
+        for entity in entities {
+            let collected = world.get_component::<Collectible>(entity).map(|c| c.collected).unwrap_or(false);
+            if collected && !self.scored_entities.contains(&entity) {
+                let value = world.get_component::<Collectible>(entity).map(|c| c.value).unwrap_or(0);
+                self.score += value;
+                self.scored_entities.insert(entity);
+                if let Some(sprite) = world.get_component_mut::<Sprite>(entity) {
+                    sprite.visible = false;
+                }
             }
         }
-
         Ok(())
     }
 }
@@ -391,85 +444,149 @@ impl AISystem {
 }
 
 impl System for AISystem {
-    fn run(&mut self, world: &mut World) -> GResult<()> {
-        let mut query = world.query::<(&mut Transform, &mut Velocity, &mut AI)>();
+    fn name(&self) -> &str {
+        "ai_system"
+    }
 
-        for (transform, velocity, ai) in query.iter_mut() {
-            match ai.behavior {
-                AIBehavior::Patrol => {
-                    self.handle_patrol(transform, velocity, ai);
-                }
-                AIBehavior::Chase => {
-                    self.handle_chase(transform, velocity, ai, world);
-                }
-                AIBehavior::Attack => {
-                    self.handle_attack(transform, world);
-                }
-                AIBehavior::Evade => {
-                    self.handle_evade(transform, velocity, ai, world);
-                }
+    fn execute(&mut self, world: &mut World) -> GResult<()> {
+        let entities: Vec<Entity> = world.query::<AI>().map(|(e, _)| e).collect();
+        for entity in entities {
+            let behavior = world.get_component::<AI>(entity).map(|ai| ai.behavior);
+            match behavior {
+                Some(AIBehavior::Patrol) => self.handle_patrol(entity, world),
+                Some(AIBehavior::Chase) => self.handle_chase(entity, world),
+                Some(AIBehavior::Attack) => self.handle_attack(entity, world),
+                Some(AIBehavior::Evade) => self.handle_evade(entity, world),
+                None => {}
             }
         }
-
         Ok(())
     }
 }
 
 impl AISystem {
     /// 处理巡逻行为
-    fn handle_patrol(&self, transform: &mut Transform, velocity: &mut Velocity, ai: &mut AI) {
-        if ai.patrol_path.is_empty() {
+    fn handle_patrol(&self, entity: Entity, world: &mut World) {
+        let (transform_x, transform_y, patrol_path, current_index, move_speed) = {
+            let transform = match world.get_component::<Transform>(entity) {
+                Some(t) => (t.x, t.y),
+                None => return,
+            };
+            let ai = match world.get_component::<AI>(entity) {
+                Some(a) => (a.patrol_path.clone(), a.current_path_index, a.move_speed),
+                None => return,
+            };
+            (transform.0, transform.1, ai.0, ai.1, ai.2)
+        };
+
+        if patrol_path.is_empty() {
             return;
         }
 
-        let target = ai.patrol_path[ai.current_path_index];
-        let dx = target.0 - transform.x;
-        let dy = target.1 - transform.y;
+        let target = patrol_path[current_index];
+        let dx = target.0 - transform_x;
+        let dy = target.1 - transform_y;
         let distance = (dx * dx + dy * dy).sqrt();
 
         if distance < 5.0 {
-            // 到达路径点，移动到下一个
-            ai.current_path_index = (ai.current_path_index + 1) % ai.patrol_path.len();
+            if let Some(ai) = world.get_component_mut::<AI>(entity) {
+                ai.current_path_index = (current_index + 1) % patrol_path.len();
+            }
         } else {
-            // 向目标移动
-            velocity.dx = dx / distance * ai.move_speed;
-            velocity.dy = dy / distance * ai.move_speed;
+            if let Some(velocity) = world.get_component_mut::<Velocity>(entity) {
+                velocity.dx = dx / distance * move_speed;
+                velocity.dy = dy / distance * move_speed;
+            }
         }
     }
 
     /// 处理追踪行为
-    fn handle_chase(&self, transform: &mut Transform, velocity: &mut Velocity, ai: &mut AI, world: &World) {
-        // 寻找玩家
+    fn handle_chase(&self, entity: Entity, world: &mut World) {
+        let player_entities: Vec<Entity> = world.query::<Player>().map(|(e, _)| e).collect();
         let mut player_pos = None;
-        let mut player_query = world.query::<&Transform, &Player>();
-        for (player_transform, _) in player_query.iter() {
-            player_pos = Some((player_transform.x, player_transform.y));
-            break;
+        for player_entity in player_entities {
+            if let Some(player_transform) = world.get_component::<Transform>(player_entity) {
+                player_pos = Some((player_transform.x, player_transform.y));
+                break;
+            }
         }
 
+        let (transform_x, transform_y, move_speed) = {
+            let transform = match world.get_component::<Transform>(entity) {
+                Some(t) => (t.x, t.y),
+                None => return,
+            };
+            let ai = match world.get_component::<AI>(entity) {
+                Some(a) => a.move_speed,
+                None => return,
+            };
+            (transform.0, transform.1, ai)
+        };
+
         if let Some((player_x, player_y)) = player_pos {
-            let dx = player_x - transform.x;
-            let dy = player_y - transform.y;
+            let dx = player_x - transform_x;
+            let dy = player_y - transform_y;
             let distance = (dx * dx + dy * dy).sqrt();
 
             if distance > 5.0 {
-                // 向玩家移动
-                velocity.dx = dx / distance * ai.move_speed;
-                velocity.dy = dy / distance * ai.move_speed;
+                if let Some(velocity) = world.get_component_mut::<Velocity>(entity) {
+                    velocity.dx = dx / distance * move_speed;
+                    velocity.dy = dy / distance * move_speed;
+                }
             }
         }
     }
 
     /// 处理攻击行为
-    fn handle_attack(&self, transform: &mut Transform, world: &mut World) {
-        // 这里可以实现攻击逻辑
-        // 例如创建攻击实体或发射子弹
+    fn handle_attack(&self, entity: Entity, world: &mut World) {
+        let player_entities: Vec<Entity> = world.query::<Player>().map(|(e, _)| e).collect();
+        let mut nearest_player_pos = None;
+        let mut nearest_distance = f32::MAX;
+        for player_entity in player_entities {
+            if let Some(player_transform) = world.get_component::<Transform>(player_entity) {
+                let ai_transform = match world.get_component::<Transform>(entity) {
+                    Some(t) => t,
+                    None => return,
+                };
+                let dx = player_transform.x - ai_transform.x;
+                let dy = player_transform.y - ai_transform.y;
+                let distance = (dx * dx + dy * dy).sqrt();
+                if distance < nearest_distance {
+                    nearest_distance = distance;
+                    nearest_player_pos = Some((player_transform.x, player_transform.y));
+                }
+            }
+        }
+
+        let (transform_x, transform_y, move_speed) = {
+            let transform = match world.get_component::<Transform>(entity) {
+                Some(t) => (t.x, t.y),
+                None => return,
+            };
+            let ai = match world.get_component::<AI>(entity) {
+                Some(a) => a.move_speed,
+                None => return,
+            };
+            (transform.0, transform.1, ai)
+        };
+
+        if let Some((player_x, player_y)) = nearest_player_pos {
+            let dx = player_x - transform_x;
+            let dy = player_y - transform_y;
+            let distance = (dx * dx + dy * dy).sqrt();
+
+            if distance < 200.0 && distance > 0.0 {
+                let dash_speed = move_speed * 2.5;
+                if let Some(velocity) = world.get_component_mut::<Velocity>(entity) {
+                    velocity.dx = dx / distance * dash_speed;
+                    velocity.dy = dy / distance * dash_speed;
+                }
+            }
+        }
     }
 
     /// 处理躲避行为
-    fn handle_evade(&self, transform: &mut Transform, velocity: &mut Velocity, ai: &mut AI, world: &World) {
-        // 这里可以实现躲避逻辑
-        // 例如检测玩家位置并远离
+    fn handle_evade(&self, _entity: Entity, _world: &mut World) {
     }
 }
 
@@ -493,9 +610,50 @@ impl RenderSystem {
 }
 
 impl System for RenderSystem {
-    fn run(&mut self, world: &mut World) -> GResult<()> {
-        // 这里应该实现渲染逻辑
-        // 由于我们没有实际的渲染实现，这里只是一个占位符
+    fn name(&self) -> &str {
+        "render_system"
+    }
+
+    fn execute(&mut self, world: &mut World) -> GResult<()> {
+        if let Some(buffer) = world.get_resource_mut::<DrawCommandBuffer>() {
+            buffer.clear();
+        } else {
+            world.insert_resource(DrawCommandBuffer::new());
+        }
+
+        let entities: Vec<Entity> = world.query::<Sprite>()
+            .filter(|(_, sprite)| sprite.visible)
+            .map(|(e, _)| e)
+            .collect();
+
+        for entity in entities {
+            let (x, y, width, height) = {
+                let sprite = match world.get_component::<Sprite>(entity) {
+                    Some(s) => s,
+                    None => continue,
+                };
+                if !sprite.visible {
+                    continue;
+                }
+                let (w, h) = (sprite.width, sprite.height);
+                if let Some(transform) = world.get_component::<Transform>(entity) {
+                    (transform.x, transform.y, w, h)
+                } else {
+                    (0.0, 0.0, w, h)
+                }
+            };
+
+            let command = DrawCommand::Rect {
+                rect: Rect::new(x, y, width, height),
+                color: Color::WHITE,
+                corner_radius: 0.0,
+            };
+
+            if let Some(buffer) = world.get_resource_mut::<DrawCommandBuffer>() {
+                buffer.push(command);
+            }
+        }
+
         Ok(())
     }
 }

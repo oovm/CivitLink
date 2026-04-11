@@ -6,6 +6,7 @@ authors = { workspace = true }
 license = { workspace = true }
 
 [dependencies]
+ab_glyph = { workspace = true }
 dashmap = { workspace = true }
 image = { workspace = true }
 tokio = { workspace = true }

@@ -1,7 +1,8 @@
 //! 场景视图 trait 定义
 
 use gg_core::GResult;
-use gg_editor_shell::EditorContext;
+use gg_ecs::Entity;
+use gg_editor_shell::{EditorContext, EditorPanel};
 
 use crate::viewport::ViewportState;
 
@@ -17,10 +18,10 @@ pub trait SceneView: EditorPanel {
     fn on_scene_unload(&mut self, _context: &mut EditorContext) {}
 
     /// 实体被选中时调用
-    fn on_entity_selected(&mut self, _entity: u64, _context: &mut EditorContext) {}
+    fn on_entity_selected(&mut self, _entity: Entity, _context: &mut EditorContext) {}
 
     /// 实体移动时调用
-    fn on_entity_moved(&mut self, _entity: u64, _delta: (f32, f32), _context: &mut EditorContext) {}
+    fn on_entity_moved(&mut self, _entity: Entity, _delta: (f32, f32), _context: &mut EditorContext) {}
 
     /// 渲染叠加层
     ///
@@ -29,7 +30,7 @@ pub trait SceneView: EditorPanel {
     fn render_overlay(
         &mut self,
         _viewport: &ViewportState,
-        _selected_entities: &[u64],
+        _selected_entities: &[Entity],
         _context: &mut EditorContext,
     ) -> GResult<()> {
         Ok(())

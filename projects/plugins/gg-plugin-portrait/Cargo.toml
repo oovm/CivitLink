@@ -12,3 +12,5 @@ gg-asset = { workspace = true }
 gg-galgame-schema = { workspace = true }
 gg-render = { workspace = true }
 gg-plugin-dialogue = { workspace = true }
+gg-editor-shell = { workspace = true }
+gg-ui = { workspace = true }

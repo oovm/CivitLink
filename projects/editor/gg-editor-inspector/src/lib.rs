@@ -17,4 +17,4 @@ pub use editor::{
     EnumEditorFactory, EnumEditorWidget, NumericEditorFactory, NumericEditorWidget, PropertyEditorFactory,
     PropertyEditorRegistry, PropertyEditorWidget, StringEditorFactory, StringEditorWidget,
 };
-pub use panel::InspectorPanel;
+pub use panel::{ActivePropertyEntry, InspectorPanel};

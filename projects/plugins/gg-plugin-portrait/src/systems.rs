@@ -56,10 +56,20 @@ impl PortraitRenderSystem {
         }
         portraits.sort_by_key(|(_, state)| state.z_order);
         let layout = PortraitLayout::new(self.screen_width, self.screen_height);
-        for (_, state) in &portraits {
+        for (entity, state) in &portraits {
             let (x, y) = layout.calculate_position(&state.position);
-            let transform = Transform { position: [x, y], z_index: state.z_order as f32, ..Transform::IDENTITY };
-            let tint = Color::new(1.0, 1.0, 1.0, state.opacity);
+            let (offset_x, offset_y) = world
+                .get_component::<PortraitAnimationState>(*entity)
+                .map(|anim| anim.current_offset())
+                .unwrap_or((0.0, 0.0));
+            let final_x = x + offset_x * self.screen_width;
+            let final_y = y + offset_y * self.screen_height;
+            let transform = Transform { position: [final_x, final_y], z_index: state.z_order as f32, ..Transform::IDENTITY };
+            let opacity = world
+                .get_component::<PortraitAnimationState>(*entity)
+                .map(|anim| anim.current_opacity())
+                .unwrap_or(state.opacity);
+            let tint = Color::new(1.0, 1.0, 1.0, opacity);
             let portrait_width = state.scale * state.texture_width;
             let portrait_height = state.scale * state.texture_height;
             context.draw(DrawCommand::Sprite {

@@ -36,8 +36,12 @@ pub enum SheetCommands {
     Init,
     /// 检查配置表数据有效性
     Check,
-    /// 生成 Valkyrie 脚本代码
-    Generate,
+    /// 生成代码
+    Generate {
+        /// 输出格式（valkyrie 或 rust）
+        #[arg(long, default_value = "valkyrie")]
+        format: String,
+    },
     /// 启用文件监听模式，自动增量编译
     Watch,
 }
@@ -52,7 +56,7 @@ impl SheetCli {
         match &self.command {
             SheetCommands::Init => self.run_init(),
             SheetCommands::Check => self.run_check(),
-            SheetCommands::Generate => self.run_generate(),
+            SheetCommands::Generate { format } => self.run_generate(format),
             SheetCommands::Watch => self.run_watch(),
         }
     }
@@ -116,12 +120,17 @@ impl SheetCli {
     }
 
     /// 执行 generate 子命令
-    fn run_generate(&self) -> SheetResult<()> {
+    fn run_generate(&self, format: &str) -> SheetResult<()> {
         let config = self.load_config()?;
         let sheet_dir = self.workspace.join(&config.sheet_dir);
         let output_dir = self.workspace.join(&config.output_dir);
 
-        let mut compiler = SheetCompiler::new(&sheet_dir, &output_dir);
+        let output_format = match format.to_lowercase().as_str() {
+            "rust" => crate::codegen::OutputFormat::Rust,
+            _ => crate::codegen::OutputFormat::Valkyrie,
+        };
+
+        let mut compiler = SheetCompiler::new(&sheet_dir, &output_dir).with_format(output_format);
         compiler.compile()?;
 
         println!("代码生成完成");

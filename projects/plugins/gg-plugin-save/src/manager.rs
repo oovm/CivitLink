@@ -66,9 +66,9 @@ impl SaveManager {
             states
         };
 
-        let background_path = world.get_component::<SceneBackground>(0).and_then(|bg| bg.asset_path.clone());
+        let background_path = world.get_component::<SceneBackground>(Entity::new(0, 0)).and_then(|bg| bg.asset_path.clone());
 
-        let bgm_path = world.get_component::<AudioControl>(0).and_then(|audio| audio.bgm_path.clone());
+        let bgm_path = world.get_component::<AudioControl>(Entity::new(0, 0)).and_then(|audio| audio.bgm_path.clone());
 
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -115,11 +115,11 @@ impl SaveManager {
             world.add_component(entity, portrait_state.clone())?;
         }
 
-        if let Some(bg) = world.get_component_mut::<SceneBackground>(0) {
+        if let Some(bg) = world.get_component_mut::<SceneBackground>(Entity::new(0, 0)) {
             bg.asset_path = save_data.background_path.clone();
         }
 
-        if let Some(audio) = world.get_component_mut::<AudioControl>(0) {
+        if let Some(audio) = world.get_component_mut::<AudioControl>(Entity::new(0, 0)) {
             audio.bgm_path = save_data.bgm_path.clone();
         }
 

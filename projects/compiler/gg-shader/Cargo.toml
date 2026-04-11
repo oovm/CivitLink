@@ -5,8 +5,12 @@ edition = { workspace = true }
 authors = { workspace = true }
 license = { workspace = true }
 
+[features]
+default = []
+valkyrie-compiler = ["oak-core", "oak-valkyrie"]
+
 [dependencies]
 gg-core = { workspace = true }
 naga = { workspace = true }
-oak-core = { workspace = true }
-oak-valkyrie = { workspace = true }
+oak-core = { workspace = true, optional = true }
+oak-valkyrie = { workspace = true, optional = true }

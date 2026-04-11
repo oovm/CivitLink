@@ -3,11 +3,13 @@
 //! 提供基于属性描述符的动态属性编辑面板，
 //! 通过描述符注册表和编辑器注册表驱动属性显示和编辑，
 //! 使用命令管理器实现撤销/重做功能。
-//! 支持实体选中/取消选中事件驱动的属性面板更新。
+//! 支持实体选中/取消选中事件驱动的属性面板更新，
+//! 通过 `PropertyStore` 资源和 `EcsPropertyBinding` 实现 ECS 世界与检查器面板的双向数据绑定。
 
 use std::{cell::RefCell, rc::Rc};
 
 use gg_core::GResult;
+use gg_ecs::World;
 use gg_editor_shell::{
     EditorContext, EditorEvent, EditorPanel,
     panel::{PanelLayoutHint, PanelPosition},
@@ -15,6 +17,7 @@ use gg_editor_shell::{
 use gg_ui::{Style, UiNodeData, UiTree};
 
 use crate::{
+    binding::{EcsPropertyBinding, PropertyBinding},
     descriptor::{ComponentDescriptor, DescriptorRegistry, PropertyConstraints, PropertyDescriptor, PropertyType},
     editor::{
         AssetPathEditorFactory, BoolEditorFactory, ColorEditorFactory, EnumEditorFactory, NumericEditorFactory,
@@ -22,11 +25,28 @@ use crate::{
     },
 };
 
+/// 活跃属性条目
+///
+/// 存储当前选中实体的单个属性编辑状态，
+/// 包括组件类型名、属性名、属性绑定和编辑器组件，
+/// 用于双向数据绑定和命令系统集成。
+pub struct ActivePropertyEntry {
+    /// 所属组件类型名称
+    pub component_type: String,
+    /// 属性名称
+    pub property_name: String,
+    /// 属性绑定，用于读写 ECS 世界中的属性值
+    pub binding: EcsPropertyBinding,
+    /// 属性编辑器组件
+    pub editor: Box<dyn PropertyEditorWidget>,
+}
+
 /// 属性检查器面板
 ///
 /// 基于属性描述符的动态属性编辑面板，通过描述符注册表查询组件属性结构，
 /// 通过编辑器注册表创建对应的属性编辑器组件，使用命令管理器实现撤销/重做。
 /// 订阅实体选中/取消选中事件，动态更新面板内容。
+/// 通过 `PropertyStore` 资源和 `EcsPropertyBinding` 实现 ECS 世界与检查器面板的双向数据绑定。
 pub struct InspectorPanel {
     /// 面板是否可见
     visible: bool,
@@ -40,15 +60,15 @@ pub struct InspectorPanel {
     incoming_selected: Rc<RefCell<Option<u64>>>,
     /// 接收实体取消选中事件的共享单元格
     incoming_deselected: Rc<RefCell<bool>>,
-    /// 当前实体的活跃属性编辑器列表
-    active_editors: Vec<(String, Box<dyn PropertyEditorWidget>)>,
+    /// 当前实体的活跃属性条目列表
+    active_entries: Vec<ActivePropertyEntry>,
 }
 
 impl InspectorPanel {
     /// 创建新的属性检查器面板
     ///
     /// 初始化描述符注册表和编辑器注册表，注册内置编辑器工厂，
-    /// 初始化事件接收单元格和活跃编辑器列表。
+    /// 初始化事件接收单元格和活跃属性条目列表。
     pub fn new() -> Self {
         let mut editor_registry = PropertyEditorRegistry::new();
         editor_registry.register_factory(Box::new(StringEditorFactory));
@@ -65,7 +85,7 @@ impl InspectorPanel {
             selected_entity: None,
             incoming_selected: Rc::new(RefCell::new(None)),
             incoming_deselected: Rc::new(RefCell::new(false)),
-            active_editors: Vec::new(),
+            active_entries: Vec::new(),
         };
         panel.register_default_descriptors();
         panel
@@ -99,6 +119,108 @@ impl InspectorPanel {
     /// 获取编辑器注册表可变引用
     pub fn editor_registry_mut(&mut self) -> &mut PropertyEditorRegistry {
         &mut self.editor_registry
+    }
+
+    /// 获取活跃属性条目列表引用
+    pub fn active_entries(&self) -> &[ActivePropertyEntry] {
+        &self.active_entries
+    }
+
+    /// 提交待处理的属性变更
+    ///
+    /// 遍历所有活跃属性条目，检查编辑器是否被修改，
+    /// 若已修改则创建 `SetPropertyCommand` 并通过 `EditorContext` 执行，
+    /// 实现属性变更的撤销/重做支持。
+    pub fn apply_pending_changes(&mut self, context: &mut EditorContext) {
+        let entity = match self.selected_entity {
+            Some(e) => e,
+            None => return,
+        };
+
+        let pending: Vec<(String, String, String)> = self
+            .active_entries
+            .iter()
+            .filter(|entry| entry.editor.is_modified())
+            .map(|entry| {
+                (
+                    entry.component_type.clone(),
+                    entry.property_name.clone(),
+                    entry.editor.get_value(),
+                )
+            })
+            .collect();
+
+        for (component_type, property_name, new_value) in pending {
+            let binding = Box::new(EcsPropertyBinding::new(component_type.clone(), property_name.clone()));
+            let description = format!("修改 {}.{}", component_type, property_name);
+            let command = crate::binding::SetPropertyCommand::new(binding, entity, new_value, description);
+            context.execute_command(Box::new(command));
+        }
+    }
+
+    /// 设置指定属性的值
+    ///
+    /// 通过命令系统修改指定实体上某组件属性的值，
+    /// 支持撤销/重做。同时更新对应的编辑器组件。
+    ///
+    /// # 参数
+    ///
+    /// - `context` - 编辑器上下文
+    /// - `component_type` - 组件类型名称
+    /// - `property_name` - 属性名称
+    /// - `new_value` - 新的属性值（字符串形式）
+    pub fn set_property_value(
+        &mut self,
+        context: &mut EditorContext,
+        component_type: &str,
+        property_name: &str,
+        new_value: String,
+    ) {
+        let entity = match self.selected_entity {
+            Some(e) => e,
+            None => return,
+        };
+
+        let binding = Box::new(EcsPropertyBinding::new(component_type.to_string(), property_name.to_string()));
+        let description = format!("修改 {}.{}", component_type, property_name);
+        let command = crate::binding::SetPropertyCommand::new(binding, entity, new_value.clone(), description);
+        context.execute_command(Box::new(command));
+
+        if let Some(entry) = self
+            .active_entries
+            .iter_mut()
+            .find(|e| e.component_type == component_type && e.property_name == property_name)
+        {
+            entry.editor.set_value(&new_value);
+        }
+    }
+
+    /// 从 ECS 世界读取属性值并设置到编辑器
+    ///
+    /// 通过 `EcsPropertyBinding` 从 `PropertyStore` 资源中读取当前属性值，
+    /// 若 `PropertyStore` 中无对应值则使用描述符中的默认值，
+    /// 然后调用编辑器的 `set_value()` 方法设置初始值。
+    fn read_property_values(&mut self, world: &mut World) {
+        let entity = match self.selected_entity {
+            Some(e) => e,
+            None => return,
+        };
+
+        for entry in &mut self.active_entries {
+            let value = entry.binding.read(world, entity).or_else(|| {
+                self.descriptor_registry
+                    .get_component(&entry.component_type)
+                    .and_then(|desc| {
+                        desc.properties
+                            .iter()
+                            .find(|p| p.name == entry.property_name)
+                            .and_then(|p| p.default_value.clone())
+                    })
+            });
+            if let Some(v) = value {
+                entry.editor.set_value(&v);
+            }
+        }
     }
 
     /// 注册默认的 Galgame 组件描述符
@@ -336,23 +458,45 @@ impl EditorPanel for InspectorPanel {
     }
 
     fn on_unregister(&mut self, _context: &mut EditorContext) {
-        self.active_editors.clear();
+        self.active_entries.clear();
         self.selected_entity = None;
     }
 
-    fn build_ui(&mut self, _context: &mut EditorContext, ui_tree: &mut UiTree) -> GResult<()> {
+    fn on_event(&mut self, event: &EditorEvent, context: &mut EditorContext) {
+        match event {
+            EditorEvent::PropertyChanged { entity, component, property } => {
+                if self.selected_entity == Some(*entity) {
+                    if let Some(entry) = self
+                        .active_entries
+                        .iter_mut()
+                        .find(|e| e.component_type == *component && e.property_name == *property)
+                    {
+                        let world = &mut context.world_mut().ecs_world;
+                        if let Some(value) = entry.binding.read(world, *entity) {
+                            entry.editor.set_value(&value);
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn build_ui(&mut self, context: &mut EditorContext, ui_tree: &mut UiTree) -> GResult<()> {
+        self.apply_pending_changes(context);
+
         let mut selection_changed = false;
 
         if *self.incoming_deselected.borrow() {
             *self.incoming_deselected.borrow_mut() = false;
             self.selected_entity = None;
-            self.active_editors.clear();
+            self.active_entries.clear();
             selection_changed = true;
         }
 
         if let Some(entity) = self.incoming_selected.borrow_mut().take() {
             self.selected_entity = Some(entity);
-            self.active_editors.clear();
+            self.active_entries.clear();
             selection_changed = true;
         }
 
@@ -389,10 +533,24 @@ impl EditorPanel for InspectorPanel {
                             UiNodeData::Custom { kind: control_type },
                         );
                         ui_tree.add_child(section_id, prop_id);
-                        self.active_editors.push((property.name.clone(), editor));
+
+                        let binding = EcsPropertyBinding::new(
+                            component_desc.type_name.clone(),
+                            property.name.clone(),
+                        );
+
+                        self.active_entries.push(ActivePropertyEntry {
+                            component_type: component_desc.type_name.clone(),
+                            property_name: property.name.clone(),
+                            binding,
+                            editor,
+                        });
                     }
                 }
             }
+
+            let world = &mut context.world_mut().ecs_world;
+            self.read_property_values(world);
         }
 
         Ok(())

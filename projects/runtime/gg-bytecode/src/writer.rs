@@ -188,6 +188,24 @@ impl BytecodeWriter {
                 writer.write_u32(*name_index);
                 writer.write_u32(*arg_count);
             }
+            BytecodeInstruction::GetField { name_index } => {
+                writer.write_u32(*name_index);
+            }
+            BytecodeInstruction::SetField { name_index } => {
+                writer.write_u32(*name_index);
+            }
+            BytecodeInstruction::NewObject { field_count } => {
+                writer.write_u32(*field_count);
+            }
+            BytecodeInstruction::NewList { element_count } => {
+                writer.write_u32(*element_count);
+            }
+            BytecodeInstruction::NewMap { pair_count } => {
+                writer.write_u32(*pair_count);
+            }
+            BytecodeInstruction::StringConcat { count } => {
+                writer.write_u32(*count);
+            }
             BytecodeInstruction::LoadNull
             | BytecodeInstruction::LoadTrue
             | BytecodeInstruction::LoadFalse
@@ -210,7 +228,9 @@ impl BytecodeWriter {
             | BytecodeInstruction::SpawnEntity
             | BytecodeInstruction::DespawnEntity
             | BytecodeInstruction::Pop
-            | BytecodeInstruction::Dup => {}
+            | BytecodeInstruction::Dup
+            | BytecodeInstruction::GetIndex
+            | BytecodeInstruction::SetIndex => {}
         }
 
         Ok(())
@@ -277,6 +297,20 @@ impl BytecodeWriter {
             }
             OpCode::Pop => Ok(BytecodeInstruction::Pop),
             OpCode::Dup => Ok(BytecodeInstruction::Dup),
+            OpCode::GetField(name) => {
+                let idx = bytecode_module.add_string(name);
+                Ok(BytecodeInstruction::GetField { name_index: idx })
+            }
+            OpCode::SetField(name) => {
+                let idx = bytecode_module.add_string(name);
+                Ok(BytecodeInstruction::SetField { name_index: idx })
+            }
+            OpCode::GetIndex => Ok(BytecodeInstruction::GetIndex),
+            OpCode::SetIndex => Ok(BytecodeInstruction::SetIndex),
+            OpCode::NewObject(field_count) => Ok(BytecodeInstruction::NewObject { field_count: *field_count as u32 }),
+            OpCode::NewList(element_count) => Ok(BytecodeInstruction::NewList { element_count: *element_count as u32 }),
+            OpCode::NewMap(pair_count) => Ok(BytecodeInstruction::NewMap { pair_count: *pair_count as u32 }),
+            OpCode::StringConcat(count) => Ok(BytecodeInstruction::StringConcat { count: *count as u32 }),
         }
     }
 }

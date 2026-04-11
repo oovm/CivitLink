@@ -1,6 +1,7 @@
 //! 编辑器面板 trait 和布局提示
 
 use crate::context::EditorContext;
+use crate::event::EditorEvent;
 use gg_core::GResult;
 use gg_ui::UiTree;
 
@@ -54,6 +55,13 @@ pub trait EditorPanel {
 
     /// 面板注销时调用
     fn on_unregister(&mut self, _context: &mut EditorContext) {}
+
+    /// 处理编辑器事件
+    ///
+    /// 面板可在此方法中响应输入事件（鼠标/键盘）和其他编辑器事件。
+    fn on_event(&mut self, event: &EditorEvent, context: &mut EditorContext) {
+        let _ = (event, context);
+    }
 
     /// 构建面板 UI 节点树
     ///
