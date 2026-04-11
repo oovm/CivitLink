@@ -1,7 +1,7 @@
 //! 编辑器壳程序
 
 use crate::{
-    command::CommandManager,
+    command::{CommandManager, ModifierState, ShortcutKey, ShortcutRegistry},
     context::{EditorConfig, EditorContext},
     docking::{DockRegion, DockingLayout},
     event::{EditorEvent, EventBus, Key, MouseButton},
@@ -50,11 +50,21 @@ pub struct EditorShell {
     world: GameWorld,
     /// 面板名称到其 UI 根节点 ID 的映射
     panel_root_nodes: Vec<(String, UiNodeId)>,
+    /// 快捷键注册表
+    shortcut_registry: ShortcutRegistry,
+    /// 修饰键状态
+    modifier_state: ModifierState,
 }
 
 impl EditorShell {
     /// 创建新的编辑器壳程序
     pub fn new() -> Self {
+        let mut shortcut_registry = ShortcutRegistry::new();
+        shortcut_registry.register(ShortcutKey::new(Key::Z).with_ctrl(), "undo".to_string());
+        shortcut_registry.register(ShortcutKey::new(Key::Y).with_ctrl(), "redo".to_string());
+        shortcut_registry.register(ShortcutKey::new(Key::S).with_ctrl(), "save".to_string());
+        shortcut_registry.register(ShortcutKey::new(Key::Delete), "delete".to_string());
+
         Self {
             services: ServiceRegistry::new(),
             commands: CommandManager::new(),
@@ -71,6 +81,8 @@ impl EditorShell {
             cursor_position: (0.0, 0.0),
             world: GameWorld::new("editor_world".to_string()),
             panel_root_nodes: Vec::new(),
+            shortcut_registry,
+            modifier_state: ModifierState::default(),
         }
     }
 
@@ -180,6 +192,16 @@ impl EditorShell {
     /// 获取游戏世界可变引用
     pub fn world_mut(&mut self) -> &mut GameWorld {
         &mut self.world
+    }
+
+    /// 获取快捷键注册表引用
+    pub fn shortcut_registry(&self) -> &ShortcutRegistry {
+        &self.shortcut_registry
+    }
+
+    /// 获取快捷键注册表可变引用
+    pub fn shortcut_registry_mut(&mut self) -> &mut ShortcutRegistry {
+        &mut self.shortcut_registry
     }
 
     /// 执行一帧
@@ -410,11 +432,32 @@ impl EditorShell {
                         winit::event::WindowEvent::KeyboardInput { event, .. } => {
                             let key = winit_key_to_key(event.logical_key);
                             if let Some(key) = key {
-                                let event = match event.state {
-                                    winit::event::ElementState::Pressed => EditorEvent::KeyDown { key },
-                                    winit::event::ElementState::Released => EditorEvent::KeyUp { key },
-                                };
-                                shell.events.publish(event);
+                                match event.state {
+                                    winit::event::ElementState::Pressed => {
+                                        match key {
+                                            Key::Control => shell.modifier_state.ctrl = true,
+                                            Key::Shift => shell.modifier_state.shift = true,
+                                            Key::Alt => shell.modifier_state.alt = true,
+                                            _ => {}
+                                        }
+                                        if let Some(command_name) = shell.shortcut_registry.find_command(&key, &shell.modifier_state) {
+                                            shell.events.publish(EditorEvent::Custom {
+                                                name: "ShortcutTriggered".to_string(),
+                                                data: Box::new(command_name.to_string()),
+                                            });
+                                        }
+                                        shell.events.publish(EditorEvent::KeyDown { key });
+                                    }
+                                    winit::event::ElementState::Released => {
+                                        match key {
+                                            Key::Control => shell.modifier_state.ctrl = false,
+                                            Key::Shift => shell.modifier_state.shift = false,
+                                            Key::Alt => shell.modifier_state.alt = false,
+                                            _ => {}
+                                        }
+                                        shell.events.publish(EditorEvent::KeyUp { key });
+                                    }
+                                }
                             }
                         }
                         _ => {}

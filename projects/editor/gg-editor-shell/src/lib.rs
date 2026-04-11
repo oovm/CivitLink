@@ -14,7 +14,7 @@ pub mod plugin;
 pub mod service;
 pub mod shell;
 
-pub use command::{Command, CommandManager};
+pub use command::{Command, CommandManager, ModifierState, ShortcutKey, ShortcutRegistry};
 pub use context::{EditorConfig, EditorContext};
 pub use docking::{DockRegion, DockRegionConfig, DockSplit, DockingLayout, PanelLayout};
 pub use event::{EditorEvent, EventBus, Key, MouseButton, SubscriptionId};

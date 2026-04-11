@@ -891,11 +891,15 @@ pub mod components {
 
     impl VxComponent for Button {
         fn render_template(&self) -> TemplateNode {
-            let mut attrs = vec![("id".to_string(), self.id.clone()), ("text".to_string(), self.text.clone())];
+            let mut attrs = vec![("id".to_string(), self.id.clone())];
             if !self.style.is_empty() {
                 attrs.push(("style".to_string(), self.style.clone()));
             }
-            TemplateNode::Element { tag: "Button".to_string(), attributes: attrs, children: vec![] }
+            TemplateNode::Element {
+                tag: "Button".to_string(),
+                attributes: attrs,
+                children: vec![TemplateNode::Text(self.text.clone())],
+            }
         }
 
         fn script_setup(&mut self) {}
@@ -1028,14 +1032,23 @@ pub mod components {
 
     impl VxComponent for Input {
         fn render_template(&self) -> TemplateNode {
-            let mut attrs = vec![("id".to_string(), self.id.clone()), ("value".to_string(), self.value.clone())];
+            let mut attrs = vec![("id".to_string(), self.id.clone())];
             if !self.placeholder.is_empty() {
                 attrs.push(("placeholder".to_string(), self.placeholder.clone()));
             }
             if !self.style.is_empty() {
                 attrs.push(("style".to_string(), self.style.clone()));
             }
-            TemplateNode::Element { tag: "Input".to_string(), attributes: attrs, children: vec![] }
+            let display_text = if self.value.is_empty() {
+                self.placeholder.clone()
+            } else {
+                format!("{}|", self.value)
+            };
+            TemplateNode::Element {
+                tag: "Input".to_string(),
+                attributes: attrs,
+                children: vec![TemplateNode::Text(display_text)],
+            }
         }
 
         fn script_setup(&mut self) {}

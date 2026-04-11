@@ -12,3 +12,7 @@ gg-world = { workspace = true }
 gg-render = { workspace = true }
 gg-editor-shell = { workspace = true }
 gg-ui = { workspace = true }
+
+[dev-dependencies]
+gg-ecs = { workspace = true }
+gg-world = { workspace = true }

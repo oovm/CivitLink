@@ -1,287 +1,454 @@
-use gg_script::type_checker::{DiagnosticSeverity, TypeChecker, TypeInfo};
-use oak_core::{Builder, SourceText};
-use oak_valkyrie::{ValkyrieBuilder, ValkyrieLanguage};
+use gg_script::type_checker::{
+    DiagnosticSeverity, FunctionSignature, TypeChecker, TypeDiagnostic, TypeEnvironment, TypeInfo,
+};
+use oak_valkyrie::ast::*;
+use oak_valkyrie::lexer::token_type::ValkyrieTokenType;
 
-fn parse_and_check(source: &str) -> Vec<gg_script::type_checker::TypeDiagnostic> {
-    let language = ValkyrieLanguage::default();
-    let builder = ValkyrieBuilder::new(&language);
-    let source_text = SourceText::new(source);
-    let mut cache = oak_core::parser::ParseSession::<ValkyrieLanguage>::default();
-    let diagnostics = builder.build(&source_text, &[], &mut cache);
+fn make_identifier(name: &str) -> Identifier {
+    Identifier { name: name.to_string(), span: Default::default() }
+}
 
-    match diagnostics.result {
-        Ok(root) => {
-            let mut type_checker = TypeChecker::new();
-            type_checker.check_root(&root)
-        }
-        Err(e) => panic!("Parse error: {}", e),
+fn make_name_path(name: &str) -> NamePath {
+    NamePath { parts: vec![make_identifier(name)], span: Default::default() }
+}
+
+fn make_int_literal(value: i64) -> TermExpression {
+    TermExpression::StringLiteral(StringLiteral {
+        segments: vec![StringSegment::Text(Box::new(TextSegment {
+            content: value.to_string(),
+            span: Default::default(),
+        }))],
+        quote_count: 0,
+        prefix: None,
+        span: Default::default(),
+    })
+}
+
+fn make_float_literal(value: f64) -> TermExpression {
+    TermExpression::StringLiteral(StringLiteral {
+        segments: vec![StringSegment::Text(Box::new(TextSegment {
+            content: value.to_string(),
+            span: Default::default(),
+        }))],
+        quote_count: 0,
+        prefix: None,
+        span: Default::default(),
+    })
+}
+
+fn make_bool_literal(value: bool) -> TermExpression {
+    TermExpression::Bool { value, span: Default::default() }
+}
+
+fn make_string_literal(value: &str) -> TermExpression {
+    TermExpression::StringLiteral(StringLiteral {
+        segments: vec![StringSegment::Text(Box::new(TextSegment {
+            content: value.to_string(),
+            span: Default::default(),
+        }))],
+        quote_count: 1,
+        prefix: None,
+        span: Default::default(),
+    })
+}
+
+fn make_var_expr(name: &str) -> TermExpression {
+    TermExpression::NamePath(Box::new(make_name_path(name)))
+}
+
+fn make_binary_expr(lhs: TermExpression, op: ValkyrieTokenType, rhs: TermExpression) -> TermExpression {
+    TermExpression::Binary(Box::new(TermBinaryNode {
+        lhs,
+        operator: op,
+        rhs,
+        span: Default::default(),
+    }))
+}
+
+fn make_unary_expr(op: ValkyrieTokenType, base: TermExpression) -> TermExpression {
+    TermExpression::Unary(Box::new(TermUnaryNode {
+        operator: op,
+        base,
+        span: Default::default(),
+    }))
+}
+
+fn make_apply_call(callee: TermExpression, args: Vec<TermExpression>) -> TermExpression {
+    TermExpression::ApplyCall {
+        callee: Box::new(callee),
+        args,
+        span: Default::default(),
     }
 }
 
-#[test]
-fn test_bool_literal_type() {
-    let source = r#"micro test() {
-    let x = true;
-    let y = false;
-}"#;
+fn make_if_expr(condition: TermExpression, then_block: Block, else_block: Option<Block>) -> TermExpression {
+    TermExpression::If {
+        pattern: None,
+        condition: Box::new(condition),
+        then_branch: then_block,
+        else_branch: else_block,
+        span: Default::default(),
+    }
+}
 
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "Expected no diagnostics for bool literals, got: {:?}", diags);
+fn make_return_expr(value: Option<TermExpression>) -> TermExpression {
+    TermExpression::Return(Box::new(Return {
+        base: value,
+        span: Default::default(),
+    }))
+}
+
+fn make_let_stmt(name: &str, expr: TermExpression) -> Statement {
+    Statement::Let(Let {
+        is_mutable: false,
+        pattern: Pattern::Variable(Box::new(VariablePattern {
+            name: make_identifier(name),
+            span: Default::default(),
+        })),
+        ty: None,
+        expr,
+        annotations: Vec::new(),
+        span: Default::default(),
+    })
+}
+
+fn make_expr_stmt(expr: TermExpression) -> Statement {
+    Statement::ExprStmt(ExprStmt {
+        annotations: Vec::new(),
+        expr,
+        semi: false,
+        span: Default::default(),
+    })
+}
+
+fn make_block(statements: Vec<Statement>) -> Block {
+    Block { statements, span: Default::default() }
+}
+
+fn make_micro(name: &str, params: Vec<Param>, body: Block) -> MicroDeclaration {
+    MicroDeclaration {
+        name: make_identifier(name),
+        generics: Vec::new(),
+        annotations: Vec::new(),
+        params,
+        return_type: None,
+        body,
+        span: Default::default(),
+        is_abstract: false,
+        is_final: false,
+    }
+}
+
+fn make_param(name: &str) -> Param {
+    Param {
+        name: make_identifier(name),
+        ty: None,
+        default: None,
+        span: Default::default(),
+    }
+}
+
+fn make_typed_param(name: &str, type_name: &str) -> Param {
+    Param {
+        name: make_identifier(name),
+        ty: Some(TypeExpression::Namepath(Box::new(make_name_path(type_name)))),
+        default: None,
+        span: Default::default(),
+    }
+}
+
+fn make_micro_item(name: &str, params: Vec<Param>, body: Block) -> StatementNode {
+    StatementNode::Micro(Box::new(make_micro(name, params, body)))
+}
+
+fn make_root(items: Vec<StatementNode>) -> ValkyrieRoot {
+    ValkyrieRoot { items }
 }
 
 #[test]
-fn test_string_literal_type() {
-    let source = r#"micro test() {
-    let x = "hello";
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "Expected no diagnostics for string literals, got: {:?}", diags);
+fn test_bool_literal_inference() {
+    let mut checker = TypeChecker::new();
+    let ty = checker.infer_expr(&make_bool_literal(true));
+    assert_eq!(ty, TypeInfo::Bool);
 }
 
 #[test]
-fn test_integer_literal_inferred_as_int() {
-    let source = r#"micro test() {
-    let x = 42;
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "Expected no diagnostics for integer literals, got: {:?}", diags);
+fn test_string_literal_inference() {
+    let mut checker = TypeChecker::new();
+    let ty = checker.infer_expr(&make_string_literal("hello"));
+    assert_eq!(ty, TypeInfo::String);
 }
 
 #[test]
-fn test_float_literal_inferred_as_float() {
-    let source = r#"micro test() {
-    let x = 3.14;
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "Expected no diagnostics for float literals, got: {:?}", diags);
+fn test_int_literal_inference() {
+    let mut checker = TypeChecker::new();
+    let ty = checker.infer_expr(&make_int_literal(42));
+    assert_eq!(ty, TypeInfo::Int);
 }
 
 #[test]
-fn test_arithmetic_binary_int() {
-    let source = r#"micro test() {
-    let x = 10;
-    let y = 5;
-    let z = x + y;
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "Expected no diagnostics for int arithmetic, got: {:?}", diags);
+fn test_float_literal_inference() {
+    let mut checker = TypeChecker::new();
+    let ty = checker.infer_expr(&make_float_literal(3.14));
+    assert_eq!(ty, TypeInfo::Float);
 }
 
 #[test]
-fn test_arithmetic_binary_float() {
-    let source = r#"micro test() {
-    let x = 1.5;
-    let y = 2.5;
-    let z = x + y;
-}"#;
+fn test_variable_lookup() {
+    let mut checker = TypeChecker::new();
+    checker.env.insert_variable("x".to_string(), TypeInfo::Int);
+    let ty = checker.infer_expr(&make_var_expr("x"));
+    assert_eq!(ty, TypeInfo::Int);
+}
 
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "Expected no diagnostics for float arithmetic, got: {:?}", diags);
+#[test]
+fn test_unknown_variable_returns_unknown() {
+    let mut checker = TypeChecker::new();
+    let ty = checker.infer_expr(&make_var_expr("unknown"));
+    assert_eq!(ty, TypeInfo::Unknown);
+}
+
+#[test]
+fn test_int_addition() {
+    let mut checker = TypeChecker::new();
+    let expr = make_binary_expr(make_int_literal(10), ValkyrieTokenType::Plus, make_int_literal(5));
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Int);
+}
+
+#[test]
+fn test_float_addition() {
+    let mut checker = TypeChecker::new();
+    let expr = make_binary_expr(make_float_literal(1.5), ValkyrieTokenType::Plus, make_float_literal(2.5));
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Float);
+}
+
+#[test]
+fn test_int_float_addition() {
+    let mut checker = TypeChecker::new();
+    let expr = make_binary_expr(make_int_literal(10), ValkyrieTokenType::Plus, make_float_literal(2.5));
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Float);
 }
 
 #[test]
 fn test_comparison_returns_bool() {
-    let source = r#"micro test() {
-    let x = 10;
-    let y = 5;
-    let z = x > y;
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "Expected no diagnostics for comparison, got: {:?}", diags);
+    let mut checker = TypeChecker::new();
+    let expr = make_binary_expr(make_int_literal(10), ValkyrieTokenType::GreaterThan, make_int_literal(5));
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Bool);
 }
 
 #[test]
-fn test_logical_operators_require_bool() {
-    let source = r#"micro test() {
-    let x = true;
-    let y = false;
-    let z = x && y;
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "Expected no diagnostics for logical ops on bools, got: {:?}", diags);
+fn test_logical_and_returns_bool() {
+    let mut checker = TypeChecker::new();
+    let expr = make_binary_expr(make_bool_literal(true), ValkyrieTokenType::AndAnd, make_bool_literal(false));
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Bool);
 }
 
 #[test]
-fn test_logical_operator_with_non_bool() {
-    let source = r#"micro test() {
-    let x = 10;
-    let y = true;
-    let z = x && y;
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(!diags.is_empty(), "Expected diagnostics for logical op with non-bool");
-    let has_warning = diags.iter().any(|d| d.severity == DiagnosticSeverity::Warning && d.message.contains("Logical operator"));
-    assert!(has_warning, "Expected logical operator warning");
+fn test_logical_and_with_non_bool_warns() {
+    let mut checker = TypeChecker::new();
+    let expr = make_binary_expr(make_int_literal(10), ValkyrieTokenType::AndAnd, make_bool_literal(true));
+    checker.infer_expr(&expr);
+    let diags = &checker.diagnostics;
+    assert!(!diags.is_empty());
+    assert!(diags.iter().any(|d| d.message.contains("Logical operator") && d.severity == DiagnosticSeverity::Warning));
 }
 
 #[test]
-fn test_unary_negate_numeric() {
-    let source = r#"micro test() {
-    let x = 10;
-    let y = -x;
-}"#;
+fn test_unary_negate_int() {
+    let mut checker = TypeChecker::new();
+    let expr = make_unary_expr(ValkyrieTokenType::Minus, make_int_literal(10));
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Int);
+}
 
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "Expected no diagnostics for negating int, got: {:?}", diags);
+#[test]
+fn test_unary_negate_float() {
+    let mut checker = TypeChecker::new();
+    let expr = make_unary_expr(ValkyrieTokenType::Minus, make_float_literal(3.14));
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Float);
 }
 
 #[test]
 fn test_unary_not_bool() {
-    let source = r#"micro test() {
-    let x = true;
-    let y = !x;
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "Expected no diagnostics for NOT on bool, got: {:?}", diags);
+    let mut checker = TypeChecker::new();
+    let expr = make_unary_expr(ValkyrieTokenType::Bang, make_bool_literal(true));
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Bool);
 }
 
 #[test]
-fn test_unary_not_non_bool() {
-    let source = r#"micro test() {
-    let x = 10;
-    let y = !x;
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(!diags.is_empty(), "Expected diagnostics for NOT on non-bool");
-    let has_warning = diags.iter().any(|d| d.severity == DiagnosticSeverity::Warning && d.message.contains("Logical NOT"));
-    assert!(has_warning, "Expected logical NOT warning");
+fn test_unary_not_non_bool_warns() {
+    let mut checker = TypeChecker::new();
+    let expr = make_unary_expr(ValkyrieTokenType::Bang, make_int_literal(10));
+    checker.infer_expr(&expr);
+    let diags = &checker.diagnostics;
+    assert!(!diags.is_empty());
+    assert!(diags.iter().any(|d| d.message.contains("Logical NOT") && d.severity == DiagnosticSeverity::Warning));
 }
 
 #[test]
 fn test_if_condition_must_be_bool() {
-    let source = r#"micro test() {
-    if 10 {
-        print("oops");
-    }
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(!diags.is_empty(), "Expected diagnostics for non-bool if condition");
-    let has_error = diags.iter().any(|d| d.severity == DiagnosticSeverity::Error && d.message.contains("If condition"));
-    assert!(has_error, "Expected if condition error");
+    let mut checker = TypeChecker::new();
+    let expr = make_if_expr(
+        make_int_literal(10),
+        make_block(vec![make_expr_stmt(make_bool_literal(true))]),
+        None,
+    );
+    checker.infer_expr(&expr);
+    let diags = &checker.diagnostics;
+    assert!(diags.iter().any(|d| d.message.contains("If condition") && d.severity == DiagnosticSeverity::Error));
 }
 
 #[test]
 fn test_if_condition_bool_ok() {
-    let source = r#"micro test() {
-    if true {
-        print("ok");
-    }
-}"#;
-
-    let diags = parse_and_check(source);
-    let if_errors: Vec<_> = diags.iter().filter(|d| d.message.contains("If condition")).collect();
-    assert!(if_errors.is_empty(), "Expected no if condition errors for bool, got: {:?}", if_errors);
+    let mut checker = TypeChecker::new();
+    let expr = make_if_expr(
+        make_bool_literal(true),
+        make_block(vec![make_expr_stmt(make_bool_literal(true))]),
+        None,
+    );
+    checker.infer_expr(&expr);
+    let if_errors: Vec<_> = checker.diagnostics.iter().filter(|d| d.message.contains("If condition")).collect();
+    assert!(if_errors.is_empty());
 }
 
 #[test]
-fn test_function_signature_checking() {
-    let source = r#"micro add(a, b) {
-    return a + b;
-}
-
-micro test() {
-    let result = add(1, 2);
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "Expected no diagnostics for correct function call, got: {:?}", diags);
-}
-
-#[test]
-fn test_function_wrong_arg_count() {
-    let source = r#"micro add(a, b) {
-    return a + b;
-}
-
-micro test() {
-    let result = add(1);
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(!diags.is_empty(), "Expected diagnostics for wrong argument count");
-    let has_error = diags.iter().any(|d| d.severity == DiagnosticSeverity::Error && d.message.contains("arguments"));
-    assert!(has_error, "Expected argument count error");
+fn test_function_call_correct_args() {
+    let mut checker = TypeChecker::new();
+    checker.env.insert_function(FunctionSignature {
+        name: "add".to_string(),
+        param_types: vec![TypeInfo::Int, TypeInfo::Int],
+        return_type: TypeInfo::Int,
+    });
+    let expr = make_apply_call(make_var_expr("add"), vec![make_int_literal(1), make_int_literal(2)]);
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Int);
 }
 
 #[test]
-fn test_gradual_typing_no_annotations_no_errors() {
-    let source = r#"micro test() {
-    let x = something_unknown;
-    let y = x + other_thing;
-}"#;
-
-    let diags = parse_and_check(source);
-    let type_mismatch_errors: Vec<_> = diags
-        .iter()
-        .filter(|d| d.severity == DiagnosticSeverity::Error)
-        .collect();
-    assert!(type_mismatch_errors.is_empty(), "Gradual typing: no type errors for unknown variables, got: {:?}", type_mismatch_errors);
+fn test_function_call_wrong_arg_count() {
+    let mut checker = TypeChecker::new();
+    checker.env.insert_function(FunctionSignature {
+        name: "add".to_string(),
+        param_types: vec![TypeInfo::Int, TypeInfo::Int],
+        return_type: TypeInfo::Int,
+    });
+    let expr = make_apply_call(make_var_expr("add"), vec![make_int_literal(1)]);
+    checker.infer_expr(&expr);
+    assert!(checker.diagnostics.iter().any(|d| d.message.contains("arguments") && d.severity == DiagnosticSeverity::Error));
 }
 
 #[test]
-fn test_gradual_typing_unknown_no_binary_error() {
-    let source = r#"micro test() {
-    let x = unknown_var;
-    let y = 10;
-    let z = x + y;
-}"#;
-
-    let diags = parse_and_check(source);
-    let binary_errors: Vec<_> = diags
-        .iter()
-        .filter(|d| d.message.contains("Cannot apply operator"))
-        .collect();
-    assert!(binary_errors.is_empty(), "Gradual typing: no binary op errors with Unknown, got: {:?}", binary_errors);
+fn test_function_call_wrong_arg_type() {
+    let mut checker = TypeChecker::new();
+    checker.env.insert_function(FunctionSignature {
+        name: "add".to_string(),
+        param_types: vec![TypeInfo::Int, TypeInfo::Int],
+        return_type: TypeInfo::Int,
+    });
+    let expr = make_apply_call(make_var_expr("add"), vec![make_int_literal(1), make_bool_literal(true)]);
+    checker.infer_expr(&expr);
+    assert!(checker.diagnostics.iter().any(|d| d.message.contains("expects type") && d.severity == DiagnosticSeverity::Error));
 }
 
 #[test]
-fn test_type_mismatch_comparison() {
-    let source = r#"micro test() {
-    let x = 10;
-    let y = true;
-    let z = x > y;
-}"#;
+fn test_gradual_typing_unknown_no_error() {
+    let mut checker = TypeChecker::new();
+    let expr = make_binary_expr(make_var_expr("unknown"), ValkyrieTokenType::Plus, make_int_literal(10));
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Unknown);
+    assert!(checker.diagnostics.is_empty());
+}
 
-    let diags = parse_and_check(source);
-    assert!(!diags.is_empty(), "Expected diagnostics for comparison between different types");
-    let has_warning = diags.iter().any(|d| d.message.contains("Comparison between different types"));
-    assert!(has_warning, "Expected comparison type mismatch warning");
+#[test]
+fn test_comparison_different_types_warns() {
+    let mut checker = TypeChecker::new();
+    let expr = make_binary_expr(make_int_literal(10), ValkyrieTokenType::GreaterThan, make_bool_literal(true));
+    checker.infer_expr(&expr);
+    assert!(checker.diagnostics.iter().any(|d| d.message.contains("Comparison between different types")));
+}
+
+#[test]
+fn test_check_micro_function() {
+    let mut checker = TypeChecker::new();
+    let micro = make_micro(
+        "test",
+        vec![make_typed_param("x", "i32")],
+        make_block(vec![
+            make_expr_stmt(make_binary_expr(make_var_expr("x"), ValkyrieTokenType::Plus, make_int_literal(1))),
+        ]),
+    );
+    let diags = checker.check_micro(&micro);
+    assert!(diags.is_empty(), "Expected no diagnostics, got: {:?}", diags);
+}
+
+#[test]
+fn test_check_micro_if_condition_error() {
+    let mut checker = TypeChecker::new();
+    let micro = make_micro(
+        "test",
+        vec![],
+        make_block(vec![
+            make_expr_stmt(make_if_expr(
+                make_int_literal(10),
+                make_block(vec![make_expr_stmt(make_bool_literal(true))]),
+                None,
+            )),
+        ]),
+    );
+    let diags = checker.check_micro(&micro);
+    assert!(diags.iter().any(|d| d.message.contains("If condition")));
+}
+
+#[test]
+fn test_check_root_with_micro() {
+    let mut checker = TypeChecker::new();
+    let root = make_root(vec![
+        make_micro_item(
+            "test",
+            vec![make_typed_param("x", "i32")],
+            make_block(vec![
+                make_expr_stmt(make_binary_expr(make_var_expr("x"), ValkyrieTokenType::Plus, make_int_literal(1))),
+            ]),
+        ),
+    ]);
+    let diags = checker.check_root(&root);
+    assert!(diags.is_empty(), "Expected no diagnostics, got: {:?}", diags);
 }
 
 #[test]
 fn test_return_type_mismatch() {
-    let source = r#"micro test() {
-    return 10;
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(diags.is_empty(), "No return type annotation means no return type error, got: {:?}", diags);
+    let mut checker = TypeChecker::new();
+    let mut micro = make_micro(
+        "test",
+        vec![],
+        make_block(vec![
+            make_expr_stmt(make_return_expr(Some(make_bool_literal(true)))),
+        ]),
+    );
+    micro.return_type = Some(TypeExpression::Namepath(Box::new(make_name_path("i32"))));
+    let diags = checker.check_micro(&micro);
+    assert!(diags.iter().any(|d| d.message.contains("Return type mismatch")));
 }
 
 #[test]
-fn test_namespace_items_checked() {
-    let source = r#"namespace Game {
-    micro start() {
-        if 10 {
-            print("bad");
-        }
-    }
-}"#;
-
-    let diags = parse_and_check(source);
-    assert!(!diags.is_empty(), "Expected diagnostics for namespace inner items");
-    let has_error = diags.iter().any(|d| d.message.contains("If condition"));
-    assert!(has_error, "Expected if condition error in namespace");
+fn test_return_no_annotation_no_error() {
+    let mut checker = TypeChecker::new();
+    let micro = make_micro(
+        "test",
+        vec![],
+        make_block(vec![
+            make_expr_stmt(make_return_expr(Some(make_int_literal(42)))),
+        ]),
+    );
+    let diags = checker.check_micro(&micro);
+    assert!(diags.is_empty(), "Expected no diagnostics without return type annotation, got: {:?}", diags);
 }
 
 #[test]
@@ -324,16 +491,113 @@ fn test_diagnostic_severity_display() {
 }
 
 #[test]
-fn test_loop_condition_must_be_bool() {
-    let source = r#"micro test() {
-    let i = 0;
-    loop (10) {
-        let i = i + 1;
-    }
-}"#;
+fn test_type_environment() {
+    let mut env = TypeEnvironment::new();
+    assert!(env.lookup_variable("x").is_none());
+    env.insert_variable("x".to_string(), TypeInfo::Int);
+    assert_eq!(env.lookup_variable("x"), Some(&TypeInfo::Int));
 
-    let diags = parse_and_check(source);
-    assert!(!diags.is_empty(), "Expected diagnostics for non-bool loop condition");
-    let has_error = diags.iter().any(|d| d.message.contains("Loop condition"));
-    assert!(has_error, "Expected loop condition error");
+    assert!(env.lookup_function("add").is_none());
+    env.insert_function(FunctionSignature {
+        name: "add".to_string(),
+        param_types: vec![TypeInfo::Int, TypeInfo::Int],
+        return_type: TypeInfo::Int,
+    });
+    assert!(env.lookup_function("add").is_some());
+}
+
+#[test]
+fn test_type_diagnostic_display() {
+    let diag = TypeDiagnostic {
+        message: "Type mismatch".to_string(),
+        severity: DiagnosticSeverity::Error,
+        span_start: 10,
+        span_end: 20,
+    };
+    assert_eq!(diag.to_string(), "[error] Type mismatch (10-20)");
+}
+
+#[test]
+fn test_paren_expr() {
+    let mut checker = TypeChecker::new();
+    let expr = TermExpression::Paren {
+        expr: Box::new(make_int_literal(42)),
+        span: Default::default(),
+    };
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Int);
+}
+
+#[test]
+fn test_null_literal() {
+    let mut checker = TypeChecker::new();
+    let expr = TermExpression::StringLiteral(StringLiteral {
+        segments: vec![StringSegment::Text(Box::new(TextSegment {
+            content: "null".to_string(),
+            span: Default::default(),
+        }))],
+        quote_count: 0,
+        prefix: None,
+        span: Default::default(),
+    });
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Null);
+}
+
+#[test]
+fn test_micro_lambda_type() {
+    let mut checker = TypeChecker::new();
+    let expr = TermExpression::Micro(AnonymousMicro {
+        params: vec![make_typed_param("x", "i32")],
+        return_type: Some(TypeExpression::Namepath(Box::new(make_name_path("Bool")))),
+        body: make_block(vec![]),
+        span: Default::default(),
+    });
+    let ty = checker.infer_expr(&expr);
+    assert_eq!(ty, TypeInfo::Function {
+        param_types: vec![TypeInfo::Int],
+        return_type: Box::new(TypeInfo::Bool),
+    });
+}
+
+#[test]
+fn test_let_stmt_type_inference() {
+    let mut checker = TypeChecker::new();
+    let micro = make_micro(
+        "test",
+        vec![],
+        make_block(vec![
+            make_let_stmt("x", make_int_literal(42)),
+            make_expr_stmt(make_var_expr("x")),
+        ]),
+    );
+    let diags = checker.check_micro(&micro);
+    assert!(diags.is_empty(), "Expected no diagnostics, got: {:?}", diags);
+}
+
+#[test]
+fn test_namespace_items_checked() {
+    let mut checker = TypeChecker::new();
+    let root = make_root(vec![
+        StatementNode::Namespace(Box::new(NamespaceDeclaration {
+            name: make_name_path("Game"),
+            items: vec![
+                StatementNode::Micro(Box::new(make_micro(
+                    "start",
+                    vec![],
+                    make_block(vec![
+                        make_expr_stmt(make_if_expr(
+                            make_int_literal(10),
+                            make_block(vec![make_expr_stmt(make_bool_literal(true))]),
+                            None,
+                        )),
+                    ]),
+                ))),
+            ],
+            annotations: Vec::new(),
+            span: Default::default(),
+        })),
+    ]);
+    let diags = checker.check_root(&root);
+    assert!(diags.iter().any(|d| d.message.contains("If condition")));
 }

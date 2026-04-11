@@ -100,4 +100,32 @@ impl<'a> EditorContext<'a> {
             self.commands.undo_stack.push(cmd);
         }
     }
+
+    /// 撤销最近一次命令
+    ///
+    /// 便捷方法，从撤销栈弹出最近执行的命令，调用其 `undo` 方法，
+    /// 然后压入重做栈。避免借用冲突。
+    pub fn undo_command(&mut self) -> gg_core::GResult<()> {
+        let mut command = self.commands.undo_stack.pop().ok_or_else(|| gg_core::GError {
+            kind: gg_core::GErrorKind::Other,
+            message: "没有可撤销的命令".to_string(),
+        })?;
+        command.undo(self)?;
+        self.commands.redo_stack.push(command);
+        Ok(())
+    }
+
+    /// 重做最近一次撤销的命令
+    ///
+    /// 便捷方法，从重做栈弹出最近撤销的命令，调用其 `execute` 方法，
+    /// 然后压入撤销栈。避免借用冲突。
+    pub fn redo_command(&mut self) -> gg_core::GResult<()> {
+        let mut command = self.commands.redo_stack.pop().ok_or_else(|| gg_core::GError {
+            kind: gg_core::GErrorKind::Other,
+            message: "没有可重做的命令".to_string(),
+        })?;
+        command.execute(self)?;
+        self.commands.undo_stack.push(command);
+        Ok(())
+    }
 }

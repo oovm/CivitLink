@@ -1,0 +1,146 @@
+# GameState 脚本
+# 处理游戏状态相关的逻辑
+
+using gg::ecs;
+using gg::engine;
+
+# 游戏状态组件
+component GameState {
+    gold: i32,
+    current_map: String,
+    quest_log: Array<String>,
+    game_over: Bool,
+    events on_gold_change: micro(gold: i32) -> (),
+    events on_map_change: micro(map: String) -> (),
+    events on_quest_add: micro(quest: String) -> (),
+    events on_quest_complete: micro(quest: String) -> (),
+    events on_game_over: micro() -> ()
+}
+
+# 游戏状态系统
+system GameStateSystem {
+    micro execute(world: World): Result<()> {
+        # 获取游戏状态
+        let game_state_query: Query<GameState> = world.query("GameState");
+        loop entity, game_state in game_state_query.iter() {
+            # 检查游戏结束条件
+            game_state_manager.check_game_over(world, game_state);
+        }
+        
+        return Ok()
+    }
+}
+
+# 游戏状态管理器
+class GameStateManager {
+    # 初始化游戏状态
+    micro init_game_state(world: World): GameState {
+        let game_state_entity = world.spawn();
+        let game_state = game_state_entity.add_component("GameState", {
+            gold: 0,
+            current_map: "village",
+            quest_log: [],
+            game_over: false
+        });
+        
+        # 注册事件监听器
+        game_state.on_gold_change.subscribe(micro(gold: i32) {
+            on_gold_change_handler(world, gold);
+        });
+        
+        game_state.on_map_change.subscribe(micro(map: String) {
+            on_map_change_handler(world, map);
+        });
+        
+        game_state.on_quest_add.subscribe(micro(quest: String) {
+            on_quest_add_handler(world, quest);
+        });
+        
+        game_state.on_quest_complete.subscribe(micro(quest: String) {
+            on_quest_complete_handler(world, quest);
+        });
+        
+        game_state.on_game_over.subscribe(micro() {
+            on_game_over_handler(world);
+        });
+        
+        return game_state;
+    }
+    
+    # 检查游戏结束条件
+    micro check_game_over(world: World, game_state: GameState) {
+        # 这里可以添加游戏结束条件检查
+    }
+    
+    # 增加金币
+    micro add_gold(game_state: GameState, amount: i32) {
+        game_state.gold += amount;
+        game_state.on_gold_change(game_state.gold);
+    }
+    
+    # 减少金币
+    micro remove_gold(game_state: GameState, amount: i32) {
+        if game_state.gold >= amount {
+            game_state.gold -= amount;
+            game_state.on_gold_change(game_state.gold);
+            return true;
+        }
+        return false;
+    }
+    
+    # 切换地图
+    micro change_map(game_state: GameState, map: String) {
+        game_state.current_map = map;
+        game_state.on_map_change(map);
+    }
+    
+    # 添加任务
+    micro add_quest(game_state: GameState, quest: String) {
+        if not game_state.quest_log.includes(quest) {
+            game_state.quest_log.push(quest);
+            game_state.on_quest_add(quest);
+        }
+    }
+    
+    # 完成任务
+    micro complete_quest(game_state: GameState, quest: String) {
+        let index = game_state.quest_log.index_of(quest);
+        if index != -1 {
+            game_state.quest_log.splice(index, 1);
+            game_state.on_quest_complete(quest);
+        }
+    }
+    
+    # 金币变化处理
+    micro on_gold_change_handler(world: World, gold: i32) {
+        console::log("Gold: " + gold);
+        # 可以在这里添加金币变化的视觉效果
+    }
+    
+    # 地图变化处理
+    micro on_map_change_handler(world: World, map: String) {
+        console::log("Current map: " + map);
+        # 可以在这里添加地图切换的视觉效果、音效等
+    }
+    
+    # 任务添加处理
+    micro on_quest_add_handler(world: World, quest: String) {
+        console::log("Quest added: " + quest);
+        # 可以在这里添加任务添加的视觉效果
+    }
+    
+    # 任务完成处理
+    micro on_quest_complete_handler(world: World, quest: String) {
+        console::log("Quest completed: " + quest);
+        # 可以在这里添加任务完成的视觉效果、音效等
+    }
+    
+    # 游戏结束处理
+    micro on_game_over_handler(world: World) {
+        console::log("Game Over!");
+        # 可以在这里添加游戏结束的视觉效果、音效等
+    }
+}
+
+# 全局游戏状态管理器实例
+let game_state_manager = GameStateManager();

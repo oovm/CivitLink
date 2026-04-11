@@ -9,10 +9,11 @@ license = { workspace = true }
 gg-core = { workspace = true }
 gg-manifest = { workspace = true }
 gg-editor-lsp = { workspace = true }
+gg-lsp = { workspace = true, optional = true }
 oak-vfs = { workspace = true }
 oak-mcp = { workspace = true, features = ["io-std"] }
 tokio = { workspace = true }
 
 [features]
 default = []
-lsp = []
+lsp = ["dep:gg-lsp", "gg-lsp/lsp"]

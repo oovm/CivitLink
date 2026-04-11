@@ -1,0 +1,140 @@
+# Init 脚本
+# 初始化游戏世界和资源
+
+using gg::ecs;
+using gg::engine;
+
+# 游戏初始化
+system GameInitSystem {
+    micro execute(world: World): Result<()> {
+        # 初始化游戏状态
+        let game_state = game_state_manager.init_game_state(world);
+        
+        # 初始化玩家
+        let player = player_controller.init_player(world, "Hero", [100.0, 100.0]);
+        
+        # 初始化敌人
+        let enemy1 = enemy_controller.init_enemy(world, "Goblin", 1, [300.0, 200.0]);
+        let enemy2 = enemy_controller.init_enemy(world, "Orc", 2, [500.0, 300.0]);
+        let enemy3 = enemy_controller.init_enemy(world, "Troll", 3, [700.0, 400.0]);
+        
+        # 添加初始任务
+        game_state_manager.add_quest(game_state, "Kill 5 goblins");
+        game_state_manager.add_quest(game_state, "Collect 10 herbs");
+        
+        # 注册一次性系统，只执行一次
+        world.remove_system("GameInitSystem");
+        
+        return Ok()
+    }
+}
+
+# 碰撞检测系统
+system CollisionSystem {
+    micro execute(world: World): Result<()> {
+        # 获取玩家实体
+        let player_query: Query<Player> = world.query("Player");
+        let player = null;
+        loop entity, p in player_query.iter() {
+            player = p;
+            break;
+        }
+        
+        if player != null {
+            # 获取敌人实体
+            let enemy_query: Query<Enemy> = world.query("Enemy");
+            loop entity, enemy in enemy_query.iter() {
+                # 简单的碰撞检测
+                if check_collision(player, enemy) {
+                    # 玩家与敌人碰撞
+                    handle_collision(world, player, enemy);
+                }
+            }
+        }
+        
+        return Ok()
+    }
+}
+
+# 检查碰撞
+micro check_collision(player: Player, enemy: Enemy): Bool {
+    # 简单的圆形碰撞检测
+    let dx = player.position[0] - enemy.position[0];
+    let dy = player.position[1] - enemy.position[1];
+    let distance = sqrt(dx * dx + dy * dy);
+    return distance < 40.0;  # 碰撞半径
+}
+
+# 处理碰撞
+micro handle_collision(world: World, player: Player, enemy: Enemy) {
+    # 敌人攻击玩家
+    enemy_controller.attack(enemy, player);
+}
+
+# 输入处理系统
+system InputSystem {
+    micro execute(world: World): Result<()> {
+        # 处理拾取物品
+        if input.is_key_pressed("E") {
+            pick_up_item(world);
+        }
+        
+        # 处理使用物品
+        if input.is_key_pressed("Q") {
+            use_item(world);
+        }
+        
+        # 处理切换地图
+        if input.is_key_pressed("M") {
+            toggle_map(world);
+        }
+        
+        return Ok()
+    }
+}
+
+# 拾取物品
+micro pick_up_item(world: World) {
+    # 这里可以添加拾取物品的逻辑
+    console::log("Picking up item...");
+    
+    # 给玩家添加物品
+    let player_query: Query<Player> = world.query("Player");
+    loop entity, player in player_query.iter() {
+        player_controller.add_item(player, "Health Potion");
+    }
+    
+    # 增加金币
+    let game_state_query: Query<GameState> = world.query("GameState");
+    loop entity, game_state in game_state_query.iter() {
+        game_state_manager.add_gold(game_state, 10);
+    }
+}
+
+# 使用物品
+micro use_item(world: World) {
+    # 这里可以添加使用物品的逻辑
+    console::log("Using item...");
+    
+    # 给玩家治疗
+    let player_query: Query<Player> = world.query("Player");
+    loop entity, player in player_query.iter() {
+        player_controller.heal(player, 50);
+    }
+}
+
+# 切换地图
+micro toggle_map(world: World) {
+    # 这里可以添加切换地图的逻辑
+    console::log("Toggling map...");
+    
+    # 切换地图
+    let game_state_query: Query<GameState> = world.query("GameState");
+    loop entity, game_state in game_state_query.iter() {
+        if game_state.current_map == "village" {
+            game_state_manager.change_map(game_state, "forest");
+        } else {
+            game_state_manager.change_map(game_state, "village");
+        }
+    }
+}

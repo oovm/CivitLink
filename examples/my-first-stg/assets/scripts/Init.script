@@ -1,0 +1,140 @@
+# Init 脚本
+# 初始化游戏世界和资源
+
+using gg::ecs;
+using gg::engine;
+
+# 游戏初始化
+system GameInitSystem {
+    micro execute(world: World): Result<()> {
+        # 初始化游戏状态
+        let game_state = game_state_manager.init_game_state(world);
+        
+        # 初始化玩家
+        let player = player_controller.init_player(world, "Player", [400.0, 500.0]);
+        
+        # 初始化敌人
+        spawn_enemies(world, 1);
+        
+        # 注册一次性系统，只执行一次
+        world.remove_system("GameInitSystem");
+        
+        return Ok()
+    }
+}
+
+# 生成敌人
+micro spawn_enemies(world: World, wave: i32) {
+    # 根据波次生成敌人
+    let enemy_count = 5 + wave * 2;
+    let spacing = 800.0 / (enemy_count + 1);
+    
+    loop i in 0..enemy_count {
+        let x = spacing * (i + 1);
+        let y = -50.0;
+        let move_patterns = ["straight", "zigzag", "circle"];
+        let move_pattern = move_patterns[i % move_patterns.length];
+        enemy_controller.init_enemy(world, "Enemy " + (i + 1), [x, y], move_pattern);
+    }
+}
+
+# 碰撞检测系统
+system CollisionSystem {
+    micro execute(world: World): Result<()> {
+        # 获取玩家实体
+        let player_query: Query<Player> = world.query("Player");
+        let player = null;
+        loop entity, p in player_query.iter() {
+            player = p;
+            break;
+        }
+        
+        if player != null {
+            # 获取敌人实体
+            let enemy_query: Query<Enemy> = world.query("Enemy");
+            loop entity, enemy in enemy_query.iter() {
+                # 简单的碰撞检测
+                if check_collision(player, enemy) {
+                    # 玩家与敌人碰撞
+                    handle_collision(world, player, enemy);
+                }
+            }
+        }
+        
+        return Ok()
+    }
+}
+
+# 检查碰撞
+micro check_collision(player: Player, enemy: Enemy): Bool {
+    # 简单的圆形碰撞检测
+    let dx = player.position[0] - enemy.position[0];
+    let dy = player.position[1] - enemy.position[1];
+    let distance = sqrt(dx * dx + dy * dy);
+    return distance < 30.0;  # 碰撞半径
+}
+
+# 处理碰撞
+micro handle_collision(world: World, player: Player, enemy: Enemy) {
+    # 玩家和敌人碰撞
+    player_controller.take_damage(player, 20);
+    enemy_controller.take_damage(enemy, 100);  # 立即消灭敌人
+    
+    # 减少生命
+    let game_state_query: Query<GameState> = world.query("GameState");
+    loop entity, game_state in game_state_query.iter() {
+        game_state_manager.lose_life(game_state);
+    }
+}
+
+# 波次管理系统
+system WaveSystem {
+    micro execute(world: World): Result<()> {
+        # 检查是否所有敌人都被消灭
+        let enemy_query: Query<Enemy> = world.query("Enemy");
+        let enemy_count = 0;
+        loop entity, enemy in enemy_query.iter() {
+            enemy_count += 1;
+        }
+        
+        if enemy_count == 0 {
+            # 所有敌人都被消灭，进入下一波
+            let game_state_query: Query<GameState> = world.query("GameState");
+            loop entity, game_state in game_state_query.iter() {
+                game_state_manager.next_wave(game_state);
+                spawn_enemies(world, game_state.wave);
+            }
+        }
+        
+        return Ok()
+    }
+}
+
+# 输入处理系统
+system InputSystem {
+    micro execute(world: World): Result<()> {
+        # 处理暂停游戏
+        if input.is_key_pressed("P") {
+            toggle_pause(world);
+        }
+        
+        # 处理重置游戏
+        if input.is_key_pressed("R") {
+            reset_game(world);
+        }
+        
+        return Ok()
+    }
+}
+
+# 切换暂停状态
+micro toggle_pause(world: World) {
+    # 这里可以添加暂停游戏的逻辑
+    console::log("Pausing game...");
+}
+
+# 重置游戏
+micro reset_game(world: World) {
+    # 这里可以添加重置游戏的逻辑
+    console::log("Resetting game...");
+}

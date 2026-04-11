@@ -4,3 +4,8 @@
 //! 提供项目资源目录浏览、文件导入和引用查找功能
 
 pub mod panel;
+
+pub use panel::{
+    filter_tree, AssetBrowserPanel, AssetMetadata, AssetReference, AssetType, DirectoryNode,
+    PendingImport,
+};

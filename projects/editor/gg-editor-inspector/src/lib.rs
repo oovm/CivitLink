@@ -9,7 +9,7 @@ pub mod descriptor;
 pub mod editor;
 pub mod panel;
 
-pub use binding::{EcsPropertyBinding, PropertyBinding, PropertyStore, SetPropertyCommand};
+pub use binding::{EcsPropertyBinding, PropertyBinding, PropertyStore, ReflectionPropertyBinding, SetPropertyCommand};
 pub use controls::create_property_control;
 pub use descriptor::{ComponentDescriptor, DescriptorRegistry, PropertyConstraints, PropertyDescriptor, PropertyType};
 pub use editor::{

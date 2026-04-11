@@ -6,7 +6,7 @@ use std::{
 };
 
 use gg_render::{Color, RenderContext, Renderer};
-use gg_ui::{FontStyle, LayoutStyle, SizeValue, Style, UiNodeData, UiNodeId, UiRenderer, UiTree};
+use gg_ui::{FontStyle, LayoutEngine, LayoutStyle, Overflow, SizeValue, Style, UiNodeData, UiNodeId, UiRenderer, UiTree};
 
 use crate::{EventContext, EventPhase, GuiEvent, GuiRenderer, TemplateNode, VxComponent};
 
@@ -172,6 +172,8 @@ impl GuiRenderer for GuiRendererAdapter {
 
         self.ui_tree = tree;
         self.component_map = component_map;
+
+        LayoutEngine::compute(&mut self.ui_tree, self.viewport_width as f32, self.viewport_height as f32);
 
         let mut render_context = RenderContext::new(self.viewport_width, self.viewport_height);
         UiRenderer::render(&self.ui_tree, &mut render_context);
@@ -410,6 +412,22 @@ fn extract_attributes(
             "class" => {
                 node_class = Some(value.clone());
             }
+            "direction" | "orientation" => {
+                let dir = match value.as_str() {
+                    "row" | "horizontal" => gg_ui::FlexDirection::Row,
+                    _ => gg_ui::FlexDirection::Column,
+                };
+                style.layout.direction = dir;
+            }
+            "gap" => {
+                if let Ok(g) = value.parse::<f32>() {
+                    style.layout.gap = g;
+                }
+            }
+            "padding" => {
+                let px = value.trim().trim_end_matches("px").trim().parse().unwrap_or(0.0);
+                style.layout.padding = px;
+            }
             _ => {}
         }
     }
@@ -424,17 +442,25 @@ fn default_style_for_tag(tag: &str) -> Style {
             .with_border_color(Color::new(0.5, 0.5, 0.5, 1.0))
             .with_border_width(1.0)
             .with_corner_radius(4.0)
-            .with_font(FontStyle::new()),
+            .with_font(FontStyle::new())
+            .with_layout(LayoutStyle::new().with_padding(6.0)),
         "Panel" => Style::new()
             .with_background_color(Color::new(0.15, 0.15, 0.15, 1.0))
             .with_border_color(Color::new(0.3, 0.3, 0.3, 1.0))
-            .with_border_width(1.0),
+            .with_border_width(1.0)
+            .with_layout(LayoutStyle::new().with_padding(8.0)),
         "Input" => Style::new()
             .with_background_color(Color::new(0.1, 0.1, 0.1, 1.0))
             .with_border_color(Color::new(0.4, 0.4, 0.4, 1.0))
             .with_border_width(1.0)
-            .with_font(FontStyle::new()),
+            .with_font(FontStyle::new())
+            .with_layout(LayoutStyle::new().with_padding(4.0)),
+        "ScrollView" => Style::new()
+            .with_overflow(Overflow::Clip)
+            .with_layout(LayoutStyle::new().with_direction(gg_ui::FlexDirection::Column)),
         "Layout" => Style::new()
+            .with_layout(LayoutStyle::new().with_direction(gg_ui::FlexDirection::Column)),
+        "Stack" => Style::new()
             .with_layout(LayoutStyle::new().with_direction(gg_ui::FlexDirection::Column)),
         "Text" => Style::new().with_font(FontStyle::new()),
         _ => Style::new(),

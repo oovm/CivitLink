@@ -321,6 +321,14 @@ pub struct SavePanel {
     node_id: Option<UiNodeId>,
     /// 内容区域节点 ID
     content_node_id: Option<UiNodeId>,
+    /// 保存按钮节点 ID
+    save_button_node_id: Option<UiNodeId>,
+    /// 加载按钮节点 ID
+    load_button_node_id: Option<UiNodeId>,
+    /// 删除按钮节点 ID
+    delete_button_node_id: Option<UiNodeId>,
+    /// 当前选中的存档槽位
+    pub selected_slot: Option<u32>,
 }
 
 impl SavePanel {
@@ -356,6 +364,10 @@ impl SavePanel {
             on_delete: None,
             node_id: None,
             content_node_id: None,
+            save_button_node_id: None,
+            load_button_node_id: None,
+            delete_button_node_id: None,
+            selected_slot: None,
         }
     }
 
@@ -408,6 +420,15 @@ impl SavePanel {
             slot_widget.screenshot_texture_id = None;
         }
     }
+
+    /// 选中指定存档槽位
+    ///
+    /// # 参数
+    ///
+    /// - `slot` - 存档槽位号
+    pub fn select_slot(&mut self, slot: u32) {
+        self.selected_slot = Some(slot);
+    }
 }
 
 impl Widget for SavePanel {
@@ -439,6 +460,88 @@ impl Widget for SavePanel {
         );
 
         tree.add_child(root_id, title_id);
+
+        let button_bar_style = Style::new()
+            .with_layout(
+                LayoutStyle::new()
+                    .with_direction(FlexDirection::Row)
+                    .with_gap(8.0)
+                    .with_padding(4.0),
+            );
+
+        let button_bar_id = tree.create_node(
+            "SavePanel_ButtonBar",
+            button_bar_style,
+            UiNodeData::Container,
+        );
+
+        let button_bg_style = Style::new()
+            .with_background_color(gg_render::Color::new(0.2, 0.2, 0.2, 1.0))
+            .with_border_color(gg_render::Color::new(0.4, 0.4, 0.4, 1.0))
+            .with_border_width(1.0)
+            .with_corner_radius(4.0)
+            .with_layout(
+                LayoutStyle::new()
+                    .with_padding(8.0),
+            );
+
+        let button_text_style = Style::new()
+            .with_font(FontStyle::new().with_size(14.0).with_color(gg_render::Color::WHITE));
+
+        match self.mode {
+            SavePanelMode::Save => {
+                let save_btn_id = tree.create_node(
+                    "SavePanel_SaveButton",
+                    button_bg_style.clone(),
+                    UiNodeData::Container,
+                );
+                let save_label_id = tree.create_node(
+                    "SavePanel_SaveButton_Label",
+                    button_text_style.clone(),
+                    UiNodeData::Text {
+                        content: String::from("Save"),
+                    },
+                );
+                tree.add_child(save_btn_id, save_label_id);
+                tree.add_child(button_bar_id, save_btn_id);
+                self.save_button_node_id = Some(save_btn_id);
+            }
+            SavePanelMode::Load => {
+                let load_btn_id = tree.create_node(
+                    "SavePanel_LoadButton",
+                    button_bg_style.clone(),
+                    UiNodeData::Container,
+                );
+                let load_label_id = tree.create_node(
+                    "SavePanel_LoadButton_Label",
+                    button_text_style.clone(),
+                    UiNodeData::Text {
+                        content: String::from("Load"),
+                    },
+                );
+                tree.add_child(load_btn_id, load_label_id);
+                tree.add_child(button_bar_id, load_btn_id);
+                self.load_button_node_id = Some(load_btn_id);
+            }
+        }
+
+        let delete_btn_id = tree.create_node(
+            "SavePanel_DeleteButton",
+            button_bg_style,
+            UiNodeData::Container,
+        );
+        let delete_label_id = tree.create_node(
+            "SavePanel_DeleteButton_Label",
+            button_text_style,
+            UiNodeData::Text {
+                content: String::from("Delete"),
+            },
+        );
+        tree.add_child(delete_btn_id, delete_label_id);
+        tree.add_child(button_bar_id, delete_btn_id);
+        self.delete_button_node_id = Some(delete_btn_id);
+
+        tree.add_child(root_id, button_bar_id);
 
         let content_style = Style::new()
             .with_layout(

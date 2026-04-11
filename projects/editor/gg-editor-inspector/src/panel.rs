@@ -4,7 +4,7 @@
 //! 通过描述符注册表和编辑器注册表驱动属性显示和编辑，
 //! 使用命令管理器实现撤销/重做功能。
 //! 支持实体选中/取消选中事件驱动的属性面板更新，
-//! 通过 `PropertyStore` 资源和 `EcsPropertyBinding` 实现 ECS 世界与检查器面板的双向数据绑定。
+//! 通过 `PropertyStore` 资源和 `ReflectionPropertyBinding` 实现 ECS 世界与检查器面板的双向数据绑定。
 
 use std::{cell::RefCell, rc::Rc};
 
@@ -17,7 +17,7 @@ use gg_editor_shell::{
 use gg_ui::{Style, UiNodeData, UiTree};
 
 use crate::{
-    binding::{EcsPropertyBinding, PropertyBinding},
+    binding::{PropertyBinding, ReflectionPropertyBinding},
     descriptor::{ComponentDescriptor, DescriptorRegistry, PropertyConstraints, PropertyDescriptor, PropertyType},
     editor::{
         AssetPathEditorFactory, BoolEditorFactory, ColorEditorFactory, EnumEditorFactory, NumericEditorFactory,
@@ -36,7 +36,7 @@ pub struct ActivePropertyEntry {
     /// 属性名称
     pub property_name: String,
     /// 属性绑定，用于读写 ECS 世界中的属性值
-    pub binding: EcsPropertyBinding,
+    pub binding: Box<dyn PropertyBinding>,
     /// 属性编辑器组件
     pub editor: Box<dyn PropertyEditorWidget>,
 }
@@ -46,7 +46,7 @@ pub struct ActivePropertyEntry {
 /// 基于属性描述符的动态属性编辑面板，通过描述符注册表查询组件属性结构，
 /// 通过编辑器注册表创建对应的属性编辑器组件，使用命令管理器实现撤销/重做。
 /// 订阅实体选中/取消选中事件，动态更新面板内容。
-/// 通过 `PropertyStore` 资源和 `EcsPropertyBinding` 实现 ECS 世界与检查器面板的双向数据绑定。
+/// 通过 `PropertyStore` 资源和 `ReflectionPropertyBinding` 实现 ECS 世界与检查器面板的双向数据绑定。
 pub struct InspectorPanel {
     /// 面板是否可见
     visible: bool,
@@ -151,7 +151,7 @@ impl InspectorPanel {
             .collect();
 
         for (component_type, property_name, new_value) in pending {
-            let binding = Box::new(EcsPropertyBinding::new(component_type.clone(), property_name.clone()));
+            let binding = Box::new(ReflectionPropertyBinding::new(component_type.clone(), property_name.clone()));
             let description = format!("修改 {}.{}", component_type, property_name);
             let command = crate::binding::SetPropertyCommand::new(binding, entity, new_value, description);
             context.execute_command(Box::new(command));
@@ -181,7 +181,7 @@ impl InspectorPanel {
             None => return,
         };
 
-        let binding = Box::new(EcsPropertyBinding::new(component_type.to_string(), property_name.to_string()));
+        let binding = Box::new(ReflectionPropertyBinding::new(component_type.to_string(), property_name.to_string()));
         let description = format!("修改 {}.{}", component_type, property_name);
         let command = crate::binding::SetPropertyCommand::new(binding, entity, new_value.clone(), description);
         context.execute_command(Box::new(command));
@@ -197,7 +197,7 @@ impl InspectorPanel {
 
     /// 从 ECS 世界读取属性值并设置到编辑器
     ///
-    /// 通过 `EcsPropertyBinding` 从 `PropertyStore` 资源中读取当前属性值，
+    /// 通过 `ReflectionPropertyBinding` 从 `PropertyStore` 资源中读取当前属性值，
     /// 若 `PropertyStore` 中无对应值则使用描述符中的默认值，
     /// 然后调用编辑器的 `set_value()` 方法设置初始值。
     fn read_property_values(&mut self, world: &mut World) {
@@ -533,10 +533,10 @@ impl EditorPanel for InspectorPanel {
                         );
                         ui_tree.add_child(section_id, prop_id);
 
-                        let binding = EcsPropertyBinding::new(
+                        let binding = Box::new(ReflectionPropertyBinding::new(
                             component_desc.type_name.clone(),
                             property.name.clone(),
-                        );
+                        ));
 
                         self.active_entries.push(ActivePropertyEntry {
                             component_type: component_desc.type_name.clone(),

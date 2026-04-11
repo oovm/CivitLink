@@ -53,11 +53,6 @@ impl GgShaderCompiler {
             message: format!("解析 gs 源码失败: {:?}", e),
         })?;
 
-        println!("解析到的项数量: {}", root.items.len());
-        for (i, item) in root.items.iter().enumerate() {
-            println!("项 {}: {:?}", i, item);
-        }
-
         let shader = root.items.iter().find_map(|item| match item {
             oak_valkyrie::ast::StatementNode::Shader(shader) => Some(shader),
             _ => None,

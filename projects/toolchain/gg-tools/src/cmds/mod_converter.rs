@@ -1,122 +1,204 @@
+#![warn(missing_docs)]
+
 //! `gg mod-converter` 命令实现
 //!
-//! WASM Mod 脚本转换为 Valkyrie 脚本的工具
+//! WASM 模块检查与转换工具
 
-use crate::GResult;
-use std::{io, path::Path};
+use crate::{GError, GErrorKind, GResult};
+use std::path::Path;
+
+/// WASM 文件魔数（\0asm）
+const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6D];
+
+/// WASM 模块版本号（1.0）
+const WASM_VERSION: [u8; 4] = [0x01, 0x00, 0x00, 0x00];
+
+/// WASM section ID 到名称的映射
+fn section_name(id: u8) -> &'static str {
+    match id {
+        0 => "custom",
+        1 => "type",
+        2 => "import",
+        3 => "function",
+        4 => "table",
+        5 => "memory",
+        6 => "global",
+        7 => "export",
+        8 => "start",
+        9 => "element",
+        10 => "code",
+        11 => "data",
+        12 => "data count",
+        _ => "unknown",
+    }
+}
+
+/// WASM 模块检查结果
+pub struct WasmInspection {
+    /// 文件大小（字节）
+    pub file_size: u64,
+    /// WASM 版本号
+    pub version: u32,
+    /// section 数量
+    pub section_count: usize,
+    /// 各 section 的简要信息
+    pub sections: Vec<WasmSectionInfo>,
+}
+
+/// WASM section 简要信息
+pub struct WasmSectionInfo {
+    /// section ID
+    pub id: u8,
+    /// section 名称
+    pub name: &'static str,
+    /// section 大小（字节）
+    pub size: usize,
+}
 
 /// 执行 `mod-converter` 子命令
 ///
-/// WASM Mod 脚本转换为 Valkyrie 脚本的工具
+/// 检查 WASM 模块文件的基本信息，包括文件大小、WASM 版本和 section 列表。
+/// 如果未提供路径参数，则打印使用说明。
 pub fn cmd_mod_converter(wasm_path: Option<&str>) -> GResult<()> {
-    println!("GG Game Engine - WASM Mod 脚本转换工具");
-    println!("====================================");
-    println!();
-    println!("此工具帮助您将 WASM Mod 脚本转换为 Valkyrie 脚本");
-    println!();
-
-    print_conversion_guide();
-
-    println!();
-
-    let path_to_check = if let Some(path) = wasm_path {
-        path.to_string()
-    }
-    else {
-        println!("请输入 WASM 模块路径（或按 Enter 跳过）:");
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-        input.trim().to_string()
+    let path_str = match wasm_path {
+        Some(p) => p,
+        None => {
+            print_usage();
+            return Ok(());
+        }
     };
 
-    let path_to_check = path_to_check.as_str();
+    let path = Path::new(path_str);
+    if !path.exists() {
+        return Err(GError {
+            kind: GErrorKind::Runtime,
+            message: format!("WASM module file not found: {}", path_str),
+        });
+    }
 
-    if !path_to_check.is_empty() {
-        if Path::new(path_to_check).exists() {
-            println!("已找到 WASM 模块，开始分析...");
-            println!("分析完成，生成转换建议...");
-        }
-        else {
-            println!("错误：WASM 模块文件不存在");
+    let inspection = inspect_wasm(path)?;
+
+    println!("WASM Module Inspection");
+    println!("======================");
+    println!();
+    println!("  File:       {}", path.display());
+    println!("  Size:       {} bytes", inspection.file_size);
+    println!("  Version:    {}.{}", inspection.version, 0);
+    println!("  Sections:   {}", inspection.section_count);
+    println!();
+
+    if !inspection.sections.is_empty() {
+        println!("  {:<4} {:<12} {:<10}", "ID", "Name", "Size");
+        println!("  {:<4} {:<12} {:<10}", "--", "----", "----");
+        for sec in &inspection.sections {
+            println!(
+                "  {:<4} {:<12} {:<10}",
+                sec.id, sec.name, sec.size
+            );
         }
     }
 
-    println!();
-    println!("转换工具使用完成，祝您转换顺利！");
     Ok(())
 }
 
-/// 打印转换指南
-fn print_conversion_guide() {
-    println!("转换指南:");
-    println!("=============");
+/// 打印使用说明
+fn print_usage() {
+    println!("GG Game Engine - WASM Module Inspector");
+    println!("=======================================");
     println!();
-    println!("1. 基本结构转换:");
-    println!("   WASM 模块结构:");
-    println!("   (module");
-    println!("   (import \"env\" \"print\" (func $print (param i32 i32)))");
-    println!("   (import \"env\" \"create_entity\" (func $create_entity (result i32)))");
+    println!("Usage: gg mod-converter <wasm-path>");
     println!();
-    println!("   (memory 1)");
+    println!("Inspects a WASM module file and displays basic information:");
+    println!("  - File size");
+    println!("  - WASM version");
+    println!("  - Number of sections and their details");
     println!();
-    println!("   (data (i32.const 0) \"Hello from script!\")");
-    println!();
-    println!("   (func (export \"init\")");
-    println!("       (call $print (i32.const 0) (i32.const 18))");
-    println!("       (call $create_entity)");
-    println!("       drop");
-    println!("   )");
-    println!();
-    println!("   (func (export \"update\") (param $delta f32)");
-    println!("   )");
-    println!("   )");
-    println!();
-    println!("   转换为 Valkyrie 脚本:");
-    println!("   // 初始化函数");
-    println!("   function init() {{");
-    println!("       print(\"Hello from script!\");");
-    println!("       spawn_entity();");
-    println!("   }}");
-    println!();
-    println!("   // 更新函数");
-    println!("   function update(delta: float) {{");
-    println!("   }}");
-    println!();
-    println!("2. API 映射:");
-    println!("   WASM 导入函数 -> Valkyrie 全局函数");
-    println!("   - create_entity() -> spawn_entity()");
-    println!("   - print() -> print()");
-    println!("   - add_component() -> add_component()");
-    println!("   - get_component_field() -> get_field()");
-    println!("   - set_component_field() -> set_field()");
-    println!();
-    println!("3. 类型转换:");
-    println!("   WASM 类型 -> Valkyrie 类型");
-    println!("   - i32 -> int");
-    println!("   - f32 -> float");
-    println!("   - i8* -> string");
-    println!();
-    println!("4. 内存操作:");
-    println!("   WASM 内存操作 -> Valkyrie 字符串/数组操作");
-    println!("   - 内存加载字符串 -> 直接使用字符串字面量");
-    println!();
-    println!("5. 示例转换:");
-    println!("   WASM 示例:");
-    println!("   (func (export \"init\")");
-    println!("       (call $print (i32.const 0) (i32.const 18))");
-    println!("       (call $create_entity)");
-    println!("       drop");
-    println!("   )");
-    println!();
-    println!("   Valkyrie 示例:");
-    println!("   function init() {{");
-    println!("       print(\"Hello from script!\");");
-    println!("       spawn_entity();");
-    println!("   }}");
-    println!();
-    println!("6. 注意事项:");
-    println!("   - Valkyrie 脚本使用更简洁的语法");
-    println!("   - 不需要手动管理内存");
-    println!("   - API 调用更直观");
-    println!("   - 支持更丰富的语言特性");
+    println!("Example:");
+    println!("  gg mod-converter ./my_module.wasm");
+}
+
+/// 检查 WASM 模块文件
+///
+/// 读取文件内容，验证 WASM 魔数和版本号，解析 section 列表。
+fn inspect_wasm(path: &Path) -> GResult<WasmInspection> {
+    let data = std::fs::read(path).map_err(|e| GError {
+        kind: GErrorKind::Io,
+        message: format!("Failed to read WASM file '{}': {}", path.display(), e),
+    })?;
+
+    let file_size = data.len() as u64;
+
+    if data.len() < 8 {
+        return Err(GError {
+            kind: GErrorKind::Runtime,
+            message: "Invalid WASM file: too short to contain header".to_string(),
+        });
+    }
+
+    if data[0..4] != WASM_MAGIC {
+        return Err(GError {
+            kind: GErrorKind::Runtime,
+            message: format!(
+                "Invalid WASM file: bad magic number (expected \\0asm, got {:02x?})",
+                &data[0..4]
+            ),
+        });
+    }
+
+    let version = u32::from_le_bytes([data[4], data[5], data[6], data[7]]);
+    if data[4..8] != WASM_VERSION {
+        return Err(GError {
+            kind: GErrorKind::Runtime,
+            message: format!(
+                "Unsupported WASM version: {} (only version 1 is supported)",
+                version
+            ),
+        });
+    }
+
+    let mut sections = Vec::new();
+    let mut offset = 8usize;
+
+    while offset < data.len() {
+        let section_id = data[offset];
+        offset += 1;
+
+        let (section_size, bytes_consumed) = read_leb128_u32(&data[offset..]);
+        offset += bytes_consumed;
+
+        sections.push(WasmSectionInfo {
+            id: section_id,
+            name: section_name(section_id),
+            size: section_size as usize,
+        });
+
+        offset += section_size as usize;
+    }
+
+    Ok(WasmInspection {
+        file_size,
+        version,
+        section_count: sections.len(),
+        sections,
+    })
+}
+
+/// 读取 LEB128 编码的无符号 32 位整数
+///
+/// 返回解码后的值和消耗的字节数。
+fn read_leb128_u32(data: &[u8]) -> (u32, usize) {
+    let mut result: u32 = 0;
+    let mut shift: u32 = 0;
+    let mut bytes_consumed = 0;
+
+    for &byte in data {
+        bytes_consumed += 1;
+        result |= ((byte & 0x7F) as u32) << shift;
+        if byte & 0x80 == 0 {
+            break;
+        }
+        shift += 7;
+    }
+
+    (result, bytes_consumed)
 }

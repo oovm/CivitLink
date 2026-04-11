@@ -60,6 +60,7 @@ futures = "0.3.0"
 softbuffer = "0.4.0"
 tiny-skia = "0.12.0"
 naga = { version = "29.0.1", features = ["wgsl-in", "wgsl-out"] }
+indexmap = "2"
 piet-common = "0.7"
 kurbo = "0.11"
 ttf-parser = "0.24"

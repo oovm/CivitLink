@@ -3,53 +3,184 @@
 
 using gg::ecs;
 using gg::dialogue;
+using gg::signal;
+using gg::engine;
+
+# 对话组件
+component Dialogue {
+    current_node_id: String,
+    is_active: Bool,
+    events on_dialogue_start: micro(node_id: String) -> (),  # 对话开始时触发
+    events on_dialogue_end: micro() -> (),                  # 对话结束时触发
+    events on_choice_made: micro(node_id: String, choice_id: String) -> ()  # 选择时触发 (节点ID, 选择ID)
+}
 
 # 对话系统扩展
 system EnhancedDialogueSystem {
     micro execute(world: World): Result<()> {
-        # 获取对话历史
-        let dialogue_history: dialogue::DialogueHistory = world.get_resource("DialogueHistory");
-        
-        # 处理对话逻辑
-        if dialogue_history.current_node_id != null {
-            process_dialogue_node(world, dialogue_history.current_node_id);
-        }
-        
-        # 处理选择
-        let choice_state: dialogue::ChoiceState = world.get_resource("ChoiceState");
-        if choice_state.is_active && choice_state.selected_index != null {
-            handle_choice(world, choice_state.selected_index);
+        # 获取对话实体
+        let dialogue_query: Query<Dialogue> = world.query("Dialogue");
+        loop entity, dialogue in dialogue_query.iter() {
+            if dialogue.is_active {
+                # 处理对话逻辑
+                dialogue_manager.process_dialogue(world, dialogue);
+            }
         }
         
         return Ok()
     }
 }
 
-# 处理对话节点
-micro process_dialogue_node(world: World, node_id: String) {
-    # 处理对话节点逻辑
-    # 例如：根据节点 ID 执行不同的游戏逻辑
-}
-
-# 处理玩家选择
-micro handle_choice(world: World, choice_index: Int) {
-    # 获取选择状态
-    let choice_state: dialogue.ChoiceState = world.get_resource("ChoiceState");
+# 对话管理器
+class DialogueManager {
+    # 初始化对话系统
+    micro init_dialogue(world: World): Dialogue {
+        let dialogue_entity = world.spawn();
+        let dialogue = dialogue_entity.add_component("Dialogue", {
+            current_node_id: "",
+            is_active: false
+        });
+        
+        # 注册事件监听器
+        dialogue.on_dialogue_start.subscribe(micro(node_id: String) {
+            on_dialogue_start_handler(world, node_id);
+        });
+        
+        dialogue.on_dialogue_end.subscribe(micro() {
+            on_dialogue_end_handler(world);
+        });
+        
+        dialogue.on_choice_made.subscribe(micro(node_id: String, choice_id: String) {
+            on_choice_made_handler(world, node_id, choice_id);
+        });
+        
+        return dialogue;
+    }
     
-    if choice_index < choice_state.choices.length {
-        let selected_choice: dialogue.Choice = choice_state.choices[choice_index];
+    # 处理对话
+    micro process_dialogue(world: World, dialogue: Dialogue) {
+        if dialogue.current_node_id != "" {
+            # 获取对话历史
+            let dialogue_history: dialogue::DialogueHistory = world.get_resource("DialogueHistory");
+            if dialogue_history.current_node_id != dialogue.current_node_id {
+                dialogue_history.current_node_id = dialogue.current_node_id;
+                # 触发对话开始事件
+                dialogue.on_dialogue_start(dialogue.current_node_id);
+            }
+            
+            # 处理对话节点
+            process_dialogue_node(world, dialogue, dialogue.current_node_id);
+        }
+    }
+    
+    # 处理对话节点
+    micro process_dialogue_node(world: World, dialogue: Dialogue, node_id: String) {
+        # 获取对话数据
+        let dialogue_data: dialogue::DialogueData = world.get_resource("DialogueData");
+        if node_id in dialogue_data.nodes {
+            let node = dialogue_data.nodes[node_id];
+            
+            # 显示对话
+            show_dialogue(world, node);
+            
+            # 处理选择
+            if node.choices.length > 0 {
+                # 显示选择项
+                show_choices(world, node.choices);
+            } else if node.next != null {
+                # 自动前进到下一个节点
+                dialogue.current_node_id = node.next;
+            } else {
+                # 对话结束
+                end_dialogue(world, dialogue);
+            }
+        }
+    }
+    
+    # 显示对话
+    micro show_dialogue(world: World, node: dialogue::DialogueNode) {
+        # 这里可以添加显示对话的逻辑
+        console::log("Dialogue: " + node.text);
+        if node.speaker != "" {
+            console::log("Speaker: " + node.speaker);
+        }
+    }
+    
+    # 显示选择项
+    micro show_choices(world: World, choices: Array<dialogue::Choice>) {
+        # 这里可以添加显示选择项的逻辑
+        console::log("Choices:");
+        loop i, choice in choices {
+            console::log(i + 1 + ". " + choice.text);
+        }
+    }
+    
+    # 处理玩家选择
+    micro handle_choice(world: World, dialogue: Dialogue, choice_index: i32) {
+        # 获取对话数据
+        let dialogue_data: dialogue::DialogueData = world.get_resource("DialogueData");
+        if dialogue.current_node_id in dialogue_data.nodes {
+            let node = dialogue_data.nodes[dialogue.current_node_id];
+            
+            if choice_index < node.choices.length {
+                let choice = node.choices[choice_index];
+                
+                # 触发选择事件
+                dialogue.on_choice_made(dialogue.current_node_id, choice.id);
+                
+                # 处理选择结果
+                process_choice_result(world, dialogue, choice);
+            }
+        }
+    }
+    
+    # 处理选择结果
+    micro process_choice_result(world: World, dialogue: Dialogue, choice: dialogue::Choice) {
+        # 处理选择结果逻辑
+        console::log("Choice made: " + choice.text);
         
-        # 处理选择结果
-        process_choice_result(world, selected_choice);
-        
-        # 重置选择状态
-        choice_state.is_active = false;
-        choice_state.selected_index = null;
+        # 前进到下一个节点
+        if choice.next != null {
+            dialogue.current_node_id = choice.next;
+        } else {
+            # 对话结束
+            end_dialogue(world, dialogue);
+        }
+    }
+    
+    # 结束对话
+    micro end_dialogue(world: World, dialogue: Dialogue) {
+        dialogue.is_active = false;
+        dialogue.current_node_id = "";
+        # 触发对话结束事件
+        dialogue.on_dialogue_end();
+        console::log("Dialogue ended");
+    }
+    
+    # 开始对话
+    micro start_dialogue(world: World, dialogue: Dialogue, start_node_id: String) {
+        dialogue.current_node_id = start_node_id;
+        dialogue.is_active = true;
+    }
+    
+    # 对话开始处理
+    micro on_dialogue_start_handler(world: World, node_id: String) {
+        # 处理对话开始逻辑
+        console::log("Dialogue started: " + node_id);
+    }
+    
+    # 对话结束处理
+    micro on_dialogue_end_handler(world: World) {
+        # 处理对话结束逻辑
+        console::log("Dialogue ended");
+    }
+    
+    # 选择处理
+    micro on_choice_made_handler(world: World, node_id: String, choice_id: String) {
+        # 处理选择逻辑
+        console::log("Choice made in node " + node_id + ": " + choice_id);
     }
 }
 
-# 处理选择结果
-micro process_choice_result(world: World, choice: dialogue.Choice) {
-    # 处理选择结果逻辑
-    # 例如：更新游戏状态、触发事件等
-}
+# 全局对话管理器实例
+let dialogue_manager = DialogueManager();

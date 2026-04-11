@@ -146,6 +146,40 @@ impl DialogueEditorPanel {
         }
     }
 
+    /// 向编辑状态的命令列表末尾添加一条命令
+    ///
+    /// 添加后需调用 `apply_edit` 将变更写回节点。
+    pub fn add_command(&mut self, command: DialogueCommand) {
+        self.edit_state.editing_commands.push(command);
+    }
+
+    /// 从编辑状态的命令列表中移除指定索引的命令
+    ///
+    /// 如果索引越界则不做任何操作。
+    /// 移除后需调用 `apply_edit` 将变更写回节点。
+    pub fn remove_command(&mut self, index: usize) {
+        if index < self.edit_state.editing_commands.len() {
+            self.edit_state.editing_commands.remove(index);
+        }
+    }
+
+    /// 向编辑状态的选项列表末尾添加一个选项
+    ///
+    /// 添加后需调用 `apply_edit` 将变更写回节点。
+    pub fn add_choice(&mut self, choice: Choice) {
+        self.edit_state.editing_choices.push(choice);
+    }
+
+    /// 从编辑状态的选项列表中移除指定索引的选项
+    ///
+    /// 如果索引越界则不做任何操作。
+    /// 移除后需调用 `apply_edit` 将变更写回节点。
+    pub fn remove_choice(&mut self, index: usize) {
+        if index < self.edit_state.editing_choices.len() {
+            self.edit_state.editing_choices.remove(index);
+        }
+    }
+
     /// 将当前编辑状态应用回选中的节点
     ///
     /// 将编辑状态中的说话者、文本、命令和选项写回到脚本中对应的节点。
@@ -156,11 +190,16 @@ impl DialogueEditorPanel {
             None => return,
         };
 
+        let speaker_id = self.edit_state.editing_speaker_id.clone();
+        let text = self.edit_state.editing_text.clone();
+        let commands = self.edit_state.editing_commands.clone();
+        let choices = self.edit_state.editing_choices.clone();
+
         if let Some(node) = self.selected_node_mut() {
-            node.speaker_id = self.edit_state.editing_speaker_id.clone();
-            node.text = self.edit_state.editing_text.clone();
-            node.commands = self.edit_state.editing_commands.clone();
-            node.choices = self.edit_state.editing_choices.clone();
+            node.speaker_id = speaker_id;
+            node.text = text;
+            node.commands = commands;
+            node.choices = choices;
         }
 
         let _ = selected_id;
@@ -491,61 +530,107 @@ impl EditorPanel for DialogueEditorPanel {
             );
             ui_tree.add_child(section_id, text_id);
 
-            if !self.edit_state.editing_commands.is_empty() {
-                let cmd_header_style = Style::new().with_font(FontStyle::new().with_size(14.0));
-                let cmd_header_id = ui_tree.create_node(
-                    "prop_commands_header",
-                    cmd_header_style,
-                    UiNodeData::Text { content: "Commands".to_string() },
+            let cmd_header_style = Style::new().with_font(FontStyle::new().with_size(14.0));
+            let cmd_header_id = ui_tree.create_node(
+                "prop_commands_header",
+                cmd_header_style,
+                UiNodeData::Text { content: "Commands".to_string() },
+            );
+            ui_tree.add_child(section_id, cmd_header_id);
+
+            let cmd_list_style = Style::new()
+                .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column).with_gap(1.0));
+            let cmd_list_id = ui_tree.create_node("prop_commands_list", cmd_list_style, UiNodeData::Container);
+            ui_tree.add_child(section_id, cmd_list_id);
+
+            for (i, cmd) in self.edit_state.editing_commands.iter().enumerate() {
+                let cmd_row_style = Style::new()
+                    .with_layout(LayoutStyle::new().with_direction(FlexDirection::Row).with_gap(4.0));
+                let cmd_row_id = ui_tree.create_node(
+                    format!("prop_command_row_{}", i),
+                    cmd_row_style,
+                    UiNodeData::Container,
                 );
-                ui_tree.add_child(section_id, cmd_header_id);
+                ui_tree.add_child(cmd_list_id, cmd_row_id);
 
-                let cmd_list_style = Style::new()
-                    .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column).with_gap(1.0));
-                let cmd_list_id = ui_tree.create_node("prop_commands_list", cmd_list_style, UiNodeData::Container);
-                ui_tree.add_child(section_id, cmd_list_id);
+                let cmd_item_style = Style::new().with_font(FontStyle::new().with_size(12.0));
+                let cmd_item_id = ui_tree.create_node(
+                    format!("prop_command_{}", i),
+                    cmd_item_style,
+                    UiNodeData::Text { content: format_command(cmd) },
+                );
+                ui_tree.add_child(cmd_row_id, cmd_item_id);
 
-                for (i, cmd) in self.edit_state.editing_commands.iter().enumerate() {
-                    let cmd_item_style = Style::new().with_font(FontStyle::new().with_size(12.0));
-                    let cmd_item_id = ui_tree.create_node(
-                        format!("prop_command_{}", i),
-                        cmd_item_style,
-                        UiNodeData::Text { content: format_command(cmd) },
-                    );
-                    ui_tree.add_child(cmd_list_id, cmd_item_id);
-                }
+                let cmd_del_style = Style::new().with_font(FontStyle::new().with_size(12.0));
+                let cmd_del_id = ui_tree.create_node(
+                    format!("prop_command_del_{}", i),
+                    cmd_del_style,
+                    UiNodeData::Custom { kind: "button_delete_command".to_string() },
+                );
+                ui_tree.add_child(cmd_row_id, cmd_del_id);
             }
 
-            if !self.edit_state.editing_choices.is_empty() {
-                let choice_header_style = Style::new().with_font(FontStyle::new().with_size(14.0));
-                let choice_header_id = ui_tree.create_node(
-                    "prop_choices_header",
-                    choice_header_style,
-                    UiNodeData::Text { content: "Choices".to_string() },
+            let add_cmd_style = Style::new().with_font(FontStyle::new().with_size(12.0));
+            let add_cmd_id = ui_tree.create_node(
+                "btn_add_command",
+                add_cmd_style,
+                UiNodeData::Custom { kind: "button_add_command".to_string() },
+            );
+            ui_tree.add_child(cmd_list_id, add_cmd_id);
+
+            let choice_header_style = Style::new().with_font(FontStyle::new().with_size(14.0));
+            let choice_header_id = ui_tree.create_node(
+                "prop_choices_header",
+                choice_header_style,
+                UiNodeData::Text { content: "Choices".to_string() },
+            );
+            ui_tree.add_child(section_id, choice_header_id);
+
+            let choice_list_style = Style::new()
+                .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column).with_gap(1.0));
+            let choice_list_id =
+                ui_tree.create_node("prop_choices_list", choice_list_style, UiNodeData::Container);
+            ui_tree.add_child(section_id, choice_list_id);
+
+            for (i, choice) in self.edit_state.editing_choices.iter().enumerate() {
+                let choice_row_style = Style::new()
+                    .with_layout(LayoutStyle::new().with_direction(FlexDirection::Row).with_gap(4.0));
+                let choice_row_id = ui_tree.create_node(
+                    format!("prop_choice_row_{}", i),
+                    choice_row_style,
+                    UiNodeData::Container,
                 );
-                ui_tree.add_child(section_id, choice_header_id);
+                ui_tree.add_child(choice_list_id, choice_row_id);
 
-                let choice_list_style = Style::new()
-                    .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column).with_gap(1.0));
-                let choice_list_id =
-                    ui_tree.create_node("prop_choices_list", choice_list_style, UiNodeData::Container);
-                ui_tree.add_child(section_id, choice_list_id);
+                let choice_item_style = Style::new().with_font(FontStyle::new().with_size(12.0));
+                let condition_label = choice
+                    .condition
+                    .as_deref()
+                    .map(|c| format!(" [if: {}]", c))
+                    .unwrap_or_default();
+                let choice_item_id = ui_tree.create_node(
+                    format!("prop_choice_{}", i),
+                    choice_item_style,
+                    UiNodeData::Text { content: format!("{} -> {}{}", choice.text, choice.next_node_id, condition_label) },
+                );
+                ui_tree.add_child(choice_row_id, choice_item_id);
 
-                for (i, choice) in self.edit_state.editing_choices.iter().enumerate() {
-                    let choice_item_style = Style::new().with_font(FontStyle::new().with_size(12.0));
-                    let condition_label = choice
-                        .condition
-                        .as_deref()
-                        .map(|c| format!(" [if: {}]", c))
-                        .unwrap_or_default();
-                    let choice_item_id = ui_tree.create_node(
-                        format!("prop_choice_{}", i),
-                        choice_item_style,
-                        UiNodeData::Text { content: format!("{} -> {}{}", choice.text, choice.next_node_id, condition_label) },
-                    );
-                    ui_tree.add_child(choice_list_id, choice_item_id);
-                }
+                let choice_del_style = Style::new().with_font(FontStyle::new().with_size(12.0));
+                let choice_del_id = ui_tree.create_node(
+                    format!("prop_choice_del_{}", i),
+                    choice_del_style,
+                    UiNodeData::Custom { kind: "button_delete_choice".to_string() },
+                );
+                ui_tree.add_child(choice_row_id, choice_del_id);
             }
+
+            let add_choice_style = Style::new().with_font(FontStyle::new().with_size(12.0));
+            let add_choice_id = ui_tree.create_node(
+                "btn_add_choice",
+                add_choice_style,
+                UiNodeData::Custom { kind: "button_add_choice".to_string() },
+            );
+            ui_tree.add_child(choice_list_id, add_choice_id);
 
             let apply_btn_style = Style::new().with_font(FontStyle::new().with_size(13.0));
             let apply_btn_id = ui_tree.create_node(

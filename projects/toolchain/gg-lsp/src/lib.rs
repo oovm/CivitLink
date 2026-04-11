@@ -24,7 +24,7 @@ pub use semantic::{
 #[cfg(feature = "lsp")]
 mod lang {
     use oak_core::language::{
-        ElementRole, ElementType, Language, LanguageCategory, TokenRole, TokenType,
+        ElementType, Language, LanguageCategory, TokenType,
         UniversalElementRole, UniversalTokenRole,
     };
     use std::hash::Hash;
@@ -178,7 +178,7 @@ impl<V: Vfs> GgLanguageService<V> {
     /// 分析指定 URI 的源码，返回语义分析结果。
     pub fn analyze_source(&self, uri: &str) -> Option<SemanticResult> {
         let src = self.vfs.get_source(uri)?;
-        let text = src.get_text_in(Range::new(0, src.length())).into_owned();
+        let text = src.get_text_in(Range { start: 0, end: src.length() }).into_owned();
         let mut analyzer = self.analyzer.lock().ok()?;
         Some(analyzer.analyze(&text))
     }
@@ -198,11 +198,9 @@ impl<V: Vfs + Send + Sync + 'static + oak_vfs::WritableVfs> LanguageService for 
         async move { None }
     }
     fn hover(&self, uri: &str, range: Range<usize>) -> impl Future<Output = Option<LspHover>> + Send + '_ {
-        let src = self.vfs.get_source(uri).map(|s| s.get_text_in(Range::new(0, s.length())).into_owned());
-        let analyzer = self.analyzer.lock().ok();
-        async move {
-            let source = src?;
-            let analyzer = analyzer?;
+        let src = self.vfs.get_source(uri).map(|s| s.get_text_in(Range { start: 0, end: s.length() }).into_owned());
+        let hover_result = self.analyzer.lock().ok().and_then(|analyzer| {
+            let source = src.as_ref()?;
             let start = range.start;
             let mut line = 0;
             let mut col = 0;
@@ -218,10 +216,13 @@ impl<V: Vfs + Send + Sync + 'static + oak_vfs::WritableVfs> LanguageService for 
                     col += 1;
                 }
             }
-            let hover_info = analyzer.get_hover_info(line, col, &source)?;
+            analyzer.get_hover_info(line, col, source)
+        });
+        async move {
+            let hover_info = hover_result?;
             Some(LspHover {
                 contents: hover_info.contents,
-                range: hover_info.range.map(|(s, e)| Range::new(s, e)),
+                range: hover_info.range.map(|(s, e)| Range { start: s, end: e }),
             })
         }
     }

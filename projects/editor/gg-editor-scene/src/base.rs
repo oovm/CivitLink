@@ -109,6 +109,10 @@ pub struct BaseSceneView {
     drag_entity_start_pos: (f32, f32),
     /// 当前被拖拽的实体
     dragged_entity: Option<Entity>,
+    /// 场景渲染目标名称
+    render_target_name: String,
+    /// 待提交的场景绘制命令
+    render_commands: Vec<DrawCommand>,
 }
 
 impl BaseSceneView {
@@ -131,6 +135,8 @@ impl BaseSceneView {
             drag_start_screen: (0.0, 0.0),
             drag_entity_start_pos: (0.0, 0.0),
             dragged_entity: None,
+            render_target_name: "scene_view".to_string(),
+            render_commands: Vec::new(),
         }
     }
 
@@ -142,6 +148,16 @@ impl BaseSceneView {
     /// 获取视口状态可变引用
     pub fn viewport_mut(&mut self) -> &mut ViewportState {
         &mut self.viewport
+    }
+
+    /// 获取渲染目标名称
+    pub fn render_target_name(&self) -> &str {
+        &self.render_target_name
+    }
+
+    /// 设置渲染目标名称
+    pub fn set_render_target_name(&mut self, name: String) {
+        self.render_target_name = name;
     }
 
     /// 获取选中的实体列表
@@ -201,6 +217,32 @@ impl BaseSceneView {
     /// 将指定缩放因子和中心点传递给视口的 `zoom_to` 方法。
     pub fn zoom_viewport(&mut self, factor: f32, center: (f32, f32)) {
         self.viewport.zoom_to(factor, center);
+    }
+
+    /// 重置视口到默认状态
+    pub fn reset_viewport(&mut self) {
+        self.viewport = ViewportState::new();
+    }
+
+    /// 放大视口
+    ///
+    /// 以视口中心为缩放中心，按 ZOOM_STEP 因子放大。
+    pub fn zoom_in(&mut self) {
+        let center = (self.viewport.size.0 / 2.0, self.viewport.size.1 / 2.0);
+        self.viewport.zoom_to(ZOOM_STEP, center);
+    }
+
+    /// 缩小视口
+    ///
+    /// 以视口中心为缩放中心，按 1/ZOOM_STEP 因子缩小。
+    pub fn zoom_out(&mut self) {
+        let center = (self.viewport.size.0 / 2.0, self.viewport.size.1 / 2.0);
+        self.viewport.zoom_to(1.0 / ZOOM_STEP, center);
+    }
+
+    /// 切换网格可见性
+    pub fn toggle_grid(&mut self) {
+        self.grid_visible = !self.grid_visible;
     }
 
     /// 处理鼠标中键按下
@@ -370,6 +412,25 @@ impl BaseSceneView {
 
         self.render_grid(context);
         self.render_selection_overlay(context);
+    }
+
+    /// 收集场景绘制命令
+    ///
+    /// 创建临时 RenderContext，调用 render_scene 渲染场景，
+    /// 然后提取绘制命令存储到内部缓冲区，供 EditorShell 在 tick 中使用。
+    pub fn collect_render_commands(&mut self, world: &GameWorld) {
+        let mut context =
+            RenderContext::new(self.viewport.size.0 as u32, self.viewport.size.1 as u32);
+        self.render_scene(&mut context, world);
+        self.render_commands = context.commands().to_vec();
+    }
+
+    /// 取出待提交的场景绘制命令
+    ///
+    /// 返回内部缓冲区中的所有绘制命令并清空缓冲区。
+    /// EditorShell 可在 tick 中调用此方法获取命令后提交给 WgpuRenderer。
+    pub fn drain_render_commands(&mut self) -> Vec<DrawCommand> {
+        std::mem::take(&mut self.render_commands)
     }
 
     /// 渲染背景网格
@@ -576,6 +637,13 @@ impl EditorPanel for BaseSceneView {
             EditorEvent::MouseWheel { delta, position } => {
                 self.handle_scroll(delta.1, *position);
             }
+            EditorEvent::Custom { name, .. } => match name.as_str() {
+                "reset_view" => self.reset_viewport(),
+                "zoom_in" => self.zoom_in(),
+                "zoom_out" => self.zoom_out(),
+                "toggle_grid" => self.toggle_grid(),
+                _ => {}
+            },
             _ => {}
         }
     }
@@ -604,8 +672,11 @@ impl EditorPanel for BaseSceneView {
         drop(incoming);
 
         let viewport_style = Style::new();
-        let viewport_id =
-            ui_tree.create_node("scene_viewport", viewport_style, UiNodeData::Container);
+        let viewport_id = ui_tree.create_node(
+            "scene_viewport",
+            viewport_style,
+            UiNodeData::Custom { kind: format!("scene_render_target:{}", self.render_target_name) },
+        );
 
         let zoom_text = self.zoom_indicator_text();
         let zoom_indicator_id =
@@ -634,12 +705,6 @@ impl EditorPanel for BaseSceneView {
         ui_tree.add_child(viewport_id, toolbar_id);
 
         ui_tree.set_root(viewport_id);
-
-        let mut render_context =
-            RenderContext::new(self.viewport.size.0 as u32, self.viewport.size.1 as u32);
-
-        let world = context.world();
-        self.render_scene(&mut render_context, world);
 
         Ok(())
     }

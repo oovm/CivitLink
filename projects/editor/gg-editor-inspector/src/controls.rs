@@ -4,8 +4,9 @@
 //! 用于驱动检查器面板的属性编辑控件渲染。
 
 use gg_ui::{
-    Color, FlexDirection, FontStyle, LayoutStyle, SizeValue, Style, UiNodeData, UiNodeId, UiTree,
+    FlexDirection, FontStyle, LayoutStyle, SizeValue, Style, UiNodeData, UiNodeId, UiTree,
 };
+use gg_render::Color;
 
 use crate::descriptor::{PropertyConstraints, PropertyType};
 

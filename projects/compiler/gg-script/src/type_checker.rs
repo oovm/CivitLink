@@ -158,9 +158,9 @@ impl Default for TypeEnvironment {
 /// 类型检查不会阻止编译流程。
 pub struct TypeChecker {
     /// 类型环境
-    env: TypeEnvironment,
+    pub env: TypeEnvironment,
     /// 收集的诊断信息
-    diagnostics: Vec<TypeDiagnostic>,
+    pub diagnostics: Vec<TypeDiagnostic>,
     /// 当前函数的期望返回类型
     current_return_type: Option<TypeInfo>,
 }

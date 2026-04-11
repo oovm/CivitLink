@@ -89,3 +89,99 @@ impl Default for CommandManager {
         Self::new()
     }
 }
+
+/// 修饰键状态
+///
+/// 跟踪键盘修饰键（Ctrl、Shift、Alt）的按下状态。
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ModifierState {
+    /// Ctrl 键是否按下
+    pub ctrl: bool,
+    /// Shift 键是否按下
+    pub shift: bool,
+    /// Alt 键是否按下
+    pub alt: bool,
+}
+
+/// 快捷键定义
+///
+/// 由一个主键和可选的修饰键组合构成，用于触发命令。
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ShortcutKey {
+    /// 主键
+    pub key: crate::event::Key,
+    /// 需要 Ctrl 修饰键
+    pub ctrl: bool,
+    /// 需要 Shift 修饰键
+    pub shift: bool,
+    /// 需要 Alt 修饰键
+    pub alt: bool,
+}
+
+impl ShortcutKey {
+    /// 创建无修饰键的快捷键
+    pub fn new(key: crate::event::Key) -> Self {
+        Self { key, ctrl: false, shift: false, alt: false }
+    }
+
+    /// 添加 Ctrl 修饰键
+    pub fn with_ctrl(mut self) -> Self {
+        self.ctrl = true;
+        self
+    }
+
+    /// 添加 Shift 修饰键
+    pub fn with_shift(mut self) -> Self {
+        self.shift = true;
+        self
+    }
+
+    /// 添加 Alt 修饰键
+    pub fn with_alt(mut self) -> Self {
+        self.alt = true;
+        self
+    }
+
+    /// 检查快捷键是否与当前修饰键状态和按键匹配
+    pub fn matches(&self, key: &crate::event::Key, modifiers: &ModifierState) -> bool {
+        &self.key == key
+            && self.ctrl == modifiers.ctrl
+            && self.shift == modifiers.shift
+            && self.alt == modifiers.alt
+    }
+}
+
+/// 快捷键注册表
+///
+/// 管理快捷键到命令名称的映射，支持注册、查询和匹配。
+pub struct ShortcutRegistry {
+    /// 快捷键到命令名称的映射
+    shortcuts: HashMap<ShortcutKey, String>,
+}
+
+impl ShortcutRegistry {
+    /// 创建空的快捷键注册表
+    pub fn new() -> Self {
+        Self { shortcuts: HashMap::new() }
+    }
+
+    /// 注册快捷键
+    ///
+    /// 将快捷键映射到命令名称，若快捷键已存在则替换。
+    pub fn register(&mut self, shortcut: ShortcutKey, command_name: String) {
+        self.shortcuts.insert(shortcut, command_name);
+    }
+
+    /// 查找匹配的命令名称
+    ///
+    /// 根据按键和修饰键状态查找对应的命令名称。
+    pub fn find_command(&self, key: &crate::event::Key, modifiers: &ModifierState) -> Option<&str> {
+        self.shortcuts.iter().find(|(shortcut, _)| shortcut.matches(key, modifiers)).map(|(_, name)| name.as_str())
+    }
+}
+
+impl Default for ShortcutRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}

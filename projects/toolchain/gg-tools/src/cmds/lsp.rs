@@ -1,32 +1,61 @@
+#![warn(missing_docs)]
+
 //! `gg lsp` 命令实现
 //!
 //! 启动 GG 引擎的 LSP 服务
 
 use crate::{GError, GErrorKind, GResult};
-use oak_vfs::MemoryVfs;
 
 /// 执行 `lsp` 子命令
 ///
-/// 启动 GG 引擎的 LSP 服务
+/// 启动 GG 引擎的 LSP 服务，通过 stdio 传输协议与编辑器通信。
+/// 需要启用 `lsp` feature 才能使用真正的 LSP 服务实现。
 pub fn cmd_lsp(workspace: &str) -> GResult<()> {
     println!("Starting GG Engine LSP service in workspace: {}", workspace);
 
-    // 创建内存 VFS
-    let vfs = MemoryVfs::new();
+    #[cfg(feature = "lsp")]
+    {
+        use gg_lsp::GgLanguageService;
+        use oak_lsp::LspServer;
+        use oak_vfs::MemoryVfs;
+        use std::sync::Arc;
 
-    // 启动 LSP 服务
-    // 注意：这里需要在异步上下文中运行
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("Failed to create tokio runtime: {}", e) })?
-        .block_on(async {
-            // 这里将在后续实现中调用 GG LSP 服务
-            println!("LSP service started. Listening for requests...");
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| GError {
+                kind: GErrorKind::Runtime,
+                message: format!("Failed to create tokio runtime: {}", e),
+            })?
+            .block_on(async {
+                let vfs = MemoryVfs::new();
+                let service = GgLanguageService::new(vfs);
+                let server = LspServer::new(Arc::new(service));
 
-            // 模拟服务运行
-            tokio::time::sleep(tokio::time::Duration::from_secs(3600)).await;
+                let stdin = tokio::io::BufReader::new(tokio::io::stdin());
+                let stdout = tokio::io::BufWriter::new(tokio::io::stdout());
 
-            Ok(())
+                server
+                    .run(stdin, stdout)
+                    .await
+                    .map_err(|e| GError {
+                        kind: GErrorKind::Runtime,
+                        message: format!("LSP server error: {}", e),
+                    })?;
+
+                Ok(())
+            })
+    }
+
+    #[cfg(not(feature = "lsp"))]
+    {
+        eprintln!(
+            "LSP service requires the 'lsp' feature to be enabled.\n\
+             Rebuild with: cargo build -p gg-tools --features lsp"
+        );
+        Err(GError {
+            kind: GErrorKind::Runtime,
+            message: "LSP feature is not enabled".to_string(),
         })
+    }
 }

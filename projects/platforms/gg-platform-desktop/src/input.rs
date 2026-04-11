@@ -521,4 +521,65 @@ mod tests {
         });
         assert!(!input.connected_gamepads().contains(&gp_id));
     }
+
+    #[test]
+    fn test_input_event_flow_integration() {
+        let mut input = DesktopInput::new();
+
+        input.push_event(InputEvent::Keyboard { key: KeyCode::W, state: KeyState::Pressed });
+        input.push_event(InputEvent::Pointer {
+            position: (100.0, 200.0),
+            action: PointerAction::Down,
+            button: Some(PointerButton::Left),
+        });
+        input.push_event(InputEvent::GamepadButton {
+            id: GamepadId(0),
+            button: GamepadButton::South,
+            state: KeyState::Pressed,
+        });
+        input.push_event(InputEvent::GamepadAxis {
+            id: GamepadId(0),
+            axis: GamepadAxis::LeftStickX,
+            value: 0.5,
+        });
+
+        assert!(input.is_key_pressed(KeyCode::W));
+        assert!(input.is_pointer_down());
+        assert!(input.is_gamepad_button_pressed(GamepadId(0), GamepadButton::South));
+        assert!((input.gamepad_axis_value(GamepadId(0), GamepadAxis::LeftStickX) - 0.5).abs() < f32::EPSILON);
+
+        let events = input.poll_events();
+        assert!(events.len() >= 4);
+    }
+
+    #[test]
+    fn test_gamepad_lifecycle_integration() {
+        let mut input = DesktopInput::new();
+        let gp_id = GamepadId(42);
+
+        input.push_event(InputEvent::GamepadConnected {
+            id: gp_id,
+            name: "Test Pad".to_string(),
+        });
+        assert!(input.connected_gamepads().contains(&gp_id));
+
+        input.push_event(InputEvent::GamepadButton {
+            id: gp_id,
+            button: GamepadButton::North,
+            state: KeyState::Pressed,
+        });
+        assert!(input.is_gamepad_button_pressed(gp_id, GamepadButton::North));
+
+        input.push_event(InputEvent::GamepadAxis {
+            id: gp_id,
+            axis: GamepadAxis::RightStickY,
+            value: -0.8,
+        });
+        assert!((input.gamepad_axis_value(gp_id, GamepadAxis::RightStickY) - (-0.8)).abs() < f32::EPSILON);
+
+        input.push_event(InputEvent::GamepadDisconnected { id: gp_id });
+        assert!(!input.connected_gamepads().contains(&gp_id));
+        assert!(!input.is_gamepad_button_pressed(gp_id, GamepadButton::North));
+        assert!((input.gamepad_axis_value(gp_id, GamepadAxis::RightStickY)).abs() < f32::EPSILON);
+    }
 }

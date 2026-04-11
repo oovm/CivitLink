@@ -1,0 +1,119 @@
+# Init 脚本
+# 初始化游戏世界和资源
+
+using gg::ecs;
+using gg::engine;
+
+# 游戏初始化
+system GameInitSystem {
+    micro execute(world: World): Result<()> {
+        # 初始化游戏状态
+        let game_state = game_state_manager.init_game_state(world);
+        
+        # 初始化玩家
+        let player = player_controller.init_player(world, "Hero", [100.0, 100.0]);
+        
+        # 初始化敌人
+        let enemy1 = enemy_controller.init_enemy(world, "Goomba", [300.0, 100.0], [250.0, 350.0]);
+        let enemy2 = enemy_controller.init_enemy(world, "Koopa", [500.0, 100.0], [450.0, 550.0]);
+        
+        # 注册一次性系统，只执行一次
+        world.remove_system("GameInitSystem");
+        
+        return Ok()
+    }
+}
+
+# 碰撞检测系统
+system CollisionSystem {
+    micro execute(world: World): Result<()> {
+        # 获取玩家实体
+        let player_query: Query<Player> = world.query("Player");
+        let player = null;
+        loop entity, p in player_query.iter() {
+            player = p;
+            break;
+        }
+        
+        if player != null {
+            # 获取敌人实体
+            let enemy_query: Query<Enemy> = world.query("Enemy");
+            loop entity, enemy in enemy_query.iter() {
+                # 简单的碰撞检测
+                if check_collision(player, enemy) {
+                    # 玩家与敌人碰撞
+                    handle_collision(world, player, enemy);
+                }
+            }
+        }
+        
+        return Ok()
+    }
+}
+
+# 检查碰撞
+micro check_collision(player: Player, enemy: Enemy): Bool {
+    # 简单的矩形碰撞检测
+    let player_rect = {
+        x: player.position[0] - 20,
+        y: player.position[1] - 20,
+        width: 40,
+        height: 40
+    };
+    
+    let enemy_rect = {
+        x: enemy.position[0] - 20,
+        y: enemy.position[1] - 20,
+        width: 40,
+        height: 40
+    };
+    
+    return player_rect.x < enemy_rect.x + enemy_rect.width &&
+           player_rect.x + player_rect.width > enemy_rect.x &&
+           player_rect.y < enemy_rect.y + enemy_rect.height &&
+           player_rect.y + player_rect.height > enemy_rect.y;
+}
+
+# 处理碰撞
+micro handle_collision(world: World, player: Player, enemy: Enemy) {
+    # 从上方踩敌人
+    if player.velocity[1] > 0 && player.position[1] < enemy.position[1] {
+        # 玩家踩敌人
+        player.velocity[1] = -10.0;
+        enemy_controller.take_damage(enemy, 50);
+        
+        # 增加分数
+        let game_state_query: Query<GameState> = world.query("GameState");
+        loop entity, game_state in game_state_query.iter() {
+            game_state_manager.add_score(game_state, 100);
+        }
+    } else {
+        # 敌人碰到玩家
+        player_controller.take_damage(player, 20);
+        
+        # 减少生命
+        let game_state_query: Query<GameState> = world.query("GameState");
+        loop entity, game_state in game_state_query.iter() {
+            game_state_manager.lose_life(game_state);
+        }
+    }
+}
+
+# 输入处理系统
+system InputSystem {
+    micro execute(world: World): Result<()> {
+        # 处理重置游戏
+        if input.is_key_pressed("R") {
+            # 重置游戏逻辑
+            reset_game(world);
+        }
+        
+        return Ok()
+    }
+}
+
+# 重置游戏
+micro reset_game(world: World) {
+    console::log("Game reset!");
+    # 这里可以添加重置游戏的逻辑
+}
