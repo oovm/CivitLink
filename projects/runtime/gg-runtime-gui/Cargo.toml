@@ -9,5 +9,6 @@ license = { workspace = true }
 gg-core = { workspace = true }
 gg-render = { workspace = true }
 gg-ui = { workspace = true }
+oak-voc = { workspace = true }
 
 [dev-dependencies]

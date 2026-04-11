@@ -28,7 +28,7 @@ zip = { workspace = true }
 tokio = { workspace = true }
 oak-vfs = { workspace = true }
 oak-lsp = { workspace = true, optional = true }
-once_cell = "1.18"
+once_cell = { workspace = true }
 
 [features]
 default = []
