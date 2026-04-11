@@ -1,6 +1,7 @@
 //! HMR（热模块替换）模块
 //! 提供脚本和资源的运行时热替换能力
 
+use crate::debug_wire::{DebugWire, WireMessage};
 use gg_bytecode::format::BytecodeModule;
 
 /// HMR 事件
@@ -144,6 +145,28 @@ impl HmrManager {
         self.changed_assets.clear();
         self.script_dirty = false;
         self.asset_dirty = false;
+    }
+
+    /// 从调试通信通道接收并处理 HMR 事件
+    ///
+    /// 非阻塞地从 DebugWire 通道中读取所有 HmrEvent 消息，
+    /// 将其推入内部事件队列等待后续处理。
+    /// 忽略非 HmrEvent 类型的消息。
+    ///
+    /// # 参数
+    ///
+    /// - `wire` - 调试通信通道引用
+    pub fn process_wire_events(&mut self, wire: &dyn DebugWire) {
+        loop {
+            match wire.try_recv() {
+                Ok(Some(WireMessage::HmrEvent(event))) => {
+                    self.push_event(event);
+                }
+                Ok(Some(WireMessage::Command(_))) => {}
+                Ok(None) => break,
+                Err(_) => break,
+            }
+        }
     }
 }
 

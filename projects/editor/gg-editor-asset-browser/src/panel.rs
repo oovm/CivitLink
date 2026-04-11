@@ -3,7 +3,7 @@
 
 use std::path::Path;
 
-use gg_core::{FileType, FileSystem, GResult};
+use gg_core::{FileType, FileSystem, GError, GErrorKind, GResult};
 use gg_ecs::Entity;
 use gg_editor_shell::{EditorContext, EditorEvent, EditorPanel, PanelLayoutHint, PanelPosition};
 use gg_render::Color;
@@ -63,6 +63,15 @@ pub struct DirectoryNode {
     pub is_expanded: bool,
 }
 
+/// 待处理的文件导入请求
+#[derive(Debug, Clone)]
+pub struct PendingImport {
+    /// 源文件路径
+    pub source_path: String,
+    /// 目标文件路径
+    pub target_path: String,
+}
+
 /// 根据文件扩展名识别资源类型
 ///
 /// 将文件路径的扩展名映射到对应的 `AssetType` 枚举值。
@@ -85,6 +94,48 @@ pub fn classify_asset(path: &str) -> AssetType {
         "ttf" | "otf" | "woff" | "woff2" => AssetType::Font,
         "v" | "vx" | "rs" | "toml" => AssetType::Script,
         _ => AssetType::Other,
+    }
+}
+
+/// 根据搜索关键词过滤目录树节点
+///
+/// 如果查询为空，返回 `Some(node)` 不做任何修改。
+/// 对于目录节点：递归过滤子节点，如果子节点中有匹配项或目录名本身包含查询词则保留。
+/// 对于文件节点：当文件名包含查询词（不区分大小写）时保留。
+/// 如果没有任何匹配项，返回 `None`。
+pub fn filter_tree(node: &DirectoryNode, query: &str) -> Option<DirectoryNode> {
+    if query.is_empty() {
+        return Some(node.clone());
+    }
+
+    let query_lower = query.to_lowercase();
+
+    if node.is_directory {
+        let filtered_children: Vec<DirectoryNode> = node
+            .children
+            .iter()
+            .filter_map(|child| filter_tree(child, query))
+            .collect();
+
+        let name_matches = node.name.to_lowercase().contains(&query_lower);
+
+        if name_matches || !filtered_children.is_empty() {
+            Some(DirectoryNode {
+                name: node.name.clone(),
+                path: node.path.clone(),
+                is_directory: true,
+                children: filtered_children,
+                is_expanded: node.is_expanded || !query_lower.is_empty(),
+            })
+        } else {
+            None
+        }
+    } else {
+        if node.name.to_lowercase().contains(&query_lower) {
+            Some(node.clone())
+        } else {
+            None
+        }
     }
 }
 
@@ -142,6 +193,22 @@ fn scan_directory(path: &Path, fs: &dyn FileSystem) -> GResult<DirectoryNode> {
     Ok(node)
 }
 
+/// 递归搜索目录树并切换指定路径节点的展开状态
+fn toggle_node_expanded(node: &mut DirectoryNode, path: &str) -> bool {
+    if node.path == path && node.is_directory {
+        node.is_expanded = !node.is_expanded;
+        return true;
+    }
+
+    for child in &mut node.children {
+        if toggle_node_expanded(child, path) {
+            return true;
+        }
+    }
+
+    false
+}
+
 /// 资源浏览器面板
 ///
 /// 提供项目资源目录的可视化浏览功能，支持目录树导航、
@@ -157,6 +224,10 @@ pub struct AssetBrowserPanel {
     directory_tree: DirectoryNode,
     /// 选中状态是否已变更（用于事件发布）
     selection_dirty: bool,
+    /// 搜索关键词
+    search_query: String,
+    /// 待处理的文件导入请求列表
+    pending_imports: Vec<PendingImport>,
 }
 
 impl AssetBrowserPanel {
@@ -174,6 +245,8 @@ impl AssetBrowserPanel {
                 is_expanded: false,
             },
             selection_dirty: false,
+            search_query: String::new(),
+            pending_imports: Vec::new(),
         }
     }
 
@@ -187,11 +260,33 @@ impl AssetBrowserPanel {
         Ok(())
     }
 
+    /// 切换目录节点的展开/折叠状态
+    ///
+    /// 递归搜索目录树中与指定路径匹配的节点，
+    /// 找到后切换其 `is_expanded` 状态。
+    /// 如果找到并切换成功返回 `true`，否则返回 `false`。
+    pub fn toggle_directory(&mut self, path: &str) -> bool {
+        toggle_node_expanded(&mut self.directory_tree, path)
+    }
+
     /// 导入文件
     ///
     /// 将外部文件复制到项目资源目录中的指定目标位置。
+    /// 由于此方法无法直接访问文件系统，导入请求会被暂存到
+    /// `pending_imports` 中，等待后续通过 `process_imports` 处理。
     pub fn import_file(&mut self, source_path: &str, target_dir: &str) -> GResult<()> {
-        let _ = (source_path, target_dir);
+        let source = Path::new(source_path);
+        let file_name = source.file_name().ok_or_else(|| GError {
+            kind: GErrorKind::Io,
+            message: format!("无效的源路径: {}", source_path),
+        })?;
+        let target_path = Path::new(target_dir).join(file_name);
+
+        self.pending_imports.push(PendingImport {
+            source_path: source_path.to_string(),
+            target_path: target_path.to_string_lossy().to_string(),
+        });
+
         Ok(())
     }
 
@@ -236,12 +331,50 @@ impl AssetBrowserPanel {
         self.selection_dirty = true;
     }
 
+    /// 设置搜索关键词
+    ///
+    /// 更新搜索关键词，用于在下次 `build_ui` 时过滤目录树。
+    pub fn set_search_query(&mut self, query: String) {
+        self.search_query = query;
+    }
+
+    /// 取出并清空所有待处理的文件导入请求
+    ///
+    /// 返回当前所有暂存的导入请求，并清空内部列表。
+    pub fn drain_pending_imports(&mut self) -> Vec<PendingImport> {
+        std::mem::take(&mut self.pending_imports)
+    }
+
+    /// 处理所有待处理的文件导入请求
+    ///
+    /// 通过文件系统抽象接口逐个执行文件读取和写入操作，
+    /// 将源文件复制到目标路径。处理完成后清空待处理列表。
+    pub fn process_imports(&mut self, fs: &dyn FileSystem) -> GResult<()> {
+        let imports = std::mem::take(&mut self.pending_imports);
+
+        for import in imports {
+            let source = Path::new(&import.source_path);
+            let target = Path::new(&import.target_path);
+
+            if let Some(parent) = target.parent() {
+                fs.create_dir_all(parent)?;
+            }
+
+            let data = fs.read(source)?;
+            fs.write(target, &data)?;
+        }
+
+        Ok(())
+    }
+
     /// 递归构建目录树 UI 节点
     ///
     /// 为每个目录节点创建可折叠的容器（带 ▶/▼ 图标和名称），
     /// 为每个文件节点创建带图标占位符和名称的行。
+    /// 目录头部使用 `UiNodeData::Custom` 标记，kind 中编码目录路径，
     /// 文件节点使用 `UiNodeData::Custom` 标记，kind 中编码资源路径，
     /// 以便事件系统识别并处理点击交互。
+    /// 当目录节点未展开时，仅渲染头部，跳过子节点容器。
     fn build_tree_node(&self, node: &DirectoryNode, ui_tree: &mut UiTree, parent_id: UiNodeId) {
         if node.is_directory {
             let header_id = ui_tree.create_node(
@@ -253,7 +386,9 @@ impl AssetBrowserPanel {
                         .with_gap(4.0)
                         .with_padding(2.0),
                 ),
-                UiNodeData::Container,
+                UiNodeData::Custom {
+                    kind: format!("DirHeader:{}", node.path),
+                },
             );
 
             let icon = if node.is_expanded { "▼" } else { "▶" };
@@ -277,20 +412,22 @@ impl AssetBrowserPanel {
             ui_tree.add_child(header_id, name_id);
             ui_tree.add_child(parent_id, header_id);
 
-            let children_id = ui_tree.create_node(
-                format!("dir_children_{}", node.path),
-                Style::new().with_layout(
-                    LayoutStyle::new()
-                        .with_direction(FlexDirection::Column)
-                        .with_padding(16.0),
-                ),
-                UiNodeData::Container,
-            );
+            if node.is_expanded {
+                let children_id = ui_tree.create_node(
+                    format!("dir_children_{}", node.path),
+                    Style::new().with_layout(
+                        LayoutStyle::new()
+                            .with_direction(FlexDirection::Column)
+                            .with_padding(16.0),
+                    ),
+                    UiNodeData::Container,
+                );
 
-            ui_tree.add_child(parent_id, children_id);
+                ui_tree.add_child(parent_id, children_id);
 
-            for child in &node.children {
-                self.build_tree_node(child, ui_tree, children_id);
+                for child in &node.children {
+                    self.build_tree_node(child, ui_tree, children_id);
+                }
             }
         } else {
             let row_id = ui_tree.create_node(
@@ -346,8 +483,10 @@ impl EditorPanel for AssetBrowserPanel {
 
     /// 构建资源浏览器面板 UI 节点树
     ///
-    /// 根据当前目录树数据构建完整的 UI 节点树，包括目录节点的折叠/展开
-    /// 和文件节点的图标显示。当选中状态发生变更时，发布 `AssetSelected` 自定义事件。
+    /// 根据当前目录树数据构建完整的 UI 节点树，包括搜索栏、
+    /// 目录节点的折叠/展开和文件节点的图标显示。
+    /// 当选中状态发生变更时，发布 `AssetSelected` 自定义事件。
+    /// 当检测到目录头部点击事件时，切换对应目录的展开状态。
     fn build_ui(&mut self, context: &mut EditorContext, ui_tree: &mut UiTree) -> GResult<()> {
         if self.selection_dirty {
             if let Some(ref asset_path) = self.selected_asset {
@@ -357,6 +496,20 @@ impl EditorPanel for AssetBrowserPanel {
                 });
             }
             self.selection_dirty = false;
+        }
+
+        let events = context.events_mut().process_pending();
+        for event in &events {
+            if let EditorEvent::Custom { name, data } = event {
+                if name == "AssetSelected" {
+                    if let Some(path) = data.downcast_ref::<String>() {
+                        if path.starts_with("DirHeader:") {
+                            let dir_path = &path["DirHeader:".len()..];
+                            self.toggle_directory(dir_path);
+                        }
+                    }
+                }
+            }
         }
 
         let root_id = ui_tree.create_node(
@@ -393,6 +546,26 @@ impl EditorPanel for AssetBrowserPanel {
 
         ui_tree.add_child(root_id, title_id);
 
+        let search_id = ui_tree.create_node(
+            "search_input",
+            Style::new()
+                .with_layout(
+                    LayoutStyle::new()
+                        .with_direction(FlexDirection::Row)
+                        .with_padding(4.0),
+                )
+                .with_font(
+                    FontStyle::new()
+                        .with_size(12.0)
+                        .with_color(Color::new(0.6, 0.6, 0.6, 1.0)),
+                ),
+            UiNodeData::Custom {
+                kind: "search_input".to_string(),
+            },
+        );
+
+        ui_tree.add_child(root_id, search_id);
+
         let tree_id = ui_tree.create_node(
             "asset_browser_tree",
             Style::new().with_layout(
@@ -405,8 +578,12 @@ impl EditorPanel for AssetBrowserPanel {
 
         ui_tree.add_child(root_id, tree_id);
 
-        for child in &self.directory_tree.children {
-            self.build_tree_node(child, ui_tree, tree_id);
+        let filtered_tree = filter_tree(&self.directory_tree, &self.search_query);
+
+        if let Some(tree) = filtered_tree {
+            for child in &tree.children {
+                self.build_tree_node(child, ui_tree, tree_id);
+            }
         }
 
         ui_tree.set_root(root_id);

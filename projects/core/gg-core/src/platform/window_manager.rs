@@ -4,7 +4,7 @@
 //!
 //! 将单个 `Box<dyn Window>` 包装为 `WindowManager`，用于向后兼容。
 
-use super::window::{Window, WindowConfig, WindowEvent, WindowId, WindowManager, WindowManagerEvent};
+use super::window::{Window, WindowConfig, WindowId, WindowManager, WindowManagerEvent};
 use crate::{GError, GErrorKind, GResult};
 
 /// 单窗口管理器

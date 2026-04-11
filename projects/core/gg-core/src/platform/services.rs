@@ -3,7 +3,7 @@
 //! 平台服务聚合
 //! 将文件系统、输入、时间、窗口和线程服务统一管理
 
-use super::{fs::FileSystem, input::Input, thread::RuntimeThread, time::Time, window::Window, window_manager::WindowManager};
+use super::{fs::FileSystem, input::Input, thread::RuntimeThread, time::Time, window::Window, window::WindowManager};
 
 /// 平台服务集合
 ///

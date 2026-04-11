@@ -1,0 +1,234 @@
+# STG 游戏脚本
+# 使用 Valkyrie 脚本实现射击游戏逻辑
+
+using gg::engine;
+using gg::input;
+using gg::graphics;
+using gg::collision;
+using gg::audio;
+
+# 游戏对象
+let player = null;
+let enemies = [];
+let player_bullets = [];
+let enemy_bullets = [];
+
+# 游戏状态
+let game_running = true;
+let score = 0;
+let lives = 3;
+
+# 初始化游戏
+micro init_game() {
+    # 加载场景
+    engine.load_scene("stg");
+    
+    # 设置背景
+    graphics.set_background("assets/backgrounds/bg_space.png");
+    
+    # 创建玩家
+    player = engine.create_entity();
+    player.add_component("Sprite", { texture: "assets/sprites/player.png" });
+    player.add_component("Transform", { x: 400, y: 500, width: 40, height: 40 });
+    player.add_component("Collider", { type: "box" });
+    
+    # 加载 BGM
+    audio.play_bgm("assets/audio/bgm/battle.mp3", 0.8);
+}
+
+# 生成敌人
+micro spawn_enemies() {
+    # 每 10 帧生成一个敌人
+    if (engine.get_frame_count() % 10 == 0) {
+        let enemy = engine.create_entity();
+        enemy.add_component("Sprite", { texture: "assets/sprites/enemy.png" });
+        enemy.add_component("Transform", {
+            x: Math.random() * 760,
+            y: -50,
+            width: 40,
+            height: 40
+        });
+        enemy.add_component("Collider", { type: "box" });
+        enemy.add_component("Rigidbody", { velocity: { x: 0, y: 5 } });
+        enemies.push(enemy);
+    }
+}
+
+# 处理输入
+micro handle_input() {
+    # 移动玩家
+    if (input.is_key_down("Left")) {
+        player.get_component("Transform").x -= 5;
+    }
+    if (input.is_key_down("Right")) {
+        player.get_component("Transform").x += 5;
+    }
+    if (input.is_key_down("Up")) {
+        player.get_component("Transform").y -= 5;
+    }
+    if (input.is_key_down("Down")) {
+        player.get_component("Transform").y += 5;
+    }
+    
+    # 射击
+    if (input.is_key_pressed("Space")) {
+        let bullet = engine.create_entity();
+        bullet.add_component("Sprite", { texture: "assets/sprites/bullet.png" });
+        bullet.add_component("Transform", {
+            x: player.get_component("Transform").x + 15,
+            y: player.get_component("Transform").y - 20,
+            width: 10,
+            height: 20
+        });
+        bullet.add_component("Collider", { type: "box" });
+        bullet.add_component("Rigidbody", { velocity: { x: 0, y: -10 } });
+        player_bullets.push(bullet);
+    }
+    
+    # 特殊攻击
+    if (input.is_key_pressed("Shift")) {
+        # 实现特殊攻击逻辑
+        console.log("Special attack!");
+    }
+}
+
+# 处理碰撞
+micro handle_collision() {
+    # 玩家与敌人碰撞
+    foreach (enemy in enemies) {
+        if (collision.check(player, enemy)) {
+            game_over();
+            return;
+        }
+    }
+    
+    # 玩家与敌人子弹碰撞
+    foreach (bullet in enemy_bullets) {
+        if (collision.check(player, bullet)) {
+            take_damage();
+            engine.destroy_entity(bullet);
+            enemy_bullets = enemy_bullets.filter((b) => b != bullet);
+        }
+    }
+    
+    # 玩家子弹与敌人碰撞
+    foreach (bullet in player_bullets) {
+        foreach (enemy in enemies) {
+            if (collision.check(bullet, enemy)) {
+                engine.destroy_entity(bullet);
+                engine.destroy_entity(enemy);
+                player_bullets = player_bullets.filter((b) => b != bullet);
+                enemies = enemies.filter((e) => e != enemy);
+                score += 100;
+                break;
+            }
+        }
+    }
+}
+
+# 游戏结束
+micro game_over() {
+    game_running = false;
+    ui.show_message("游戏结束！");
+    # 重置游戏
+    let reset_timer = 0;
+    micro reset_game_delayed(delta_time: Float) {
+        reset_timer += delta_time;
+        if (reset_timer >= 2.0) {
+            reset_game();
+            engine.set_update_fn(update);
+        }
+    }
+    engine.set_update_fn(reset_game_delayed);
+}
+
+# 受到伤害
+micro take_damage() {
+    lives -= 1;
+    if (lives <= 0) {
+        game_over();
+    }
+}
+
+# 重置游戏
+micro reset_game() {
+    # 清除所有实体
+    foreach (enemy in enemies) {
+        engine.destroy_entity(enemy);
+    }
+    foreach (bullet in player_bullets) {
+        engine.destroy_entity(bullet);
+    }
+    foreach (bullet in enemy_bullets) {
+        engine.destroy_entity(bullet);
+    }
+    
+    # 重置数组
+    enemies = [];
+    player_bullets = [];
+    enemy_bullets = [];
+    
+    # 重置玩家位置
+    player.get_component("Transform").x = 400;
+    player.get_component("Transform").y = 500;
+    
+    # 重置游戏状态
+    game_running = true;
+    score = 0;
+    lives = 3;
+}
+
+# 更新游戏对象
+micro update_objects() {
+    # 更新敌人
+    foreach (enemy in enemies) {
+        let transform = enemy.get_component("Transform");
+        if (transform.y > 600) {
+            engine.destroy_entity(enemy);
+            enemies = enemies.filter((e) => e != enemy);
+        }
+    }
+    
+    # 更新玩家子弹
+    foreach (bullet in player_bullets) {
+        let transform = bullet.get_component("Transform");
+        if (transform.y < -20) {
+            engine.destroy_entity(bullet);
+            player_bullets = player_bullets.filter((b) => b != bullet);
+        }
+    }
+    
+    # 更新敌人子弹
+    foreach (bullet in enemy_bullets) {
+        let transform = bullet.get_component("Transform");
+        if (transform.y > 600) {
+            engine.destroy_entity(bullet);
+            enemy_bullets = enemy_bullets.filter((b) => b != bullet);
+        }
+    }
+}
+
+# 游戏更新函数
+micro update(delta_time: Float) {
+    if (game_running) {
+        handle_input();
+        spawn_enemies();
+        handle_collision();
+        update_objects();
+    }
+}
+
+# 游戏渲染函数
+micro render() {
+    graphics.clear();
+    # 引擎会自动渲染所有实体
+    
+    # 显示分数和生命值
+    graphics.draw_text("Score: " + score, 10, 10, 20, Color::WHITE);
+    graphics.draw_text("Lives: " + lives, 10, 30, 20, Color::WHITE);
+}
+
+# 初始化并启动游戏
+init_game();
+engine.set_update_fn(update);
+engine.set_render_fn(render);

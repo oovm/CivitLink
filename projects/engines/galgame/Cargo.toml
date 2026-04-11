@@ -17,8 +17,11 @@ gg-plugin-ui = { workspace = true }
 gg-render = { workspace = true }
 gg-render-wgpu = { workspace = true }
 gg-ui = { workspace = true }
+gg-editor-shell = { workspace = true }
+gg-galgame-schema = { workspace = true }
 winit = { workspace = true }
 serde = { workspace = true }
+serde_json = { workspace = true }
 toml = { workspace = true }
 image = { workspace = true }
 gg-manifest = { workspace = true }

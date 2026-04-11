@@ -131,13 +131,145 @@ impl BindingResolver for HashMapResolver {
     }
 }
 
+/// 算术运算符
+///
+/// 用于绑定表达式中的算术运算。
+#[derive(Debug, Clone, PartialEq)]
+pub enum ArithmeticOp {
+    /// 加法
+    Add,
+    /// 减法
+    Subtract,
+    /// 乘法
+    Multiply,
+    /// 除法
+    Divide,
+}
+
+/// 绑定表达式
+///
+/// 支持属性路径访问、字面量、算术运算和条件表达式的求值树。
+#[derive(Debug, Clone, PartialEq)]
+pub enum BindingExpression {
+    /// 属性路径访问，支持嵌套点分隔路径如 "player.name"
+    Path(BindingKey),
+    /// 字面量值
+    Literal(BindingValue),
+    /// 算术运算表达式
+    Arithmetic {
+        /// 左操作数
+        left: Box<BindingExpression>,
+        /// 运算符
+        op: ArithmeticOp,
+        /// 右操作数
+        right: Box<BindingExpression>,
+    },
+    /// 条件表达式（三元 condition ? true_expr : false_expr）
+    Conditional {
+        /// 条件表达式
+        condition: Box<BindingExpression>,
+        /// 条件为真时的表达式
+        true_expr: Box<BindingExpression>,
+        /// 条件为假时的表达式
+        false_expr: Box<BindingExpression>,
+    },
+}
+
+impl BindingExpression {
+    /// 递归求值绑定表达式
+    ///
+    /// 使用解析器链依次尝试解析路径表达式，返回求值结果。
+    /// 算术运算仅支持数值类型（Float 和 Int）；
+    /// 条件表达式根据条件值的布尔语义选择分支。
+    pub fn evaluate(&self, world: &gg_ecs::World, resolvers: &[Box<dyn BindingResolver>]) -> Option<BindingValue> {
+        match self {
+            BindingExpression::Path(key) => resolvers.iter().find_map(|r| r.resolve(world, key)),
+            BindingExpression::Literal(value) => Some(value.clone()),
+            BindingExpression::Arithmetic { left, op, right } => {
+                let left_val = left.evaluate(world, resolvers)?;
+                let right_val = right.evaluate(world, resolvers)?;
+                Self::eval_arithmetic(&left_val, op, &right_val)
+            }
+            BindingExpression::Conditional {
+                condition,
+                true_expr,
+                false_expr,
+            } => {
+                let cond_val = condition.evaluate(world, resolvers)?;
+                if cond_val.as_bool().unwrap_or(false) {
+                    true_expr.evaluate(world, resolvers)
+                } else {
+                    false_expr.evaluate(world, resolvers)
+                }
+            }
+        }
+    }
+
+    /// 执行算术运算
+    fn eval_arithmetic(left: &BindingValue, op: &ArithmeticOp, right: &BindingValue) -> Option<BindingValue> {
+        match (left, right) {
+            (BindingValue::Float(l), BindingValue::Float(r)) => match op {
+                ArithmeticOp::Add => Some(BindingValue::Float(l + r)),
+                ArithmeticOp::Subtract => Some(BindingValue::Float(l - r)),
+                ArithmeticOp::Multiply => Some(BindingValue::Float(l * r)),
+                ArithmeticOp::Divide => {
+                    if *r == 0.0 {
+                        None
+                    } else {
+                        Some(BindingValue::Float(l / r))
+                    }
+                }
+            },
+            (BindingValue::Int(l), BindingValue::Int(r)) => match op {
+                ArithmeticOp::Add => Some(BindingValue::Int(l + r)),
+                ArithmeticOp::Subtract => Some(BindingValue::Int(l - r)),
+                ArithmeticOp::Multiply => Some(BindingValue::Int(l * r)),
+                ArithmeticOp::Divide => {
+                    if *r == 0 {
+                        None
+                    } else {
+                        Some(BindingValue::Int(l / r))
+                    }
+                }
+            },
+            (BindingValue::Float(l), BindingValue::Int(r)) => match op {
+                ArithmeticOp::Add => Some(BindingValue::Float(l + *r as f32)),
+                ArithmeticOp::Subtract => Some(BindingValue::Float(l - *r as f32)),
+                ArithmeticOp::Multiply => Some(BindingValue::Float(l * *r as f32)),
+                ArithmeticOp::Divide => {
+                    if *r == 0 {
+                        None
+                    } else {
+                        Some(BindingValue::Float(l / *r as f32))
+                    }
+                }
+            },
+            (BindingValue::Int(l), BindingValue::Float(r)) => match op {
+                ArithmeticOp::Add => Some(BindingValue::Float(*l as f32 + r)),
+                ArithmeticOp::Subtract => Some(BindingValue::Float(*l as f32 - r)),
+                ArithmeticOp::Multiply => Some(BindingValue::Float(*l as f32 * r)),
+                ArithmeticOp::Divide => {
+                    if *r == 0.0 {
+                        None
+                    } else {
+                        Some(BindingValue::Float(*l as f32 / r))
+                    }
+                }
+            },
+            _ => None,
+        }
+    }
+}
+
 /// 绑定注册表
 ///
-/// 管理 UI 节点属性到 ECS 资源字段的绑定映射。
+/// 管理 UI 节点属性到 ECS 资源字段或绑定表达式的映射。
 #[derive(Debug, Clone, Default)]
 pub struct BindingRegistry {
-    /// 绑定映射：节点 ID → (属性名 → 绑定键)
+    /// 简单绑定映射：节点 ID → (属性名 → 绑定键)
     pub bindings: HashMap<u64, HashMap<String, BindingKey>>,
+    /// 表达式绑定映射：节点 ID → (属性名 → 绑定表达式)
+    pub expression_bindings: HashMap<u64, HashMap<String, BindingExpression>>,
 }
 
 impl BindingRegistry {

@@ -555,10 +555,17 @@ impl Runtime {
     /// 创建附着式运行时
     ///
     /// 基于当前 Runtime 的配置创建一个隔离的附着式运行时实例，
-    /// 使用全新的 ECS 世界和 HMR 管理器，共享相同的渲染后端和平台服务配置。
+    /// 使用全新的 ECS 世界和 HMR 管理器。
     /// 返回 (AttachedRuntime, InProcessDebugWireEditor) 元组，
     /// 编辑器端通过 InProcessDebugWireEditor 发送控制命令和 HMR 事件。
-    pub fn attach(&self) -> GResult<(attached_runtime::AttachedRuntime, in_process_wire::InProcessDebugWireEditor)> {
+    ///
+    /// # 参数
+    ///
+    /// - `platform_services` - 附着式运行时使用的平台服务
+    pub fn attach(
+        &self,
+        platform_services: gg_core::platform::PlatformServices,
+    ) -> GResult<(attached_runtime::AttachedRuntime, in_process_wire::InProcessDebugWireEditor)> {
         let (editor_wire, runtime_wire) = in_process_wire::InProcessDebugWire::new_pair();
 
         let surface_width = self.renderer.as_ref().map(|r| r.surface_info().width).unwrap_or(800);
@@ -573,7 +580,7 @@ impl Runtime {
             render_context: RenderContext::new(surface_width, surface_height),
             audio_engine: None,
             audio_context: AudioContext::new(),
-            platform_services: gg_core::platform::PlatformServices::new(),
+            platform_services,
             hmr_manager: Some(HmrManager::new()),
             plugins: Vec::new(),
             plugin_manager: plugin::PluginManager::new(),

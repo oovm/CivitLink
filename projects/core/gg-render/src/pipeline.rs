@@ -19,7 +19,7 @@ pub enum RenderTarget {
 /// 绘制命令过滤器
 ///
 /// 用于在渲染通道中筛选需要处理的绘制命令。
-pub trait DrawFilter: Send + Sync + DynClone {
+pub trait DrawFilter: Send + Sync + DynClone + std::fmt::Debug {
     /// 判断绘制命令是否应被当前通道处理
     fn should_draw(&self, command: &DrawCommand) -> bool;
 }
@@ -27,7 +27,7 @@ pub trait DrawFilter: Send + Sync + DynClone {
 /// 动态克隆 trait
 ///
 /// 为 `Box<dyn DrawFilter>` 提供克隆能力。
-trait DynClone: Send + Sync {
+pub trait DynClone: Send + Sync {
     /// 克隆为 Box<dyn DrawFilter>
     fn clone_box(&self) -> Box<dyn DrawFilter>;
 }

@@ -196,6 +196,16 @@ pub enum EditorEvent {
         /// 窗口 ID
         window_id: u64,
     },
+    /// 窗口已创建
+    WindowCreated {
+        /// 窗口 ID
+        window_id: u64,
+    },
+    /// 窗口已销毁
+    WindowDestroyed {
+        /// 窗口 ID
+        window_id: u64,
+    },
     /// 面板已注册
     PanelRegistered {
         /// 面板名称

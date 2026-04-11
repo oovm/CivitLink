@@ -7,7 +7,7 @@ use crate::{
     event::{EditorEvent, EventBus, Key, MouseButton},
     panel::EditorPanel,
     plugin::EditorPlugin,
-    service::{DefaultWindowService, ServiceRegistry},
+    service::{WinitWindowService, ServiceRegistry},
 };
 use gg_core::{GError, GErrorKind, GResult};
 use gg_editor_render::EditorRenderer;
@@ -34,8 +34,8 @@ pub struct EditorShell {
     ui_tree: UiTree,
     /// 是否运行中
     is_running: bool,
-    /// 默认窗口服务
-    window_service: DefaultWindowService,
+    /// Winit 窗口服务
+    window_service: WinitWindowService,
     /// 编辑器配置
     editor_config: EditorConfig,
     /// 编辑器渲染器实例（仅在有渲染器运行时为 Some）
@@ -63,7 +63,7 @@ impl EditorShell {
             plugins: Vec::new(),
             ui_tree: UiTree::new(),
             is_running: false,
-            window_service: DefaultWindowService::new(),
+            window_service: WinitWindowService::new(),
             editor_config: EditorConfig::default(),
             editor_renderer: None,
             window_size: (1280, 720),
@@ -143,12 +143,12 @@ impl EditorShell {
     }
 
     /// 获取窗口服务引用
-    pub fn window_service(&self) -> &DefaultWindowService {
+    pub fn window_service(&self) -> &WinitWindowService {
         &self.window_service
     }
 
     /// 获取窗口服务可变引用
-    pub fn window_service_mut(&mut self) -> &mut DefaultWindowService {
+    pub fn window_service_mut(&mut self) -> &mut WinitWindowService {
         &mut self.window_service
     }
 
@@ -368,6 +368,9 @@ impl EditorShell {
                         winit::event::WindowEvent::CloseRequested => {
                             shell.shutdown();
                         }
+                        winit::event::WindowEvent::Destroyed => {
+                            shell.events.publish(EditorEvent::WindowDestroyed { window_id: 0 });
+                        }
                         winit::event::WindowEvent::Focused(_focused) => {}
                         winit::event::WindowEvent::MouseInput { state, button, .. } => {
                             let mouse_button = match button {
@@ -434,6 +437,12 @@ impl EditorShell {
                             return;
                         }
                         if shell.is_running {
+                            for create in shell.window_service.drain_pending_creates() {
+                                shell.events.publish(EditorEvent::WindowCreated { window_id: create.window_id.0 });
+                            }
+                            for destroy_id in shell.window_service.drain_pending_destroys() {
+                                shell.events.publish(EditorEvent::WindowDestroyed { window_id: destroy_id.0 });
+                            }
                             let _ = shell.tick();
                             if let Some(ref mut renderer) = shell.editor_renderer {
                                 let _ = renderer.render_frame(&shell.ui_tree);

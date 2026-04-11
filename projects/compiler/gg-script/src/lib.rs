@@ -4,6 +4,7 @@
 //! 使用 oak-valkyrie 前端将 Valkyrie 源码编译为字节码模块
 
 pub mod compiler;
+pub mod type_checker;
 
 use std::path::Path;
 
@@ -14,6 +15,7 @@ use oak_core::{Builder, SourceText};
 use oak_valkyrie::{ValkyrieBuilder, ValkyrieLanguage};
 
 use crate::compiler::ValkyrieCompiler;
+use crate::type_checker::TypeChecker;
 
 /// 脚本编译器，将 Valkyrie 源码编译为字节码模块
 ///
@@ -51,6 +53,9 @@ impl ScriptCompiler {
     }
 
     /// 编译 Valkyrie 脚本源码为 IR 模块（跳过优化和字节码序列化）
+    ///
+    /// 解析源码为 AST 后，先运行类型检查器生成诊断信息（仅警告，不阻止编译），
+    /// 再通过 ValkyrieCompiler 编译为 IR 模块。
     pub fn compile_to_ir(&self, source: &str, module_name: &str) -> GResult<IrModule> {
         let language = ValkyrieLanguage::default().with_shader_support();
         let builder = ValkyrieBuilder::new(&language);
@@ -60,6 +65,12 @@ impl ScriptCompiler {
 
         match diagnostics.result {
             Ok(root) => {
+                let mut type_checker = TypeChecker::new();
+                let type_diagnostics = type_checker.check_root(&root);
+                for diag in &type_diagnostics {
+                    eprintln!("[type-check] {}", diag);
+                }
+
                 let compiler = ValkyrieCompiler::new(module_name);
                 compiler.compile(&root, module_name)
             }

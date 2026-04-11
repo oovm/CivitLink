@@ -20,5 +20,5 @@ pub use docking::{DockRegion, DockRegionConfig, DockSplit, DockingLayout, PanelL
 pub use event::{EditorEvent, EventBus, Key, MouseButton, SubscriptionId};
 pub use panel::{EditorPanel, PanelLayoutHint, PanelPosition};
 pub use plugin::EditorPlugin;
-pub use service::{DefaultWindowService, ServiceRegistry, WindowId, WindowService};
+pub use service::{DefaultWindowService, PendingWindowCreate, ServiceRegistry, WindowId, WindowService, WinitWindowInfo, WinitWindowService};
 pub use shell::EditorShell;

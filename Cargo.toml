@@ -16,8 +16,6 @@ members = [
     "projects/engines/*",
     "examples/basic",
     "examples/web-render-verify",
-    "examples/stg-basic",
-    "examples/platformer-basic",
 ]
 exclude = ["projects/engines/stg"]
 

@@ -525,12 +525,11 @@ impl EditorPanel for InspectorPanel {
 
                 for property in &component_desc.properties {
                     if let Some(editor) = self.editor_registry.create_editor(&property.property_type) {
-                        let control_type =
-                            crate::controls::create_property_control(&property.property_type, property.constraints.as_ref());
-                        let prop_id = ui_tree.create_node(
-                            format!("prop_{}_{}", component_desc.type_name, property.name),
-                            Style::default(),
-                            UiNodeData::Custom { kind: control_type },
+                        let prop_id = crate::controls::create_property_control(
+                            &property.property_type,
+                            &property.display_name,
+                            property.constraints.as_ref(),
+                            ui_tree,
                         );
                         ui_tree.add_child(section_id, prop_id);
 

@@ -1,8 +1,9 @@
 #![warn(missing_docs)]
 
-//! GG Galgame 引擎核心库
-//! 提供 Galgame 游戏的核心功能和类型定义
+//! GG Galgame 引擎库
 
+pub mod compiler;
 pub mod config;
+pub mod editor;
 pub mod engine;
 pub mod schema;
