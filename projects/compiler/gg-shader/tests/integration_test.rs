@@ -19,9 +19,7 @@ fn test_lowerer_default() {
 
 #[test]
 fn test_compile_no_shader_block() {
-    let source = r#"
-let x = 42
-"#;
+    let source = "let x = 42";
     let compiler = ShaderCompiler::new();
     let result = compiler.compile(source);
     assert!(result.is_err(), "应该编译失败：没有 shader 块");
@@ -29,15 +27,13 @@ let x = 42
 
 #[test]
 fn test_compile_minimal_shader() {
-    let source = r#"
-shader MinimalShader by Unlit {
+    let source = r#"shader MinimalShader by Unlit {
     @vertex
     micro vs_main() -> f32 {
         return 1.0
     }
-}
-"#;
-    let compiler = ShaderCompiler::no_optimize();
+}"#;
+    let compiler = ShaderCompiler::new();
     let result = compiler.compile(source);
     match &result {
         Ok(module) => {
@@ -50,20 +46,17 @@ shader MinimalShader by Unlit {
 
 #[test]
 fn test_compile_vertex_and_fragment() {
-    let source = r#"
-shader SimpleShader by Unlit {
+    let source = r#"shader SimpleShader by Unlit {
     @vertex
     micro vs_main() -> f32 {
         return 1.0
     }
-
     @fragment
     micro fs_main() -> f32 {
         return 1.0
     }
-}
-"#;
-    let compiler = ShaderCompiler::no_optimize();
+}"#;
+    let compiler = ShaderCompiler::new();
     let result = compiler.compile(source);
     match &result {
         Ok(module) => {
@@ -75,20 +68,17 @@ shader SimpleShader by Unlit {
 
 #[test]
 fn test_compile_with_uniforms() {
-    let source = r#"
-shader UniformShader by PBR {
+    let source = r#"shader UniformShader by PBR {
     structure Uniforms {
         mvp: mat44
         tint: vec4
     }
-
     @vertex
     micro vs_main() -> f32 {
         return 1.0
     }
-}
-"#;
-    let compiler = ShaderCompiler::no_optimize();
+}"#;
+    let compiler = ShaderCompiler::new();
     let result = compiler.compile(source);
     match &result {
         Ok(module) => {
@@ -100,22 +90,19 @@ shader UniformShader by PBR {
 
 #[test]
 fn test_compile_with_texture_property() {
-    let source = r#"
-shader TexturedShader by Unlit {
+    let source = r#"shader TexturedShader by Unlit {
     let albedo: texture = "white"
-
     @vertex
     micro vs_main() -> f32 {
         return 1.0
     }
-}
-"#;
-    let compiler = ShaderCompiler::no_optimize();
+}"#;
+    let compiler = ShaderCompiler::new();
     let result = compiler.compile(source);
     match &result {
         Ok(module) => {
             let gv_count = module.global_variables.iter().count();
-            assert!(gv_count >= 2, "应该有 sampler 和 texture 全局变量");
+            assert!(gv_count >= 2, "应该有 sampler 和 texture 全局变量，实际有 {}", gv_count);
         }
         Err(e) => panic!("编译失败: {:?}", e),
     }
@@ -123,15 +110,13 @@ shader TexturedShader by Unlit {
 
 #[test]
 fn test_compile_compute_shader() {
-    let source = r#"
-shader ComputeShader by Compute {
+    let source = r#"shader ComputeShader by Compute {
     @compute
     micro cs_main() -> f32 {
         return 1.0
     }
-}
-"#;
-    let compiler = ShaderCompiler::no_optimize();
+}"#;
+    let compiler = ShaderCompiler::new();
     let result = compiler.compile(source);
     match &result {
         Ok(module) => {
@@ -144,15 +129,13 @@ shader ComputeShader by Compute {
 
 #[test]
 fn test_compile_with_params() {
-    let source = r#"
-shader ParamShader by Unlit {
+    let source = r#"shader ParamShader by Unlit {
     @vertex
     micro vs_main(position: vec2) -> vec4f {
         return vec4(1.0, 1.0, 1.0, 1.0)
     }
-}
-"#;
-    let compiler = ShaderCompiler::no_optimize();
+}"#;
+    let compiler = ShaderCompiler::new();
     let result = compiler.compile(source);
     match &result {
         Ok(module) => {
