@@ -1,0 +1,12 @@
+[package]
+name = "gg-editor-ui"
+version = "0.1.0"
+edition = "2021"
+description = "GG Editor UI system based on Valkyrie Widget"
+license = "MIT"
+
+[dependencies]
+oak-voc = { path = "../../../oaks/examples/oak-voc" }
+
+[features]
+default = []

@@ -85,5 +85,5 @@ const handleIncrement = () => {
 ## 更多资源
 
 - [GG Editor 文档](../../../design/modules/vx-format.md)
-- [*.vx 文件格式规范](../../../design/modules/vx-format.md)
+- [*.widget 文件格式规范](../../../design/modules/vx-format.md)
 - [GG Editor 架构设计](../../../design/architecture/overview.md)

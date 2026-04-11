@@ -135,7 +135,7 @@ graph TD
 项目采用 Cargo Workspace 结构，按功能分组组织模块：
 
 - **core/**: 核心抽象与基础类型，包括共享数据结构、错误类型、HAL 接口定义、ECS 核心实现和统一资产处理框架
-- **compiler/**: 编译器相关模块，包括编译流水线图调度器、转换器 trait、脚本语言前端、AOT 编译后端、\*.vx 文件编译器和可移植字节码定义/解释器
+- **compiler/**: 编译器相关模块，包括编译流水线图调度器、转换器 trait、脚本语言前端、AOT 编译后端、\*.widget 文件编译器和可移植字节码定义/解释器
 - **editor/**: 跨平台 GUI 开发框架，包括 GUI 框架核心、GUI 编译器、GUI 运行时、基础 GUI 组件库和可视化 GUI 设计器
 - **runtime/**: 运行时相关模块，包括系统调度器、宿主服务接口、HMR 状态迁移、渲染后端抽象、GUI 运行时抽象、音频后端抽象和脚本运行时（包含 Valkyrie 脚本系统）
 - **platforms/**: 平台特定胶水层，包括 Windows/macOS/Linux、WebAssembly/WebGL 和 iOS/Android（预留）
@@ -156,7 +156,7 @@ graph TD
     B -->|依赖| C
     
     subgraph A1[游戏开发者视角组件]
-        A1_1[GG Editor 跨平台 GUI 开发框架 + *.vx 文件支持]
+        A1_1[GG Editor 跨平台 GUI 开发框架 + *.widget 文件支持]
         A1_2[游戏运行时 gg-runtime-core + 领域系统]
         A1_3[Mod / DLC 沙盒 VM + 资产覆盖层]
     end
@@ -244,9 +244,9 @@ entity NPC {
 
 GG Editor 重新定位为跨平台 GUI 开发框架，主要用于编辑器界面的开发，采用原生渲染方式以获得更好的性能和原生体验。游戏内的 UI（如游戏菜单、HUD 等）仍使用 WGPU 自渲，确保与游戏渲染的一致性和性能。
 
-### \*.vx 文件格式
+### \*.widget 文件格式
 
-GG Editor 使用类似 Vue 的 \*.vx 文件格式，包含三个部分：
+GG Editor 使用类似 Vue 的 \*.widget 文件格式，包含三个部分：
 
 1. **<template>**：使用 TSX 语法，支持 Layout、Stack 等基础组件
    ```tsx
@@ -265,8 +265,8 @@ GG Editor 使用类似 Vue 的 \*.vx 文件格式，包含三个部分：
 
 ### 架构组成
 
-1. **编译器**：将 \*.vx 文件编译为平台特定的 GUI 代码
-   - 解析 \*.vx 文件结构
+1. **编译器**：将 \*.widget 文件编译为平台特定的 GUI 代码
+   - 解析 \*.widget 文件结构
    - 编译 <template> 部分为平台特定的 GUI 代码
    - 编译 <script> 部分为 Valkyrie 脚本
    - 编译 <style> 部分为 GG Renderer 可处理的样式
@@ -274,7 +274,7 @@ GG Editor 使用类似 Vue 的 \*.vx 文件格式，包含三个部分：
    - 平台抽象层：处理不同平台原生 GUI 系统的差异
    - 原生 GUI 渲染：使用各平台的原生 GUI 系统
    - 与游戏引擎集成：与 ECS 架构无缝集成
-3. **编辑器**：可视化编辑 \*.vx 文件
+3. **编辑器**：可视化编辑 \*.widget 文件
    - 语法高亮和代码提示
    - 实时预览
    - 热更新支持

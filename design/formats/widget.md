@@ -1,12 +1,12 @@
-# *.vx 文件格式规范
+# *.widget 文件格式规范
 
 ## 概述
 
-*.vx 文件是 GG Editor 跨平台 GUI 开发框架使用的文件格式，类似于 Vue 的单文件组件格式，包含 `<template>`、`<script>` 和 `<style>` 三个主要部分。
+*.widget 文件是 GG Editor 跨平台 GUI 开发框架使用的文件格式，类似于 Vue 的单文件组件格式，包含 `<template>`、`<script>` 和 `<style>` 三个主要部分。
 
 ## 文件结构
 
-一个完整的 *.vx 文件结构如下：
+一个完整的 *.widget 文件结构如下：
 
 ```vue
 <template>
@@ -420,4 +420,4 @@ let inputValue = signal("");
 
 ## 总结
 
-*.vx 文件格式为 GG Editor 提供了一种统一、直观的方式来开发跨平台 GUI 界面。通过结合 TSX 模板、Valkyrie 脚本和 SCSS 样式，开发者可以快速构建出美观、响应式的 GUI 界面，同时享受跨平台的便利。
+*.widget 文件格式为 GG Editor 提供了一种统一、直观的方式来开发跨平台 GUI 界面。通过结合 TSX 模板、Valkyrie 脚本和 SCSS 样式，开发者可以快速构建出美观、响应式的 GUI 界面，同时享受跨平台的便利。

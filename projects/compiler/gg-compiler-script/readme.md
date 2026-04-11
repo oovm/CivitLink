@@ -6,7 +6,7 @@
 
 gg-compiler-script 是 GG Game Engine 的统一脚本编译器，负责编译三种脚本类型：
 - **.v**（Valkyrie 脚本）— 通用游戏逻辑脚本
-- **.vx**（ValkyrieX 单文件组件）— GUI 界面组件
+- **.widget**（ValkyrieX 单文件组件）— GUI 界面组件
 - **.shader**（GG Shader）— 着色器脚本
 
 三种脚本共享同一套核心编译管线（源码 → AST → IR → 字节码），借助 VM 互通。

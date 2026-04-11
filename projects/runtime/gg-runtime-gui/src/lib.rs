@@ -1,7 +1,7 @@
 //! GG Editor 跨平台 GUI 运行时
 //!
 //! 提供 VX 组件体系、响应式状态管理、生命周期钩子和基础组件实现，
-//! 对齐 *.vx 文件格式的 template/script/style 三段式结构。
+//! 对齐 *.widget 文件格式的 template/script/style 三段式结构。
 
 #![warn(missing_docs)]
 
@@ -39,7 +39,7 @@ pub enum ComponentLifecycle {
     Unmounted,
 }
 
-/// VX 组件 trait，对齐 *.vx 文件格式的三段式结构
+/// VX 组件 trait，对齐 *.widget 文件格式的三段式结构
 pub trait VxComponent: Any + Send + Sync {
     /// 渲染模板，返回 UI 节点描述
     fn render_template(&self) -> oak_voc::TemplateNode;

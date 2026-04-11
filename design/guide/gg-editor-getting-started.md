@@ -1,6 +1,6 @@
 # GG Editor 快速入门
 
-GG Editor 是一个跨平台 GUI 开发框架，支持使用类似 Vue 的 *.vx 格式开发原生 GUI 界面。本指南将帮助你快速上手 GG Editor。
+GG Editor 是一个跨平台 GUI 开发框架，支持使用类似 Vue 的 *.widget 格式开发原生 GUI 界面。本指南将帮助你快速上手 GG Editor。
 
 ## 安装
 
@@ -14,7 +14,7 @@ cargo build
 
 ## 创建第一个 GUI 项目
 
-### 步骤 1：创建 *.vx 文件
+### 步骤 1：创建 *.widget 文件
 
 创建一个名为 `hello.vx` 的文件，内容如下：
 
@@ -72,9 +72,9 @@ cargo run --bin gg-editor
 
 ## 核心概念
 
-### 1. *.vx 文件格式
+### 1. *.widget 文件格式
 
-*.vx 文件包含三个主要部分：
+*.widget 文件包含三个主要部分：
 
 - **<template>**：使用 TSX 语法定义界面结构
 - **<script>**：使用 Valkyrie 脚本定义逻辑
@@ -176,7 +176,7 @@ GG Editor 提供了以下基础组件：
 
 ### Q: 如何添加自定义组件？
 
-A: 创建一个新的 *.vx 文件，定义组件，然后在其他文件中导入使用：
+A: 创建一个新的 *.widget 文件，定义组件，然后在其他文件中导入使用：
 
 ```javascript
 import CustomComponent from './CustomComponent.vx';
@@ -195,6 +195,6 @@ A: GG Editor 支持 Windows、macOS、iOS、Android、H5、微信小游戏等平
 
 ## 更多资源
 
-- [*.vx 文件格式规范](../modules/vx-format.md)
+- [*.widget 文件格式规范](../modules/vx-format.md)
 - [GG Editor 架构设计](../architecture/overview.md)
 - [示例项目](../../examples/gui-basic/)
