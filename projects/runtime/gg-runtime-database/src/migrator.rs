@@ -135,10 +135,7 @@ impl<D: DatabaseDriver> DatabaseMigrator<D> {
     fn apply_migration_data(&mut self, version: i64, description: &str, up_sql: &str) -> GResult<()> {
         self.driver.execute(up_sql, &[])?;
 
-        let now = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let now = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs();
 
         self.driver.execute(
             "INSERT INTO _migrations (version, description, applied_at) VALUES (?, ?, ?)",
@@ -162,12 +159,8 @@ impl<D: DatabaseDriver> DatabaseMigrator<D> {
         self.ensure_migrations_table()?;
         let applied = self.applied_versions()?;
 
-        let mut to_rollback: Vec<(i64, String)> = self
-            .migrations
-            .iter()
-            .filter(|m| applied.contains(&m.version))
-            .map(|m| (m.version, m.down_sql.clone()))
-            .collect();
+        let mut to_rollback: Vec<(i64, String)> =
+            self.migrations.iter().filter(|m| applied.contains(&m.version)).map(|m| (m.version, m.down_sql.clone())).collect();
         to_rollback.sort_by_key(|(v, _)| std::cmp::Reverse(*v));
 
         let mut results = Vec::new();
@@ -184,10 +177,7 @@ impl<D: DatabaseDriver> DatabaseMigrator<D> {
     fn revert_migration_data(&mut self, version: i64, down_sql: &str) -> GResult<()> {
         self.driver.execute(down_sql, &[])?;
 
-        self.driver.execute(
-            "DELETE FROM _migrations WHERE version = ?",
-            &[DatabaseValue::Integer(version)],
-        )?;
+        self.driver.execute("DELETE FROM _migrations WHERE version = ?", &[DatabaseValue::Integer(version)])?;
         Ok(())
     }
 
@@ -200,12 +190,7 @@ impl<D: DatabaseDriver> DatabaseMigrator<D> {
 
         let mut statuses = Vec::new();
         for migration in &self.migrations {
-            let status = if applied.contains(&migration.version) {
-                MigrationStatus::Applied
-            }
-            else {
-                MigrationStatus::Pending
-            };
+            let status = if applied.contains(&migration.version) { MigrationStatus::Applied } else { MigrationStatus::Pending };
             statuses.push((migration.version, migration.description.clone(), status));
         }
         Ok(statuses)

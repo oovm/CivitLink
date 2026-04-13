@@ -62,8 +62,7 @@ impl CacheEntry {
             CacheValue::Blob(b) => b.len(),
             CacheValue::Bool(_) => 1,
         };
-        value_size + std::mem::size_of::<Option<Instant>>() + std::mem::size_of::<Instant>()
-            + std::mem::size_of::<u64>()
+        value_size + std::mem::size_of::<Option<Instant>>() + std::mem::size_of::<Instant>() + std::mem::size_of::<u64>()
     }
 }
 
@@ -88,13 +87,7 @@ impl MemoryCacheDriver {
     ///
     /// 默认使用 TTL 驱逐策略，无容量限制。
     pub fn new() -> Self {
-        Self {
-            entries: HashMap::new(),
-            strategy: CacheInvalidationStrategy::Ttl,
-            max_capacity: 0,
-            hits: 0,
-            misses: 0,
-        }
+        Self { entries: HashMap::new(), strategy: CacheInvalidationStrategy::Ttl, max_capacity: 0, hits: 0, misses: 0 }
     }
 
     /// 使用指定的驱逐策略创建内存缓存驱动
@@ -103,13 +96,7 @@ impl MemoryCacheDriver {
     ///
     /// - `strategy`: 缓存驱逐策略
     pub fn with_strategy(strategy: CacheInvalidationStrategy) -> Self {
-        Self {
-            entries: HashMap::new(),
-            strategy,
-            max_capacity: 0,
-            hits: 0,
-            misses: 0,
-        }
+        Self { entries: HashMap::new(), strategy, max_capacity: 0, hits: 0, misses: 0 }
     }
 
     /// 设置最大容量
@@ -147,22 +134,16 @@ impl MemoryCacheDriver {
                 self.evict_expired();
             }
             CacheInvalidationStrategy::Lru => {
-                let mut entries_with_time: Vec<(String, Instant)> = self
-                    .entries
-                    .iter()
-                    .map(|(k, v)| (k.clone(), v.last_accessed))
-                    .collect();
+                let mut entries_with_time: Vec<(String, Instant)> =
+                    self.entries.iter().map(|(k, v)| (k.clone(), v.last_accessed)).collect();
                 entries_with_time.sort_by_key(|(_, t)| *t);
                 for (key, _) in entries_with_time.into_iter().take(evict_count) {
                     self.entries.remove(&key);
                 }
             }
             CacheInvalidationStrategy::Lfu => {
-                let mut entries_with_count: Vec<(String, u64)> = self
-                    .entries
-                    .iter()
-                    .map(|(k, v)| (k.clone(), v.access_count))
-                    .collect();
+                let mut entries_with_count: Vec<(String, u64)> =
+                    self.entries.iter().map(|(k, v)| (k.clone(), v.access_count)).collect();
                 entries_with_count.sort_by_key(|(_, c)| *c);
                 for (key, _) in entries_with_count.into_iter().take(evict_count) {
                     self.entries.remove(&key);

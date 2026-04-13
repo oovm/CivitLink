@@ -1,5 +1,4 @@
 #![warn(missing_docs)]
-
 #![doc = include_str!("readme.md")]
 
 use gg_core::GResult;

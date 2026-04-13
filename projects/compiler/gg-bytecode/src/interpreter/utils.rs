@@ -66,8 +66,10 @@ impl BytecodeInterpreter {
     }
 
     /// 设置调试控制器
-    pub fn set_debug_controller(&mut self, controller: Option<std::rc::Rc<std::cell::RefCell<dyn crate::debug_protocol::DebugController>>>)
-    {
+    pub fn set_debug_controller(
+        &mut self,
+        controller: Option<std::rc::Rc<std::cell::RefCell<dyn crate::debug_protocol::DebugController>>>,
+    ) {
         self.debug_controller = controller;
     }
 

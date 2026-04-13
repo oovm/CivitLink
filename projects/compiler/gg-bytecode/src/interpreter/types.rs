@@ -1,6 +1,13 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::{Arc, Mutex}};
+use std::{
+    cell::RefCell,
+    collections::HashMap,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
-use crate::{debug_info::SourceLocation, debug_protocol::DebugController, format::{BytecodeValue}, host::Host, profiler::BytecodeProfiler};
+use crate::{
+    debug_info::SourceLocation, debug_protocol::DebugController, format::BytecodeValue, host::Host, profiler::BytecodeProfiler,
+};
 
 /// 解释器执行结果
 #[derive(Debug, Clone)]

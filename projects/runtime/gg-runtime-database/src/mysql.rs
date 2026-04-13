@@ -25,16 +25,11 @@ impl DatabaseDriver for MySqlDriver {
             format!("mysql://{}@{}:{}/{}", config.username, config.host, config.port, config.database)
         }
         else {
-            format!(
-                "mysql://{}:{}@{}:{}/{}",
-                config.username, config.password, config.host, config.port, config.database
-            )
+            format!("mysql://{}:{}@{}:{}/{}", config.username, config.password, config.host, config.port, config.database)
         };
 
-        let pool = mysql::Pool::new(&conn_str).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("无法连接 MySQL 数据库: {}", e),
-        })?;
+        let pool = mysql::Pool::new(&conn_str)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("无法连接 MySQL 数据库: {}", e) })?;
 
         Ok(Self { conn: Some(pool), conn_str })
     }
@@ -45,21 +40,18 @@ impl DatabaseDriver for MySqlDriver {
             .as_ref()
             .ok_or_else(|| GError { kind: GErrorKind::Runtime, message: "数据库连接已关闭".to_string() })?;
 
-        let mut conn = pool.get_conn().map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("获取 MySQL 连接失败: {}", e),
-        })?;
+        let mut conn = pool
+            .get_conn()
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("获取 MySQL 连接失败: {}", e) })?;
 
         let mysql_params: Vec<mysql::Value> = convert_params(params);
-        let stmt = conn.prep(query).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("准备 SQL 语句失败: {}", e),
-        })?;
+        let stmt = conn
+            .prep(query)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("准备 SQL 语句失败: {}", e) })?;
 
-        let result = conn.exec_iter(stmt, mysql_params).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("执行 SQL 失败: {}", e),
-        })?;
+        let result = conn
+            .exec_iter(stmt, mysql_params)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("执行 SQL 失败: {}", e) })?;
 
         Ok(result.affected_rows())
     }
@@ -70,34 +62,24 @@ impl DatabaseDriver for MySqlDriver {
             .as_ref()
             .ok_or_else(|| GError { kind: GErrorKind::Runtime, message: "数据库连接已关闭".to_string() })?;
 
-        let mut conn = pool.get_conn().map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("获取 MySQL 连接失败: {}", e),
-        })?;
+        let mut conn = pool
+            .get_conn()
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("获取 MySQL 连接失败: {}", e) })?;
 
         let mysql_params: Vec<mysql::Value> = convert_params(params);
-        let stmt = conn.prep(query).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("准备 SQL 语句失败: {}", e),
-        })?;
+        let stmt = conn
+            .prep(query)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("准备 SQL 语句失败: {}", e) })?;
 
-        let result = conn.exec_iter(stmt, mysql_params).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("执行查询失败: {}", e),
-        })?;
+        let result = conn
+            .exec_iter(stmt, mysql_params)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("执行查询失败: {}", e) })?;
 
         let mut rows_result = Vec::new();
-        let column_names: Vec<String> = result
-            .columns()
-            .iter()
-            .map(|col| col.name_str().to_string())
-            .collect();
+        let column_names: Vec<String> = result.columns().iter().map(|col| col.name_str().to_string()).collect();
 
         for row in result {
-            let row = row.map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("读取查询结果失败: {}", e),
-            })?;
+            let row = row.map_err(|e| GError { kind: GErrorKind::Io, message: format!("读取查询结果失败: {}", e) })?;
             let mut map = HashMap::new();
             for (i, col_name) in column_names.iter().enumerate() {
                 let value = row.get::<mysql::Value, usize>(i).unwrap_or(mysql::Value::NULL);
@@ -115,15 +97,12 @@ impl DatabaseDriver for MySqlDriver {
             .as_ref()
             .ok_or_else(|| GError { kind: GErrorKind::Runtime, message: "数据库连接已关闭".to_string() })?;
 
-        let mut conn = pool.get_conn().map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("获取 MySQL 连接失败: {}", e),
-        })?;
+        let mut conn = pool
+            .get_conn()
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("获取 MySQL 连接失败: {}", e) })?;
 
-        conn.query_drop("START TRANSACTION").map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("开始事务失败: {}", e),
-        })?;
+        conn.query_drop("START TRANSACTION")
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("开始事务失败: {}", e) })?;
 
         Ok(Transaction::new(self.conn_str.clone()))
     }
@@ -168,12 +147,10 @@ fn mysql_value_to_database_value(value: mysql::Value) -> DatabaseValue {
         mysql::Value::UInt(u) => DatabaseValue::Integer(u as i64),
         mysql::Value::Float(f) => DatabaseValue::Real(f as f64),
         mysql::Value::Double(d) => DatabaseValue::Real(d),
-        mysql::Value::Bytes(b) => {
-            match String::from_utf8(b) {
-                Ok(s) => DatabaseValue::Text(s),
-                Err(e) => DatabaseValue::Blob(e.into_bytes()),
-            }
-        }
+        mysql::Value::Bytes(b) => match String::from_utf8(b) {
+            Ok(s) => DatabaseValue::Text(s),
+            Err(e) => DatabaseValue::Blob(e.into_bytes()),
+        },
         _ => DatabaseValue::Null,
     }
 }

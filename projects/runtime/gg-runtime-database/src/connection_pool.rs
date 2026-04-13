@@ -93,13 +93,7 @@ impl<D: DatabaseDriver> DatabaseConnectionPool<D> {
     /// - `config`: 数据库配置，用于创建新连接
     /// - `max_size`: 最大连接数限制
     pub fn new(config: DatabaseConfig, max_size: usize) -> GResult<Self> {
-        Ok(Self {
-            available: Vec::new(),
-            config,
-            pool_config: PoolConfig::new(max_size),
-            total: 0,
-            active: 0,
-        })
+        Ok(Self { available: Vec::new(), config, pool_config: PoolConfig::new(max_size), total: 0, active: 0 })
     }
 
     /// 使用连接池配置创建连接池

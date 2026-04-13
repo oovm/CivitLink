@@ -1,7 +1,7 @@
 use gg_ir::TargetPlatform;
 use oak_valkyrie::ast::{Attribute, MicroDeclaration, StatementNode, StringSegment, TermExpression};
 
-use super::{ValkyrieCompiler};
+use super::ValkyrieCompiler;
 
 impl ValkyrieCompiler {
     /// 创建新的编译器

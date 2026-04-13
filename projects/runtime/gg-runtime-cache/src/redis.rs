@@ -56,15 +56,9 @@ impl RedisCacheDriver {
         };
         let conn_str = format!("redis://{}{}:{}/{}", password_part, config.host, config.port, config.db);
         let conn = redis::Client::open(conn_str)
-            .map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("创建 Redis 客户端失败: {}", e),
-            })?
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("创建 Redis 客户端失败: {}", e) })?
             .get_connection()
-            .map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("连接 Redis 服务器失败: {}", e),
-            })?;
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("连接 Redis 服务器失败: {}", e) })?;
         Ok(Self { conn, prefix: String::new(), hits: 0, misses: 0 })
     }
 
@@ -82,20 +76,13 @@ impl RedisCacheDriver {
 
     /// 获取带前缀的完整键名
     fn full_key(&self, key: &str) -> String {
-        if self.prefix.is_empty() {
-            key.to_string()
-        }
-        else {
-            format!("{}:{}", self.prefix, key)
-        }
+        if self.prefix.is_empty() { key.to_string() } else { format!("{}:{}", self.prefix, key) }
     }
 
     /// 执行 Redis 命令
     fn execute_cmd(&mut self, cmd: &mut redis::Cmd) -> GResult<redis::Value> {
-        cmd.query(&mut self.conn).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("执行 Redis 命令失败: {}", e),
-        })
+        cmd.query(&mut self.conn)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("执行 Redis 命令失败: {}", e) })
     }
 }
 
@@ -117,36 +104,32 @@ fn string_to_cache_value(s: &str) -> GResult<CacheValue> {
         return Ok(CacheValue::Null);
     }
     if let Some(val) = s.strip_prefix("i:") {
-        return val.parse::<i64>().map(CacheValue::Integer).map_err(|e| GError {
-            kind: GErrorKind::Runtime,
-            message: format!("解析整数值失败: {}", e),
-        });
+        return val
+            .parse::<i64>()
+            .map(CacheValue::Integer)
+            .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("解析整数值失败: {}", e) });
     }
     if let Some(val) = s.strip_prefix("f:") {
-        return val.parse::<f64>().map(CacheValue::Real).map_err(|e| GError {
-            kind: GErrorKind::Runtime,
-            message: format!("解析浮点数值失败: {}", e),
-        });
+        return val
+            .parse::<f64>()
+            .map(CacheValue::Real)
+            .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("解析浮点数值失败: {}", e) });
     }
     if let Some(val) = s.strip_prefix("s:") {
         return Ok(CacheValue::Text(val.to_string()));
     }
     if let Some(val) = s.strip_prefix("b:") {
-        return base64_decode(val).map(CacheValue::Blob).map_err(|e| GError {
-            kind: GErrorKind::Runtime,
-            message: format!("解析二进制数据失败: {}", e),
-        });
+        return base64_decode(val)
+            .map(CacheValue::Blob)
+            .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("解析二进制数据失败: {}", e) });
     }
     if let Some(val) = s.strip_prefix("bool:") {
-        return val.parse::<bool>().map(CacheValue::Bool).map_err(|e| GError {
-            kind: GErrorKind::Runtime,
-            message: format!("解析布尔值失败: {}", e),
-        });
+        return val
+            .parse::<bool>()
+            .map(CacheValue::Bool)
+            .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("解析布尔值失败: {}", e) });
     }
-    Err(GError {
-        kind: GErrorKind::Runtime,
-        message: format!("无法识别的缓存值格式: {}", s),
-    })
+    Err(GError { kind: GErrorKind::Runtime, message: format!("无法识别的缓存值格式: {}", s) })
 }
 
 /// 简易 Base64 编码
@@ -201,10 +184,7 @@ impl CacheDriver for RedisCacheDriver {
         let result: Option<String> = redis::cmd("GET")
             .arg(&full_key)
             .query(&mut self.conn)
-            .map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Redis GET 命令失败: {}", e),
-            })?;
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Redis GET 命令失败: {}", e) })?;
         match result {
             Some(s) => {
                 self.hits += 1;
@@ -227,20 +207,14 @@ impl CacheDriver for RedisCacheDriver {
                     .arg(duration.as_secs() as u64)
                     .arg(&value_str)
                     .query(&mut self.conn)
-                    .map_err(|e| GError {
-                        kind: GErrorKind::Io,
-                        message: format!("Redis SETEX 命令失败: {}", e),
-                    })?;
+                    .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Redis SETEX 命令失败: {}", e) })?;
             }
             None => {
                 redis::cmd("SET")
                     .arg(&full_key)
                     .arg(&value_str)
                     .query(&mut self.conn)
-                    .map_err(|e| GError {
-                        kind: GErrorKind::Io,
-                        message: format!("Redis SET 命令失败: {}", e),
-                    })?;
+                    .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Redis SET 命令失败: {}", e) })?;
             }
         }
         Ok(())
@@ -251,10 +225,7 @@ impl CacheDriver for RedisCacheDriver {
         let deleted: i64 = redis::cmd("DEL")
             .arg(&full_key)
             .query(&mut self.conn)
-            .map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Redis DEL 命令失败: {}", e),
-            })?;
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Redis DEL 命令失败: {}", e) })?;
         Ok(deleted > 0)
     }
 
@@ -263,20 +234,14 @@ impl CacheDriver for RedisCacheDriver {
         let exists: bool = redis::cmd("EXISTS")
             .arg(&full_key)
             .query(&mut self.conn)
-            .map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Redis EXISTS 命令失败: {}", e),
-            })?;
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Redis EXISTS 命令失败: {}", e) })?;
         Ok(exists)
     }
 
     fn clear(&mut self) -> GResult<()> {
         redis::cmd("FLUSHDB")
             .query(&mut self.conn)
-            .map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Redis FLUSHDB 命令失败: {}", e),
-            })?;
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Redis FLUSHDB 命令失败: {}", e) })?;
         Ok(())
     }
 
@@ -289,10 +254,7 @@ impl CacheDriver for RedisCacheDriver {
         let results: Vec<Option<String>> = redis::cmd("MGET")
             .arg(&args)
             .query(&mut self.conn)
-            .map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Redis MGET 命令失败: {}", e),
-            })?;
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Redis MGET 命令失败: {}", e) })?;
         let mut values = Vec::with_capacity(results.len());
         for result in results {
             match result {
@@ -325,10 +287,7 @@ impl CacheDriver for RedisCacheDriver {
             .arg(&full_key)
             .arg(delta)
             .query(&mut self.conn)
-            .map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Redis INCRBY 命令失败: {}", e),
-            })?;
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Redis INCRBY 命令失败: {}", e) })?;
         Ok(result)
     }
 
@@ -338,10 +297,7 @@ impl CacheDriver for RedisCacheDriver {
             .arg(&full_key)
             .arg(delta)
             .query(&mut self.conn)
-            .map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Redis DECRBY 命令失败: {}", e),
-            })?;
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Redis DECRBY 命令失败: {}", e) })?;
         Ok(result)
     }
 
@@ -351,10 +307,7 @@ impl CacheDriver for RedisCacheDriver {
             .arg(&full_key)
             .arg(ttl.as_secs() as u64)
             .query(&mut self.conn)
-            .map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("Redis EXPIRE 命令失败: {}", e),
-            })?;
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Redis EXPIRE 命令失败: {}", e) })?;
         Ok(result)
     }
 

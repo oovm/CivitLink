@@ -142,13 +142,7 @@ impl CacheManager {
     /// - `value`: 缓存值
     /// - `ttl`: 可选的生存时间
     /// - `tags`: 关联的标签列表
-    pub fn set_with_tags(
-        &mut self,
-        key: &str,
-        value: CacheValue,
-        ttl: Option<Duration>,
-        tags: &[&str],
-    ) -> GResult<()> {
+    pub fn set_with_tags(&mut self, key: &str, value: CacheValue, ttl: Option<Duration>, tags: &[&str]) -> GResult<()> {
         self.set(key, value, ttl)?;
         self.tag_mapping.add_tags(key, tags);
         Ok(())

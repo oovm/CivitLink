@@ -22,22 +22,14 @@ pub struct PostgresDriver {
 impl DatabaseDriver for PostgresDriver {
     fn connect(config: &DatabaseConfig) -> GResult<Self> {
         let conn_str = if config.password.is_empty() {
-            format!(
-                "postgresql://{}@{}:{}/{}",
-                config.username, config.host, config.port, config.database
-            )
+            format!("postgresql://{}@{}:{}/{}", config.username, config.host, config.port, config.database)
         }
         else {
-            format!(
-                "postgresql://{}:{}@{}:{}/{}",
-                config.username, config.password, config.host, config.port, config.database
-            )
+            format!("postgresql://{}:{}@{}:{}/{}", config.username, config.password, config.host, config.port, config.database)
         };
 
-        let client = postgres::Client::connect(&conn_str, postgres::NoTls).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("无法连接 PostgreSQL 数据库: {}", e),
-        })?;
+        let client = postgres::Client::connect(&conn_str, postgres::NoTls)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("无法连接 PostgreSQL 数据库: {}", e) })?;
 
         Ok(Self { client: Some(client), conn_str })
     }
@@ -51,10 +43,9 @@ impl DatabaseDriver for PostgresDriver {
         let pg_params: Vec<Box<dyn postgres::types::ToSqlSync>> = convert_params(params);
         let param_refs: Vec<&dyn postgres::types::ToSql> = pg_params.iter().map(|p| p.as_ref()).collect();
 
-        let result = client.execute(query, param_refs.as_slice()).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("执行 SQL 失败: {}", e),
-        })?;
+        let result = client
+            .execute(query, param_refs.as_slice())
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("执行 SQL 失败: {}", e) })?;
 
         Ok(result)
     }
@@ -68,10 +59,9 @@ impl DatabaseDriver for PostgresDriver {
         let pg_params: Vec<Box<dyn postgres::types::ToSqlSync>> = convert_params(params);
         let param_refs: Vec<&dyn postgres::types::ToSql> = pg_params.iter().map(|p| p.as_ref()).collect();
 
-        let rows = client.query(query, param_refs.as_slice()).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("执行查询失败: {}", e),
-        })?;
+        let rows = client
+            .query(query, param_refs.as_slice())
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("执行查询失败: {}", e) })?;
 
         let mut result = Vec::new();
         for row in &rows {
@@ -92,10 +82,9 @@ impl DatabaseDriver for PostgresDriver {
             .as_mut()
             .ok_or_else(|| GError { kind: GErrorKind::Runtime, message: "数据库连接已关闭".to_string() })?;
 
-        client.batch_execute("BEGIN").map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("开始事务失败: {}", e),
-        })?;
+        client
+            .batch_execute("BEGIN")
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("开始事务失败: {}", e) })?;
 
         Ok(Transaction::new(self.conn_str.clone()))
     }
@@ -144,9 +133,7 @@ fn pg_row_to_database_value(row: &postgres::Row, index: usize) -> GResult<Databa
             .map(|v| v.map(DatabaseValue::Integer).unwrap_or(DatabaseValue::Null))
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("读取整数值失败: {}", e) })
     }
-    else if col_type == &postgres::types::Type::FLOAT4
-        || col_type == &postgres::types::Type::FLOAT8
-    {
+    else if col_type == &postgres::types::Type::FLOAT4 || col_type == &postgres::types::Type::FLOAT8 {
         row.try_get::<_, Option<f64>>(index)
             .map(|v| v.map(DatabaseValue::Real).unwrap_or(DatabaseValue::Null))
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("读取浮点数值失败: {}", e) })

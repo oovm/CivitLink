@@ -166,7 +166,8 @@ impl GslLowerer {
                         if let Some(ep) = self.collect_entry_point(micro)? {
                             entry_points.push(ep);
                         }
-                    } else {
+                    }
+                    else {
                         custom_micros.push((**micro).clone());
                     }
                 }
@@ -580,7 +581,8 @@ impl GslLowerer {
             if let Some(struct_decl) = self.find_struct_declaration(&type_name) {
                 let struct_ty = self.lower_struct_type(&struct_decl, module)?;
                 function.result = Some(FunctionResult { ty: struct_ty, binding: None });
-            } else {
+            }
+            else {
                 let result_ty = self.get_or_create_naga_type(&type_name, module)?;
                 function.result = Some(FunctionResult { ty: result_ty, binding: None });
             }
@@ -1438,21 +1440,19 @@ impl GslLowerer {
                     if let Some(&func_handle) = self.custom_functions.get(name) {
                         let mut lowered_args = Vec::new();
                         for arg in args {
-                            let arg_expr = self.lower_expression(arg, module, function, expressions, named_expressions, body)?;
+                            let arg_expr =
+                                self.lower_expression(arg, module, function, expressions, named_expressions, body)?;
                             lowered_args.push(arg_expr);
                         }
                         let has_result = module.functions[func_handle].result.is_some();
                         let result = if has_result {
                             let result_expr = expressions.append(Expression::CallResult(func_handle), NagaSpan::UNDEFINED);
                             Some(result_expr)
-                        } else {
+                        }
+                        else {
                             None
                         };
-                        let call = naga::Statement::Call {
-                            function: func_handle,
-                            arguments: lowered_args,
-                            result,
-                        };
+                        let call = naga::Statement::Call { function: func_handle, arguments: lowered_args, result };
                         body.push(call, NagaSpan::UNDEFINED);
                         if let Some(result_expr) = result {
                             return Ok(result_expr);
@@ -1934,19 +1934,17 @@ impl GslLowerer {
             let elem = parts.next().unwrap().trim();
             let size = parts.next().unwrap().trim();
             (elem, size.to_string())
-        } else {
+        }
+        else {
             (inner, "0".to_string())
         };
 
         let element_ty = self.get_or_create_naga_type(element_type, module)?;
 
         let size = if let Ok(n) = size_str.parse::<u32>() {
-            if n == 0 {
-                naga::ArraySize::Dynamic
-            } else {
-                naga::ArraySize::Constant(naga::NonZeroU32::new(n).unwrap())
-            }
-        } else {
+            if n == 0 { naga::ArraySize::Dynamic } else { naga::ArraySize::Constant(naga::NonZeroU32::new(n).unwrap()) }
+        }
+        else {
             naga::ArraySize::Dynamic
         };
 
@@ -1958,18 +1956,13 @@ impl GslLowerer {
         let array_ty = module.types.insert(
             naga::Type {
                 name: Some(format!("Array_{}_{}", element_type, size_str)),
-                inner: TypeInner::Array {
-                    base: element_ty,
-                    size,
-                    stride,
-                },
+                inner: TypeInner::Array { base: element_ty, size, stride },
             },
             NagaSpan::UNDEFINED,
         );
         self.type_cache.insert(key, array_ty);
         Ok(array_ty)
     }
-    ///
     /// 优先从 uniform 字段索引映射中查找，
     /// 然后从 naga Module 的类型定义中查找结构体成员，
     /// 最后回退到 swizzle 分量索引（xyzw/rgba）。

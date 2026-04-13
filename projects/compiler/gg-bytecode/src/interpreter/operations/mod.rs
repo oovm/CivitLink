@@ -1,4 +1,7 @@
-use crate::{format::{BytecodeModule, BytecodeInstruction, BytecodeValue}, host::Host};
+use crate::{
+    format::{BytecodeInstruction, BytecodeModule, BytecodeValue},
+    host::Host,
+};
 
 use super::{BytecodeInterpreter, ControlFlow, InterpretResult};
 

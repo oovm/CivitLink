@@ -2,7 +2,7 @@ use gg_core::GResult;
 use gg_ir::OpCode;
 use oak_valkyrie::ast::{Block, Statement};
 
-use super::{ValkyrieCompiler};
+use super::ValkyrieCompiler;
 
 impl ValkyrieCompiler {
     /// 编译语句块
@@ -61,7 +61,9 @@ impl ValkyrieCompiler {
                             }
                         }
                     }
-                    oak_valkyrie::ast::Pattern::Literal(_) | oak_valkyrie::ast::Pattern::Type(_) | oak_valkyrie::ast::Pattern::Else(_) => {
+                    oak_valkyrie::ast::Pattern::Literal(_)
+                    | oak_valkyrie::ast::Pattern::Type(_)
+                    | oak_valkyrie::ast::Pattern::Else(_) => {
                         instructions.push(OpCode::Pop);
                     }
                 }

@@ -327,11 +327,7 @@ impl Repository {
     ///
     /// - `builder`: 查询构建器实例
     /// - `pagination`: 分页参数
-    pub fn query_paginated(
-        &mut self,
-        builder: &QueryBuilder,
-        pagination: &Pagination,
-    ) -> GResult<PaginatedResult<Row>> {
+    pub fn query_paginated(&mut self, builder: &QueryBuilder, pagination: &Pagination) -> GResult<PaginatedResult<Row>> {
         let total = self.count_with_query(builder)?;
 
         let paginated_builder = builder.clone().paginate(pagination);

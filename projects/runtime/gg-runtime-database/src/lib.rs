@@ -241,8 +241,8 @@ pub mod mysql;
 
 pub use connection_pool::DatabaseConnectionPool;
 pub use migrator::DatabaseMigrator;
-pub use sqlite::SqliteDriver;
-#[cfg(feature = "postgres")]
-pub use postgres::PostgresDriver;
 #[cfg(feature = "mysql")]
 pub use mysql::MySqlDriver;
+#[cfg(feature = "postgres")]
+pub use postgres::PostgresDriver;
+pub use sqlite::SqliteDriver;

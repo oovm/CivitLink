@@ -253,9 +253,9 @@ pub mod redis;
 /// 缓存管理器实现
 pub mod manager;
 
-pub use memory::MemoryCacheDriver;
-pub use stats::CacheStatsCollector;
 pub use file::FileCacheDriver;
+pub use manager::CacheManager;
+pub use memory::MemoryCacheDriver;
 #[cfg(feature = "redis")]
 pub use redis::RedisCacheDriver;
-pub use manager::CacheManager;
+pub use stats::CacheStatsCollector;

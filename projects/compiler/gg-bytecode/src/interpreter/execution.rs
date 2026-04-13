@@ -1,4 +1,8 @@
-use crate::{debug_info::SourceLocation, format::{BytecodeModule, BytecodeInstruction, BytecodeValue}, host::Host};
+use crate::{
+    debug_info::SourceLocation,
+    format::{BytecodeInstruction, BytecodeModule, BytecodeValue},
+    host::Host,
+};
 
 use super::{BytecodeInterpreter, ControlFlow, InterpretResult};
 
@@ -13,8 +17,8 @@ impl BytecodeInterpreter {
             let function_index = match self.find_function_index(module, function_name) {
                 Some(idx) => idx,
                 None => {
-                    return InterpretResult::Error { 
-                        message: format!("函数未找到: {}", function_name), source_location: None 
+                    return InterpretResult::Error {
+                        message: format!("函数未找到: {}", function_name), source_location: None
                     };
                 }
             };

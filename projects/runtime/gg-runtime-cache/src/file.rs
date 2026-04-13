@@ -58,10 +58,7 @@ impl FileCacheDriver {
 
     /// 获取当前 UNIX 时间戳（秒）
     fn current_timestamp() -> u64 {
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs()
+        SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()
     }
 
     /// 清理所有过期缓存文件
@@ -69,16 +66,12 @@ impl FileCacheDriver {
     /// 遍历缓存目录中的所有文件，删除已过期的缓存条目。
     pub fn cleanup_expired(&mut self) -> GResult<usize> {
         let mut removed = 0;
-        let entries = fs::read_dir(&self.base_dir).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("无法读取缓存目录: {}", e),
-        })?;
+        let entries = fs::read_dir(&self.base_dir)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("无法读取缓存目录: {}", e) })?;
 
         for entry in entries {
-            let entry = entry.map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("读取目录条目失败: {}", e),
-            })?;
+            let entry =
+                entry.map_err(|e| GError { kind: GErrorKind::Io, message: format!("读取目录条目失败: {}", e) })?;
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) == Some("cache") {
                 if let Ok(content) = fs::read_to_string(&path) {
@@ -105,15 +98,11 @@ impl CacheDriver for FileCacheDriver {
             return Ok(None);
         }
 
-        let content = fs::read_to_string(&path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("读取缓存文件失败: {}", e),
-        })?;
+        let content = fs::read_to_string(&path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("读取缓存文件失败: {}", e) })?;
 
-        let entry: FileCacheEntry = serde_json::from_str(&content).map_err(|e| GError {
-            kind: GErrorKind::Runtime,
-            message: format!("反序列化缓存条目失败: {}", e),
-        })?;
+        let entry: FileCacheEntry = serde_json::from_str(&content)
+            .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("反序列化缓存条目失败: {}", e) })?;
 
         if let Some(expires_at) = entry.expires_at {
             if Self::current_timestamp() >= expires_at {
@@ -131,24 +120,18 @@ impl CacheDriver for FileCacheDriver {
         let path = self.key_to_path(key);
         let expires_at = ttl.map(|d| Self::current_timestamp() + d.as_secs());
         let entry = FileCacheEntry { value, expires_at };
-        let content = serde_json::to_string(&entry).map_err(|e| GError {
-            kind: GErrorKind::Runtime,
-            message: format!("序列化缓存条目失败: {}", e),
-        })?;
-        fs::write(&path, content).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("写入缓存文件失败: {}", e),
-        })?;
+        let content = serde_json::to_string(&entry)
+            .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("序列化缓存条目失败: {}", e) })?;
+        fs::write(&path, content)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("写入缓存文件失败: {}", e) })?;
         Ok(())
     }
 
     fn delete(&mut self, key: &str) -> GResult<bool> {
         let path = self.key_to_path(key);
         if path.exists() {
-            fs::remove_file(&path).map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("删除缓存文件失败: {}", e),
-            })?;
+            fs::remove_file(&path)
+                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("删除缓存文件失败: {}", e) })?;
             Ok(true)
         }
         else {
@@ -162,15 +145,11 @@ impl CacheDriver for FileCacheDriver {
             return Ok(false);
         }
 
-        let content = fs::read_to_string(&path).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("读取缓存文件失败: {}", e),
-        })?;
+        let content = fs::read_to_string(&path)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("读取缓存文件失败: {}", e) })?;
 
-        let entry: FileCacheEntry = serde_json::from_str(&content).map_err(|e| GError {
-            kind: GErrorKind::Runtime,
-            message: format!("反序列化缓存条目失败: {}", e),
-        })?;
+        let entry: FileCacheEntry = serde_json::from_str(&content)
+            .map_err(|e| GError { kind: GErrorKind::Runtime, message: format!("反序列化缓存条目失败: {}", e) })?;
 
         if let Some(expires_at) = entry.expires_at {
             if Self::current_timestamp() >= expires_at {
@@ -182,10 +161,8 @@ impl CacheDriver for FileCacheDriver {
     }
 
     fn clear(&mut self) -> GResult<()> {
-        let entries = fs::read_dir(&self.base_dir).map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("无法读取缓存目录: {}", e),
-        })?;
+        let entries = fs::read_dir(&self.base_dir)
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("无法读取缓存目录: {}", e) })?;
 
         for entry in entries {
             if let Ok(entry) = entry {

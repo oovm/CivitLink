@@ -1,16 +1,18 @@
 //! 异步 HTTP 服务器模块
 //! 提供基于 tokio 的异步 HTTP 服务器、路由前缀树和内置中间件实现
 
-use std::collections::HashMap;
-use std::future::Future;
-use std::pin::Pin;
+use std::{collections::HashMap, future::Future, pin::Pin};
 
 use gg_core::{GError, GErrorKind, GResult};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpListener,
+};
 
-use crate::async_driver::{AsyncConnection, AsyncNetDriver, Middleware, NextMiddleware};
-use crate::http::{HttpMethod, HttpRequest, HttpResponse};
+use crate::{
+    async_driver::{AsyncConnection, AsyncNetDriver, Middleware, NextMiddleware},
+    http::{HttpMethod, HttpRequest, HttpResponse},
+};
 
 /// 路由前缀树节点
 ///
@@ -29,12 +31,7 @@ struct TrieNode {
 impl TrieNode {
     /// 创建新的前缀树节点
     fn new() -> Self {
-        Self {
-            children: HashMap::new(),
-            param_name: None,
-            param_child: None,
-            handlers: HashMap::new(),
-        }
+        Self { children: HashMap::new(), param_name: None, param_child: None, handlers: HashMap::new() }
     }
 }
 
@@ -79,7 +76,8 @@ impl RouteTrie {
                     current.param_child = Some(Box::new(TrieNode::new()));
                 }
                 current = current.param_child.as_mut().unwrap().as_mut();
-            } else {
+            }
+            else {
                 current = current.children.entry(segment.to_string()).or_insert_with(TrieNode::new);
             }
         }
@@ -109,12 +107,14 @@ impl RouteTrie {
         for segment in &segments {
             if let Some(child) = current.children.get(*segment) {
                 current = child;
-            } else if let Some(ref param_child) = current.param_child {
+            }
+            else if let Some(ref param_child) = current.param_child {
                 if let Some(ref param_name) = current.param_name {
                     params.insert(param_name.clone(), segment.to_string());
                 }
                 current = param_child.as_ref();
-            } else {
+            }
+            else {
                 return None;
             }
         }
@@ -131,30 +131,24 @@ impl RouteTrie {
 /// # 参数
 /// - `data`: 原始 HTTP 请求数据
 fn parse_http_request(data: &[u8]) -> GResult<HttpRequest> {
-    let text = std::str::from_utf8(data).map_err(|e| GError {
-        kind: GErrorKind::Network,
-        message: format!("HTTP 请求数据非有效 UTF-8: {}", e),
-    })?;
+    let text = std::str::from_utf8(data)
+        .map_err(|e| GError { kind: GErrorKind::Network, message: format!("HTTP 请求数据非有效 UTF-8: {}", e) })?;
 
     let mut parts = text.split("\r\n\r\n");
     let header_section = parts.next().unwrap_or("");
     let body = parts.next().unwrap_or("").as_bytes().to_vec();
 
     let mut lines = header_section.split("\r\n");
-    let request_line = lines.next().ok_or_else(|| GError {
-        kind: GErrorKind::Network,
-        message: "HTTP 请求行缺失".to_string(),
-    })?;
+    let request_line =
+        lines.next().ok_or_else(|| GError { kind: GErrorKind::Network, message: "HTTP 请求行缺失".to_string() })?;
 
     let mut request_parts = request_line.split_whitespace();
-    let method_str = request_parts.next().ok_or_else(|| GError {
-        kind: GErrorKind::Network,
-        message: "HTTP 请求方法缺失".to_string(),
-    })?;
-    let path = request_parts.next().ok_or_else(|| GError {
-        kind: GErrorKind::Network,
-        message: "HTTP 请求路径缺失".to_string(),
-    })?;
+    let method_str = request_parts
+        .next()
+        .ok_or_else(|| GError { kind: GErrorKind::Network, message: "HTTP 请求方法缺失".to_string() })?;
+    let path = request_parts
+        .next()
+        .ok_or_else(|| GError { kind: GErrorKind::Network, message: "HTTP 请求路径缺失".to_string() })?;
 
     let method = match method_str {
         "GET" => HttpMethod::Get,
@@ -240,11 +234,7 @@ pub struct AsyncHttpDriver {
 impl AsyncHttpDriver {
     /// 创建新的异步 HTTP 驱动
     pub fn new() -> Self {
-        Self {
-            listener: None,
-            router: RouteTrie::new(),
-            middlewares: Vec::new(),
-        }
+        Self { listener: None, router: RouteTrie::new(), middlewares: Vec::new() }
     }
 
     /// 注册路由处理器
@@ -281,10 +271,10 @@ impl AsyncHttpDriver {
     pub async fn handle_connection(&self, stream: tokio::net::TcpStream) -> GResult<()> {
         let mut buf = vec![0u8; 8192];
         let n = {
-            let n = stream.read(&mut buf).await.map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("HTTP 读取请求失败: {}", e),
-            })?;
+            let n = stream
+                .read(&mut buf)
+                .await
+                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("HTTP 读取请求失败: {}", e) })?;
             n
         };
 
@@ -309,7 +299,8 @@ impl AsyncHttpDriver {
                 let final_handler = |req: &HttpRequest| handler(req, &params);
                 if self.middlewares.is_empty() {
                     final_handler(&request)
-                } else {
+                }
+                else {
                     let next = NextMiddleware::new(&self.middlewares, &final_handler);
                     next.call(&request).await
                 }
@@ -318,7 +309,8 @@ impl AsyncHttpDriver {
                 let final_handler = |_req: &HttpRequest| Ok(HttpResponse::not_found());
                 if self.middlewares.is_empty() {
                     final_handler(&request)
-                } else {
+                }
+                else {
                     let next = NextMiddleware::new(&self.middlewares, &final_handler);
                     next.call(&request).await
                 }
@@ -329,10 +321,10 @@ impl AsyncHttpDriver {
         let response_bytes = format_http_response(&response);
 
         let mut writer = stream;
-        writer.write_all(&response_bytes).await.map_err(|e| GError {
-            kind: GErrorKind::Io,
-            message: format!("HTTP 写入响应失败: {}", e),
-        })?;
+        writer
+            .write_all(&response_bytes)
+            .await
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("HTTP 写入响应失败: {}", e) })?;
         let _ = writer.shutdown().await;
 
         Ok(())
@@ -342,10 +334,9 @@ impl AsyncHttpDriver {
 impl AsyncNetDriver for AsyncHttpDriver {
     fn listen<'a>(&'a mut self, addr: &'a str) -> Pin<Box<dyn Future<Output = GResult<()>> + Send + 'a>> {
         Box::pin(async move {
-            let listener = TcpListener::bind(addr).await.map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("HTTP 服务器监听绑定失败: {}", e),
-            })?;
+            let listener = TcpListener::bind(addr)
+                .await
+                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("HTTP 服务器监听绑定失败: {}", e) })?;
             self.listener = Some(listener);
             Ok(())
         })
@@ -353,14 +344,14 @@ impl AsyncNetDriver for AsyncHttpDriver {
 
     fn accept(&mut self) -> Pin<Box<dyn Future<Output = GResult<Box<dyn AsyncConnection>>> + Send + '_>> {
         Box::pin(async {
-            let listener = self.listener.as_ref().ok_or_else(|| GError {
-                kind: GErrorKind::Runtime,
-                message: "HTTP 服务器尚未开始监听".to_string(),
-            })?;
-            let (stream, _) = listener.accept().await.map_err(|e| GError {
-                kind: GErrorKind::Io,
-                message: format!("HTTP 服务器接受连接失败: {}", e),
-            })?;
+            let listener = self
+                .listener
+                .as_ref()
+                .ok_or_else(|| GError { kind: GErrorKind::Runtime, message: "HTTP 服务器尚未开始监听".to_string() })?;
+            let (stream, _) = listener
+                .accept()
+                .await
+                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("HTTP 服务器接受连接失败: {}", e) })?;
             self.handle_connection(stream).await?;
             Err(GError {
                 kind: GErrorKind::Runtime,

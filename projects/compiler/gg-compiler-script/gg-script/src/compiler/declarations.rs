@@ -1,8 +1,11 @@
 use gg_core::GResult;
 use gg_ir::{IrFunction, OpCode, TargetPlatform};
-use oak_valkyrie::ast::{ClassDeclaration, ComponentDeclaration, Enums, MethodDeclaration, MicroDeclaration, SingletonDeclaration, StructureDeclaration, SystemDeclaration, Trait, shader_nodes::ShaderDeclaration, items_nodes::Flags};
+use oak_valkyrie::ast::{
+    ClassDeclaration, ComponentDeclaration, Enums, MethodDeclaration, MicroDeclaration, SingletonDeclaration,
+    StructureDeclaration, SystemDeclaration, Trait, items_nodes::Flags, shader_nodes::ShaderDeclaration,
+};
 
-use super::{ValkyrieCompiler};
+use super::ValkyrieCompiler;
 
 impl ValkyrieCompiler {
     /// 编译 micro 函数定义
@@ -41,7 +44,12 @@ impl ValkyrieCompiler {
     ///
     /// 当类通过 parents 继承 trait 时，类的方法即为 trait 方法的实现。
     /// 为每个有方法体的方法生成 `类名_trait名_方法名` 格式的 IR 函数。
-    pub(crate) fn compile_impl_block(&mut self, class_name: &str, trait_name: &str, methods: &[MethodDeclaration]) -> GResult<()> {
+    pub(crate) fn compile_impl_block(
+        &mut self,
+        class_name: &str,
+        trait_name: &str,
+        methods: &[MethodDeclaration],
+    ) -> GResult<()> {
         for method in methods {
             if method.body.is_none() {
                 continue;
@@ -144,11 +152,13 @@ impl ValkyrieCompiler {
             field_indices.push(idx);
         }
         let register_fn_idx = self.module.add_or_get_string("register_structure".to_string());
-        self.module_init_instructions.push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(name_idx as i64))));
+        self.module_init_instructions
+            .push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(name_idx as i64))));
         self.module_init_instructions
             .push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(field_count as i64))));
         for idx in field_indices {
-            self.module_init_instructions.push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(idx as i64))));
+            self.module_init_instructions
+                .push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(idx as i64))));
         }
         self.module_init_instructions.push(OpCode::HostCall(register_fn_idx, 2 + field_count));
         Ok(())
@@ -171,11 +181,13 @@ impl ValkyrieCompiler {
             method_indices.push(idx);
         }
         let register_fn_idx = self.module.add_or_get_string("register_trait".to_string());
-        self.module_init_instructions.push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(name_idx as i64))));
+        self.module_init_instructions
+            .push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(name_idx as i64))));
         self.module_init_instructions
             .push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(method_count as i64))));
         for idx in method_indices {
-            self.module_init_instructions.push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(idx as i64))));
+            self.module_init_instructions
+                .push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(idx as i64))));
         }
         self.module_init_instructions.push(OpCode::HostCall(register_fn_idx, 2 + method_count));
         Ok(())
@@ -258,8 +270,10 @@ impl ValkyrieCompiler {
         let name_idx = self.module.add_or_get_string(shader.name.name.clone());
         let kind_idx = self.module.add_or_get_string(shader.kind.name.clone());
         let register_fn_idx = self.module.add_or_get_string("register_shader".to_string());
-        self.module_init_instructions.push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(name_idx as i64))));
-        self.module_init_instructions.push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(kind_idx as i64))));
+        self.module_init_instructions
+            .push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(name_idx as i64))));
+        self.module_init_instructions
+            .push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(kind_idx as i64))));
         self.module_init_instructions.push(OpCode::HostCall(register_fn_idx, 2));
         Ok(())
     }
@@ -280,11 +294,13 @@ impl ValkyrieCompiler {
             variant_indices.push(idx);
         }
         let register_fn_idx = self.module.add_or_get_string("register_flags".to_string());
-        self.module_init_instructions.push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(name_idx as i64))));
+        self.module_init_instructions
+            .push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(name_idx as i64))));
         self.module_init_instructions
             .push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(variant_count as i64))));
         for idx in variant_indices {
-            self.module_init_instructions.push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(idx as i64))));
+            self.module_init_instructions
+                .push(OpCode::LoadConst(self.module.add_or_get_constant(gg_ir::IrValue::Int(idx as i64))));
         }
         self.module_init_instructions.push(OpCode::HostCall(register_fn_idx, 2 + variant_count));
         Ok(())

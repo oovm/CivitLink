@@ -1,8 +1,11 @@
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ir::{IrValue, OpCode};
-use oak_valkyrie::{ast::{Pattern, StringSegment, TermExpression}, lexer::token_type::ValkyrieTokenType};
+use oak_valkyrie::{
+    ast::{Pattern, StringSegment, TermExpression},
+    lexer::token_type::ValkyrieTokenType,
+};
 
-use super::{ValkyrieCompiler};
+use super::ValkyrieCompiler;
 
 impl ValkyrieCompiler {
     /// 编译表达式

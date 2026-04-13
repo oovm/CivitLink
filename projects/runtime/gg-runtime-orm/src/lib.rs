@@ -119,12 +119,7 @@ impl<T> PaginatedResult<T> {
     /// - `pagination`: 分页参数
     /// - `total`: 总记录数
     pub fn new(data: Vec<T>, pagination: Pagination, total: usize) -> Self {
-        let total_pages = if pagination.per_page > 0 {
-            (total + pagination.per_page - 1) / pagination.per_page
-        }
-        else {
-            0
-        };
+        let total_pages = if pagination.per_page > 0 { (total + pagination.per_page - 1) / pagination.per_page } else { 0 };
         Self { data, pagination, total, total_pages }
     }
 
@@ -145,5 +140,5 @@ pub mod query_builder;
 /// 仓库模式模块
 pub mod repository;
 
-pub use query_builder::{FilterCondition, JoinClause, HavingCondition, OrderBy, QueryBuilder};
+pub use query_builder::{FilterCondition, HavingCondition, JoinClause, OrderBy, QueryBuilder};
 pub use repository::{EntityMapper, Repository};

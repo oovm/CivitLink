@@ -191,12 +191,7 @@ impl QueryBuilder {
     /// - `op`: 比较操作符
     /// - `value`: 比较值
     pub fn having(mut self, function: AggregateFunction, field: &str, op: FilterOp, value: DatabaseValue) -> Self {
-        self.having_conditions.push(HavingCondition {
-            function,
-            field: field.to_string(),
-            op,
-            value,
-        });
+        self.having_conditions.push(HavingCondition { function, field: field.to_string(), op, value });
         self
     }
 
@@ -371,12 +366,7 @@ impl QueryBuilder {
     /// - `columns`: 列名列表
     pub fn build_insert_sql(&self, columns: &[&str]) -> String {
         let placeholders: Vec<&str> = columns.iter().map(|_| "?").collect();
-        format!(
-            "INSERT INTO {} ({}) VALUES ({})",
-            self.table_name,
-            columns.join(", "),
-            placeholders.join(", ")
-        )
+        format!("INSERT INTO {} ({}) VALUES ({})", self.table_name, columns.join(", "), placeholders.join(", "))
     }
 
     /// 生成 UPDATE SQL 语句
@@ -389,12 +379,7 @@ impl QueryBuilder {
     /// - `key_column`: 用于 WHERE 条件的键列名
     pub fn build_update_sql(&self, columns: &[&str], key_column: &str) -> String {
         let set_clauses: Vec<String> = columns.iter().map(|c| format!("{} = ?", c)).collect();
-        format!(
-            "UPDATE {} SET {} WHERE {} = ?",
-            self.table_name,
-            set_clauses.join(", "),
-            key_column
-        )
+        format!("UPDATE {} SET {} WHERE {} = ?", self.table_name, set_clauses.join(", "), key_column)
     }
 
     /// 提取所有过滤条件的参数值

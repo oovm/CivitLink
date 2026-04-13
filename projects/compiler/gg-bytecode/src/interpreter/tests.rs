@@ -1,5 +1,8 @@
 use super::*;
-use crate::{format::{BytecodeFunction, BytecodeInstruction, BytecodeModule, BytecodeValue}, host::Host};
+use crate::{
+    format::{BytecodeFunction, BytecodeInstruction, BytecodeModule, BytecodeValue},
+    host::Host,
+};
 use std::collections::HashMap;
 
 struct TestHost {
