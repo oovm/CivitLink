@@ -1,7 +1,7 @@
 //! 剪贴板实体数据
 
-use crate::components::{RectRenderer, SpriteRenderer, Transform2D};
 use super::types::SceneEntityKind;
+use crate::components::{RectRenderer, SpriteRenderer, Transform2D};
 
 /// 实体快照
 ///

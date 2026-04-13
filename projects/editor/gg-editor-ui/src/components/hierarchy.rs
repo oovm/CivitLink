@@ -1,8 +1,6 @@
 use gg_core::GResult;
 use gg_render::Color;
-use gg_ui::{
-    EventContext, FlexDirection, FontStyle, GuiEvent, LayoutStyle, Style, UiNodeData, UiNodeId, UiTree, Widget,
-};
+use gg_ui::{EventContext, FlexDirection, FontStyle, GuiEvent, LayoutStyle, Style, UiNodeData, UiNodeId, UiTree, Widget};
 
 /// 层级节点数据
 ///

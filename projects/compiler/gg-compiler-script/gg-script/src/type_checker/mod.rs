@@ -15,9 +15,9 @@ use std::collections::{HashMap, HashSet};
 
 use oak_valkyrie::{
     ast::{
-        Attribute, Block, ClassDeclaration, ComponentDeclaration, Enums, Flags, MethodDeclaration,
-        MicroDeclaration, NamePath, Pattern, SingletonDeclaration, Statement, StatementNode, StringLiteral, StringSegment,
-        StructureDeclaration, SystemDeclaration, TermExpression, Trait, ValkyrieRoot,
+        Attribute, Block, ClassDeclaration, ComponentDeclaration, Enums, Flags, MethodDeclaration, MicroDeclaration, NamePath,
+        Pattern, SingletonDeclaration, Statement, StatementNode, StringLiteral, StringSegment, StructureDeclaration,
+        SystemDeclaration, TermExpression, Trait, ValkyrieRoot,
     },
     lexer::token_type::ValkyrieTokenType,
 };
@@ -436,7 +436,11 @@ impl TypeChecker {
             self.env.insert_function(sig);
             trait_method_sigs.push(FunctionSignature {
                 name: method.name.name.clone(),
-                param_types: method.params.iter().map(|p| p.ty.as_ref().map(|t| self.type_expr_to_type_info(t)).unwrap_or(TypeInfo::Unknown)).collect(),
+                param_types: method
+                    .params
+                    .iter()
+                    .map(|p| p.ty.as_ref().map(|t| self.type_expr_to_type_info(t)).unwrap_or(TypeInfo::Unknown))
+                    .collect(),
                 return_type: method.return_type.as_ref().map(|t| self.type_expr_to_type_info(t)).unwrap_or(TypeInfo::Unknown),
             });
         }
@@ -724,10 +728,16 @@ impl TypeChecker {
                         if let Some(fields) = self.env.class_fields.get(type_name) {
                             if let Some(field_ty) = fields.get(&field.name) {
                                 field_ty.clone()
-                            } else {
+                            }
+                            else {
                                 let candidates: Vec<String> = fields.keys().cloned().collect();
                                 let similar = Self::find_similar_names(&field.name, &candidates, 3);
-                                let suggestion = if similar.is_empty() { None } else { Some(format!("Did you mean {}?", similar.join(", "))) };
+                                let suggestion = if similar.is_empty() {
+                                    None
+                                }
+                                else {
+                                    Some(format!("Did you mean {}?", similar.join(", ")))
+                                };
                                 self.diagnostics.push(TypeDiagnostic {
                                     message: format!("Type {} has no field '{}'", type_name, field.name),
                                     severity: DiagnosticSeverity::Error,
@@ -737,7 +747,8 @@ impl TypeChecker {
                                 });
                                 TypeInfo::Unknown
                             }
-                        } else {
+                        }
+                        else {
                             TypeInfo::Unknown
                         }
                     }

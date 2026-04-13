@@ -75,7 +75,8 @@ impl ShaderCompiler {
             .filter_map(|item| {
                 if let oak_valkyrie::ast::StatementNode::Structure(s) = item {
                     Some((s.name.name.clone(), (**s).clone()))
-                } else {
+                }
+                else {
                     None
                 }
             })

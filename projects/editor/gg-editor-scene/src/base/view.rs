@@ -1,22 +1,25 @@
 //! 基础场景视图核心实现
 
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use gg_core::GResult;
 use gg_ecs::Entity;
 use gg_editor_shell::{EditorContext, EditorEvent, Key};
 use gg_render::Color;
 
-use crate::components::{RectRenderer, SpriteRenderer, Transform2D};
-use crate::viewport::ViewportState;
-use crate::world::GameWorld;
+use crate::{
+    components::{RectRenderer, SpriteRenderer, Transform2D},
+    viewport::ViewportState,
+    world::GameWorld,
+};
 
-use super::clipboard::{ClipboardEntity, EntitySnapshot};
-use super::context_menu::SceneContextMenu;
-use super::types::{
-    BASE_GRID_SPACING, CLIPBOARD_OFFSET, GizmoState, SceneEntity, SceneEntityKind, SelectionBox, TransformGizmo, TransformKind,
-    TransformValue, ZOOM_STEP, entity_to_u64, u64_to_entity,
+use super::{
+    clipboard::{ClipboardEntity, EntitySnapshot},
+    context_menu::SceneContextMenu,
+    types::{
+        BASE_GRID_SPACING, CLIPBOARD_OFFSET, GizmoState, SceneEntity, SceneEntityKind, SelectionBox, TransformGizmo,
+        TransformKind, TransformValue, ZOOM_STEP, entity_to_u64, u64_to_entity,
+    },
 };
 
 /// 基础场景视图

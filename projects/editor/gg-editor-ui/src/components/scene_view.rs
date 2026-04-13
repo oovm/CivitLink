@@ -1,8 +1,6 @@
 use gg_core::GResult;
 use gg_render::Color;
-use gg_ui::{
-    EventContext, FontStyle, GuiEvent, LayoutStyle, Style, UiNodeData, UiNodeId, UiTree, Widget,
-};
+use gg_ui::{EventContext, FontStyle, GuiEvent, LayoutStyle, Style, UiNodeData, UiNodeId, UiTree, Widget};
 
 /// 场景编辑视图
 ///

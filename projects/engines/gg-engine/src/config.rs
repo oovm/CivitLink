@@ -86,13 +86,7 @@ pub struct PerformanceConfig {
 impl Default for EngineConfig {
     fn default() -> Self {
         Self {
-            window: WindowConfig {
-                title: "Pleroma".to_string(),
-                width: 1280,
-                height: 720,
-                fullscreen: false,
-                resizable: true,
-            },
+            window: WindowConfig { title: "Pleroma".to_string(), width: 1280, height: 720, fullscreen: false, resizable: true },
             render: RenderConfig { backend: "wgpu".to_string(), anti_aliasing: true, max_fps: 60 },
             asset: AssetConfig {
                 asset_dir: "assets".to_string(),

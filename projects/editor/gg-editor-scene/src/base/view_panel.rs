@@ -2,20 +2,18 @@
 
 use std::rc::Rc;
 
-use gg_editor_shell::{
-    DragData, EditorContext, EditorEvent, EditorPanel, Key, PanelLayoutHint, PanelPosition,
-};
+use gg_editor_shell::{DragData, EditorContext, EditorEvent, EditorPanel, Key, PanelLayoutHint, PanelPosition};
 use gg_render::Color;
 use gg_ui::{FlexDirection, FontStyle, LayoutStyle, Style, UiNodeData};
 
 use crate::components::Transform2D;
 
-use super::commands::{CreateEntityCommand, DeleteEntityCommand, TransformCommand};
-use super::context_menu::SceneContextMenu;
-use super::types::{
-    CLIPBOARD_OFFSET, TransformGizmo, TransformKind, TransformValue, entity_to_u64, u64_to_entity,
+use super::{
+    commands::{CreateEntityCommand, DeleteEntityCommand, TransformCommand},
+    context_menu::SceneContextMenu,
+    types::{CLIPBOARD_OFFSET, TransformGizmo, TransformKind, TransformValue, entity_to_u64, u64_to_entity},
+    view::BaseSceneView,
 };
-use super::view::BaseSceneView;
 use crate::scene_view::SceneView;
 
 impl EditorPanel for BaseSceneView {
@@ -328,7 +326,10 @@ impl EditorPanel for BaseSceneView {
                     let entity = world
                         .spawn()
                         .insert(Transform2D { x: world_pos.0, y: world_pos.1, ..Transform2D::default() })
-                        .insert(crate::components::SpriteRenderer { texture_path: path.clone(), ..crate::components::SpriteRenderer::default() })
+                        .insert(crate::components::SpriteRenderer {
+                            texture_path: path.clone(),
+                            ..crate::components::SpriteRenderer::default()
+                        })
                         .id();
                     context.events_mut().publish(EditorEvent::EntitySelected { entity: entity_to_u64(entity) });
                 }
@@ -340,8 +341,15 @@ impl EditorPanel for BaseSceneView {
                         let world = context.world_mut();
                         let entity = world
                             .spawn()
-                            .insert(Transform2D { x: world_pos.0 + offset_x, y: world_pos.1 + offset_y, ..Transform2D::default() })
-                            .insert(crate::components::SpriteRenderer { texture_path: path.clone(), ..crate::components::SpriteRenderer::default() })
+                            .insert(Transform2D {
+                                x: world_pos.0 + offset_x,
+                                y: world_pos.1 + offset_y,
+                                ..Transform2D::default()
+                            })
+                            .insert(crate::components::SpriteRenderer {
+                                texture_path: path.clone(),
+                                ..crate::components::SpriteRenderer::default()
+                            })
                             .id();
                         context.events_mut().publish(EditorEvent::EntitySelected { entity: entity_to_u64(entity) });
                     }

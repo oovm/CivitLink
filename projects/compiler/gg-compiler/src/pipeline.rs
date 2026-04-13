@@ -1,8 +1,7 @@
 //! 编译流水线模块
 //! 提供 DAG 拓扑排序和增量编译的流水线执行引擎
 
-use std::collections::HashMap;
-use std::sync::Mutex;
+use std::{collections::HashMap, sync::Mutex};
 
 use gg_core::{GError, GErrorKind, GResult};
 use rayon::prelude::*;
@@ -301,11 +300,8 @@ impl Pipeline {
         let mut remaining_in_degree = in_degree;
 
         loop {
-            let current_level: Vec<String> = remaining_in_degree
-                .iter()
-                .filter(|(_, deg)| **deg == 0)
-                .map(|(&id, _)| id.to_string())
-                .collect();
+            let current_level: Vec<String> =
+                remaining_in_degree.iter().filter(|(_, deg)| **deg == 0).map(|(&id, _)| id.to_string()).collect();
 
             if current_level.is_empty() {
                 break;

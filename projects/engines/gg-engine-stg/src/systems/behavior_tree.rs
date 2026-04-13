@@ -1,14 +1,14 @@
 //! 行为树系统
 //! 每帧评估实体的行为树，驱动复杂 AI 决策
 
-use crate::bullet_pattern::BulletEmitter;
-use crate::components::*;
+use crate::{bullet_pattern::BulletEmitter, components::*};
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 
-use super::bullet_emitter::BulletEmitterSystem;
-use super::bullet_emitter::spawn_enemy_bullet;
-use super::types::BehaviorStatus;
+use super::{
+    bullet_emitter::{BulletEmitterSystem, spawn_enemy_bullet},
+    types::BehaviorStatus,
+};
 
 /// 行为树系统
 /// 每帧评估实体的行为树，驱动复杂 AI 决策

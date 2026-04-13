@@ -13,9 +13,7 @@ pub mod view_render;
 pub use clipboard::{ClipboardEntity, EntitySnapshot};
 pub use commands::{CreateEntityCommand, DeleteEntityCommand, TransformCommand};
 pub use context_menu::SceneContextMenu;
-pub use types::{
-    GizmoState, SceneEntity, SceneEntityKind, SelectionBox, TransformGizmo, TransformKind, TransformValue,
-};
+pub use types::{GizmoState, SceneEntity, SceneEntityKind, SelectionBox, TransformGizmo, TransformKind, TransformValue};
 pub use view::BaseSceneView;
 
 pub use crate::scene_view::SceneView;

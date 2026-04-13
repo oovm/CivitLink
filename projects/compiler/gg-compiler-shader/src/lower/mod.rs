@@ -8,8 +8,9 @@ mod types;
 
 pub use converter::{DecoratorInfo, GslLowerer};
 pub use types::{
-    BOOL_SCALAR, EnabledKeywords, F32_SCALAR, GsBindingDecl, GsEntryPoint, GsProperty, GsRenderState, GsUniformField, I32_SCALAR,
-    NamedExpressions, TypeLayoutInfo, TypeSizeAlign, U32_SCALAR, align_offset, calc_std140_layout, calc_std430_layout,
+    BOOL_SCALAR, EnabledKeywords, F32_SCALAR, GsBindingDecl, GsEntryPoint, GsProperty, GsRenderState, GsUniformField,
+    I32_SCALAR, NamedExpressions, TypeLayoutInfo, TypeSizeAlign, U32_SCALAR, align_offset, calc_std140_layout,
+    calc_std430_layout,
 };
 
 /// 将 NamePath 转换为字符串

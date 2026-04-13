@@ -1,8 +1,7 @@
 //! 音频系统
 //! 读取 AudioBus 中的音频事件，映射为音频命令，委托给运行时音频后端执行
 
-use crate::components::*;
-use crate::config::AudioConfig;
+use crate::{components::*, config::AudioConfig};
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 use std::collections::HashMap;

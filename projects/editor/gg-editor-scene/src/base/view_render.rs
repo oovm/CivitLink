@@ -3,14 +3,16 @@
 use gg_ecs::Entity;
 use gg_render::{Color, DrawCommand, Rect, RenderContext};
 
-use crate::components::{RectRenderer, SpriteRenderer, Transform2D};
-use crate::world::GameWorld;
-
-use super::clipboard::{ClipboardEntity, EntitySnapshot};
-use super::types::{
-    BASE_GRID_SPACING, SceneEntity, SceneEntityKind, TransformGizmo, TransformValue, entity_to_u64,
+use crate::{
+    components::{RectRenderer, SpriteRenderer, Transform2D},
+    world::GameWorld,
 };
-use super::view::BaseSceneView;
+
+use super::{
+    clipboard::{ClipboardEntity, EntitySnapshot},
+    types::{BASE_GRID_SPACING, SceneEntity, SceneEntityKind, TransformGizmo, TransformValue, entity_to_u64},
+    view::BaseSceneView,
+};
 
 impl BaseSceneView {
     /// 渲染变换工具
@@ -139,7 +141,11 @@ impl BaseSceneView {
     }
 
     /// 处理变换工具交互
-    pub(crate) fn handle_gizmo_interaction(&mut self, screen_pos: (f32, f32), context: &mut gg_editor_shell::EditorContext) -> bool {
+    pub(crate) fn handle_gizmo_interaction(
+        &mut self,
+        screen_pos: (f32, f32),
+        context: &mut gg_editor_shell::EditorContext,
+    ) -> bool {
         if self.selected_entities.is_empty() {
             return false;
         }
@@ -288,16 +294,46 @@ impl BaseSceneView {
 
             if has_transform {
                 let corners = Self::compute_transformed_corners(
-                    screen_x, screen_y, screen_w, screen_h, entity.rotation, entity.scale_x, entity.scale_y,
+                    screen_x,
+                    screen_y,
+                    screen_w,
+                    screen_h,
+                    entity.rotation,
+                    entity.scale_x,
+                    entity.scale_y,
                 );
 
-                context.draw(DrawCommand::Line { start: [corners[0].0, corners[0].1], end: [corners[1].0, corners[1].1], color: entity.color, width: 2.0 });
-                context.draw(DrawCommand::Line { start: [corners[1].0, corners[1].1], end: [corners[2].0, corners[2].1], color: entity.color, width: 2.0 });
-                context.draw(DrawCommand::Line { start: [corners[2].0, corners[2].1], end: [corners[3].0, corners[3].1], color: entity.color, width: 2.0 });
-                context.draw(DrawCommand::Line { start: [corners[3].0, corners[3].1], end: [corners[0].0, corners[0].1], color: entity.color, width: 2.0 });
+                context.draw(DrawCommand::Line {
+                    start: [corners[0].0, corners[0].1],
+                    end: [corners[1].0, corners[1].1],
+                    color: entity.color,
+                    width: 2.0,
+                });
+                context.draw(DrawCommand::Line {
+                    start: [corners[1].0, corners[1].1],
+                    end: [corners[2].0, corners[2].1],
+                    color: entity.color,
+                    width: 2.0,
+                });
+                context.draw(DrawCommand::Line {
+                    start: [corners[2].0, corners[2].1],
+                    end: [corners[3].0, corners[3].1],
+                    color: entity.color,
+                    width: 2.0,
+                });
+                context.draw(DrawCommand::Line {
+                    start: [corners[3].0, corners[3].1],
+                    end: [corners[0].0, corners[0].1],
+                    color: entity.color,
+                    width: 2.0,
+                });
             }
             else {
-                context.draw(DrawCommand::Rect { rect: Rect::new(screen_x, screen_y, screen_w, screen_h), color: entity.color, corner_radius: 0.0 });
+                context.draw(DrawCommand::Rect {
+                    rect: Rect::new(screen_x, screen_y, screen_w, screen_h),
+                    color: entity.color,
+                    corner_radius: 0.0,
+                });
             }
         }
 
@@ -353,14 +389,24 @@ impl BaseSceneView {
         let mut x = grid_start_x;
         while x <= end_x {
             let (screen_x, _) = self.viewport.world_to_screen((x, 0.0));
-            context.draw(DrawCommand::Line { start: [screen_x, 0.0], end: [screen_x, vp_height], color: grid_color, width: 1.0 });
+            context.draw(DrawCommand::Line {
+                start: [screen_x, 0.0],
+                end: [screen_x, vp_height],
+                color: grid_color,
+                width: 1.0,
+            });
             x += world_step;
         }
 
         let mut y = grid_start_y;
         while y <= end_y {
             let (_, screen_y) = self.viewport.world_to_screen((0.0, y));
-            context.draw(DrawCommand::Line { start: [0.0, screen_y], end: [vp_width, screen_y], color: grid_color, width: 1.0 });
+            context.draw(DrawCommand::Line {
+                start: [0.0, screen_y],
+                end: [vp_width, screen_y],
+                color: grid_color,
+                width: 1.0,
+            });
             y += world_step;
         }
     }
@@ -379,14 +425,39 @@ impl BaseSceneView {
 
                 if has_transform {
                     let corners = Self::compute_transformed_corners(
-                        screen_x - 2.0, screen_y - 2.0, screen_w + 4.0, screen_h + 4.0,
-                        scene_entity.rotation, scene_entity.scale_x, scene_entity.scale_y,
+                        screen_x - 2.0,
+                        screen_y - 2.0,
+                        screen_w + 4.0,
+                        screen_h + 4.0,
+                        scene_entity.rotation,
+                        scene_entity.scale_x,
+                        scene_entity.scale_y,
                     );
 
-                    context.draw(DrawCommand::Line { start: [corners[0].0, corners[0].1], end: [corners[1].0, corners[1].1], color: highlight_color, width: 2.0 });
-                    context.draw(DrawCommand::Line { start: [corners[1].0, corners[1].1], end: [corners[2].0, corners[2].1], color: highlight_color, width: 2.0 });
-                    context.draw(DrawCommand::Line { start: [corners[2].0, corners[2].1], end: [corners[3].0, corners[3].1], color: highlight_color, width: 2.0 });
-                    context.draw(DrawCommand::Line { start: [corners[3].0, corners[3].1], end: [corners[0].0, corners[0].1], color: highlight_color, width: 2.0 });
+                    context.draw(DrawCommand::Line {
+                        start: [corners[0].0, corners[0].1],
+                        end: [corners[1].0, corners[1].1],
+                        color: highlight_color,
+                        width: 2.0,
+                    });
+                    context.draw(DrawCommand::Line {
+                        start: [corners[1].0, corners[1].1],
+                        end: [corners[2].0, corners[2].1],
+                        color: highlight_color,
+                        width: 2.0,
+                    });
+                    context.draw(DrawCommand::Line {
+                        start: [corners[2].0, corners[2].1],
+                        end: [corners[3].0, corners[3].1],
+                        color: highlight_color,
+                        width: 2.0,
+                    });
+                    context.draw(DrawCommand::Line {
+                        start: [corners[3].0, corners[3].1],
+                        end: [corners[0].0, corners[0].1],
+                        color: highlight_color,
+                        width: 2.0,
+                    });
                 }
                 else {
                     context.draw(DrawCommand::Rect {

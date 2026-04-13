@@ -1,8 +1,10 @@
 //! 道具系统
 //! 处理道具下落、出界销毁和敌人死亡掉落
 
-use crate::components::*;
-use crate::item::{Item, ItemSpawner, ItemType};
+use crate::{
+    components::*,
+    item::{Item, ItemSpawner, ItemType},
+};
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 

@@ -1,8 +1,10 @@
 //! 弹幕发射器系统
 //! 根据弹幕模式生成敌人子弹
 
-use crate::bullet_pattern::{BulletEmitter, BulletLifetime, BulletPattern, PatternType};
-use crate::components::*;
+use crate::{
+    bullet_pattern::{BulletEmitter, BulletLifetime, BulletPattern, PatternType},
+    components::*,
+};
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 

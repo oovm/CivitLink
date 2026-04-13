@@ -59,7 +59,10 @@ impl Transformer for IrOptimizeTransformer {
             let (mut module, _) = bincode::serde::decode_from_slice(&artifact.data, bincode::config::standard())
                 .map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to deserialize IrModule: {}", e) })?;
 
-            self.optimizer.lock().map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to lock optimizer: {}", e) })?.optimize(&mut module)?;
+            self.optimizer
+                .lock()
+                .map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to lock optimizer: {}", e) })?
+                .optimize(&mut module)?;
 
             let data = bincode::serde::encode_to_vec(&module, bincode::config::standard())
                 .map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to serialize IrModule: {}", e) })?;

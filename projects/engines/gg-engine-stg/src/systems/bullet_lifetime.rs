@@ -1,8 +1,10 @@
 //! 子弹生命周期系统
 //! 超时子弹自动回收
 
-use crate::bullet_pattern::{BulletLifetime, BulletPool};
-use crate::components::*;
+use crate::{
+    bullet_pattern::{BulletLifetime, BulletPool},
+    components::*,
+};
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 

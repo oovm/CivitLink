@@ -1,8 +1,7 @@
 //! 武器系统
 //! 处理玩家武器射击逻辑
 
-use crate::bullet_pattern::BulletLifetime;
-use crate::components::*;
+use crate::{bullet_pattern::BulletLifetime, components::*};
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 

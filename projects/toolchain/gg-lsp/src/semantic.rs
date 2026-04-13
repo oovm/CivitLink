@@ -5,8 +5,10 @@
 
 use std::collections::HashMap;
 
-use gg_script::type_checker::{TypeEnvironment, TypeInfo, DiagnosticSeverity as TypeDiagnosticSeverity};
-use gg_script::ScriptCompiler;
+use gg_script::{
+    ScriptCompiler,
+    type_checker::{DiagnosticSeverity as TypeDiagnosticSeverity, TypeEnvironment, TypeInfo},
+};
 
 /// 符号类型。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -517,7 +519,8 @@ impl AstSemanticAnalyzer {
             self.diagnostics.push(SemanticDiagnostic {
                 message: if let Some(suggestion) = &diag.suggestion {
                     format!("{} (suggestion: {})", diag.message, suggestion)
-                } else {
+                }
+                else {
                     diag.message.clone()
                 },
                 line: 0,

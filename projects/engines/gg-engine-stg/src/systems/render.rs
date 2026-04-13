@@ -1,9 +1,7 @@
 //! 渲染系统
 //! 处理渲染逻辑
 
-use crate::boss::Boss;
-use crate::components::*;
-use crate::item::Item;
+use crate::{boss::Boss, components::*, item::Item};
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 use gg_render::{Color, DrawCommand, Rect};

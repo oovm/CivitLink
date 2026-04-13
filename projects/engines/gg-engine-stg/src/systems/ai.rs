@@ -1,8 +1,7 @@
 //! AI 系统
 //! 处理敌人 AI 行为
 
-use crate::bullet_pattern::BulletEmitter;
-use crate::components::*;
+use crate::{bullet_pattern::BulletEmitter, components::*};
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 

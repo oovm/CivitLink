@@ -1,9 +1,11 @@
 //! Boss AI 系统
 //! 处理 Boss 阶段切换和移动
 
-use crate::boss::{Boss, BossMovePattern, PhaseTransition};
-use crate::bullet_pattern::BulletEmitter;
-use crate::components::*;
+use crate::{
+    boss::{Boss, BossMovePattern, PhaseTransition},
+    bullet_pattern::BulletEmitter,
+    components::*,
+};
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 

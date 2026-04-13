@@ -60,7 +60,10 @@ impl ValkyrieScriptTransformer {
 
     /// 将编译缓存持久化到磁盘
     pub fn persist_cache(&self, path: &std::path::Path) -> GResult<()> {
-        self.cache.lock().map_err(|e| gg_core::GError { kind: gg_core::GErrorKind::Other, message: format!("Failed to lock cache: {}", e) })?.persist_to_disk(path)
+        self.cache
+            .lock()
+            .map_err(|e| gg_core::GError { kind: gg_core::GErrorKind::Other, message: format!("Failed to lock cache: {}", e) })?
+            .persist_to_disk(path)
     }
 }
 
@@ -126,7 +129,10 @@ impl Transformer for ValkyrieScriptTransformer {
             };
 
             let module_name = &key.id;
-            let mut cache = self.cache.lock().map_err(|e| gg_core::GError { kind: gg_core::GErrorKind::Other, message: format!("Failed to lock cache: {}", e) })?;
+            let mut cache = self.cache.lock().map_err(|e| gg_core::GError {
+                kind: gg_core::GErrorKind::Other,
+                message: format!("Failed to lock cache: {}", e),
+            })?;
             match compiler.compile_incremental(&source, module_name, &mut cache) {
                 Ok(bytecode_module) => {
                     let bytecode_data = BytecodeWriter::write_module(&bytecode_module);

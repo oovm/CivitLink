@@ -1,9 +1,11 @@
 //! 碰撞系统
 //! 使用空间哈希网格优化碰撞检测，子弹使用专用轻量检测路径
 
-use crate::components::*;
-use crate::item::{Item, ItemType};
-use crate::boss::Boss;
+use crate::{
+    boss::Boss,
+    components::*,
+    item::{Item, ItemType},
+};
 use gg_core::GResult;
 use gg_ecs::{Entity, System, World};
 use std::collections::HashMap;
