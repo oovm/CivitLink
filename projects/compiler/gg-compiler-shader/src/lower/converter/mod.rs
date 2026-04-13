@@ -66,6 +66,8 @@ pub struct GslLowerer {
     uniform_field_index: FxHashMap<String, u32>,
     /// 自定义函数名到 naga 函数句柄的映射
     custom_functions: FxHashMap<String, naga::Handle<naga::Function>>,
+    /// 根级结构体声明，用于查找 shader 块外的结构体定义
+    root_structures: FxHashMap<String, oak_valkyrie::ast::StructureDeclaration>,
 }
 
 impl GslLowerer {
@@ -81,6 +83,7 @@ impl GslLowerer {
             uniform_type_handle: None,
             uniform_field_index: FxHashMap::default(),
             custom_functions: FxHashMap::default(),
+            root_structures: FxHashMap::default(),
         }
     }
 
@@ -99,6 +102,7 @@ impl GslLowerer {
             uniform_type_handle: None,
             uniform_field_index: FxHashMap::default(),
             custom_functions: FxHashMap::default(),
+            root_structures: FxHashMap::default(),
         }
     }
 
@@ -106,7 +110,7 @@ impl GslLowerer {
     ///
     /// 执行两遍遍历：第一遍收集信息，第二遍生成 naga IR。
     /// 同时返回渲染状态和回退信息。
-    pub fn lower(&mut self, shader: &ShaderDeclaration) -> GResult<(naga::Module, RenderStates, Option<FallbackInfo>)> {
+    pub fn lower(&mut self, shader: &ShaderDeclaration, root_structures: &FxHashMap<String, oak_valkyrie::ast::StructureDeclaration>) -> GResult<(naga::Module, RenderStates, Option<FallbackInfo>)> {
         self.local_vars.clear();
         self.global_vars.clear();
         self.type_cache.clear();
@@ -115,12 +119,17 @@ impl GslLowerer {
         self.uniform_type_handle = None;
         self.uniform_field_index.clear();
         self.custom_functions.clear();
+        self.root_structures = root_structures.clone();
 
         let mut module = naga::Module::default();
 
-        let (properties, entry_points, uniform_fields, render_states, custom_micros) = self.collect_shader_items(shader)?;
+        let (properties, entry_points, uniform_fields, render_states, custom_micros, binding_decls) = self.collect_shader_items(shader)?;
 
         let uniform_buffer_ty = self.create_uniform_buffer(&uniform_fields, &mut module)?;
+
+        for decl in &binding_decls {
+            self.create_binding_global(decl, &mut module)?;
+        }
 
         for prop in &properties {
             self.create_property_globals(prop, &mut module)?;
@@ -148,12 +157,13 @@ impl GslLowerer {
     fn collect_shader_items(
         &mut self,
         shader: &ShaderDeclaration,
-    ) -> GResult<(Vec<GsProperty>, Vec<GsEntryPoint>, Vec<GsUniformField>, Vec<GsRenderState>, Vec<MicroDeclaration>)> {
+    ) -> GResult<(Vec<GsProperty>, Vec<GsEntryPoint>, Vec<GsUniformField>, Vec<GsRenderState>, Vec<MicroDeclaration>, Vec<super::GsBindingDecl>)> {
         let mut properties = Vec::new();
         let mut entry_points = Vec::new();
         let mut uniform_fields = Vec::new();
         let mut render_states = Vec::new();
         let mut custom_micros: Vec<MicroDeclaration> = Vec::new();
+        let mut binding_decls = Vec::new();
 
         for item in &shader.items {
             match item {
@@ -199,11 +209,20 @@ impl GslLowerer {
                         }
                     }
                 }
+                StatementNode::UniformBinding(binding) => {
+                    let type_name = self.type_expr_to_string(&binding.ty);
+                    let decl = super::GsBindingDecl {
+                        is_uniform: binding.is_uniform,
+                        name: binding.name.name.clone(),
+                        type_name,
+                    };
+                    binding_decls.push(decl);
+                }
                 _ => {}
             }
         }
 
-        Ok((properties, entry_points, uniform_fields, render_states, custom_micros))
+        Ok((properties, entry_points, uniform_fields, render_states, custom_micros, binding_decls))
     }
 
     /// 从 let 语句中收集属性信息
@@ -735,6 +754,57 @@ impl GslLowerer {
         }
     }
 
+    fn create_binding_global(&mut self, decl: &super::GsBindingDecl, module: &mut naga::Module) -> GResult<()> {
+        if decl.is_uniform {
+            let struct_name = &decl.type_name;
+            let struct_decl = self.find_struct_declaration(struct_name);
+            let fields = if let Some(ref s) = struct_decl {
+                self.collect_uniform_fields(s)?
+            } else {
+                Vec::new()
+            };
+            if !fields.is_empty() {
+                self.create_uniform_buffer(&fields, module)?;
+            }
+        } else {
+            let type_lower = decl.type_name.to_lowercase();
+            if type_lower == "sampler" {
+                let sampler_ty = self.get_or_create_naga_type("sampler", module)?;
+                let binding = self.next_binding;
+                self.next_binding += 1;
+                let gv = module.global_variables.append(
+                    naga::GlobalVariable {
+                        name: Some(decl.name.clone()),
+                        space: naga::AddressSpace::Handle,
+                        binding: Some(naga::ResourceBinding { group: 1, binding }),
+                        ty: sampler_ty,
+                        init: None,
+                        memory_decorations: naga::MemoryDecorations::empty(),
+                    },
+                    NagaSpan::UNDEFINED,
+                );
+                self.global_vars.insert(decl.name.clone(), gv);
+            } else if type_lower.starts_with("texture") {
+                let texture_ty = self.get_or_create_naga_type(&decl.type_name, module)?;
+                let binding = self.next_binding;
+                self.next_binding += 1;
+                let gv = module.global_variables.append(
+                    naga::GlobalVariable {
+                        name: Some(decl.name.clone()),
+                        space: naga::AddressSpace::Handle,
+                        binding: Some(naga::ResourceBinding { group: 1, binding }),
+                        ty: texture_ty,
+                        init: None,
+                        memory_decorations: naga::MemoryDecorations::empty(),
+                    },
+                    NagaSpan::UNDEFINED,
+                );
+                self.global_vars.insert(decl.name.clone(), gv);
+            }
+        }
+        Ok(())
+    }
+
     /// 在着色器声明中查找结构体定义
     ///
     /// 根据名称在 `shader_items` 中搜索匹配的结构体声明，
@@ -747,6 +817,8 @@ impl GslLowerer {
                 }
             }
             None
+        }).or_else(|| {
+            self.root_structures.get(name).cloned()
         })
     }
 

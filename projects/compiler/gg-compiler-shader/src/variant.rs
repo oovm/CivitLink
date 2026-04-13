@@ -13,6 +13,7 @@ use oak_valkyrie::{
     ValkyrieBuilder, ValkyrieLanguage,
     ast::{ShaderDeclaration, StatementNode, TermExpression},
 };
+use rustc_hash::FxHashMap;
 
 use crate::{
     artifact::{ShaderArtifact, ShaderModuleEntry},
@@ -169,7 +170,7 @@ impl VariantCompiler {
         let collection = VariantCollection::collect_from_shader(shader);
 
         let mut lowerer = GslLowerer::new();
-        let (module, render_states, fallback) = lowerer.lower(shader)?;
+        let (module, render_states, fallback) = lowerer.lower(shader, &FxHashMap::default())?;
 
         self.validate_module(&module)?;
 
@@ -196,7 +197,7 @@ impl VariantCompiler {
 
             let keywords: EnabledKeywords = combo.iter().cloned().collect();
             let mut combo_lowerer = GslLowerer::with_keywords(keywords);
-            let (combo_module, combo_render_states, combo_fallback) = combo_lowerer.lower(shader)?;
+            let (combo_module, combo_render_states, combo_fallback) = combo_lowerer.lower(shader, &FxHashMap::default())?;
 
             self.validate_module(&combo_module).map_err(|e| GError {
                 kind: GErrorKind::Other,

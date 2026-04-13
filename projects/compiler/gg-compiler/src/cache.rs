@@ -158,7 +158,7 @@ impl CompilationCache {
     pub fn load_from_disk(&mut self, path: &Path) -> GResult<()> {
         let data = std::fs::read(path)?;
 
-        let (entries, _) = bincode::serde::decode_from_slice(&data, bincode::config::standard())
+        let (entries, _): (Vec<CacheEntry>, _) = bincode::serde::decode_from_slice(&data, bincode::config::standard())
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("缓存反序列化失败: {}", e) })?;
 
         for entry in entries {

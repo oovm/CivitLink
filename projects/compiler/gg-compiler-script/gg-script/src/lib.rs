@@ -97,7 +97,7 @@ impl ScriptCache {
     ///
     /// 使用 bincode 序列化格式将整个缓存写入指定路径。
     pub fn persist_to_disk(&self, path: &Path) -> GResult<()> {
-        let data = bincode::serde::serialize(self)
+        let data = bincode::serde::encode_to_vec(self, bincode::config::standard())
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to serialize script cache: {}", e) })?;
         std::fs::write(path, data)
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write script cache to disk: {}", e) })
@@ -109,8 +109,9 @@ impl ScriptCache {
     pub fn load_from_disk(path: &Path) -> GResult<Self> {
         let data = std::fs::read(path)
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read script cache from disk: {}", e) })?;
-        bincode::serde::deserialize(&data)
-            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to deserialize script cache: {}", e) })
+        let (cache, _): (ScriptCache, _) = bincode::serde::decode_from_slice(&data, bincode::config::standard())
+            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to deserialize script cache: {}", e) })?;
+        Ok(cache)
     }
 
     /// 返回缓存中的条目数量
@@ -134,7 +135,7 @@ fn compute_source_hash(source: &str) -> String {
     let mut hasher = Sha1::new();
     hasher.update(source.as_bytes());
     let result = hasher.finalize();
-    format!("{:x}", result)
+    result.iter().map(|b| format!("{:02x}", b)).collect()
 }
 
 /// 从源码中提取 `using module_name` 依赖声明

@@ -18,7 +18,7 @@ pub struct PassStats {
 }
 
 /// IR 优化 Pass trait，定义中间表示优化的标准接口
-pub trait IrPass {
+pub trait IrPass: Send {
     /// 获取 Pass 名称
     fn name(&self) -> &str;
 

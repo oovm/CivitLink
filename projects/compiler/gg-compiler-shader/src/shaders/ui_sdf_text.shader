@@ -42,9 +42,7 @@ shader UiSdfTextShader by UiSdf {
     }
 
     @fragment
-    micro fragment_main(
-        @location(0) uv: vec2
-    ) -> @location(0) vec4 {
+    micro fragment_main(@location(0) uv: vec2) -> @location(0) vec4 {
         let dist = textureSample(sdf_tex, tex_sampler, uv).r
         let smooth_min = uniforms.gg_sdf_params.x
         let smooth_max = uniforms.gg_sdf_params.y

@@ -58,6 +58,19 @@ pub struct GsRenderState {
     pub value: String,
 }
 
+/// gs 绑定声明信息
+///
+/// 表示 shader 块中的 uniform 或资源绑定声明。
+#[derive(Debug, Clone)]
+pub struct GsBindingDecl {
+    /// 是否为 uniform 绑定
+    pub is_uniform: bool,
+    /// 绑定名称
+    pub name: String,
+    /// 绑定类型名称
+    pub type_name: String,
+}
+
 /// 类型大小和对齐信息
 pub struct TypeSizeAlign {
     /// 类型大小（字节）

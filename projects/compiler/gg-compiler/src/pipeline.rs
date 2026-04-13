@@ -150,7 +150,8 @@ impl Pipeline {
 
         if self.cache.is_valid(node_id, input_hash) {
             if let Some(data) = self.cache.get(node_id, input_hash) {
-                if let Ok((output, _)) = bincode::serde::decode_from_slice(data, bincode::config::standard()) {
+                if let Ok(cached) = bincode::serde::decode_from_slice::<ArtifactSet, _>(data, bincode::config::standard()) {
+                    let (output, _) = cached;
                     let node = self.nodes.get_mut(node_id).unwrap();
                     node.last_output_hash = Some(input_hash);
                     node.cached_output = Some(output.clone());
@@ -302,7 +303,7 @@ impl Pipeline {
         loop {
             let current_level: Vec<String> = remaining_in_degree
                 .iter()
-                .filter(|(_, &deg)| deg == 0)
+                .filter(|(_, deg)| **deg == 0)
                 .map(|(&id, _)| id.to_string())
                 .collect();
 

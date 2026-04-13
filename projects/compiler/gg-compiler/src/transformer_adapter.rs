@@ -4,7 +4,7 @@
 use std::sync::Mutex;
 
 use gg_core::{GError, GErrorKind, GResult};
-use gg_ir::{IrModule, pass::IrOptimizer};
+use gg_ir::pass::IrOptimizer;
 
 use crate::{
     artifact::{Artifact, ArtifactKey, ArtifactSet},

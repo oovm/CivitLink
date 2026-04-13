@@ -15,7 +15,7 @@ use std::collections::{HashMap, HashSet};
 
 use oak_valkyrie::{
     ast::{
-        Attribute, Block, ClassDeclaration, ComponentDeclaration, Enums, FieldDeclaration, Flags, MethodDeclaration,
+        Attribute, Block, ClassDeclaration, ComponentDeclaration, Enums, Flags, MethodDeclaration,
         MicroDeclaration, NamePath, Pattern, SingletonDeclaration, Statement, StatementNode, StringLiteral, StringSegment,
         StructureDeclaration, SystemDeclaration, TermExpression, Trait, ValkyrieRoot,
     },

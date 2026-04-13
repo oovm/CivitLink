@@ -27,7 +27,6 @@ Valkyrie Script → oak-valkyrie AST → ValkyrieCompiler → IrModule → 优�
 | gg-compiler-script | `projects/compiler/gg-compiler-script` | 统一脚本编译器（.script/.widget/.shader）       |
 | gg-compiler-aot    | `projects/compiler/gg-compiler-aot`    | AOT 原生编译器（暂停）                          |
 | gg-compiler-asset  | `projects/compiler/gg-compiler-asset`  | 资产管辖系统（统一资源编译管道）                       |
-| gg-compiler-script | `projects/compiler/gg-compiler-script` | Valkyrie 脚本编译器                         |
 | gg-compiler-shader | `projects/compiler/gg-compiler-shader` | Shader 编译器                             |
 | gg-sheet           | `projects/compiler/gg-sheet`           | 数据表编译器                                 |
 | gg-meta            | `projects/core/gg-meta`                | VON 格式编译器（AST 由 oak-voc 提供）            |
@@ -143,225 +142,6 @@ Valkyrie Script → oak-valkyrie AST → ValkyrieCompiler → IrModule → 优�
 | Shader    | .shader    | GG Shader | gg-compiler-shader         | ShaderSPIRV/WGSL    |
 | Widget    | .widget    | GG Widget | gg-compiler-widget         | WidgetBytecode      |
 
-## 资产编译流程
-
-```mermaid
-graph TB
-    subgraph Inputs[输入资产]
-        VON[VON 格式<br/>.animation/.config/.material/.prefab/.scene/.von]
-        Script[Valkyrie 脚本<br/>.script]
-        Shader[GG Shader<br/>.shader/.gs]
-        Schema[Schema DSL<br/>.schema]
-        Widget[Widget 组件<br/>.widget]
-        Meta[Meta 元数据<br/>.meta]
-    end
-
-    subgraph Pipeline[资产管辖系统 - gg-compiler-asset]
-        AssetRegistry[资产注册表]
-        DependencyGraph[依赖图]
-        IncrementalBuilder[增量构建器]
-        AssetCache[资产缓存]
-    end
-
-    subgraph Compilers[编译器模块]
-        VonCompiler[VON 编译器<br/>gg-meta]
-        ScriptCompiler[脚本编译器<br/>gg-script]
-        ShaderCompiler[Shader 编译器<br/>gg-compiler-shader]
-        SchemaCompiler[Schema 编译器<br/>gg-schema]
-        WidgetCompiler[Widget 编译器<br/>gg-compiler-widget]
-    end
-
-    subgraph Outputs[输出产物]
-        RuntimeAssets[运行时资产<br/>.gga]
-        Bytecode[字节码模块<br/>.ggbc]
-        IR[中间表示<br/>.ggir]
-        GeneratedCode[生成代码<br/>bindings.v]
-    end
-
-    VON --> AssetRegistry
-    Script --> AssetRegistry
-    Shader --> AssetRegistry
-    Schema --> AssetRegistry
-    Widget --> AssetRegistry
-    Meta --> AssetRegistry
-
-    AssetRegistry --> DependencyGraph
-    DependencyGraph --> IncrementalBuilder
-    IncrementalBuilder --> Compilers
-    Compilers --> AssetCache
-
-    VonCompiler --> RuntimeAssets
-    ScriptCompiler --> Bytecode
-    ShaderCompiler --> RuntimeAssets
-    SchemaCompiler --> IR
-    SchemaCompiler --> GeneratedCode
-    WidgetCompiler --> Bytecode
-```
-
-## 资产格式详细规范
-
-### 1. VON 格式资产
-
-VON（Valkyrie Object Notation）是 GG 引擎的核心数据序列化格式，用于存储动画、配置、材质、预制体、场景等资产。
-
-#### 支持的 VON 资产类型
-
-| 资产类型      | 文件扩展名      | 根结构           | 核心字段                                                         |
-| --------- | ---------- | ------------- | ------------------------------------------------------------ |
-| Animation | .animation | AnimationFile | animation, tracks, events, dependencies                      |
-| Config    | .config    | ConfigFile    | config, settings, dependencies                               |
-| Material  | .material  | MaterialFile  | material, properties, render\_states, dependencies           |
-| Prefab    | .prefab    | PrefabFile    | prefab, entities, variants, dependencies                     |
-| Scene     | .scene     | SceneFile     | scene, environment, entities, prefabs, scripts, dependencies |
-
-#### VON 编译流程
-
-```
-.von 文件 → oak-voc 解析 → VON AST → 类型验证 → 资产对象 → 序列化 → .gga
-```
-
-#### VON 编译器职责
-
-- 接收 oak-voc 提供的 VON AST
-- 验证资产结构完整性
-- 解析依赖关系（dependencies 字段）
-- 验证 GUID 引用有效性
-- 生成运行时资产对象
-- 支持增量编译（基于 hash 字段）
-
-### 2. Valkyrie 脚本资产
-
-Valkyrie 脚本是 GG 引擎的核心脚本语言，用于游戏逻辑、组件定义、系统实现。
-
-#### 脚本类型
-
-| 类型              | 扩展名     | 用途     |
-| --------------- | ------- | ------ |
-| Valkyrie Script | .script | 游戏逻辑脚本 |
-
-#### 脚本编译流程
-
-```
-.script 文件 → oak-valkyrie 解析 → AST → 类型检查 → IR 生成 → 优化 Pass → 字节码生成 → .ggbc
-```
-
-#### 脚本编译器职责
-
-- 接收 oak-valkyrie 提供的 AST
-- 类型检查和推断
-- 支持 @main 多入口
-- 支持 impl Trait for Type 语法
-- 支持 @target 平台条件编译
-- ORM 宿主函数绑定
-- 生成 GG IR 和字节码
-
-### 3. GG Shader 资产
-
-GG Shader (gs) 是 GG 引擎的着色器语言，设计为易于人类阅读和机器分析。
-
-#### Shader 类型
-
-| 类型       | 关键字         | 用途        |
-| -------- | ----------- | --------- |
-| PBR      | by PBR      | 基于物理的渲染   |
-| Unlit    | by Unlit    | 无光照渲染     |
-| Phong    | by Phong    | 传统光照模型    |
-| Compute  | by Compute  | 计算着色器     |
-| UiUnlit  | by UiUnlit  | UI 基础渲染   |
-| UiSdf    | by UiSdf    | SDF 文字渲染  |
-| UiCustom | by UiCustom | 自定义 UI 特效 |
-
-#### Shader 编译流程
-
-```
-.shader 文件 → oak-voc 解析 → Shader AST → 语义分析 → Naga IR → gfx 工作组处理跨平台编译
-```
-
-#### Shader 编译器职责
-
-- 接收 oak-voc 提供的 Shader AST
-- 验证着色器结构
-- 解析 uniforms 和属性
-- 处理 fallback 策略
-- 生成 Naga IR 中间表示
-- 支持变体系统
-
-### 4. Schema DSL 资产
-
-Schema DSL 是 GG 引擎的数据模型定义语言，用于后端服务、本地存储和 RPC 服务。
-
-#### Schema 组成
-
-| 组件      | 关键字     | 用途     |
-| ------- | ------- | ------ |
-| Model   | model   | 数据库实体表 |
-| Enum    | enums   | 枚举类型   |
-| Message | message | RPC 消息 |
-| Service | service | RPC 服务 |
-
-#### Schema 编译流程
-
-```
-.schema 文件 → oak-voc 解析 → Schema AST → 类型验证 → GG IR + Valkyrie 绑定 + 迁移文件
-```
-
-#### Schema 编译器职责
-
-- 接收 oak-voc 提供的 Schema AST
-- 验证数据模型定义
-- 生成 GG IR 中间表示
-- 生成 Valkyrie 类型绑定
-- 生成数据库迁移文件
-- 支持多数据库方言（SQLite、PostgreSQL、MySQL、Redis）
-
-### 5. Widget 资产
-
-Widget 是 GG Editor UI Toolkit 的组件格式，类似 Vue 单文件组件。
-
-#### Widget 组成
-
-| 部分       | 用途           |
-| -------- | ------------ |
-| template | ValkyrieX 模板 |
-| script   | Valkyrie 脚本  |
-| style    | USS 样式       |
-
-#### Widget 编译流程
-
-```
-.widget 文件 → 解析三部分 → Template AST + Script AST + USS AST → 合并编译 → Widget 字节码 → .ggbc
-```
-
-#### Widget 编译器职责
-
-- 解析 template 部分（ValkyrieX）
-- 解析 script 部分（Valkyrie）
-- 解析 style 部分（USS）
-- 合并编译为 Widget 字节码
-- 支持组件导入导出
-- 支持响应式状态管理
-
-### 6. Meta 资产
-
-Meta 文件存储资产的元数据，包括 GUID、导入设置、依赖关系。
-
-#### Meta 结构
-
-| 字段               | 用途       |
-| ---------------- | -------- |
-| guid             | 全局唯一标识符  |
-| type             | 资产类型     |
-| import\_settings | 导入设置     |
-| dependencies     | 依赖关系     |
-| references       | 引用关系     |
-| hash             | SHA1 哈希值 |
-
-#### Meta 处理流程
-
-```
-.meta 文件 → TOML 解析 → Meta 对象 → 注册到资产注册表 → 更新依赖图
-```
-
 ## 依赖管理系统
 
 ### 依赖图构建
@@ -400,28 +180,6 @@ Asset A → Asset B → Asset C → Asset A  // 检测到循环依赖，编译�
 6. 如果依赖变化，触发重新编译
 ```
 
-## 资产注册表
-
-资产注册表管理所有已编译资产的元数据和引用：
-
-```rust
-pub struct AssetRegistry {
-    assets: HashMap<Guid, AssetEntry>,
-    path_to_guid: HashMap<PathBuf, Guid>,
-    dependency_graph: DependencyGraph,
-}
-
-pub struct AssetEntry {
-    guid: Guid,
-    path: PathBuf,
-    asset_type: AssetType,
-    hash: String,
-    dependencies: Vec<Guid>,
-    references: Vec<Guid>,
-    compiled_artifact: Option<PathBuf>,
-}
-```
-
 ***
 
 # 编译器核心组
@@ -430,11 +188,11 @@ pub struct AssetEntry {
 - **大致进度**：gg-compiler 90%，gg-ir 97%，gg-bytecode 99%
 - **迁移状态**：✅ **已完成** - gg-ir 和 gg-bytecode 已从 runtime 目录迁移至 compiler 目录
 - **本月工作重点**：
-  - ✅ 循环不变量外提优化 Pass（LICM）
-  - ✅ 循环展开优化 Pass（Loop Unrolling）
-  - ✅ 逃逸分析 Pass（Escape Analysis）
-  - ✅ 字节码解释器性能分析工具（Profiler）
-  - ✅ 编译缓存管理完善（CompilationCache）
+  - 实现全局值编号（GVN）优化 Pass
+  - 实现强度削减（Strength Reduction）优化 Pass
+  - 完善字节码解释器 SIMD 优化
+  - 实现字节码验证器（BytecodeValidator）
+  - 优化编译缓存命中率策略
 - **已完成工作**：
   - ✅ 编译流水线的 DAG 调度
   - ✅ 公共子表达式消除优化 Pass
@@ -447,20 +205,22 @@ pub struct AssetEntry {
   - ✅ 尾调用优化（IR Pass + 解释器栈帧复用）
   - ✅ 优化 Pass 执行统计
   - ✅ DebugValue 与 BytecodeValue 对齐
-  - ✅ 循环不变量外提（LICM）— 识别循环体内不变计算并外提到循环前置块
-  - ✅ 循环展开（Loop Unrolling）— 对固定迭代次数的小循环进行展开优化
-  - ✅ 逃逸分析（Escape Analysis）— 分析对象分配的逃逸状态，为栈分配优化提供基础
-  - ✅ 字节码解释器性能分析器（Profiler）— 函数调用计数、耗时统计、热点识别、JSON 导出
-  - ✅ 编译缓存管理（CompilationCache）— 内存缓存、依赖追踪、磁盘持久化、级联失效
+  - ✅ 循环不变量外提（LICM）
+  - ✅ 循环展开（Loop Unrolling）
+  - ✅ 逃逸分析（Escape Analysis）
+  - ✅ 字节码解释器性能分析器（Profiler）
+  - ✅ 编译缓存管理（CompilationCache）
+  - ✅ Pipeline 并行编译（execute_parallel + rayon）
+  - ✅ Transformer Send + Sync 线程安全
 - **长期目标**：
   - 完整的编译器基础设施
   - 丰富的优化 Pass 库
-  - ✅ 支持增量编译
-  - 完善的调试支持
   - 高性能字节码运行时
+  - 完善的调试支持
 - **相关文件**：
   - gg-compiler: `projects/compiler/gg-compiler/src/lib.rs`
   - gg-compiler cache: `projects/compiler/gg-compiler/src/cache.rs`
+  - gg-compiler pipeline: `projects/compiler/gg-compiler/src/pipeline.rs`
   - gg-ir: `projects/compiler/gg-ir/src/lib.rs`
   - gg-ir LICM: `projects/compiler/gg-ir/src/loop_invariant.rs`
   - gg-ir LoopUnroll: `projects/compiler/gg-ir/src/loop_unroll.rs`
@@ -473,13 +233,13 @@ pub struct AssetEntry {
 # Valkyrie 编译组
 
 - **负责模块**：gg-script, gg-compiler-script
-- **大致进度**：gg-script 93%，gg-compiler-script 85%
+- **大致进度**：gg-script 96%，gg-compiler-script 92%
 - **本月工作重点**：
-  - ✅ 完善类型推断系统（泛型类型推断、闭包类型推断）
-  - 优化编译性能（增量编译、并行编译）
-  - ✅ 支持更多语言特性（模式匹配增强）
-  - ✅ 完善错误提示（类型错误定位、修复建议）
-  - ✅ 改进编译器 API（更好的 IDE 集成支持）
+  - 实现宏系统基础框架（macro 定义、展开、卫生性）
+  - 实现跨模块类型传播（import 解析、符号表共享）
+  - 完善 Hindley-Milner 类型推断（泛型约束求解）
+  - 实现 LSP Go to Definition 功能
+  - 实现 LSP Find References 功能
 - **已完成工作**：
   - ✅ 类型检查器
   - ✅ @main 多入口支持
@@ -493,14 +253,22 @@ pub struct AssetEntry {
   - ✅ 模式匹配增强（字面量模式、枚举变体模式、类解构）
   - ✅ 类型诊断修复建议（suggestion 字段）
   - ✅ 编译器 API 扩展（compile_with_diagnostics、check_only）
+  - ✅ 脚本级增量编译（ScriptCache + SHA1 哈希 + 磁盘持久化）
+  - ✅ Pipeline 并行编译（rayon + DAG 层级分组 + execute_parallel）
+  - ✅ DotCall 字段类型推断（class_fields + Component 字段 + 拼写建议）
+  - ✅ Trait 约束检查（impl 验证 + 缺失方法诊断 + suggestion）
+  - ✅ IrFunction local_names 调试信息（compile_class/singleton/system）
+  - ✅ LSP AST 级语义分析（AstSemanticAnalyzer + 类型感知补全）
 - **长期目标**：
   - 完整的 Valkyrie 语言支持
   - 渐进式类型系统
   - 全栈开发支持
   - 完善的语言服务器
 - **相关文件**：
-  - gg-script: `projects/compiler/gg-script/src/compiler.rs`
+  - gg-script: `projects/compiler/gg-compiler-script/gg-script/src/compiler/`
   - gg-compiler-script: `projects/compiler/gg-compiler-script/src/valkyrie_transformer.rs`
+  - gg-compiler: `projects/compiler/gg-compiler/src/pipeline.rs`
+  - gg-lsp: `projects/toolchain/gg-lsp/src/semantic.rs`
 
 ***
 
@@ -509,8 +277,8 @@ pub struct AssetEntry {
 - **负责模块**：gg-compiler-shader
 - **大致进度**：70%
 - **本月工作重点**：
-  - 实现 Shader 变体系统（多 Pass、多特性组合）
-  - 生成 Naga IR 中间表示（跨平台编译支持）
+  - 完善 Shader 变体系统（多 Pass、多特性组合）
+  - 实现 SPIR-V 输出（跨平台编译支持）
   - 完善 lower 模块（类型转换、语义映射）
   - 优化 Shader 编译性能（增量编译、缓存）
   - 支持 Shader 热重载（运行时更新）
@@ -518,10 +286,12 @@ pub struct AssetEntry {
   - ✅ GG Shader 语法
   - ✅ 基础编译
   - ✅ 内置函数
+  - ✅ 变体系统
+  - ✅ Naga IR 输出
   - ✅ 序列化
 - **长期目标**：
   - 完整的 Shader 语言
-  - Naga IR 输出（跨平台编译由 gfx 工作组负责）
+  - SPIR-V 输出（跨平台编译）
   - Shader 热重载
   - 可视化 Shader 编辑器支持
 - **相关文件**：
@@ -534,10 +304,11 @@ pub struct AssetEntry {
 - **负责模块**：gg-sheet
 - **大致进度**：80%
 - **本月工作重点**：
-  - 可视化表格编辑器原型
-  - Color/Vector 类型结构化值解析
-  - Map 类型结构化值解析
-  - 缓存序列化格式加固
+  - 实现可视化表格编辑器原型
+  - 实现 Color/Vector 类型结构化值解析
+  - 实现 Map 类型结构化值解析
+  - 优化缓存序列化格式（bincode 替代 JSON）
+  - 完善数据迁移工具（更多迁移操作）
 - **已完成工作**：
   - ✅ 数据表 Schema 定义
   - ✅ 数据验证规则
@@ -591,12 +362,11 @@ pub struct AssetEntry {
 - **大致进度**：gg-platform 95%，gg-platform-desktop 95%，gg-platform-ios 85%，gg-platform-android 85%，gg-platform-web 85%
 - **迁移状态**：✅ **已完成** - platforms 目录已迁移至 compiler 目录，且移动平台已拆分为 iOS 和 Android 独立模块
 - **本月工作重点**：
-  - 完善 iOS 平台构建流程（Xcode 项目生成、IPA 打包）
-  - 完善 Android 平台构建流程（Gradle 项目生成、APK 打包）
-  - 完善 Web 平台渲染后端检测（WebGL/WebGPU 自动选择、降级策略）
-  - 实现桌面平台打包流程（Windows 安装包、macOS 代码签名、Linux AppImage）
-  - 优化 Web 平台输出（WASM 优化、代码分割、PWA 支持）
-  - 改进跨平台构建体验（统一构建命令、构建配置管理）
+  - 完善 iOS 平台构建流程（Xcode 项目生成优化、签名管理）
+  - 完善 Android 平台构建流程（Gradle 项目生成优化、签名配置）
+  - 实现 Web 平台 PWA 支持（Service Worker、缓存策略）
+  - 实现桌面平台打包流程（Windows NSIS、macOS 代码签名、Linux AppImage）
+  - 优化 Web 平台输出（WASM 优化、代码分割）
 - **已完成工作**：
   - ✅ 模块迁移（platforms → compiler）
   - ✅ 创建 gg-platform 基础库
@@ -604,14 +374,11 @@ pub struct AssetEntry {
   - ✅ Cargo.toml 依赖路径更新
   - ✅ 工作区配置更新
   - ✅ 迁移后编译验证
-  - ✅ gg-core Platform trait 扩展（新增 list_devices、validate_environment 方法）
-  - ✅ gg-core 新增 DeviceInfo、EnvironmentReport、ToolStatus 类型
-  - ✅ gg-platform 新增 utils 模块（通用工具函数提取）
-  - ✅ gg-platform 新增 build_profile 模块（构建配置管理）
-  - ✅ gg-platform 新增 coordinator 模块（跨平台构建协调器 BuildCoordinator）
-  - ✅ 桌面平台增强（macOS 代码签名、Windows NSIS 自定义、Linux AppImage 集成）
+  - ✅ gg-core Platform trait 扩展
+  - ✅ gg-platform 新增 utils/build_profile/coordinator 模块
+  - ✅ 桌面平台增强（macOS 代码签名、Windows NSIS、Linux AppImage）
   - ✅ iOS 平台增强（Xcode 项目生成、签名管理、真机调试支持）
-  - ✅ Android 平台增强（完整 Gradle 项目生成、签名配置、真机调试支持）
+  - ✅ Android 平台增强（Gradle 项目生成、签名配置、真机调试支持）
   - ✅ Web 平台增强（WASM 优化、PWA 缓存策略、GG Shader 编译管线集成）
   - ✅ iOS/Android 运行时模块迁移到 gg_core::platform trait 体系
 - **长期目标**：
@@ -630,8 +397,8 @@ pub struct AssetEntry {
 
 # 资产管辖组
 
-- **负责模块**：gg-compiler-asset, gg-meta, gg-schema, gg-compiler-widget
-- **大致进度**：gg-compiler-asset 50%，gg-meta 85%，gg-schema 60%，gg-compiler-widget 80%
+- **负责模块**：gg-compiler-asset, gg-meta, gg-schema
+- **大致进度**：gg-compiler-asset 55%，gg-meta 85%，gg-schema 60%
 - **本月工作重点**：
   - 完善资产注册表和依赖图（循环依赖检测、依赖更新）
   - 实现增量构建系统（基于文件哈希、依赖变更检测）
@@ -640,9 +407,10 @@ pub struct AssetEntry {
   - 完善资产缓存策略（内存缓存、磁盘缓存、缓存失效）
 - **已完成工作**：
   - ✅ VON 格式编译器（AST 来自 oak-voc）
-  - ✅ Widget 编译器（AST 来自 oak-voc）
   - ✅ 依赖图基础结构
   - ✅ 资产缓存
+  - ✅ Transformer 集成
+  - ✅ 增量构建框架
 - **长期目标**：
   - 完整的资产管辖系统
   - 支持所有资产格式
@@ -652,7 +420,6 @@ pub struct AssetEntry {
   - gg-compiler-asset: `projects/compiler/gg-compiler-asset/src/lib.rs`
   - gg-meta: `projects/core/gg-meta/src/lib.rs`
   - gg-schema: `projects/compiler/gg-schema/src/lib.rs`
-  - gg-compiler-widget: `projects/compiler/gg-compiler-widget/src/lib.rs`
 
 ***
 
@@ -660,24 +427,24 @@ pub struct AssetEntry {
 
 ### gg-compiler
 
-- **完成度**：85%
+- **完成度**：90%
 - **已完成功能**：
   - 编译上下文
   - 产物管理
-  - 转换器 trait
+  - 转换器 trait（Send + Sync）
   - 流水线框架
   - 转换器适配器
   - 诊断格式化输出
-- **进行中功能**：
   - DAG 调度
   - 增量编译
+  - 编译缓存管理
+  - 并行编译（execute_parallel）
 - **未完成功能**：
-  - 缓存管理
-  - 编译性能优化
+  - 缓存命中率优化策略
 
 ### gg-script
 
-- **完成度**：93%
+- **完成度**：96%
 - **已完成功能**：
   - Valkyrie AST 编译
   - IR 生成
@@ -686,19 +453,24 @@ pub struct AssetEntry {
   - ScriptCompiler 和 ScriptLoader
   - 目标平台支持
   - IR 优化集成
-  - 泛型类型参数推断（Array<Int>、Map<String, Int>）
-  - 闭包类型推断（捕获变量类型推断）
-  - 类型统一方法（unify_types）
-  - 模式匹配增强（字面量模式、枚举变体模式、类解构）
-  - 类型诊断修复建议（suggestion 字段）
-  - 编译器 API 扩展（compile_with_diagnostics、check_only）
+  - 泛型类型参数推断
+  - 闭包类型推断
+  - 类型统一方法
+  - 模式匹配增强
+  - 类型诊断修复建议
+  - 编译器 API 扩展
+  - 脚本级增量编译
+  - DotCall 字段类型推断
+  - Trait 约束检查
+  - local_names 调试信息
 - **未完成功能**：
-  - 完整类型推断
   - 宏系统
+  - 跨模块类型传播
+  - Hindley-Milner 类型推断
 
 ### gg-ir
 
-- **完成度**：93%
+- **完成度**：97%
 - **已完成功能**：
   - IR 结构定义（IrModule、IrFunction、IrValue、OpCode）
   - 常量折叠
@@ -711,13 +483,16 @@ pub struct AssetEntry {
   - 尾调用优化 Pass
   - Pass 执行统计
   - IR 分区常量池序列化
+  - 循环不变量外提（LICM）
+  - 循环展开（Loop Unrolling）
+  - 逃逸分析（Escape Analysis）
 - **未完成功能**：
-  - 高级优化 Pass
-  - 循环优化
+  - 全局值编号（GVN）
+  - 强度削减（Strength Reduction）
 
 ### gg-bytecode
 
-- **完成度**：97%
+- **完成度**：99%
 - **已完成功能**：
   - 字节码格式
   - 解释器
@@ -732,10 +507,10 @@ pub struct AssetEntry {
   - 解释器性能优化
   - 字节码体积优化
   - 常量池访问优化
+  - 性能分析器（Profiler）
 - **未完成功能**：
-  - 性能分析工具
-  - 内存优化
-  - JIT 编译（长期目标）
+  - 字节码验证器
+  - SIMD 优化
 
 ### gg-compiler-shader
 
@@ -745,15 +520,17 @@ pub struct AssetEntry {
   - 基础编译
   - 内置函数
   - 变体系统
+  - Naga IR 输出
   - Lower 模块（类型转换）
   - 序列化
 - **未完成功能**：
   - SPIR-V 输出
   - 优化 Pass
+  - 热重载
 
 ### gg-sheet
 
-- **完成度**：65%
+- **完成度**：80%
 - **已完成功能**：
   - Schema 定义
   - 数据读取
@@ -763,27 +540,21 @@ pub struct AssetEntry {
   - 依赖管理
   - VON 代码生成
   - Transformer 集成
-- **未完成功能**：
   - 增量编译
   - 高级验证规则
-
-### gg-compiler-aot（暂停）
-
-- **完成度**：30%（暂停前）
-- **已完成功能**：
-  - 基础框架
-  - Cranelift 集成
-- **暂停原因**：
-  - 技术难度高
-  - 人力财力有限
+  - 延迟加载
+  - 多数据格式支持
+  - 数据迁移工具
+  - 依赖拓扑排序
+  - CLI 命令入口
 - **未完成功能**：
-  - 完整后端
-  - 多目标支持
-  - 优化 Pass
+  - 可视化表格编辑器
+  - Color/Vector/Map 结构化值解析
+  - 缓存序列化格式优化
 
 ### gg-platform
 
-- **完成度**：85%
+- **完成度**：95%
 - **已完成功能**：
   - 平台通用接口定义
   - 文件系统接口
@@ -794,13 +565,13 @@ pub struct AssetEntry {
   - 线程接口
   - 时间接口
   - 窗口接口
+  - utils/build_profile/coordinator 模块
 - **未完成功能**：
-  - 平台通用工具函数
   - 跨平台测试框架
 
 ### gg-platform-desktop
 
-- **完成度**：80%
+- **完成度**：95%
 - **已完成功能**：
   - 文件系统实现
   - 输入系统实现
@@ -808,14 +579,15 @@ pub struct AssetEntry {
   - Platform trait 完整实现
   - 构建、打包、运行流程
   - 运行时平台实现
-- **未完成功能**：
   - macOS 代码签名
-  - Windows 安装包生成
+  - Windows NSIS 安装包
   - Linux AppImage 打包
+- **未完成功能**：
+  - 打包流程优化
 
 ### gg-platform-ios
 
-- **完成度**：65%
+- **完成度**：85%
 - **已完成功能**：
   - 文件系统实现
   - 输入系统实现
@@ -824,14 +596,15 @@ pub struct AssetEntry {
   - 运行时平台实现
   - iOS 代码生成
   - IPA 打包流程
+  - Xcode 项目生成
+  - 签名管理
+  - 真机调试支持
 - **未完成功能**：
   - Xcode 项目生成优化
-  - 真机调试支持
-  - 签名和证书管理
 
 ### gg-platform-android
 
-- **完成度**：65%
+- **完成度**：85%
 - **已完成功能**：
   - 文件系统实现
   - 输入系统实现
@@ -840,14 +613,15 @@ pub struct AssetEntry {
   - 运行时平台实现
   - Android 代码生成
   - APK 打包流程
+  - Gradle 项目生成
+  - 签名配置
+  - 真机调试支持
 - **未完成功能**：
   - Gradle 项目生成优化
-  - 真机调试支持
-  - 签名和证书管理
 
 ### gg-platform-web
 
-- **完成度**：65%
+- **完成度**：85%
 - **已完成功能**：
   - 文件系统实现
   - 输入系统实现
@@ -855,15 +629,15 @@ pub struct AssetEntry {
   - Platform trait 基础实现
   - 运行时平台实现
   - 渲染后端适配
+  - WASM 优化
+  - PWA 缓存策略
 - **未完成功能**：
-  - WASM 优化输出
-  - PWA 支持
   - Service Worker 集成
-  - 压缩和代码分割
+  - 代码分割优化
 
 ### gg-compiler-asset
 
-- **完成度**：50%
+- **完成度**：55%
 - **已完成功能**：
   - 资产注册表基础
   - 依赖图基础结构
@@ -873,6 +647,8 @@ pub struct AssetEntry {
 - **未完成功能**：
   - 循环依赖检测
   - 完整的增量构建系统
+  - 异步加载
+  - 优先级调度
 
 ### gg-meta
 
@@ -906,20 +682,20 @@ pub struct AssetEntry {
 
 ### gg-compiler-widget
 
-- **完成度**：80%
+- **完成度**：85%
 - **已完成功能**：
   - WidgetParser：template/script/style 三部分拆分
   - WidgetError：错误类型定义与 GError 转换
-  - ComponentRegistry：18 个内置组件注册（8 基础 + 10 编辑器专用）
-  - TemplateIr：ElementIr、DataBinding、EventBinding、ComponentDependency、PropertyValue
+  - ComponentRegistry：18 个内置组件注册
+  - TemplateIr：ElementIr、DataBinding、EventBinding
   - TemplateValidator：组件类型检查和属性验证
   - TemplateCodegen：TemplateBundle 代码生成
-  - StyleIr：StyleRuleIr、SelectorIr、StyleValue、ResolvedValue
-  - ScssProcessor：SCSS 子集处理（嵌套规则、变量、混入）
-  - TailwindProcessor：Tailwind CSS 子集处理（工具类、响应式前缀、状态变体）
+  - StyleIr：StyleRuleIr、SelectorIr、StyleValue
+  - ScssProcessor：SCSS 子集处理
+  - TailwindProcessor：Tailwind CSS 子集处理
   - StyleCodegen：StyleBundle 代码生成
   - WidgetArtifact：GGWT 二进制序列化
-  - WidgetTransformer：Transformer trait 实现（集成到编译流水线）
+  - WidgetTransformer：Transformer trait 实现
   - Widget trait 定义和实现
   - DirtyFlag 位标志系统
   - UsageHints GPU 优化提示
@@ -930,6 +706,21 @@ pub struct AssetEntry {
   - Template 完整语义分析
   - 完整 USS 支持
   - 响应式系统支持
+
+### gg-lsp
+
+- **完成度**：60%
+- **已完成功能**：
+  - 基础语义分析器
+  - 补全提供器
+  - 悬停信息
+  - AstSemanticAnalyzer（AST 级语义分析）
+  - 类型感知补全支持
+- **未完成功能**：
+  - Go to Definition
+  - Find References
+  - Rename
+  - Code Actions
 
 ***
 
@@ -1009,7 +800,6 @@ graph TB
     Backend --> BytecodeModule
     Backend --> NativeCode
     AssetPipeline --> RuntimeAssets
-    SchemaParser --> GeneratedCode
     
     BytecodeModule --> Desktop
     BytecodeModule --> iOS
@@ -1099,13 +889,16 @@ graph TB
 | InlineExpansion   | 函数内联    |
 | CommonSubexprElim | 公共子表达式消除 |
 | TailCallOpt       | 尾调用优化    |
+| LICM              | 循环不变量外提 |
+| LoopUnroll        | 循环展开    |
+| EscapeAnalysis    | 逃逸分析    |
 
 ### 待实现
 
 | Pass              | 说明       |
 | ----------------- | -------- |
-| LoopOptimization  | 循环优化    |
-| EscapeAnalysis    | 逃逸分析     |
+| GVN               | 全局值编号    |
+| StrengthReduction | 强度削减    |
 
 ***
 
@@ -1128,8 +921,8 @@ graph TB
 
 ### Phase 3: Shader 和数据表 - 进行中
 
-- [ ] Shader 变体系统
-- [ ] Naga IR 输出
+- [ ] Shader 变体系统完善
+- [ ] SPIR-V 输出
 - [x] 数据表合并
 - [x] 代码生成
 
@@ -1148,7 +941,7 @@ graph TB
 - [x] 更新所有 Cargo.toml 依赖路径
 - [x] 更新工作区 Cargo.toml
 - [x] 验证迁移后编译通过
-- [ ] 完善移动平台构建流程
+- [x] 完善移动平台构建流程
 
 ### Phase 6: STG 游戏框架 - 进行中
 
@@ -1165,7 +958,7 @@ graph TB
 - [ ] IR 优化 Pass 增强
 - [x] 常量池访问优化
 - [x] 字节码体积压缩
-- [ ] 性能分析工具
+- [x] 性能分析工具
 
 ### Phase 8: AOT 编译（暂停）
 

@@ -17,7 +17,8 @@ pub mod formatter;
 
 pub use completion::{CompletionEntry, CompletionItemKind, CompletionProvider};
 pub use semantic::{
-    DiagnosticSeverity, HoverInfo, SemanticAnalyzer, SemanticDiagnostic, SemanticResult, Symbol, SymbolKind, SymbolTable,
+    AstSemanticAnalyzer, CompletionMember, CompletionMemberKind, DiagnosticSeverity, HoverInfo, SemanticAnalyzer,
+    SemanticDiagnostic, SemanticResult, Symbol, SymbolKind, SymbolTable,
 };
 
 #[cfg(feature = "lsp")]

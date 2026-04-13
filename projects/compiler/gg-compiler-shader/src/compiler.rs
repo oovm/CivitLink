@@ -69,13 +69,25 @@ impl ShaderCompiler {
             .result
             .map_err(|e| GError { kind: GErrorKind::Other, message: format!("解析 shader 源码失败: {:?}", e) })?;
 
+        let root_structures: FxHashMap<String, oak_valkyrie::ast::StructureDeclaration> = root
+            .items
+            .iter()
+            .filter_map(|item| {
+                if let oak_valkyrie::ast::StatementNode::Structure(s) = item {
+                    Some((s.name.name.clone(), (**s).clone()))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
         let entries: Vec<ShaderModuleEntry> = root
             .items
             .iter()
             .filter_map(|item| match item {
                 oak_valkyrie::ast::StatementNode::Shader(shader) => {
                     let mut lowerer = GslLowerer::new();
-                    match lowerer.lower(&*shader) {
+                    match lowerer.lower(&*shader, &root_structures) {
                         Ok((module, render_states, fallback)) => {
                             if let Err(e) = self.validate(&module) {
                                 return Some(Err(e));

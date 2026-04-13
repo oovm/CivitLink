@@ -5,7 +5,8 @@
 
 use std::collections::HashMap;
 
-use gg_script::type_checker::{TypeChecker, TypeEnvironment, TypeInfo, DiagnosticSeverity as TypeDiagnosticSeverity};
+use gg_script::type_checker::{TypeEnvironment, TypeInfo, DiagnosticSeverity as TypeDiagnosticSeverity};
+use gg_script::ScriptCompiler;
 
 /// 符号类型。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -506,10 +507,13 @@ impl AstSemanticAnalyzer {
         self.symbol_table = SymbolTable::new();
         self.diagnostics = Vec::new();
 
-        let compiler = gg_script::ScriptCompiler::new();
-        let (_, type_diagnostics) = compiler.compile_to_ir_with_diagnostics(source, "module");
+        let compiler = ScriptCompiler::new();
+        let type_result = match compiler.check_only(source) {
+            Ok(result) => result,
+            Err(_) => return SemanticResult { symbol_table: self.symbol_table.clone(), diagnostics: self.diagnostics.clone() },
+        };
 
-        for diag in &type_diagnostics {
+        for diag in &type_result.diagnostics {
             self.diagnostics.push(SemanticDiagnostic {
                 message: if let Some(suggestion) = &diag.suggestion {
                     format!("{} (suggestion: {})", diag.message, suggestion)
@@ -524,14 +528,7 @@ impl AstSemanticAnalyzer {
             });
         }
 
-        let mut checker = TypeChecker::new();
-        let root = match gg_script::parse_source(source) {
-            Ok(r) => r,
-            Err(_) => return SemanticResult { symbol_table: self.symbol_table.clone(), diagnostics: self.diagnostics.clone() },
-        };
-        checker.check_root(&root);
-
-        for (name, sig) in &checker.env.function_signatures {
+        for (name, sig) in &type_result.env.function_signatures {
             let params: Vec<String> = sig.param_types.iter().map(|t| type_info_to_string(t)).collect();
             let return_type = type_info_to_string(&sig.return_type);
             self.symbol_table.insert(Symbol {
@@ -543,7 +540,7 @@ impl AstSemanticAnalyzer {
             });
         }
 
-        for (name, ty) in &checker.env.types {
+        for (name, ty) in &type_result.env.types {
             let kind = match ty {
                 TypeInfo::Object(_) => SymbolKind::Namespace,
                 TypeInfo::Trait(_) => SymbolKind::Namespace,
@@ -559,7 +556,7 @@ impl AstSemanticAnalyzer {
             });
         }
 
-        for (name, ty) in &checker.env.variables {
+        for (name, ty) in &type_result.env.variables {
             self.symbol_table.insert(Symbol {
                 name: name.clone(),
                 kind: SymbolKind::Variable,
@@ -569,22 +566,7 @@ impl AstSemanticAnalyzer {
             });
         }
 
-        for diag in &checker.diagnostics {
-            self.diagnostics.push(SemanticDiagnostic {
-                message: if let Some(suggestion) = &diag.suggestion {
-                    format!("{} (suggestion: {})", diag.message, suggestion)
-                } else {
-                    diag.message.clone()
-                },
-                line: 0,
-                severity: match diag.severity {
-                    TypeDiagnosticSeverity::Error => DiagnosticSeverity::Error,
-                    TypeDiagnosticSeverity::Warning => DiagnosticSeverity::Warning,
-                },
-            });
-        }
-
-        self.type_env = checker.env;
+        self.type_env = type_result.env;
 
         SemanticResult { symbol_table: self.symbol_table.clone(), diagnostics: self.diagnostics.clone() }
     }
