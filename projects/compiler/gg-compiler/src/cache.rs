@@ -146,7 +146,7 @@ impl CompilationCache {
     pub fn persist_to_disk(&self, path: &Path) -> GResult<()> {
         let entries: Vec<&CacheEntry> = self.entries.values().collect();
 
-        let data = bincode::serialize(&entries)
+        let data = bincode::serde::encode_to_vec(&entries, bincode::config::standard())
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("缓存序列化失败: {}", e) })?;
 
         std::fs::write(path, data)?;
@@ -158,7 +158,7 @@ impl CompilationCache {
     pub fn load_from_disk(&mut self, path: &Path) -> GResult<()> {
         let data = std::fs::read(path)?;
 
-        let entries: Vec<CacheEntry> = bincode::deserialize(&data)
+        let (entries, _) = bincode::serde::decode_from_slice(&data, bincode::config::standard())
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("缓存反序列化失败: {}", e) })?;
 
         for entry in entries {

@@ -1,21 +1,16 @@
 //! 异步 HTTP 服务器模块
 //! 提供基于 tokio 的异步 HTTP 服务器、路由前缀树和内置中间件实现
 
-use std::{collections::HashMap, future::Future, pin::Pin};
+use std::collections::HashMap;
+use std::future::Future;
+use std::pin::Pin;
 
 use gg_core::{GError, GErrorKind, GResult};
-use tokio::{
-    io::{AsyncReadExt, AsyncWriteExt},
-    net::TcpListener,
-};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpListener;
 
-use crate::{
-    async_driver::{AsyncConnection, AsyncNetDriver, Middleware, NextMiddleware},
-    http::{HttpMethod, HttpRequest, HttpResponse},
-};
-
-/// 路由处理函数类型
-type RouteHandlerFn = dyn Fn(&HttpRequest, &HashMap<String, String>) -> GResult<HttpResponse> + Send + Sync;
+use crate::async_driver::{AsyncConnection, AsyncNetDriver, Middleware, NextMiddleware};
+use crate::http::{HttpMethod, HttpRequest, HttpResponse};
 
 /// 路由前缀树节点
 ///
@@ -28,13 +23,18 @@ struct TrieNode {
     /// 参数子节点
     param_child: Option<Box<TrieNode>>,
     /// 路由处理器，存储 "METHOD" -> handler 的映射
-    handlers: HashMap<String, Box<RouteHandlerFn>>,
+    handlers: HashMap<String, Box<dyn Fn(&HttpRequest, &HashMap<String, String>) -> GResult<HttpResponse> + Send + Sync>>,
 }
 
 impl TrieNode {
     /// 创建新的前缀树节点
     fn new() -> Self {
-        Self { children: HashMap::new(), param_name: None, param_child: None, handlers: HashMap::new() }
+        Self {
+            children: HashMap::new(),
+            param_name: None,
+            param_child: None,
+            handlers: HashMap::new(),
+        }
     }
 }
 
@@ -62,7 +62,12 @@ impl RouteTrie {
     /// - `method`: HTTP 方法
     /// - `path`: 路由路径，如 "/api/v1/users/:id"
     /// - `handler`: 路由处理函数
-    pub fn insert(&mut self, method: HttpMethod, path: &str, handler: Box<RouteHandlerFn>) {
+    pub fn insert(
+        &mut self,
+        method: HttpMethod,
+        path: &str,
+        handler: Box<dyn Fn(&HttpRequest, &HashMap<String, String>) -> GResult<HttpResponse> + Send + Sync>,
+    ) {
         let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
         let mut current = &mut self.root;
 
@@ -70,12 +75,11 @@ impl RouteTrie {
             if segment.starts_with(':') {
                 let param_name = segment[1..].to_string();
                 if current.param_child.is_none() {
-                    current.param_name = Some(param_name);
+                    current.param_name = Some(param_name.clone());
                     current.param_child = Some(Box::new(TrieNode::new()));
                 }
                 current = current.param_child.as_mut().unwrap().as_mut();
-            }
-            else {
+            } else {
                 current = current.children.entry(segment.to_string()).or_insert_with(TrieNode::new);
             }
         }
@@ -92,8 +96,12 @@ impl RouteTrie {
     /// - `path`: 请求路径
     ///
     /// # 返回
-    /// 匹配的处理器引用和提取的路径参数，未找到时返回 None
-    pub fn find(&self, method: &HttpMethod, path: &str) -> Option<(&RouteHandlerFn, HashMap<String, String>)> {
+    /// 匹配的处理器和提取的路径参数，未找到时返回 None
+    pub fn find(
+        &self,
+        method: &HttpMethod,
+        path: &str,
+    ) -> Option<(&dyn Fn(&HttpRequest, &HashMap<String, String>) -> GResult<HttpResponse>, HashMap<String, String>)> {
         let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
         let mut params = HashMap::new();
         let mut current = &self.root;
@@ -101,14 +109,12 @@ impl RouteTrie {
         for segment in &segments {
             if let Some(child) = current.children.get(*segment) {
                 current = child;
-            }
-            else if let Some(ref param_child) = current.param_child {
+            } else if let Some(ref param_child) = current.param_child {
                 if let Some(ref param_name) = current.param_name {
                     params.insert(param_name.clone(), segment.to_string());
                 }
                 current = param_child.as_ref();
-            }
-            else {
+            } else {
                 return None;
             }
         }
@@ -125,24 +131,30 @@ impl RouteTrie {
 /// # 参数
 /// - `data`: 原始 HTTP 请求数据
 fn parse_http_request(data: &[u8]) -> GResult<HttpRequest> {
-    let text = std::str::from_utf8(data)
-        .map_err(|e| GError { kind: GErrorKind::Network, message: format!("HTTP 请求数据非有效 UTF-8: {}", e) })?;
+    let text = std::str::from_utf8(data).map_err(|e| GError {
+        kind: GErrorKind::Network,
+        message: format!("HTTP 请求数据非有效 UTF-8: {}", e),
+    })?;
 
     let mut parts = text.split("\r\n\r\n");
     let header_section = parts.next().unwrap_or("");
     let body = parts.next().unwrap_or("").as_bytes().to_vec();
 
     let mut lines = header_section.split("\r\n");
-    let request_line =
-        lines.next().ok_or_else(|| GError { kind: GErrorKind::Network, message: "HTTP 请求行缺失".to_string() })?;
+    let request_line = lines.next().ok_or_else(|| GError {
+        kind: GErrorKind::Network,
+        message: "HTTP 请求行缺失".to_string(),
+    })?;
 
     let mut request_parts = request_line.split_whitespace();
-    let method_str = request_parts
-        .next()
-        .ok_or_else(|| GError { kind: GErrorKind::Network, message: "HTTP 请求方法缺失".to_string() })?;
-    let path = request_parts
-        .next()
-        .ok_or_else(|| GError { kind: GErrorKind::Network, message: "HTTP 请求路径缺失".to_string() })?;
+    let method_str = request_parts.next().ok_or_else(|| GError {
+        kind: GErrorKind::Network,
+        message: "HTTP 请求方法缺失".to_string(),
+    })?;
+    let path = request_parts.next().ok_or_else(|| GError {
+        kind: GErrorKind::Network,
+        message: "HTTP 请求路径缺失".to_string(),
+    })?;
 
     let method = match method_str {
         "GET" => HttpMethod::Get,
@@ -162,7 +174,7 @@ fn parse_http_request(data: &[u8]) -> GResult<HttpRequest> {
 
     let path_only = path.split('?').next().unwrap_or(path).to_string();
 
-    Ok(HttpRequest { method, path: path_only, headers, body, params: HashMap::new() })
+    Ok(HttpRequest { method, path: path_only, headers, body })
 }
 
 /// 格式化 HTTP 响应为原始字节数据
@@ -228,7 +240,11 @@ pub struct AsyncHttpDriver {
 impl AsyncHttpDriver {
     /// 创建新的异步 HTTP 驱动
     pub fn new() -> Self {
-        Self { listener: None, router: RouteTrie::new(), middlewares: Vec::new() }
+        Self {
+            listener: None,
+            router: RouteTrie::new(),
+            middlewares: Vec::new(),
+        }
     }
 
     /// 注册路由处理器
@@ -237,7 +253,12 @@ impl AsyncHttpDriver {
     /// - `method`: HTTP 方法
     /// - `path`: 路由路径，支持 `:param` 路径参数
     /// - `handler`: 路由处理函数
-    pub fn route(&mut self, method: HttpMethod, path: &str, handler: Box<RouteHandlerFn>) {
+    pub fn route(
+        &mut self,
+        method: HttpMethod,
+        path: &str,
+        handler: Box<dyn Fn(&HttpRequest, &HashMap<String, String>) -> GResult<HttpResponse> + Send + Sync>,
+    ) {
         self.router.insert(method, path, handler);
     }
 
@@ -258,13 +279,14 @@ impl AsyncHttpDriver {
     /// # 参数
     /// - `stream`: TCP 数据流
     pub async fn handle_connection(&self, stream: tokio::net::TcpStream) -> GResult<()> {
-        let (mut reader, mut writer) = tokio::io::split(stream);
         let mut buf = vec![0u8; 8192];
-
-        let n = reader
-            .read(&mut buf)
-            .await
-            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("HTTP 读取请求失败: {}", e) })?;
+        let n = {
+            let n = stream.read(&mut buf).await.map_err(|e| GError {
+                kind: GErrorKind::Io,
+                message: format!("HTTP 读取请求失败: {}", e),
+            })?;
+            n
+        };
 
         if n == 0 {
             return Ok(());
@@ -275,6 +297,7 @@ impl AsyncHttpDriver {
             Err(e) => {
                 let response = HttpResponse::new(400).with_body(format!("Bad Request: {}", e.message).into_bytes());
                 let response_bytes = format_http_response(&response);
+                let mut writer = stream;
                 let _ = writer.write_all(&response_bytes).await;
                 let _ = writer.shutdown().await;
                 return Ok(());
@@ -283,24 +306,20 @@ impl AsyncHttpDriver {
 
         let response = match self.router.find(&request.method, &request.path) {
             Some((handler, params)) => {
-                let final_handler: Box<dyn Fn(&HttpRequest) -> GResult<HttpResponse> + Send + Sync> =
-                    Box::new(move |req: &HttpRequest| handler(req, &params));
+                let final_handler = |req: &HttpRequest| handler(req, &params);
                 if self.middlewares.is_empty() {
                     final_handler(&request)
-                }
-                else {
-                    let next = NextMiddleware::new_sync(&self.middlewares, &final_handler);
+                } else {
+                    let next = NextMiddleware::new(&self.middlewares, &final_handler);
                     next.call(&request).await
                 }
             }
             None => {
-                let final_handler: Box<dyn Fn(&HttpRequest) -> GResult<HttpResponse> + Send + Sync> =
-                    Box::new(|_| Ok(HttpResponse::not_found()));
+                let final_handler = |_req: &HttpRequest| Ok(HttpResponse::not_found());
                 if self.middlewares.is_empty() {
                     final_handler(&request)
-                }
-                else {
-                    let next = NextMiddleware::new_sync(&self.middlewares, &final_handler);
+                } else {
+                    let next = NextMiddleware::new(&self.middlewares, &final_handler);
                     next.call(&request).await
                 }
             }
@@ -309,10 +328,11 @@ impl AsyncHttpDriver {
         let response = response.unwrap_or_else(|_| HttpResponse::internal_error());
         let response_bytes = format_http_response(&response);
 
-        writer
-            .write_all(&response_bytes)
-            .await
-            .map_err(|e| GError { kind: GErrorKind::Io, message: format!("HTTP 写入响应失败: {}", e) })?;
+        let mut writer = stream;
+        writer.write_all(&response_bytes).await.map_err(|e| GError {
+            kind: GErrorKind::Io,
+            message: format!("HTTP 写入响应失败: {}", e),
+        })?;
         let _ = writer.shutdown().await;
 
         Ok(())
@@ -322,24 +342,25 @@ impl AsyncHttpDriver {
 impl AsyncNetDriver for AsyncHttpDriver {
     fn listen<'a>(&'a mut self, addr: &'a str) -> Pin<Box<dyn Future<Output = GResult<()>> + Send + 'a>> {
         Box::pin(async move {
-            let listener = TcpListener::bind(addr)
-                .await
-                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("HTTP 服务器监听绑定失败: {}", e) })?;
+            let listener = TcpListener::bind(addr).await.map_err(|e| GError {
+                kind: GErrorKind::Io,
+                message: format!("HTTP 服务器监听绑定失败: {}", e),
+            })?;
             self.listener = Some(listener);
             Ok(())
         })
     }
 
     fn accept(&mut self) -> Pin<Box<dyn Future<Output = GResult<Box<dyn AsyncConnection>>> + Send + '_>> {
-        Box::pin(async move {
-            let listener = self
-                .listener
-                .as_ref()
-                .ok_or_else(|| GError { kind: GErrorKind::Runtime, message: "HTTP 服务器尚未开始监听".to_string() })?;
-            let (stream, _) = listener
-                .accept()
-                .await
-                .map_err(|e| GError { kind: GErrorKind::Io, message: format!("HTTP 服务器接受连接失败: {}", e) })?;
+        Box::pin(async {
+            let listener = self.listener.as_ref().ok_or_else(|| GError {
+                kind: GErrorKind::Runtime,
+                message: "HTTP 服务器尚未开始监听".to_string(),
+            })?;
+            let (stream, _) = listener.accept().await.map_err(|e| GError {
+                kind: GErrorKind::Io,
+                message: format!("HTTP 服务器接受连接失败: {}", e),
+            })?;
             self.handle_connection(stream).await?;
             Err(GError {
                 kind: GErrorKind::Runtime,
@@ -349,7 +370,7 @@ impl AsyncNetDriver for AsyncHttpDriver {
     }
 
     fn shutdown(&mut self) -> Pin<Box<dyn Future<Output = GResult<()>> + Send + '_>> {
-        Box::pin(async move {
+        Box::pin(async {
             self.listener = None;
             Ok(())
         })
@@ -367,9 +388,15 @@ impl Middleware for LoggingMiddleware {
         request: &'a HttpRequest,
         next: NextMiddleware<'a>,
     ) -> Pin<Box<dyn Future<Output = GResult<HttpResponse>> + Send + 'a>> {
+        let method = request.method.to_string();
+        let path = request.path.clone();
         Box::pin(async move {
+            log::info!("HTTP 请求: {} {}", method, path);
             let response = next.call(request).await;
-            let _ = (request, response.is_ok());
+            match &response {
+                Ok(resp) => log::info!("HTTP 响应: {} {} -> {}", method, path, resp.status_code),
+                Err(e) => log::error!("HTTP 错误: {} {} -> {}", method, path, e.message),
+            }
             response
         })
     }

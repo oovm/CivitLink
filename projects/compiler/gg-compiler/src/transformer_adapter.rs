@@ -56,12 +56,12 @@ impl Transformer for IrOptimizeTransformer {
                 message: format!("Artifact not found for key: {}/{}", key.type_name, key.id),
             })?;
 
-            let mut module: IrModule = bincode::deserialize(&artifact.data)
+            let (mut module, _) = bincode::serde::decode_from_slice(&artifact.data, bincode::config::standard())
                 .map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to deserialize IrModule: {}", e) })?;
 
             self.optimizer.borrow_mut().optimize(&mut module)?;
 
-            let data = bincode::serialize(&module)
+            let data = bincode::serde::encode_to_vec(&module, bincode::config::standard())
                 .map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to serialize IrModule: {}", e) })?;
 
             output.insert(Artifact::new(key.clone(), data));

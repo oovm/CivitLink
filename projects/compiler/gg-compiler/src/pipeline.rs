@@ -148,7 +148,7 @@ impl Pipeline {
 
         if self.cache.is_valid(node_id, input_hash) {
             if let Some(data) = self.cache.get(node_id, input_hash) {
-                if let Ok(output) = bincode::deserialize::<ArtifactSet>(data) {
+                if let Ok((output, _)) = bincode::serde::decode_from_slice(data, bincode::config::standard()) {
                     let node = self.nodes.get_mut(node_id).unwrap();
                     node.last_output_hash = Some(input_hash);
                     node.cached_output = Some(output.clone());
@@ -185,7 +185,7 @@ impl Pipeline {
                 node.last_output_hash = Some(input_hash);
                 node.cached_output = Some(output.clone());
 
-                if let Ok(data) = bincode::serialize(&output) {
+                if let Ok(data) = bincode::serde::encode_to_vec(&output, bincode::config::standard()) {
                     self.cache.insert(node_id, input_hash, data, dependencies);
                 }
 

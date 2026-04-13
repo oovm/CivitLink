@@ -97,7 +97,7 @@ impl ScriptCache {
     ///
     /// 使用 bincode 序列化格式将整个缓存写入指定路径。
     pub fn persist_to_disk(&self, path: &Path) -> GResult<()> {
-        let data = bincode::serialize(self)
+        let data = bincode::serde::serialize(self)
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to serialize script cache: {}", e) })?;
         std::fs::write(path, data)
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to write script cache to disk: {}", e) })
@@ -109,7 +109,7 @@ impl ScriptCache {
     pub fn load_from_disk(path: &Path) -> GResult<Self> {
         let data = std::fs::read(path)
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to read script cache from disk: {}", e) })?;
-        bincode::deserialize(&data)
+        bincode::serde::deserialize(&data)
             .map_err(|e| GError { kind: GErrorKind::Io, message: format!("Failed to deserialize script cache: {}", e) })
     }
 

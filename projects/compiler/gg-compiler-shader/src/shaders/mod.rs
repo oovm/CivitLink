@@ -45,3 +45,27 @@ pub fn load_ellipse_shader() -> GResult<naga::Module> {
     let entry = compiler.compile_first(source)?;
     Ok(entry.module)
 }
+
+/// 编译内置 SDF 文本着色器
+pub fn load_sdf_text_shader() -> GResult<naga::Module> {
+    let source = include_str!("ui_sdf_text.shader");
+    let mut compiler = ShaderCompiler::new();
+    let entry = compiler.compile_first(source)?;
+    Ok(entry.module)
+}
+
+/// 编译内置模糊后处理着色器
+pub fn load_blur_shader() -> GResult<naga::Module> {
+    let source = include_str!("blur.shader");
+    let mut compiler = ShaderCompiler::new();
+    let entry = compiler.compile_first(source)?;
+    Ok(entry.module)
+}
+
+/// 编译内置泛光后处理着色器
+pub fn load_bloom_shader() -> GResult<naga::Module> {
+    let source = include_str!("bloom.shader");
+    let mut compiler = ShaderCompiler::new();
+    let entry = compiler.compile_first(source)?;
+    Ok(entry.module)
+}

@@ -148,11 +148,12 @@ impl GslLowerer {
     fn collect_shader_items(
         &mut self,
         shader: &ShaderDeclaration,
-    ) -> GResult<(Vec<GsProperty>, Vec<GsEntryPoint>, Vec<GsUniformField>, Vec<GsRenderState>)> {
+    ) -> GResult<(Vec<GsProperty>, Vec<GsEntryPoint>, Vec<GsUniformField>, Vec<GsRenderState>, Vec<MicroDeclaration>)> {
         let mut properties = Vec::new();
         let mut entry_points = Vec::new();
         let mut uniform_fields = Vec::new();
         let mut render_states = Vec::new();
+        let mut custom_micros = Vec::new();
 
         for item in &shader.items {
             match item {
@@ -161,8 +162,12 @@ impl GslLowerer {
                     properties.push(prop);
                 }
                 StatementNode::Micro(micro) => {
-                    if let Some(ep) = self.collect_entry_point(micro)? {
-                        entry_points.push(ep);
+                    if self.is_entry_point(micro) {
+                        if let Some(ep) = self.collect_entry_point(micro)? {
+                            entry_points.push(ep);
+                        }
+                    } else {
+                        custom_micros.push(micro.clone());
                     }
                 }
                 StatementNode::Structure(structure) => {
@@ -197,7 +202,7 @@ impl GslLowerer {
             }
         }
 
-        Ok((properties, entry_points, uniform_fields, render_states))
+        Ok((properties, entry_points, uniform_fields, render_states, custom_micros))
     }
 
     /// 从 let 语句中收集属性信息
@@ -223,6 +228,27 @@ impl GslLowerer {
     fn collect_entry_point(&self, micro: &MicroDeclaration) -> GResult<Option<GsEntryPoint>> {
         let stage = self.detect_shader_stage(&micro.annotations, &micro.name.name)?;
         Ok(Some(GsEntryPoint { name: micro.name.name.clone(), stage, micro: micro.clone() }))
+    }
+
+    /// 判断 micro 声明是否为着色器入口点
+    ///
+    /// 如果 micro 带有 @vertex/@fragment/@compute 注解，
+    /// 或函数名以 vs/vertex/fs/fragment/cs/compute 开头，则为入口点。
+    fn is_entry_point(&self, micro: &MicroDeclaration) -> bool {
+        for attr in &micro.annotations {
+            let attr_name = attr.name.name.to_lowercase();
+            match attr_name.as_str() {
+                "vertex" | "fragment" | "compute" => return true,
+                _ => {}
+            }
+        }
+        let name_lower = micro.name.name.to_lowercase();
+        name_lower.starts_with("vs")
+            || name_lower.starts_with("vertex")
+            || name_lower.starts_with("fs")
+            || name_lower.starts_with("fragment")
+            || name_lower.starts_with("cs")
+            || name_lower.starts_with("compute")
     }
 
     /// 从注解或函数名检测着色器阶段
@@ -517,6 +543,56 @@ impl GslLowerer {
             task_payload: None,
             incoming_ray_payload: None,
         })
+    }
+
+    /// 将自定义 micro 函数降级为 naga Function
+    ///
+    /// 自定义函数不是着色器入口点，没有绑定信息。
+    /// 它们可以被入口点或其他自定义函数调用。
+    fn lower_custom_function(
+        &mut self,
+        micro_decl: &MicroDeclaration,
+        module: &mut naga::Module,
+        _uniform_buffer_ty: Option<naga::Handle<naga::Type>>,
+    ) -> GResult<naga::Function> {
+        self.local_vars.clear();
+
+        let mut function = naga::Function::default();
+        function.name = Some(micro_decl.name.name.clone());
+
+        let mut expressions = naga::Arena::new();
+        let mut named_expressions = NamedExpressions::default();
+        let mut body = naga::Block::new();
+
+        for param in &micro_decl.params {
+            let type_name = param.ty.as_ref().map(|ty| self.type_expr_to_string(ty)).unwrap_or_else(|| "f32".to_string());
+            let param_ty = self.get_or_create_naga_type(&type_name, module)?;
+
+            let arg_index = function.arguments.len() as u32;
+            function.arguments.push(FunctionArgument { name: Some(param.name.name.clone()), ty: param_ty, binding: None });
+
+            let arg_expr = expressions.append(Expression::FunctionArgument(arg_index), NagaSpan::UNDEFINED);
+            named_expressions.insert(arg_expr, param.name.name.clone());
+        }
+
+        if let Some(ret_type) = &micro_decl.return_type {
+            let type_name = self.type_expr_to_string(ret_type);
+            if let Some(struct_decl) = self.find_struct_declaration(&type_name) {
+                let struct_ty = self.lower_struct_type(&struct_decl, module)?;
+                function.result = Some(FunctionResult { ty: struct_ty, binding: None });
+            } else {
+                let result_ty = self.get_or_create_naga_type(&type_name, module)?;
+                function.result = Some(FunctionResult { ty: result_ty, binding: None });
+            }
+        }
+
+        self.lower_block(&micro_decl.body, module, &mut function, &mut expressions, &mut named_expressions, &mut body)?;
+
+        function.expressions = expressions;
+        function.named_expressions = named_expressions;
+        function.body = body;
+
+        Ok(function)
     }
 
     /// 从注解中解析 workgroup_size
@@ -1359,6 +1435,17 @@ impl GslLowerer {
             }
             _ => {
                 if let Some(name) = func_name.as_deref() {
+                    if let Some(&func_handle) = self.custom_functions.get(name) {
+                        let mut lowered_args = Vec::new();
+                        for arg in args {
+                            let arg_expr = self.lower_expression(arg, module, function, expressions, named_expressions, body)?;
+                            lowered_args.push(arg_expr);
+                        }
+                        return Ok(expressions.append(
+                            Expression::Call(naga::Call { function: func_handle, arguments: lowered_args }),
+                            NagaSpan::UNDEFINED,
+                        ));
+                    }
                     if let Some(&gv_handle) = self.global_vars.get(name) {
                         return Ok(expressions.append(Expression::GlobalVariable(gv_handle), NagaSpan::UNDEFINED));
                     }
