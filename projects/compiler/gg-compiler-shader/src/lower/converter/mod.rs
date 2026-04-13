@@ -1942,7 +1942,7 @@ impl GslLowerer {
         let element_ty = self.get_or_create_naga_type(element_type, module)?;
 
         let size = if let Ok(n) = size_str.parse::<u32>() {
-            if n == 0 { naga::ArraySize::Dynamic } else { naga::ArraySize::Constant(naga::NonZeroU32::new(n).unwrap()) }
+            if n == 0 { naga::ArraySize::Dynamic } else { naga::ArraySize::Constant(std::num::NonZeroU32::new(n).unwrap()) }
         }
         else {
             naga::ArraySize::Dynamic

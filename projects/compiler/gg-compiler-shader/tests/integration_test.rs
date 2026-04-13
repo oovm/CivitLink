@@ -6,13 +6,10 @@
 //! 序列化/反序列化管线以及 gs 源码编译流程。
 
 use gg_compiler_shader::{
-    builtin::{
-        builtin_batch_sprite_shader, builtin_ellipse_shader, builtin_rounded_rect_shader, builtin_sprite_shader,
-        builtin_transition_shader,
-    },
     compiler::ShaderCompiler,
     lower::{EnabledKeywords, GslLowerer, TypeSizeAlign, align_offset, calc_std140_layout, calc_std430_layout},
     serialize::{deserialize_module, serialize_module},
+    shaders,
 };
 
 /// 构建一个最小的合法 naga Module 用于测试
@@ -129,7 +126,7 @@ fn test_compile_vertex_and_fragment() {
 /// 测试内置精灵着色器构建
 #[test]
 fn test_builtin_sprite_shader() {
-    let result = builtin_sprite_shader();
+    let result = shaders::load_sprite_shader();
     assert!(result.is_ok(), "内置精灵着色器构建不应失败");
 
     let module = result.unwrap();
@@ -144,7 +141,7 @@ fn test_builtin_sprite_shader() {
 /// 测试内置过渡着色器构建
 #[test]
 fn test_builtin_transition_shader() {
-    let result = builtin_transition_shader();
+    let result = shaders::load_transition_shader();
     assert!(result.is_ok(), "内置过渡着色器构建不应失败");
 
     let module = result.unwrap();
@@ -159,7 +156,7 @@ fn test_builtin_transition_shader() {
 /// 测试内置批渲染精灵着色器构建
 #[test]
 fn test_builtin_batch_sprite_shader() {
-    let result = builtin_batch_sprite_shader();
+    let result = shaders::load_batch_sprite_shader();
     assert!(result.is_ok(), "内置批渲染精灵着色器构建不应失败");
 
     let module = result.unwrap();
@@ -169,7 +166,7 @@ fn test_builtin_batch_sprite_shader() {
 /// 测试内置圆角矩形着色器构建
 #[test]
 fn test_builtin_rounded_rect_shader() {
-    let result = builtin_rounded_rect_shader();
+    let result = shaders::load_rounded_rect_shader();
     assert!(result.is_ok(), "内置圆角矩形着色器构建不应失败");
 
     let module = result.unwrap();
@@ -179,7 +176,7 @@ fn test_builtin_rounded_rect_shader() {
 /// 测试内置椭圆着色器构建
 #[test]
 fn test_builtin_ellipse_shader() {
-    let result = builtin_ellipse_shader();
+    let result = shaders::load_ellipse_shader();
     assert!(result.is_ok(), "内置椭圆着色器构建不应失败");
 
     let module = result.unwrap();
