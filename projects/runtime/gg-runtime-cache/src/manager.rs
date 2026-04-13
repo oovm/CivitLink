@@ -4,7 +4,7 @@
 //! 和基于标签的缓存失效机制。
 
 use crate::{CacheDriver, CacheStats, CacheValue};
-use gg_core::{GError, GErrorKind, GResult};
+use gg_core::GResult;
 use std::{
     collections::{HashMap, HashSet},
     time::Duration,

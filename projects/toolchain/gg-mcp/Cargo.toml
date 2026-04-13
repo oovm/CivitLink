@@ -17,3 +17,4 @@ tokio = { workspace = true }
 [features]
 default = []
 lsp = ["dep:gg-lsp", "gg-lsp/lsp"]
+voc = ["dep:gg-lsp", "gg-lsp/voc"]

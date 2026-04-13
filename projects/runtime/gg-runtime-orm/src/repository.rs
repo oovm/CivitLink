@@ -1,12 +1,12 @@
 //! 仓库模式实现
 //!
 //! 提供基于 Repository 模式的数据访问抽象，
-//! 封装数据库驱动的 CRUD 操作。
+//! 封装数据库驱动的 CRUD 操作，支持批量操作和分页查询。
 
 use gg_core::{GError, GErrorKind, GResult};
 use gg_runtime_database::{DatabaseDriver, DatabaseValue, Row};
 
-use crate::QueryBuilder;
+use crate::{PaginatedResult, Pagination, QueryBuilder};
 
 /// 实体映射器 trait
 ///
@@ -45,10 +45,8 @@ pub trait EntityMapper {
 /// 仓库
 ///
 /// 基于 Repository 模式的数据访问对象，
-/// 封装了针对单个数据库表的 CRUD 操作。
-///
-/// 通过 `EntityMapper` 实现领域实体与数据库行之间的转换，
-/// 通过 `DatabaseDriver` 执行实际的数据库操作。
+/// 封装了针对单个数据库表的 CRUD 操作，
+/// 支持批量操作和分页查询。
 pub struct Repository {
     /// 数据库驱动
     driver: Box<dyn DatabaseDriver>,
@@ -126,6 +124,20 @@ impl Repository {
         Ok(())
     }
 
+    /// 批量插入记录
+    ///
+    /// 将多行数据插入到数据库表中，每行单独执行 INSERT 语句。
+    ///
+    /// # 参数
+    ///
+    /// - `rows`: 要插入的数据行列表
+    pub fn batch_insert(&mut self, rows: &[Row]) -> GResult<()> {
+        for row in rows {
+            self.insert(row)?;
+        }
+        Ok(())
+    }
+
     /// 更新记录
     ///
     /// 根据指定的键列更新数据库中的记录。
@@ -186,6 +198,26 @@ impl Repository {
         self.driver.execute(&sql, &params)
     }
 
+    /// 批量更新记录
+    ///
+    /// 根据指定的键列批量更新数据库中的记录。
+    ///
+    /// # 参数
+    ///
+    /// - `rows`: 包含更新数据的行列表
+    /// - `key_column`: 用于定位记录的键列名
+    ///
+    /// # 返回
+    ///
+    /// 受影响的总行数
+    pub fn batch_update(&mut self, rows: &[Row], key_column: &str) -> GResult<u64> {
+        let mut total_affected = 0u64;
+        for row in rows {
+            total_affected += self.update(row, key_column)?;
+        }
+        Ok(total_affected)
+    }
+
     /// 删除记录
     ///
     /// 根据指定的键列和键值删除数据库中的记录。
@@ -238,5 +270,75 @@ impl Repository {
         let params = limited.params();
         let rows = self.driver.query(&sql, &params)?;
         Ok(rows.into_iter().next())
+    }
+
+    /// 统计记录总数
+    ///
+    /// 返回表中所有记录的数量。
+    pub fn count(&mut self) -> GResult<usize> {
+        let sql = format!("SELECT COUNT(*) AS cnt FROM {}", self.mapper.table_name());
+        let rows = self.driver.query(&sql, &[])?;
+        if let Some(row) = rows.first() {
+            if let Some(DatabaseValue::Integer(n)) = row.get("cnt") {
+                return Ok(*n as usize);
+            }
+        }
+        Ok(0)
+    }
+
+    /// 使用查询构建器统计记录数
+    ///
+    /// 根据 QueryBuilder 的 WHERE 条件统计匹配记录的数量。
+    ///
+    /// # 参数
+    ///
+    /// - `builder`: 查询构建器实例
+    pub fn count_with_query(&mut self, builder: &QueryBuilder) -> GResult<usize> {
+        let sql = builder.build_count_sql();
+        let params = builder.params();
+        let rows = self.driver.query(&sql, &params)?;
+        if let Some(row) = rows.first() {
+            if let Some(DatabaseValue::Integer(n)) = row.get("COUNT(*)") {
+                return Ok(*n as usize);
+            }
+        }
+        Ok(0)
+    }
+
+    /// 检查记录是否存在
+    ///
+    /// 根据指定的键列和键值判断记录是否存在。
+    ///
+    /// # 参数
+    ///
+    /// - `key_column`: 键列名
+    /// - `key_value`: 键值
+    pub fn exists(&mut self, key_column: &str, key_value: &DatabaseValue) -> GResult<bool> {
+        let sql = format!("SELECT 1 FROM {} WHERE {} = ? LIMIT 1", self.mapper.table_name(), key_column);
+        let rows = self.driver.query(&sql, &[key_value.clone()])?;
+        Ok(!rows.is_empty())
+    }
+
+    /// 分页查询
+    ///
+    /// 根据分页参数和查询构建器执行分页查询。
+    ///
+    /// # 参数
+    ///
+    /// - `builder`: 查询构建器实例
+    /// - `pagination`: 分页参数
+    pub fn query_paginated(
+        &mut self,
+        builder: &QueryBuilder,
+        pagination: &Pagination,
+    ) -> GResult<PaginatedResult<Row>> {
+        let total = self.count_with_query(builder)?;
+
+        let paginated_builder = builder.clone().paginate(pagination);
+        let sql = paginated_builder.build_select_sql();
+        let params = paginated_builder.params();
+        let rows = self.driver.query(&sql, &params)?;
+
+        Ok(PaginatedResult::new(rows, pagination.clone(), total))
     }
 }

@@ -2,7 +2,7 @@
 //!
 //! 提供版本化的数据库模式迁移管理，支持前进和回滚操作。
 
-use gg_core::{GError, GErrorKind, GResult};
+use gg_core::GResult;
 
 use crate::{DatabaseDriver, DatabaseValue};
 
@@ -108,14 +108,22 @@ impl<D: DatabaseDriver> DatabaseMigrator<D> {
 
         self.migrations.sort_by_key(|m| m.version);
 
-        let mut results = Vec::new();
-        for migration in &self.migrations {
-            if applied.contains(&migration.version) {
-                results.push(MigrationStatus::Applied);
-                continue;
-            }
+        let pending: Vec<(i64, String, String)> = self
+            .migrations
+            .iter()
+            .filter(|m| !applied.contains(&m.version))
+            .map(|m| (m.version, m.description.clone(), m.up_sql.clone()))
+            .collect();
 
-            match self.apply_migration(migration) {
+        let mut results = Vec::new();
+        for already_applied in &applied {
+            if self.migrations.iter().any(|m| m.version == *already_applied) {
+                results.push(MigrationStatus::Applied);
+            }
+        }
+
+        for (version, description, up_sql) in &pending {
+            match self.apply_migration_data(*version, description, up_sql) {
                 Ok(()) => results.push(MigrationStatus::Applied),
                 Err(_) => results.push(MigrationStatus::Failed),
             }
@@ -123,9 +131,9 @@ impl<D: DatabaseDriver> DatabaseMigrator<D> {
         Ok(results)
     }
 
-    /// 应用单个迁移
-    fn apply_migration(&mut self, migration: &Migration) -> GResult<()> {
-        self.driver.execute(&migration.up_sql, &[])?;
+    /// 应用迁移数据
+    fn apply_migration_data(&mut self, version: i64, description: &str, up_sql: &str) -> GResult<()> {
+        self.driver.execute(up_sql, &[])?;
 
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -135,8 +143,8 @@ impl<D: DatabaseDriver> DatabaseMigrator<D> {
         self.driver.execute(
             "INSERT INTO _migrations (version, description, applied_at) VALUES (?, ?, ?)",
             &[
-                DatabaseValue::Integer(migration.version),
-                DatabaseValue::Text(migration.description.clone()),
+                DatabaseValue::Integer(version),
+                DatabaseValue::Text(description.to_string()),
                 DatabaseValue::Text(now.to_string()),
             ],
         )?;
@@ -154,16 +162,17 @@ impl<D: DatabaseDriver> DatabaseMigrator<D> {
         self.ensure_migrations_table()?;
         let applied = self.applied_versions()?;
 
-        let mut to_rollback: Vec<&Migration> = self
+        let mut to_rollback: Vec<(i64, String)> = self
             .migrations
             .iter()
             .filter(|m| applied.contains(&m.version))
+            .map(|m| (m.version, m.down_sql.clone()))
             .collect();
-        to_rollback.sort_by_key(|m| std::cmp::Reverse(m.version));
+        to_rollback.sort_by_key(|(v, _)| std::cmp::Reverse(*v));
 
         let mut results = Vec::new();
-        for migration in to_rollback.into_iter().take(steps) {
-            match self.revert_migration(migration) {
+        for (version, down_sql) in to_rollback.into_iter().take(steps) {
+            match self.revert_migration_data(version, &down_sql) {
                 Ok(()) => results.push(MigrationStatus::Pending),
                 Err(_) => results.push(MigrationStatus::Failed),
             }
@@ -171,13 +180,13 @@ impl<D: DatabaseDriver> DatabaseMigrator<D> {
         Ok(results)
     }
 
-    /// 回滚单个迁移
-    fn revert_migration(&mut self, migration: &Migration) -> GResult<()> {
-        self.driver.execute(&migration.down_sql, &[])?;
+    /// 回滚迁移数据
+    fn revert_migration_data(&mut self, version: i64, down_sql: &str) -> GResult<()> {
+        self.driver.execute(down_sql, &[])?;
 
         self.driver.execute(
             "DELETE FROM _migrations WHERE version = ?",
-            &[DatabaseValue::Integer(migration.version)],
+            &[DatabaseValue::Integer(version)],
         )?;
         Ok(())
     }

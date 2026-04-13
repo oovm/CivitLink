@@ -22,6 +22,7 @@ license = "MIT"
 [workspace.dependencies]
 serde = { version = "1.0.228", features = ["derive"] }
 bincode = "2.0.0"
+log = "0.4.22"
 
 # 系统和硬件
 num_cpus = "1.17.0"

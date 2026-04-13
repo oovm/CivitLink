@@ -406,3 +406,86 @@ impl Default for VfxEmitter {
         Self { effect_type: VfxType::Explosion, duration: 30, elapsed: 0, active: true }
     }
 }
+
+/// 音频事件类型
+///
+/// 定义 STG 游戏中可触发的音频事件。
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum AudioEvent {
+    /// 射击音效
+    Shoot,
+    /// 爆炸音效
+    Explosion,
+    /// 道具拾取音效
+    ItemPickup,
+    /// Boss 出现音效
+    BossAppear,
+    /// 炸弹使用音效
+    Bomb,
+    /// 游戏结束音效
+    GameOver,
+    /// 玩家受伤音效
+    PlayerHit,
+}
+
+/// 音频源组件
+///
+/// 附加到实体上以播放音频，支持自动播放和循环控制。
+#[derive(Debug, Component)]
+pub struct AudioSource {
+    /// 音频片段路径
+    pub clip_path: String,
+    /// 音量（0.0 ~ 1.0）
+    pub volume: f32,
+    /// 是否循环播放
+    pub looping: bool,
+    /// 是否在实体创建时自动播放
+    pub play_on_start: bool,
+}
+
+impl Default for AudioSource {
+    fn default() -> Self {
+        Self { clip_path: String::new(), volume: 1.0, looping: false, play_on_start: false }
+    }
+}
+
+/// 音频命令
+///
+/// 定义音频系统可执行的操作命令。
+#[derive(Debug, Clone)]
+pub enum AudioCommand {
+    /// 播放指定路径的音频片段
+    Play(String),
+    /// 设置音频音量
+    SetVolume(f32),
+    /// 停止所有音频
+    StopAll,
+}
+
+/// 音频总线资源
+///
+/// 管理音频事件队列和命令队列，连接游戏逻辑与音频后端。
+#[derive(Debug, Default)]
+pub struct AudioBus {
+    /// 待处理的音频事件列表
+    pub events: Vec<AudioEvent>,
+    /// 待执行的音频命令列表
+    commands: Vec<AudioCommand>,
+}
+
+impl AudioBus {
+    /// 创建新的音频总线
+    pub fn new() -> Self {
+        Self { events: Vec::new(), commands: Vec::new() }
+    }
+
+    /// 发送音频命令
+    pub fn send(&mut self, command: AudioCommand) {
+        self.commands.push(command);
+    }
+
+    /// 获取并清空所有待执行命令
+    pub fn drain_commands(&mut self) -> Vec<AudioCommand> {
+        self.commands.drain(..).collect()
+    }
+}

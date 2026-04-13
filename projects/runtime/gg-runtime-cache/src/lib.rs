@@ -9,7 +9,7 @@ use std::time::Duration;
 /// 缓存值类型
 ///
 /// 表示缓存中存储的值，支持多种基本数据类型。
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum CacheValue {
     /// 空值
     Null,
