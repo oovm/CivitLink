@@ -508,7 +508,7 @@ impl BytecodeInterpreter {
                         });
                     }
                 };
-                host.despawn_entity(entity_id);
+                host.destroy_entity(entity_id);
                 Ok(ControlFlow::Continue)
             }
 

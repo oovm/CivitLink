@@ -155,7 +155,7 @@ fn test_end_to_end_pipeline_arithmetic() {
         fn spawn_entity(&mut self) -> u64 {
             0
         }
-        fn despawn_entity(&mut self, _entity_id: u64) {}
+        fn destroy_entity(&mut self, _entity_id: u64) {}
         fn add_component(&mut self, _entity_id: u64, _component_type: &str, _value: BytecodeValue) {}
         fn get_component_field(&mut self, _entity_id: u64, _component_type: &str, _field: &str) -> Option<BytecodeValue> {
             None

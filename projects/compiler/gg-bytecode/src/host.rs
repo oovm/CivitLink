@@ -6,7 +6,7 @@ pub trait Host {
     fn spawn_entity(&mut self) -> u64;
 
     /// 销毁实体
-    fn despawn_entity(&mut self, entity_id: u64);
+    fn destroy_entity(&mut self, entity_id: u64);
 
     /// 添加组件
     fn add_component(&mut self, entity_id: u64, component_type: &str, value: BytecodeValue);

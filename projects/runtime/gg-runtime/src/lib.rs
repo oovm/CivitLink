@@ -118,7 +118,7 @@ impl Host for EngineHost {
         ((id.generation() as u64) << 32) | (id.index() as u64)
     }
 
-    fn despawn_entity(&mut self, entity_id: u64) {
+    fn destroy_entity(&mut self, entity_id: u64) {
         let entity = Entity::new((entity_id & 0xFFFFFFFF) as u32, (entity_id >> 32) as u32);
         self.world.despawn(entity).ok();
     }

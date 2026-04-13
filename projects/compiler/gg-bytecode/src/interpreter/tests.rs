@@ -23,7 +23,7 @@ impl Host for TestHost {
         id
     }
 
-    fn despawn_entity(&mut self, _entity_id: u64) {}
+    fn destroy_entity(&mut self, _entity_id: u64) {}
 
     fn add_component(&mut self, entity_id: u64, component_type: &str, value: BytecodeValue) {
         self.log.push(format!("add_component({}, {}, {:?})", entity_id, component_type, value));
