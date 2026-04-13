@@ -148,27 +148,15 @@ impl SceneSerializer {
                             }
                         }
                     }
-                    components.push(ComponentData {
-                        type_name,
-                        properties: serde_json::Value::Object(props),
-                    });
+                    components.push(ComponentData { type_name, properties: serde_json::Value::Object(props) });
                 }
             }
 
             let id = ((entity.generation() as u64) << 32) | (entity.index() as u64);
-            entity_data_list.push(EntityData {
-                id,
-                name: format!("Entity_{}", entity.index()),
-                parent_id: None,
-                components,
-            });
+            entity_data_list.push(EntityData { id, name: format!("Entity_{}", entity.index()), parent_id: None, components });
         }
 
-        SceneData {
-            version: "1.0".to_string(),
-            name: world.name().to_string(),
-            entities: entity_data_list,
-        }
+        SceneData { version: "1.0".to_string(), name: world.name().to_string(), entities: entity_data_list }
     }
 }
 
@@ -226,20 +214,12 @@ impl WorldData {
                             }
                         }
                     }
-                    components.push(ComponentData {
-                        type_name,
-                        properties: serde_json::Value::Object(props),
-                    });
+                    components.push(ComponentData { type_name, properties: serde_json::Value::Object(props) });
                 }
             }
 
             let id = ((entity.generation() as u64) << 32) | (entity.index() as u64);
-            entity_data_list.push(EntityData {
-                id,
-                name: format!("Entity_{}", entity.index()),
-                parent_id: None,
-                components,
-            });
+            entity_data_list.push(EntityData { id, name: format!("Entity_{}", entity.index()), parent_id: None, components });
         }
 
         Self { entities: entity_data_list }
@@ -535,9 +515,6 @@ impl Default for WorldManager {
 /// 预导入模块，包含世界管理核心类型
 pub mod prelude {
     pub use crate::{
-        ComponentData, EntityData, EntityRef, GameWorld, SceneData, SceneDeserializer, SceneSerializer, WorldData,
-        WorldManager,
+        ComponentData, EntityData, EntityRef, GameWorld, SceneData, SceneDeserializer, SceneSerializer, WorldData, WorldManager,
     };
 }
-
-

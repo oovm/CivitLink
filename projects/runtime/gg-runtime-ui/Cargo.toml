@@ -1,0 +1,16 @@
+[package]
+name = "gg-runtime-ui"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-render = { workspace = true }
+gg-runtime = { workspace = true }
+gg-ui = { workspace = true }
+oak-voc = { workspace = true }
+
+[dev-dependencies]

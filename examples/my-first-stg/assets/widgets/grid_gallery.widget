@@ -1,0 +1,81 @@
+<template>
+    <Panel class="grid-gallery" style="flex-1">
+        <Stack orientation="vertical" style="gap-8">
+            <Text class="section-title">{title()}</Text>
+            <ScrollView scroll_direction="vertical" style="flex-1">
+                <Panel class="grid-container">
+                    <loop (item, index) in items()>
+                        <Panel class="grid-item" onClick={micro() { handleSelect(index) }}>
+                            <Icon name={item.icon} style="width-[48px] height-[48px]" />
+                            <Text class="grid-item-label">{item.name}</Text>
+                        </Panel>
+                    </loop>
+                </Panel>
+            </ScrollView>
+        </Stack>
+    </Panel>
+</template>
+
+<script>
+    using gg_editor::ui::widgets::{Panel, Stack, Text, ScrollView, Icon};
+    using gg_editor::ui::signal;
+
+    let title = signal("Gallery");
+    let items = signal([]);
+    let selectedIndex = signal(-1);
+    let columns = signal(4);
+
+    let handleSelect = micro(index) {
+        selectedIndex(index);
+        console::log("Selected gallery item: " + items()[index].name);
+    };
+</script>
+
+<style>
+    .grid-gallery {
+        padding: $spacing-md;
+        background-color: $bg-secondary-color;
+    }
+
+    .section-title {
+        font-size: $font-size-sm;
+        font-weight: bold;
+        color: $text-secondary-color;
+        text-transform: uppercase;
+    }
+
+    .grid-container {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: $spacing-sm;
+    }
+
+    .grid-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: $spacing-xs;
+        padding: $spacing-md;
+        border-radius: $radius-md;
+        cursor: pointer;
+        background-color: $bg-color;
+
+        &:hover {
+            background-color: $secondary-color;
+        }
+
+        &:focus {
+            outline: 2px solid $accent-color;
+            outline-offset: 2px;
+        }
+    }
+
+    .grid-item-label {
+        font-size: $font-size-xs;
+        color: $text-color;
+        text-align: center;
+        max-width: 64px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+</style>

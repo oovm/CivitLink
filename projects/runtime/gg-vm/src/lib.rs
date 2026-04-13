@@ -6,11 +6,18 @@
 /// VM 调试器模块
 pub mod debugger;
 
-pub use gg_bytecode::{BytecodeModule, BytecodeValue, Host, InterpretResult as VmResult, InterpreterFrame as CallFrame};
-pub use debugger::VmDebugger;
+/// 热点检测模块
+pub mod hotspot;
 
-use std::cell::RefCell;
-use std::rc::Rc;
+/// 指令缓存模块
+pub mod instruction_cache;
+
+pub use debugger::{VmDebugger, Watch, WatchId};
+pub use gg_bytecode::{BytecodeModule, BytecodeValue, Host, InterpretResult as VmResult, InterpreterFrame as CallFrame};
+pub use hotspot::HotspotDetector;
+pub use instruction_cache::InstructionCache;
+
+use std::{cell::RefCell, rc::Rc};
 
 use gg_bytecode::{BytecodeInterpreter, BytecodeReader, BytecodeWriter, DebugController};
 use gg_ir::IrModule;
@@ -22,12 +29,20 @@ use gg_ir::IrModule;
 pub struct Vm {
     /// 内部字节码解释器
     interpreter: BytecodeInterpreter,
+    /// 指令缓存
+    instruction_cache: InstructionCache,
+    /// 热点检测器
+    hotspot_detector: HotspotDetector,
 }
 
 impl Vm {
     /// 创建新的虚拟机
     pub fn new() -> Self {
-        Self { interpreter: BytecodeInterpreter::new() }
+        Self {
+            interpreter: BytecodeInterpreter::new(),
+            instruction_cache: InstructionCache::new(),
+            hotspot_detector: HotspotDetector::new(),
+        }
     }
 
     /// 执行字节码模块中的指定函数
@@ -97,6 +112,26 @@ impl Vm {
     pub fn debug_local_variables(&self, frame_index: usize) -> Vec<(String, BytecodeValue)> {
         self.interpreter.debug_local_variables(frame_index)
     }
+
+    /// 获取指令缓存的不可变引用
+    pub fn instruction_cache(&self) -> &InstructionCache {
+        &self.instruction_cache
+    }
+
+    /// 获取指令缓存的可变引用
+    pub fn instruction_cache_mut(&mut self) -> &mut InstructionCache {
+        &mut self.instruction_cache
+    }
+
+    /// 获取热点检测器的不可变引用
+    pub fn hotspot_detector(&self) -> &HotspotDetector {
+        &self.hotspot_detector
+    }
+
+    /// 获取热点检测器的可变引用
+    pub fn hotspot_detector_mut(&mut self) -> &mut HotspotDetector {
+        &mut self.hotspot_detector
+    }
 }
 
 impl Default for Vm {
@@ -104,5 +139,3 @@ impl Default for Vm {
         Self::new()
     }
 }
-
-

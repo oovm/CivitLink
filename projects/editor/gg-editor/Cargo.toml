@@ -1,0 +1,10 @@
+[package]
+name = "gg-editor"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+
+[dev-dependencies]

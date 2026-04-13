@@ -5,76 +5,7 @@
 
 use std::collections::HashMap;
 
-/// 单个 UsageHint 标志，指示哪种属性变化由 GPU 处理
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UsageHint {
-    /// 位移变化通过 uniform 传入着色器，GPU 执行变换
-    TransformOffset,
-    /// 颜色变化通过 uniform 传入着色器，GPU 执行颜色混合
-    ColorTint,
-    /// 透明度变化通过 uniform 传入着色器
-    Opacity,
-    /// 缩放变化通过 uniform 传入着色器
-    ScaleTransform,
-}
-
-impl UsageHint {
-    /// 获取对应位标志值
-    fn bit(self) -> u8 {
-        match self {
-            UsageHint::TransformOffset => 1,
-            UsageHint::ColorTint => 2,
-            UsageHint::Opacity => 4,
-            UsageHint::ScaleTransform => 8,
-        }
-    }
-}
-
-/// UsageHint 集合，基于 u8 位标志实现
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct UsageHints {
-    /// 内部位标志
-    flags: u8,
-}
-
-impl UsageHints {
-    /// 无任何 hint
-    pub const NONE: UsageHints = UsageHints { flags: 0 };
-    /// TransformOffset hint 标志
-    pub const TRANSFORM_OFFSET: UsageHints = UsageHints { flags: 1 };
-    /// ColorTint hint 标志
-    pub const COLOR_TINT: UsageHints = UsageHints { flags: 2 };
-    /// Opacity hint 标志
-    pub const OPACITY: UsageHints = UsageHints { flags: 4 };
-    /// ScaleTransform hint 标志
-    pub const SCALE_TRANSFORM: UsageHints = UsageHints { flags: 8 };
-
-    /// 判断是否包含指定 hint
-    pub fn contains(&self, hint: UsageHint) -> bool {
-        self.flags & hint.bit() != 0
-    }
-
-    /// 插入指定 hint
-    pub fn insert(&mut self, hint: UsageHint) {
-        self.flags |= hint.bit();
-    }
-
-    /// 移除指定 hint
-    pub fn remove(&mut self, hint: UsageHint) {
-        self.flags &= !hint.bit();
-    }
-
-    /// 判断是否没有任何 hint
-    pub fn is_empty(&self) -> bool {
-        self.flags == 0
-    }
-}
-
-impl Default for UsageHints {
-    fn default() -> Self {
-        UsageHints::NONE
-    }
-}
+pub use gg_ui::{UsageHint, UsageHints};
 
 /// GPU 变换 uniform 数据，传递给着色器执行 GPU 侧变换
 #[derive(Debug, Clone, Copy)]
@@ -118,10 +49,7 @@ pub struct UsageHintsManager {
 impl UsageHintsManager {
     /// 创建新的 UsageHintsManager
     pub fn new() -> Self {
-        UsageHintsManager {
-            hints: HashMap::new(),
-            uniforms: HashMap::new(),
-        }
+        UsageHintsManager { hints: HashMap::new(), uniforms: HashMap::new() }
     }
 
     /// 设置元素的 UsageHints

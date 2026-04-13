@@ -20,8 +20,8 @@
     "onLanguage:gg-prefab",
     "onLanguage:gg-scene",
     "onLanguage:gg-script",
-    "onLanguage:gg-shader",
-    "onLanguage:gg-widget",
+    "onLanguage:gg-compiler-shader",
+    "onLanguage:gg-compiler-widget",
     "onLanguage:gg-galgame"
   ],
   "main": "./out/extension.js",
@@ -91,7 +91,7 @@
         ]
       },
       {
-        "id": "gg-shader",
+        "id": "gg-compiler-shader",
         "extensions": [
           ".shader"
         ],
@@ -100,7 +100,7 @@
         ]
       },
       {
-        "id": "gg-widget",
+        "id": "gg-compiler-widget",
         "extensions": [
           ".widget"
         ],
@@ -155,14 +155,14 @@
         "path": "./syntaxes/gg-script.tmLanguage.json"
       },
       {
-        "language": "gg-shader",
-        "scopeName": "source.gg-shader",
-        "path": "./syntaxes/gg-shader.tmLanguage.json"
+        "language": "gg-compiler-shader",
+        "scopeName": "source.gg-compiler-shader",
+        "path": "./syntaxes/gg-compiler-shader.tmLanguage.json"
       },
       {
-        "language": "gg-widget",
-        "scopeName": "source.gg-widget",
-        "path": "./syntaxes/gg-widget.tmLanguage.json"
+        "language": "gg-compiler-widget",
+        "scopeName": "source.gg-compiler-widget",
+        "path": "./syntaxes/gg-compiler-widget.tmLanguage.json"
       },
       {
         "language": "gg-galgame",

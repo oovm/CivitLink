@@ -168,7 +168,7 @@ gg-engine/
 │   │   ├── gg-types/        # 类型定义
 │   │   └── gg-macros/       # 宏定义
 │   ├── runtime/               # 运行时层
-│   │   ├── gg-ir/           # 中间表示
+│   │   ├── gg-ir/           # 中间表示 (已迁移至 projects/compiler)
 │   │   └── gg-vm/           # 虚拟机
 └── tools/                     # 构建工具
 ```

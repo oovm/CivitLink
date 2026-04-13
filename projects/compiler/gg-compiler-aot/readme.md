@@ -52,7 +52,7 @@ fn main() {
 
 ## 📦 依赖关系
 
-- **gg-compiler-core**：编译器核心功能
+- **gg-compiler**：编译器核心功能
 - **gg-core**：核心功能和平台抽象
 - **gg-error**：错误处理系统
 

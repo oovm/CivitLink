@@ -112,6 +112,40 @@ impl SheetType {
             return Ok(SheetType::Map { key: Box::new(key_type), value: Box::new(value_type) });
         }
 
+        if trimmed.starts_with("HashMap<") && trimmed.ends_with('>') {
+            let inner = &trimmed[8..trimmed.len() - 1];
+            let parts: Vec<&str> = inner.splitn(2, ',').collect();
+            if parts.len() != 2 {
+                return Err(SheetError::Config { message: format!("映射类型格式错误: '{}'", trimmed) });
+            }
+            let key_type = Self::parse(parts[0].trim())?;
+            let value_type = Self::parse(parts[1].trim())?;
+            return Ok(SheetType::Map { key: Box::new(key_type), value: Box::new(value_type) });
+        }
+
+        if trimmed.starts_with("dict<") && trimmed.ends_with('>') {
+            let inner = &trimmed[5..trimmed.len() - 1];
+            let parts: Vec<&str> = inner.splitn(2, ',').collect();
+            if parts.len() != 2 {
+                return Err(SheetError::Config { message: format!("映射类型格式错误: '{}'", trimmed) });
+            }
+            let key_type = Self::parse(parts[0].trim())?;
+            let value_type = Self::parse(parts[1].trim())?;
+            return Ok(SheetType::Map { key: Box::new(key_type), value: Box::new(value_type) });
+        }
+
+        if trimmed.starts_with("list<") && trimmed.ends_with('>') {
+            let inner = &trimmed[5..trimmed.len() - 1];
+            let inner_type = Self::parse(inner.trim())?;
+            return Ok(SheetType::List(Box::new(inner_type)));
+        }
+
+        if trimmed.starts_with("Vec<") && trimmed.ends_with('>') {
+            let inner = &trimmed[4..trimmed.len() - 1];
+            let inner_type = Self::parse(inner.trim())?;
+            return Ok(SheetType::List(Box::new(inner_type)));
+        }
+
         match trimmed {
             "bool" | "boolean" => Ok(SheetType::Boolean),
             "i8" | "char" => Ok(SheetType::Integer(IntegerKind::Integer8)),
@@ -124,7 +158,7 @@ impl SheetType {
             "u64" | "ulong" => Ok(SheetType::Integer(IntegerKind::Unsigned64)),
             "f32" | "float" => Ok(SheetType::Decimal(DecimalKind::Float32)),
             "f64" | "double" => Ok(SheetType::Decimal(DecimalKind::Float64)),
-            "string" | "str" | "text" => Ok(SheetType::String),
+            "string" | "str" | "text" | "utf8" => Ok(SheetType::String),
             "color" | "colour" => Ok(SheetType::Color),
             "vec2" | "v2" => Ok(SheetType::Vector(VectorKind::Vec2)),
             "vec3" | "v3" => Ok(SheetType::Vector(VectorKind::Vec3)),
@@ -151,7 +185,7 @@ impl SheetType {
                 DecimalKind::Float32 => "f32".to_string(),
                 DecimalKind::Float64 => "f64".to_string(),
             },
-            SheetType::String => "string".to_string(),
+            SheetType::String => "UTF8Text".to_string(),
             SheetType::Color => "Color".to_string(),
             SheetType::Vector(kind) => match kind {
                 VectorKind::Vec2 => "Vec2".to_string(),
@@ -194,9 +228,25 @@ pub enum SheetValue {
     Float64(f64),
     /// 字符串值
     String(String),
+    /// 颜色值，包含红、绿、蓝、透明度通道
+    Color {
+        /// 红色通道（0-255）
+        r: u8,
+        /// 绿色通道（0-255）
+        g: u8,
+        /// 蓝色通道（0-255）
+        b: u8,
+        /// 透明度通道（0-255）
+        a: u8,
+    },
+    /// 向量值，包含浮点数分量列表
+    Vector {
+        /// 分量列表
+        components: Vec<f32>,
+    },
     /// 列表值
     List(Vec<SheetValue>),
-    /// 映射值
+    /// 映射值，键值对列表
     Map(Vec<(String, SheetValue)>),
     /// 可选值
     Optional(Option<Box<SheetValue>>),
@@ -255,8 +305,32 @@ impl SheetValue {
                 })
             }
             SheetType::String => Ok(SheetValue::String(trimmed.to_string())),
-            SheetType::Color => Ok(SheetValue::String(trimmed.to_string())),
-            SheetType::Vector(_) => Ok(SheetValue::String(trimmed.to_string())),
+            SheetType::Color => {
+                if trimmed.is_empty() {
+                    return Ok(SheetValue::Color { r: 0, g: 0, b: 0, a: 255 });
+                }
+                let (r, g, b, a) = parse_color_str(trimmed)?;
+                Ok(SheetValue::Color { r, g, b, a })
+            }
+            SheetType::Vector(kind) => {
+                let expected = match kind {
+                    VectorKind::Vec2 => 2,
+                    VectorKind::Vec3 => 3,
+                    VectorKind::Vec4 => 4,
+                };
+                if trimmed.is_empty() {
+                    return Ok(SheetValue::Vector { components: vec![0.0; expected] });
+                }
+                let components = parse_vector_str(trimmed)?;
+                if components.len() != expected {
+                    return Err(SheetError::Parse {
+                        path: std::path::PathBuf::new(),
+                        line: 0,
+                        message: format!("向量分量数量不匹配：期望 {} 个，实际 {} 个", expected, components.len()),
+                    });
+                }
+                Ok(SheetValue::Vector { components })
+            }
             SheetType::List(inner) => {
                 if trimmed.is_empty() {
                     return Ok(SheetValue::List(Vec::new()));
@@ -264,7 +338,20 @@ impl SheetValue {
                 let items: Vec<SheetValue> = trimmed.split(',').filter_map(|s| Self::parse_from_str(s, inner).ok()).collect();
                 Ok(SheetValue::List(items))
             }
-            SheetType::Map { .. } => Ok(SheetValue::String(trimmed.to_string())),
+            SheetType::Map { value, .. } => {
+                if trimmed.is_empty() {
+                    return Ok(SheetValue::Map(Vec::new()));
+                }
+                let entries = parse_map_str(trimmed)?;
+                let parsed_entries: Vec<(String, SheetValue)> = entries
+                    .into_iter()
+                    .map(|(k, v)| {
+                        let val = Self::parse_from_str(&v, value)?;
+                        Ok((k, val))
+                    })
+                    .collect::<SheetResult<Vec<(String, SheetValue)>>>()?;
+                Ok(SheetValue::Map(parsed_entries))
+            }
             SheetType::Optional(inner) => {
                 if trimmed.is_empty() {
                     Ok(SheetValue::Optional(None))
@@ -311,4 +398,204 @@ impl SheetValue {
             DecimalKind::Float64 => SheetValue::Float64(0.0),
         }
     }
+}
+
+/// 字段验证规则
+#[derive(Debug, Clone, PartialEq)]
+pub enum ValidationRule {
+    /// 数值最小值
+    Min(f64),
+    /// 数值最大值
+    Max(f64),
+    /// 字符串最小长度
+    MinLength(usize),
+    /// 字符串最大长度
+    MaxLength(usize),
+    /// 正则模式匹配
+    Pattern(String),
+    /// 必填字段
+    Required,
+    /// 自定义验证器引用
+    Custom(String),
+}
+
+impl std::fmt::Display for ValidationRule {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ValidationRule::Min(v) => write!(f, "min({})", v),
+            ValidationRule::Max(v) => write!(f, "max({})", v),
+            ValidationRule::MinLength(v) => write!(f, "min_length({})", v),
+            ValidationRule::MaxLength(v) => write!(f, "max_length({})", v),
+            ValidationRule::Pattern(v) => write!(f, "pattern(\"{}\")", v),
+            ValidationRule::Required => write!(f, "required"),
+            ValidationRule::Custom(name) => write!(f, "custom({})", name),
+        }
+    }
+}
+
+/// 解析颜色字符串为 RGBA 分量
+///
+/// 支持以下格式：
+/// - `#RRGGBB`：6 位十六进制，透明度默认为 255
+/// - `#RRGGBBAA`：8 位十六进制
+/// - `rgb(r, g, b)`：RGB 函数，透明度默认为 255
+/// - `rgba(r, g, b, a)`：RGBA 函数
+pub fn parse_color_str(s: &str) -> SheetResult<(u8, u8, u8, u8)> {
+    let trimmed = s.trim();
+
+    if trimmed.starts_with('#') {
+        let hex = &trimmed[1..];
+        match hex.len() {
+            6 => {
+                let r = u8::from_str_radix(&hex[0..2], 16).map_err(|_| color_parse_error(trimmed))?;
+                let g = u8::from_str_radix(&hex[2..4], 16).map_err(|_| color_parse_error(trimmed))?;
+                let b = u8::from_str_radix(&hex[4..6], 16).map_err(|_| color_parse_error(trimmed))?;
+                Ok((r, g, b, 255))
+            }
+            8 => {
+                let r = u8::from_str_radix(&hex[0..2], 16).map_err(|_| color_parse_error(trimmed))?;
+                let g = u8::from_str_radix(&hex[2..4], 16).map_err(|_| color_parse_error(trimmed))?;
+                let b = u8::from_str_radix(&hex[4..6], 16).map_err(|_| color_parse_error(trimmed))?;
+                let a = u8::from_str_radix(&hex[6..8], 16).map_err(|_| color_parse_error(trimmed))?;
+                Ok((r, g, b, a))
+            }
+            _ => Err(color_parse_error(trimmed)),
+        }
+    }
+    else if trimmed.starts_with("rgba(") && trimmed.ends_with(')') {
+        let inner = &trimmed[5..trimmed.len() - 1];
+        let parts: Vec<&str> = inner.split(',').map(|p| p.trim()).collect();
+        if parts.len() != 4 {
+            return Err(color_parse_error(trimmed));
+        }
+        let r = parts[0].parse::<u8>().map_err(|_| color_parse_error(trimmed))?;
+        let g = parts[1].parse::<u8>().map_err(|_| color_parse_error(trimmed))?;
+        let b = parts[2].parse::<u8>().map_err(|_| color_parse_error(trimmed))?;
+        let a = parts[3].parse::<u8>().map_err(|_| color_parse_error(trimmed))?;
+        Ok((r, g, b, a))
+    }
+    else if trimmed.starts_with("rgb(") && trimmed.ends_with(')') {
+        let inner = &trimmed[4..trimmed.len() - 1];
+        let parts: Vec<&str> = inner.split(',').map(|p| p.trim()).collect();
+        if parts.len() != 3 {
+            return Err(color_parse_error(trimmed));
+        }
+        let r = parts[0].parse::<u8>().map_err(|_| color_parse_error(trimmed))?;
+        let g = parts[1].parse::<u8>().map_err(|_| color_parse_error(trimmed))?;
+        let b = parts[2].parse::<u8>().map_err(|_| color_parse_error(trimmed))?;
+        Ok((r, g, b, 255))
+    }
+    else {
+        Err(color_parse_error(trimmed))
+    }
+}
+
+/// 构造颜色解析错误
+fn color_parse_error(s: &str) -> SheetError {
+    SheetError::Parse { path: std::path::PathBuf::new(), line: 0, message: format!("无法将 '{}' 解析为颜色值", s) }
+}
+
+/// 解析向量字符串为浮点数分量列表
+///
+/// 支持格式：`(x, y)`、`(x, y, z)`、`(x, y, z, w)`
+pub fn parse_vector_str(s: &str) -> SheetResult<Vec<f32>> {
+    let trimmed = s.trim();
+
+    if !trimmed.starts_with('(') || !trimmed.ends_with(')') {
+        return Err(SheetError::Parse {
+            path: std::path::PathBuf::new(),
+            line: 0,
+            message: format!("无法将 '{}' 解析为向量值", trimmed),
+        });
+    }
+
+    let inner = &trimmed[1..trimmed.len() - 1];
+    if inner.trim().is_empty() {
+        return Err(SheetError::Parse {
+            path: std::path::PathBuf::new(), line: 0, message: "向量值不能为空".to_string()
+        });
+    }
+
+    let components: Vec<f32> = inner
+        .split(',')
+        .map(|p| {
+            p.trim().parse::<f32>().map_err(|_| SheetError::Parse {
+                path: std::path::PathBuf::new(),
+                line: 0,
+                message: format!("无法将 '{}' 解析为向量分量", p.trim()),
+            })
+        })
+        .collect::<SheetResult<Vec<f32>>>()?;
+
+    Ok(components)
+}
+
+/// 解析映射字符串为键值对列表
+///
+/// 支持格式：`{key1:value1,key2:value2}`
+/// 字符串值使用引号：`{name:"Hero",title:"Brave"}`
+/// 空花括号 `{}` 返回空列表
+pub fn parse_map_str(s: &str) -> SheetResult<Vec<(String, String)>> {
+    let trimmed = s.trim();
+
+    if !trimmed.starts_with('{') || !trimmed.ends_with('}') {
+        return Err(SheetError::Parse {
+            path: std::path::PathBuf::new(),
+            line: 0,
+            message: format!("无法将 '{}' 解析为映射值", trimmed),
+        });
+    }
+
+    let inner = &trimmed[1..trimmed.len() - 1];
+    if inner.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut entries = Vec::new();
+    let mut current_key = String::new();
+    let mut current_value = String::new();
+    let mut in_key = true;
+    let mut in_quotes = false;
+    let mut chars = inner.chars().peekable();
+
+    while let Some(c) = chars.next() {
+        if in_quotes {
+            if c == '"' {
+                in_quotes = false;
+            }
+            else {
+                current_value.push(c);
+            }
+            continue;
+        }
+
+        match c {
+            '"' => {
+                in_quotes = true;
+            }
+            ':' if in_key => {
+                in_key = false;
+            }
+            ',' => {
+                entries.push((current_key.trim().to_string(), current_value.trim().to_string()));
+                current_key.clear();
+                current_value.clear();
+                in_key = true;
+            }
+            _ => {
+                if in_key {
+                    current_key.push(c);
+                }
+                else {
+                    current_value.push(c);
+                }
+            }
+        }
+    }
+
+    if !current_key.is_empty() || !current_value.is_empty() {
+        entries.push((current_key.trim().to_string(), current_value.trim().to_string()));
+    }
+
+    Ok(entries)
 }

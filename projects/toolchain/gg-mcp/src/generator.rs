@@ -75,7 +75,7 @@ impl EngineFactory {
         deps.push_str("gg-core = { path = \"../../projects/core/gg-core\" }\n");
         deps.push_str("gg-ecs = { path = \"../../projects/core/gg-ecs\" }\n");
         deps.push_str("gg-asset = { path = \"../../projects/core/gg-asset\" }\n");
-        deps.push_str("gg-runtime-core = { path = \"../../projects/runtime/gg-runtime-core\" }\n");
+        deps.push_str("gg-runtime = { path = \"../../projects/runtime/gg-runtime\" }\n");
         deps.push_str("gg-schedule = { path = \"../../projects/core/gg-schedule\" }\n");
 
         if has_desktop {
@@ -86,7 +86,8 @@ impl EngineFactory {
             deps.push_str("wasm-bindgen = { version = \"0.2\", optional = true }\n");
         }
         if has_mobile {
-            deps.push_str("gg-platform-mobile = { path = \"../../projects/platforms/gg-platform-mobile\", optional = true }\n");
+            deps.push_str("gg-platform-ios = { path = "../../projects/compiler/gg-platform-ios", optional = true }\n");
+            deps.push_str("gg-platform-android = { path = "../../projects/compiler/gg-platform-android", optional = true }\n");
         }
 
         deps.push_str("serde = { version = \"1\", features = [\"derive\"] }\n");
@@ -183,7 +184,8 @@ impl EngineFactory {
                 features_section.push_str("web = [\"gg-platform-web\", \"wasm-bindgen\"]\n");
             }
             if has_mobile {
-                features_section.push_str("mobile = [\"gg-platform-mobile\"]\n");
+                features_section.push_str("ios = [\"gg-platform-ios\"]\n");
+                features_section.push_str("android = [\"gg-platform-android\"]\n");
             }
         }
 

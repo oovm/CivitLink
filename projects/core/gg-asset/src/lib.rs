@@ -1,14 +1,16 @@
 //! GG 引擎资源管理系统
-//! 
+//!
 //! 提供统一的资源加载、管理和热更新功能，支持编辑器UI和游戏UI的资源分离
 
 #![warn(missing_docs)]
 
-use std::any::Any;
-use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
+use std::{
+    any::Any,
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+    sync::{Arc, RwLock},
+    time::{Duration, Instant, SystemTime},
+};
 
 use gg_error::{GError, GErrorKind, GResult};
 
@@ -60,10 +62,7 @@ pub struct Handle<T: Asset> {
 impl<T: Asset> Handle<T> {
     /// 创建新的资源句柄
     pub fn new(id: u64) -> Self {
-        Self {
-            id,
-            _marker: std::marker::PhantomData,
-        }
+        Self { id, _marker: std::marker::PhantomData }
     }
 
     /// 获取资源ID
@@ -78,7 +77,9 @@ pub trait Asset: Send + Sync + 'static {
     fn asset_type() -> AssetType;
 
     /// 加载资源
-    fn load(path: &Path) -> GResult<Self>;
+    fn load(path: &Path) -> GResult<Self>
+    where
+        Self: Sized;
 
     /// 卸载资源
     fn unload(&mut self);
@@ -97,7 +98,7 @@ pub struct AssetMeta {
     /// 资源大小
     pub size: usize,
     /// 最后修改时间
-    pub last_modified: Instant,
+    pub last_modified: SystemTime,
     /// 依赖资源
     pub dependencies: HashSet<u64>,
 }
@@ -180,7 +181,7 @@ impl AssetServer {
                 path: path.to_path_buf(),
                 asset_type: T::asset_type(),
                 size,
-                last_modified: Instant::now(),
+                last_modified: SystemTime::now(),
                 dependencies: HashSet::new(),
             },
             state: AssetState::Loaded,
@@ -195,7 +196,8 @@ impl AssetServer {
         // 分类资源
         if is_editor_ui {
             self.editor_ui_assets.insert(id);
-        } else {
+        }
+        else {
             self.game_ui_assets.insert(id);
         }
 
@@ -221,15 +223,19 @@ impl AssetServer {
 
     /// 释放资源
     pub fn release<T: Asset>(&mut self, handle: Handle<T>) {
-        if let Some(item) = self.assets.get_mut(&handle.id()) {
+        let should_remove = if let Some(item) = self.assets.get_mut(&handle.id()) {
             item.ref_count -= 1;
-            if item.ref_count <= 0 {
-                // 卸载资源
+            item.ref_count <= 0
+        }
+        else {
+            false
+        };
+
+        if should_remove {
+            if let Some(mut item) = self.assets.remove(&handle.id()) {
                 if let Some(asset) = item.asset.downcast_mut::<T>() {
                     asset.unload();
                 }
-                // 从存储中移除
-                self.assets.remove(&handle.id());
                 self.path_to_id.remove(&item.meta.path);
                 self.editor_ui_assets.remove(&handle.id());
                 self.game_ui_assets.remove(&handle.id());
@@ -254,21 +260,25 @@ impl AssetServer {
         }
 
         self.last_hot_reload_check = now;
-        let mut reloaded_assets = Vec::new();
 
-        // 检查所有资源
-        for (id, item) in &mut self.assets {
+        // 收集需要重新加载的资源ID
+        let mut to_reload = Vec::new();
+        for (id, item) in &self.assets {
             let path = &item.meta.path;
             if let Ok(metadata) = std::fs::metadata(path) {
                 if let Ok(modified) = metadata.modified() {
-                    let modified_instant = Instant::from(modified);
-                    if modified_instant > item.meta.last_modified {
-                        // 资源已修改，重新加载
-                        if let Ok(asset) = self.reload_asset(*id) {
-                            reloaded_assets.push(*id);
-                        }
+                    if modified > item.meta.last_modified {
+                        to_reload.push(*id);
                     }
                 }
+            }
+        }
+
+        // 重新加载资源
+        let mut reloaded_assets = Vec::new();
+        for id in to_reload {
+            if self.reload_asset(id).is_ok() {
+                reloaded_assets.push(id);
             }
         }
 
@@ -313,9 +323,10 @@ impl AssetServer {
             }
 
             // 更新最后修改时间
-            item.meta.last_modified = Instant::now();
+            item.meta.last_modified = SystemTime::now();
             Ok(())
-        } else {
+        }
+        else {
             Err(GError { kind: GErrorKind::Asset, message: format!("Asset not found: {}", id) })
         }
     }
@@ -386,11 +397,7 @@ impl Asset for TextureAsset {
         // 加载纹理数据
         let data = std::fs::read(path)?;
         // 这里应该解析纹理宽度和高度
-        Ok(Self {
-            data,
-            width: 0,
-            height: 0,
-        })
+        Ok(Self { data, width: 0, height: 0 })
     }
 
     fn unload(&mut self) {
@@ -515,9 +522,7 @@ pub struct AssetSystem {
 impl AssetSystem {
     /// 创建新的资源系统
     pub fn new() -> Self {
-        Self {
-            asset_server: Arc::new(RwLock::new(AssetServer::new())),
-        }
+        Self { asset_server: Arc::new(RwLock::new(AssetServer::new())) }
     }
 
     /// 获取资源服务器

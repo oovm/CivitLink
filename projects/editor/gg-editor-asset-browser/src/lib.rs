@@ -6,6 +6,6 @@
 pub mod panel;
 
 pub use panel::{
-    filter_tree, AssetBrowserPanel, AssetMetadata, AssetReference, AssetType, DirectoryNode,
-    PendingImport,
+    AssetBatchOperationResult, AssetBrowserPanel, AssetContextMenu, AssetMetadata, AssetOperationResult, AssetPreviewData,
+    AssetReference, AssetType, DirectoryNode, FileOperation, PendingImport, filter_tree,
 };

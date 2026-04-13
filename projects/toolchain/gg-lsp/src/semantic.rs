@@ -69,10 +69,7 @@ impl SymbolTable {
 
     /// 根据名称查找符号定义，返回第一个匹配项。
     pub fn get(&self, name: &str) -> Option<&Symbol> {
-        self.by_name
-            .get(name)
-            .and_then(|indices| indices.first())
-            .and_then(|&idx| self.symbols.get(idx))
+        self.by_name.get(name).and_then(|indices| indices.first()).and_then(|&idx| self.symbols.get(idx))
     }
 
     /// 根据名称查找所有同名符号定义。
@@ -144,10 +141,7 @@ impl Default for SemanticAnalyzer {
 impl SemanticAnalyzer {
     /// 创建新的语义分析器。
     pub fn new() -> Self {
-        Self {
-            symbol_table: SymbolTable::new(),
-            diagnostics: Vec::new(),
-        }
+        Self { symbol_table: SymbolTable::new(), diagnostics: Vec::new() }
     }
 
     /// 分析源码，构建符号表并收集诊断信息。
@@ -188,12 +182,7 @@ impl SemanticAnalyzer {
                 if let Some(name) = extract_identifier(rest) {
                     let column = line.find(&name).unwrap_or(0);
                     let params = extract_params_from_line(rest);
-                    let type_info = if params.is_empty() {
-                        None
-                    }
-                    else {
-                        Some(format!("({})", params.join(", ")))
-                    };
+                    let type_info = if params.is_empty() { None } else { Some(format!("({})", params.join(", "))) };
                     self.symbol_table.insert(Symbol {
                         name: name.clone(),
                         kind: SymbolKind::Function,
@@ -215,45 +204,25 @@ impl SemanticAnalyzer {
                 }
             }
             else if let Some(rest) = trimmed.strip_prefix("let ") {
-                let rest = if let Some(r) = rest.strip_prefix("mut ") {
-                    r
-                }
-                else {
-                    rest
-                };
+                let rest = if let Some(r) = rest.strip_prefix("mut ") { r } else { rest };
                 if let Some(name) = extract_identifier(rest) {
                     let column = line.find(&name).unwrap_or(0);
                     let type_info = extract_type_from_let(rest);
-                    self.symbol_table.insert(Symbol {
-                        name,
-                        kind: SymbolKind::Variable,
-                        line: line_idx,
-                        column,
-                        type_info,
-                    });
+                    self.symbol_table.insert(Symbol { name, kind: SymbolKind::Variable, line: line_idx, column, type_info });
                 }
             }
             else if let Some(rest) = trimmed.strip_prefix("const ") {
                 if let Some(name) = extract_identifier(rest) {
                     let column = line.find(&name).unwrap_or(0);
                     let type_info = extract_type_from_let(rest);
-                    self.symbol_table.insert(Symbol {
-                        name,
-                        kind: SymbolKind::Variable,
-                        line: line_idx,
-                        column,
-                        type_info,
-                    });
+                    self.symbol_table.insert(Symbol { name, kind: SymbolKind::Variable, line: line_idx, column, type_info });
                 }
             }
         }
 
         self.collect_undefined_references(source);
 
-        SemanticResult {
-            symbol_table: self.symbol_table.clone(),
-            diagnostics: self.diagnostics.clone(),
-        }
+        SemanticResult { symbol_table: self.symbol_table.clone(), diagnostics: self.diagnostics.clone() }
     }
 
     /// 根据名称查找符号定义。
@@ -295,10 +264,7 @@ impl SemanticAnalyzer {
         let start = source.lines().take(line).map(|l| l.len() + 1).sum::<usize>() + column;
         let end = start + ident.len();
 
-        Some(HoverInfo {
-            contents,
-            range: Some((start, end)),
-        })
+        Some(HoverInfo { contents, range: Some((start, end)) })
     }
 
     /// 获取上一次分析的诊断列表。
@@ -313,14 +279,38 @@ impl SemanticAnalyzer {
     /// 则报告为未定义引用。
     fn collect_undefined_references(&mut self, source: &str) {
         let keywords = [
-            "namespace", "micro", "let", "const", "fn", "if", "else", "while", "for",
-            "return", "break", "continue", "true", "false", "null", "struct", "enum",
-            "impl", "trait", "pub", "use", "mod", "import", "export", "from", "as",
-            "in", "match", "loop", "mut",
+            "namespace",
+            "micro",
+            "let",
+            "const",
+            "fn",
+            "if",
+            "else",
+            "while",
+            "for",
+            "return",
+            "break",
+            "continue",
+            "true",
+            "false",
+            "null",
+            "struct",
+            "enum",
+            "impl",
+            "trait",
+            "pub",
+            "use",
+            "mod",
+            "import",
+            "export",
+            "from",
+            "as",
+            "in",
+            "match",
+            "loop",
+            "mut",
         ];
-        let builtins = [
-            "print", "len", "push", "pop", "typeof", "to_string", "to_int", "to_float",
-        ];
+        let builtins = ["print", "len", "push", "pop", "typeof", "to_string", "to_int", "to_float"];
 
         for (line_idx, line) in source.lines().enumerate() {
             let trimmed = line.trim();
@@ -413,11 +403,7 @@ fn extract_params_from_line(rest: &str) -> Vec<String> {
 fn extract_type_from_let(rest: &str) -> Option<String> {
     if let Some(colon_pos) = rest.find(':') {
         let type_part = rest[colon_pos + 1..].trim();
-        let type_str = type_part
-            .split(|c: char| c == '=' || c == ',')
-            .next()
-            .unwrap_or(type_part)
-            .trim();
+        let type_str = type_part.split(|c: char| c == '=' || c == ',').next().unwrap_or(type_part).trim();
         if !type_str.is_empty() {
             return Some(type_str.to_string());
         }
@@ -427,12 +413,7 @@ fn extract_type_from_let(rest: &str) -> Option<String> {
 
 /// 从指定行文本的指定列位置提取标识符。
 fn extract_identifier_at(line: &str, column: usize) -> Option<String> {
-    let byte_offset = line
-        .char_indices()
-        .take(column)
-        .map(|(i, c)| i + c.len_utf8())
-        .last()
-        .unwrap_or(0);
+    let byte_offset = line.char_indices().take(column).map(|(i, c)| i + c.len_utf8()).last().unwrap_or(0);
 
     let remaining = line.get(byte_offset..)?;
     let ident = extract_identifier(remaining)?;
@@ -488,5 +469,3 @@ fn is_inside_string(line: &str, char_pos: usize) -> bool {
     }
     in_string
 }
-
-

@@ -2,10 +2,11 @@ use std::sync::{Arc, Mutex};
 
 use crate::{
     event::{EventSystem, UiEvent},
+    gui_event::{EventContext, GuiEvent, MouseButton},
     layout::LayoutResult,
     node::{UiNodeData, UiNodeId, UiTree},
     style::{FlexDirection, FontStyle, LayoutStyle, Style},
-    widget::Widget,
+    widget::{DirtyFlag, Widget},
 };
 use gg_core::GResult;
 
@@ -123,7 +124,8 @@ impl Button {
                         let inside = is_inside(*x, *y, layout_bounds.lock().unwrap().as_ref());
                         if inside {
                             *state.lock().unwrap() = ButtonState::Hovered;
-                        } else {
+                        }
+                        else {
                             *state.lock().unwrap() = ButtonState::Normal;
                         }
                         true
@@ -142,7 +144,8 @@ impl Button {
                             if let Some(ref mut cb) = on_click {
                                 cb();
                             }
-                        } else {
+                        }
+                        else {
                             *state.lock().unwrap() = ButtonState::Normal;
                         }
                         true
@@ -202,5 +205,61 @@ impl Widget for Button {
 
     fn node_id(&self) -> Option<UiNodeId> {
         self.node_id
+    }
+
+    fn render_template(&self) -> oak_voc::TemplateNode {
+        oak_voc::TemplateNode::text(String::new())
+    }
+
+    fn script_setup(&mut self) {}
+
+    fn get_id(&self) -> &str {
+        ""
+    }
+
+    fn handle_event(&mut self, event: &GuiEvent, _ctx: &mut EventContext) {
+        match event {
+            GuiEvent::MouseClick { button: MouseButton::Left, .. } => {
+                *self.state.lock().unwrap() = ButtonState::Hovered;
+                if let Some(ref mut cb) = self.on_click {
+                    cb();
+                }
+            }
+            GuiEvent::MouseMove { .. } => {
+                let current = *self.state.lock().unwrap();
+                if current != ButtonState::Pressed {
+                    *self.state.lock().unwrap() = ButtonState::Hovered;
+                }
+            }
+            _ => {}
+        }
+    }{
+        match event {
+            GuiEvent::MouseClick { x, y, button } => {
+                if *button == MouseButton::Left {
+                    let inside = is_inside(*x, *y, self.layout_bounds.lock().unwrap().as_ref());
+                    if inside {
+                        let old_state = *self.state.lock().unwrap();
+                        *self.state.lock().unwrap() = ButtonState::Pressed;
+                        if old_state != ButtonState::Pressed {
+                            self.mark_dirty(DirtyFlag::CONTENT);
+                        }
+                        if let Some(ref mut cb) = self.on_click {
+                            cb();
+                        }
+                    }
+                }
+            }
+            GuiEvent::MouseMove { x, y } => {
+                let inside = is_inside(*x, *y, self.layout_bounds.lock().unwrap().as_ref());
+                let new_state = if inside { ButtonState::Hovered } else { ButtonState::Normal };
+                let old_state = *self.state.lock().unwrap();
+                if old_state != new_state {
+                    *self.state.lock().unwrap() = new_state;
+                    self.mark_dirty(DirtyFlag::CONTENT);
+                }
+            }
+            _ => {}
+        }
     }
 }

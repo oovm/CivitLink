@@ -1,4 +1,5 @@
 use crate::{
+    gui_event::{EventContext, GuiEvent, Key, MouseButton},
     node::{UiNodeData, UiNodeId, UiTree},
     style::{FontStyle, LayoutStyle, SizeValue, Style},
     widget::Widget,
@@ -87,12 +88,9 @@ impl TextBox {
             "Backspace" => {
                 if self.has_selection() {
                     self.delete_selection();
-                } else if self.cursor_position > 0 {
-                    let prev = self.text[..self.cursor_position]
-                        .char_indices()
-                        .next_back()
-                        .map(|(i, _)| i)
-                        .unwrap_or(0);
+                }
+                else if self.cursor_position > 0 {
+                    let prev = self.text[..self.cursor_position].char_indices().next_back().map(|(i, _)| i).unwrap_or(0);
                     self.text.drain(prev..self.cursor_position);
                     self.cursor_position = prev;
                     self.trigger_on_text_change();
@@ -101,7 +99,8 @@ impl TextBox {
             "Delete" => {
                 if self.has_selection() {
                     self.delete_selection();
-                } else {
+                }
+                else {
                     let next = self.text[self.cursor_position..]
                         .char_indices()
                         .nth(1)
@@ -123,11 +122,7 @@ impl TextBox {
             }
             "Left" => {
                 if self.cursor_position > 0 {
-                    let prev = self.text[..self.cursor_position]
-                        .char_indices()
-                        .next_back()
-                        .map(|(i, _)| i)
-                        .unwrap_or(0);
+                    let prev = self.text[..self.cursor_position].char_indices().next_back().map(|(i, _)| i).unwrap_or(0);
                     self.cursor_position = prev;
                     self.clear_selection();
                 }
@@ -146,11 +141,7 @@ impl TextBox {
                     if self.selection_start.is_none() {
                         self.selection_start = Some(self.cursor_position);
                     }
-                    let prev = self.text[..self.cursor_position]
-                        .char_indices()
-                        .next_back()
-                        .map(|(i, _)| i)
-                        .unwrap_or(0);
+                    let prev = self.text[..self.cursor_position].char_indices().next_back().map(|(i, _)| i).unwrap_or(0);
                     self.cursor_position = prev;
                 }
             }
@@ -217,9 +208,7 @@ impl TextBox {
 
     /// 是否有选中的文本
     pub fn has_selection(&self) -> bool {
-        self.selection_start
-            .map(|start| start != self.cursor_position)
-            .unwrap_or(false)
+        self.selection_start.map(|start| start != self.cursor_position).unwrap_or(false)
     }
 
     /// 获取选中的文本
@@ -249,7 +238,8 @@ impl Widget for TextBox {
             let mut display = self.text.clone();
             display.insert_str(self.cursor_position, "|");
             display
-        } else {
+        }
+        else {
             self.text.clone()
         };
 
@@ -269,7 +259,8 @@ impl Widget for TextBox {
                 let mut display = self.text.clone();
                 display.insert_str(self.cursor_position, "|");
                 display
-            } else {
+            }
+            else {
                 self.text.clone()
             };
             if let Some(node) = tree.get_mut(id) {
@@ -280,5 +271,66 @@ impl Widget for TextBox {
 
     fn node_id(&self) -> Option<UiNodeId> {
         self.node_id
+    }
+
+    fn render_template(&self) -> oak_voc::TemplateNode {
+        oak_voc::TemplateNode::text(String::new())
+    }
+
+    fn script_setup(&mut self) {}
+
+    fn get_id(&self) -> &str {
+        ""
+    }
+
+    fn handle_event(&mut self, event: &GuiEvent, _ctx: &mut EventContext) {
+        match event {
+            GuiEvent::KeyPress { key, .. } => {
+                let key_str = match key {
+                    Key::Backspace => "backspace",
+                    Key::Enter => "enter",
+                    Key::Escape => "escape",
+                    Key::Tab => "tab",
+                    Key::Space => " ",
+                    Key::A => "a",
+                    Key::B => "b",
+                    Key::C => "c",
+                    Key::D => "d",
+                    Key::E => "e",
+                    Key::F => "f",
+                    Key::G => "g",
+                    Key::H => "h",
+                    Key::I => "i",
+                    Key::J => "j",
+                    Key::K => "k",
+                    Key::L => "l",
+                    Key::M => "m",
+                    Key::N => "n",
+                    Key::O => "o",
+                    Key::P => "p",
+                    Key::Q => "q",
+                    Key::R => "r",
+                    Key::S => "s",
+                    Key::T => "t",
+                    Key::U => "u",
+                    Key::V => "v",
+                    Key::W => "w",
+                    Key::X => "x",
+                    Key::Y => "y",
+                    Key::Z => "z",
+                    Key::Number(n) => return self.handle_key_input(&n.to_string()),
+                    Key::FKey(n) => return self.handle_key_input(&format!("f{}", n)),
+                    Key::Other(s) => return self.handle_key_input(s),
+                };
+                self.handle_key_input(key_str);
+            }
+            GuiEvent::TextInput { text } => {
+                self.insert_text(text);
+            }
+            GuiEvent::MouseClick { button: MouseButton::Left, .. } => {
+                self.is_focused = true;
+            }
+            _ => {}
+        }
     }
 }

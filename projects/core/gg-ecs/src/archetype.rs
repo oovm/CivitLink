@@ -131,7 +131,12 @@ impl Archetype {
     ///
     /// 与 add_component 类似，但接受已装箱的类型擦除组件。
     /// 通过类型 ID 查找或创建组件列，然后将组件数据写入对应位置。
-    pub fn add_component_raw(&mut self, row: usize, component: Box<dyn std::any::Any + Send + Sync>, type_id: std::any::TypeId) {
+    pub fn add_component_raw(
+        &mut self,
+        row: usize,
+        component: Box<dyn std::any::Any + Send + Sync>,
+        type_id: std::any::TypeId,
+    ) {
         let column = self.storage.get_column_mut(type_id);
         if let Some(column) = column {
             column.ensure_len(row + 1);

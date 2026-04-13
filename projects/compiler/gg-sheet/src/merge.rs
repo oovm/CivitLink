@@ -25,7 +25,13 @@ pub fn group_by_prefix(tables: &[SheetTable]) -> HashMap<String, Vec<&SheetTable
         }
     }
 
-    groups.retain(|_, v| v.len() > 1);
+    groups.retain(|_, v| {
+        if v.len() < 2 {
+            return false;
+        }
+        let first_kind = &v[0].kind;
+        v.iter().all(|t| t.kind == *first_kind)
+    });
     groups
 }
 

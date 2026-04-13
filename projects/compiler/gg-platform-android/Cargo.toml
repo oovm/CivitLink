@@ -1,0 +1,13 @@
+[package]
+name = "gg-platform-android"
+version = "0.1.0"
+edition = "2021"
+description = "GG 引擎 Android 平台实现"
+license = "MIT"
+
+[dependencies]
+gg-core = { path = "../../core/gg-core" }
+gg-platform = { path = "../gg-platform" }
+
+[dev-dependencies]
+tokio = { version = "1.51.1", features = ["full"] }

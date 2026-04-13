@@ -1,0 +1,34 @@
+[package]
+name = "gg-engine"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+wgpu = { workspace = true }
+winit = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = { workspace = true }
+image = { workspace = true }
+
+
+# GG Engine Core
+gg-core = { workspace = true }
+gg-ecs = { workspace = true }
+gg-asset = { workspace = true }
+gg-compiler = { workspace = true }
+gg-ir = { workspace = true }
+gg-bytecode = { workspace = true }
+gg-runtime-ui = { workspace = true }
+gg-render = { workspace = true }
+gg-render-wgpu = { workspace = true }
+gg-ui = { workspace = true }
+gg-manifest = { workspace = true }
+
+
+
+# Oak
+oak-markdown = { workspace = true }
+oak-core = { workspace = true }

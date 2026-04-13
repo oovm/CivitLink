@@ -2,7 +2,7 @@
 //! 
 //! 展示如何使用游戏 UI 系统创建游戏内界面
 
-use gg_game_ui::{Canvas, RectTransform, components::*};
+use gg_ui::canvas::{Canvas, RectTransform, components::*};
 use gg_ecs::World;
 use gg_error::GResult;
 

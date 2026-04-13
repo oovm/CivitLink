@@ -8,7 +8,9 @@
 pub mod command;
 pub mod context;
 pub mod docking;
+pub mod dynamic_loader;
 pub mod event;
+pub mod extension;
 pub mod panel;
 pub mod plugin;
 pub mod service;
@@ -16,9 +18,18 @@ pub mod shell;
 
 pub use command::{Command, CommandManager, ModifierState, ShortcutKey, ShortcutRegistry};
 pub use context::{EditorConfig, EditorContext};
-pub use docking::{DockRegion, DockRegionConfig, DockSplit, DockingLayout, PanelLayout};
-pub use event::{EditorEvent, EventBus, Key, MouseButton, SubscriptionId};
+pub use docking::{
+    DockRegion, DockRegionConfig, DockRegionSnapshot, DockSplit, DockSplitSnapshot, DockingLayout, LayoutSnapshot, PanelLayout,
+};
+#[cfg(not(target_arch = "wasm32"))]
+pub use dynamic_loader::DynamicPluginLoader;
+pub use dynamic_loader::{EDITOR_PLUGIN_ABI_VERSION, PluginEntryFn, PluginManifest};
+pub use event::{DragData, DragState, DragVisualFeedback, EditorEvent, EventBus, Key, MouseButton, SubscriptionId};
+pub use extension::{DefaultExtensionApi, ExtensionApi, ExtensionPointHandler, ExtensionPointRegistry};
 pub use panel::{EditorPanel, PanelLayoutHint, PanelPosition};
-pub use plugin::EditorPlugin;
-pub use service::{DefaultWindowService, PendingWindowCreate, ServiceRegistry, WindowId, WindowService, WinitWindowInfo, WinitWindowService};
+pub use plugin::{EditorPlugin, PluginDescriptor, PluginEntry, PluginManager, PluginState};
+pub use service::{
+    DefaultWindowService, PendingWindowCreate, ServiceDescriptor, ServiceLifecycle, ServiceRegistry, WindowId, WindowService,
+    WinitWindowInfo, WinitWindowService,
+};
 pub use shell::EditorShell;

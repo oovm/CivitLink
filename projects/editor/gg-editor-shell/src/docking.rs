@@ -2,9 +2,10 @@
 
 use crate::panel::{EditorPanel, PanelPosition};
 use gg_render::{Color, DrawCommand, Rect, RenderContext};
+use serde::{Deserialize, Serialize};
 
 /// 停靠区域
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum DockRegion {
     /// 左侧区域
     Left,
@@ -14,6 +15,45 @@ pub enum DockRegion {
     Center,
     /// 底部区域
     Bottom,
+}
+
+/// 停靠区域快照
+///
+/// 用于序列化持久化的区域配置快照，仅保留可恢复布局所需的最小信息。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DockRegionSnapshot {
+    /// 区域宽度（Left/Right 使用）或高度（Bottom 使用）
+    pub size: f32,
+    /// 最小尺寸
+    pub min_size: f32,
+    /// 该区域包含的面板名称列表
+    pub panel_names: Vec<String>,
+}
+
+/// 区域分隔条快照
+///
+/// 用于序列化持久化的分隔条位置快照，仅保留区域和位置信息。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DockSplitSnapshot {
+    /// 分隔条所属的区域边界
+    pub region: DockRegion,
+    /// 分隔条的位置（像素偏移）
+    pub position: f32,
+}
+
+/// 布局快照
+///
+/// 用于序列化持久化的完整布局快照，包含所有区域配置和分隔条位置。
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LayoutSnapshot {
+    /// 左侧区域快照
+    pub left: Option<DockRegionSnapshot>,
+    /// 右侧区域快照
+    pub right: Option<DockRegionSnapshot>,
+    /// 底部区域快照
+    pub bottom: Option<DockRegionSnapshot>,
+    /// 分隔条快照列表
+    pub splits: Vec<DockSplitSnapshot>,
 }
 
 /// 区域分隔条
@@ -75,31 +115,69 @@ impl DockingLayout {
     pub fn default_layout() -> Self {
         DockingLayout {
             left: None,
-            right: Some(DockRegionConfig {
-                size: 300.0,
-                min_size: 200.0,
-                panel_names: vec!["inspector".to_string()],
-            }),
-            bottom: Some(DockRegionConfig {
-                size: 200.0,
-                min_size: 100.0,
-                panel_names: vec!["asset_browser".to_string()],
-            }),
+            right: Some(DockRegionConfig { size: 300.0, min_size: 200.0, panel_names: vec!["Inspector".to_string()] }),
+            bottom: Some(DockRegionConfig { size: 200.0, min_size: 100.0, panel_names: vec!["Asset Browser".to_string()] }),
             splits: vec![
-                DockSplit {
-                    region: DockRegion::Right,
-                    position: 300.0,
-                    min_size: 200.0,
-                    is_dragging: false,
-                },
-                DockSplit {
-                    region: DockRegion::Bottom,
-                    position: 200.0,
-                    min_size: 100.0,
-                    is_dragging: false,
-                },
+                DockSplit { region: DockRegion::Right, position: 300.0, min_size: 200.0, is_dragging: false },
+                DockSplit { region: DockRegion::Bottom, position: 200.0, min_size: 100.0, is_dragging: false },
             ],
         }
+    }
+
+    /// 将当前布局转换为可序列化的快照
+    ///
+    /// 提取区域配置和分隔条位置信息，丢弃运行时状态（如拖拽标志），
+    /// 生成可用于持久化存储的布局快照。
+    pub fn to_snapshot(&self) -> LayoutSnapshot {
+        LayoutSnapshot {
+            left: self.left.as_ref().map(|cfg| DockRegionSnapshot {
+                size: cfg.size,
+                min_size: cfg.min_size,
+                panel_names: cfg.panel_names.clone(),
+            }),
+            right: self.right.as_ref().map(|cfg| DockRegionSnapshot {
+                size: cfg.size,
+                min_size: cfg.min_size,
+                panel_names: cfg.panel_names.clone(),
+            }),
+            bottom: self.bottom.as_ref().map(|cfg| DockRegionSnapshot {
+                size: cfg.size,
+                min_size: cfg.min_size,
+                panel_names: cfg.panel_names.clone(),
+            }),
+            splits: self
+                .splits
+                .iter()
+                .map(|split| DockSplitSnapshot { region: split.region, position: split.position })
+                .collect(),
+        }
+    }
+
+    /// 从快照恢复布局
+    ///
+    /// 将持久化的布局快照还原为完整的 `DockingLayout`，
+    /// 分隔条的最小尺寸从对应区域配置中恢复，拖拽标志初始化为 `false`。
+    pub fn from_snapshot(snapshot: LayoutSnapshot) -> Self {
+        let left = snapshot.left.map(|s| DockRegionConfig { size: s.size, min_size: s.min_size, panel_names: s.panel_names });
+        let right = snapshot.right.map(|s| DockRegionConfig { size: s.size, min_size: s.min_size, panel_names: s.panel_names });
+        let bottom =
+            snapshot.bottom.map(|s| DockRegionConfig { size: s.size, min_size: s.min_size, panel_names: s.panel_names });
+
+        let splits = snapshot
+            .splits
+            .into_iter()
+            .map(|s| {
+                let min_size = match s.region {
+                    DockRegion::Left => left.as_ref().map(|l| l.min_size).unwrap_or(0.0),
+                    DockRegion::Right => right.as_ref().map(|r| r.min_size).unwrap_or(0.0),
+                    DockRegion::Bottom => bottom.as_ref().map(|b| b.min_size).unwrap_or(0.0),
+                    DockRegion::Center => 0.0,
+                };
+                DockSplit { region: s.region, position: s.position, min_size, is_dragging: false }
+            })
+            .collect();
+
+        DockingLayout { left, right, bottom, splits }
     }
 
     /// 计算所有面板的布局
@@ -225,11 +303,7 @@ impl DockingLayout {
                 }
                 DockRegion::Center => continue,
             };
-            context.draw(DrawCommand::Rect {
-                rect,
-                color: split_color,
-                corner_radius: 0.0,
-            });
+            context.draw(DrawCommand::Rect { rect, color: split_color, corner_radius: 0.0 });
         }
     }
 

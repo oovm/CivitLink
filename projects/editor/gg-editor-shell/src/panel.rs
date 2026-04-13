@@ -1,9 +1,8 @@
 //! 编辑器面板 trait 和布局提示
 
-use crate::context::EditorContext;
-use crate::event::EditorEvent;
+use crate::{context::EditorContext, event::EditorEvent};
 use gg_core::GResult;
-use gg_ui::UiTree;
+use gg_ui::{UiNodeId, UiTree};
 
 /// 面板位置
 pub enum PanelPosition {
@@ -65,11 +64,13 @@ pub trait EditorPanel {
 
     /// 构建面板 UI 节点树
     ///
+    /// 返回面板 UI 子树的根节点 ID，若面板不创建任何节点则返回 `None`。
+    ///
     /// # 参数
     ///
     /// - `context` - 编辑器上下文
     /// - `ui_tree` - UI 节点树
-    fn build_ui(&mut self, context: &mut EditorContext, ui_tree: &mut UiTree) -> GResult<()>;
+    fn build_ui(&mut self, context: &mut EditorContext, ui_tree: &mut UiTree) -> Option<UiNodeId>;
 
     /// 渲染面板（已弃用，保留向后兼容）
     #[deprecated(note = "使用 build_ui 替代")]
@@ -80,5 +81,12 @@ pub trait EditorPanel {
     /// 面板布局提示
     fn layout_hint(&self) -> PanelLayoutHint {
         PanelLayoutHint::default()
+    }
+
+    /// 面板初始化优先级
+    ///
+    /// 数值越小越优先初始化。默认为 100。
+    fn priority(&self) -> u32 {
+        100
     }
 }

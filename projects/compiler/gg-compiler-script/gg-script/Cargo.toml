@@ -1,0 +1,20 @@
+[package]
+name = "gg-script"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-ir = { workspace = true }
+gg-bytecode = { workspace = true }
+oak-valkyrie = { workspace = true }
+oak-core = { workspace = true }
+sha1 = { workspace = true }
+bincode = { workspace = true }
+serde = { workspace = true }
+
+[dev-dependencies]
+gg-vm = { workspace = true }
+tempfile = { workspace = true }

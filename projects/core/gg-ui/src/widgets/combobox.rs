@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    gui_event::{EventContext, GuiEvent, MouseButton},
     node::{UiNodeData, UiNodeId, UiTree},
     style::{FlexAlign, FlexDirection, FontStyle, LayoutStyle, Style},
     widget::Widget,
@@ -47,11 +48,7 @@ impl ComboBox {
             .with_border_color(gg_render::Color::new(0.5, 0.5, 0.5, 1.0))
             .with_border_width(1.0)
             .with_corner_radius(4.0)
-            .with_layout(
-                LayoutStyle::new()
-                    .with_direction(FlexDirection::Column)
-                    .with_padding(8.0),
-            )
+            .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column).with_padding(8.0))
             .with_font(FontStyle::new());
 
         Self {
@@ -118,55 +115,27 @@ impl ComboBox {
 
 impl Widget for ComboBox {
     fn build(&mut self, tree: &mut UiTree) -> GResult<UiNodeId> {
-        let root_id = tree.create_node(
-            "ComboBox",
-            self.style.clone(),
-            UiNodeData::Container,
+        let root_id = tree.create_node("ComboBox", self.style.clone(), UiNodeData::Container);
+
+        let display_row_style = Style::new().with_layout(
+            LayoutStyle::new()
+                .with_direction(FlexDirection::Row)
+                .with_align_items(FlexAlign::Center)
+                .with_justify_content(FlexAlign::SpaceBetween),
         );
 
-        let display_row_style = Style::new()
-            .with_layout(
-                LayoutStyle::new()
-                    .with_direction(FlexDirection::Row)
-                    .with_align_items(FlexAlign::Center)
-                    .with_justify_content(FlexAlign::SpaceBetween),
-            );
+        let display_row_id = tree.create_node("ComboBox_DisplayRow", display_row_style, UiNodeData::Container);
 
-        let display_row_id = tree.create_node(
-            "ComboBox_DisplayRow",
-            display_row_style,
-            UiNodeData::Container,
-        );
+        let selected_text = self.selected_index.and_then(|i| self.options.get(i)).cloned().unwrap_or_default();
 
-        let selected_text = self
-            .selected_index
-            .and_then(|i| self.options.get(i))
-            .cloned()
-            .unwrap_or_default();
+        let selected_text_style = Style::new().with_font(self.style.font.clone().unwrap_or_default());
 
-        let selected_text_style = Style::new().with_font(
-            self.style.font.clone().unwrap_or_default(),
-        );
+        let selected_text_id =
+            tree.create_node("ComboBox_SelectedText", selected_text_style, UiNodeData::Text { content: selected_text });
 
-        let selected_text_id = tree.create_node(
-            "ComboBox_SelectedText",
-            selected_text_style,
-            UiNodeData::Text {
-                content: selected_text,
-            },
-        );
+        let arrow_style = Style::new().with_font(FontStyle::new().with_size(12.0));
 
-        let arrow_style = Style::new().with_font(
-            FontStyle::new().with_size(12.0),
-        );
-
-        let arrow_id = tree.create_node(
-            "ComboBox_Arrow",
-            arrow_style,
-            UiNodeData::Text {
-                content: "▼".to_string(),
-            },
-        );
+        let arrow_id = tree.create_node("ComboBox_Arrow", arrow_style, UiNodeData::Text { content: "▼".to_string() });
 
         tree.add_child(display_row_id, selected_text_id);
         tree.add_child(display_row_id, arrow_id);
@@ -181,43 +150,29 @@ impl Widget for ComboBox {
                 .with_border_color(gg_render::Color::new(0.4, 0.4, 0.4, 1.0))
                 .with_border_width(1.0)
                 .with_corner_radius(4.0)
-                .with_layout(
-                    LayoutStyle::new()
-                        .with_direction(FlexDirection::Column)
-                        .with_padding(4.0)
-                        .with_gap(2.0),
-                );
+                .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column).with_padding(4.0).with_gap(2.0));
 
-            let dropdown_id = tree.create_node(
-                "ComboBox_Dropdown",
-                dropdown_style,
-                UiNodeData::Container,
-            );
+            let dropdown_id = tree.create_node("ComboBox_Dropdown", dropdown_style, UiNodeData::Container);
 
             for (i, option) in self.options.iter().enumerate() {
                 let is_selected = self.selected_index == Some(i);
                 let bg = if is_selected {
                     gg_render::Color::new(0.26, 0.52, 0.96, 1.0)
-                } else {
+                }
+                else {
                     gg_render::Color::new(0.0, 0.0, 0.0, 0.0)
                 };
 
                 let option_style = Style::new()
                     .with_background_color(bg)
                     .with_corner_radius(2.0)
-                    .with_layout(
-                        LayoutStyle::new()
-                            .with_direction(FlexDirection::Row)
-                            .with_padding(6.0),
-                    )
+                    .with_layout(LayoutStyle::new().with_direction(FlexDirection::Row).with_padding(6.0))
                     .with_font(self.style.font.clone().unwrap_or_default());
 
                 let option_id = tree.create_node(
                     format!("ComboBox_Option({})", option),
                     option_style,
-                    UiNodeData::Text {
-                        content: option.clone(),
-                    },
+                    UiNodeData::Text { content: option.clone() },
                 );
 
                 tree.add_child(dropdown_id, option_id);
@@ -240,11 +195,7 @@ impl Widget for ComboBox {
 
     fn update(&self, tree: &mut UiTree) {
         if let Some(selected_text_id) = self.selected_text_node_id {
-            let selected_text = self
-                .selected_index
-                .and_then(|i| self.options.get(i))
-                .cloned()
-                .unwrap_or_default();
+            let selected_text = self.selected_index.and_then(|i| self.options.get(i)).cloned().unwrap_or_default();
 
             if let Some(node) = tree.get_mut(selected_text_id) {
                 if let UiNodeData::Text { ref mut content } = node.data {
@@ -273,7 +224,8 @@ impl Widget for ComboBox {
                 let is_selected = self.selected_index == Some(index);
                 let bg = if is_selected {
                     gg_render::Color::new(0.26, 0.52, 0.96, 1.0)
-                } else {
+                }
+                else {
                     gg_render::Color::new(0.0, 0.0, 0.0, 0.0)
                 };
                 if let Some(node) = tree.get_mut(option_id) {
@@ -285,5 +237,28 @@ impl Widget for ComboBox {
 
     fn node_id(&self) -> Option<UiNodeId> {
         self.node_id
+    }
+
+    fn render_template(&self) -> oak_voc::TemplateNode {
+        oak_voc::TemplateNode::text(String::new())
+    }
+
+    fn script_setup(&mut self) {}
+
+    fn get_id(&self) -> &str {
+        ""
+    }
+
+    fn handle_event(&mut self, event: &GuiEvent, _ctx: &mut EventContext) {
+        match event {
+            GuiEvent::MouseClick { button: MouseButton::Left, .. } => {
+                if self.dropdown_open {
+                    self.dropdown_open = false;
+                } else {
+                    self.dropdown_open = true;
+                }
+            }
+            _ => {}
+        }
     }
 }

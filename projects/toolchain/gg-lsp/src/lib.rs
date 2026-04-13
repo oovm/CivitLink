@@ -17,16 +17,12 @@ pub mod formatter;
 
 pub use completion::{CompletionEntry, CompletionItemKind, CompletionProvider};
 pub use semantic::{
-    DiagnosticSeverity, HoverInfo, SemanticAnalyzer, SemanticDiagnostic, SemanticResult, Symbol,
-    SymbolKind, SymbolTable,
+    DiagnosticSeverity, HoverInfo, SemanticAnalyzer, SemanticDiagnostic, SemanticResult, Symbol, SymbolKind, SymbolTable,
 };
 
 #[cfg(feature = "lsp")]
 mod lang {
-    use oak_core::language::{
-        ElementType, Language, LanguageCategory, TokenType,
-        UniversalElementRole, UniversalTokenRole,
-    };
+    use oak_core::language::{ElementType, Language, LanguageCategory, TokenType, UniversalElementRole, UniversalTokenRole};
     use std::hash::Hash;
 
     /// Valkyrie 语言的 token 类型。
@@ -133,14 +129,8 @@ mod lang {
 
 #[cfg(feature = "lsp")]
 use {
-    core::range::Range,
-    futures::Future,
-    oak_core::source::Source,
-    oak_core::tree::RedNode,
-    oak_lsp::service::LanguageService,
-    oak_lsp::types::Hover as LspHover,
-    oak_vfs::Vfs,
-    std::sync::Mutex,
+    core::range::Range, futures::Future, oak_core::source::Source, oak_core::tree::RedNode, oak_lsp::service::LanguageService,
+    oak_lsp::types::Hover as LspHover, oak_vfs::Vfs, std::sync::Mutex,
 };
 
 #[cfg(feature = "lsp")]
@@ -161,11 +151,7 @@ pub struct GgLanguageService<V: Vfs> {
 impl<V: Vfs> GgLanguageService<V> {
     /// Creates a new `GgLanguageService` with the given VFS.
     pub fn new(vfs: V) -> Self {
-        Self {
-            vfs,
-            workspace: oak_lsp::workspace::WorkspaceManager::new(),
-            analyzer: Mutex::new(SemanticAnalyzer::new()),
-        }
+        Self { vfs, workspace: oak_lsp::workspace::WorkspaceManager::new(), analyzer: Mutex::new(SemanticAnalyzer::new()) }
     }
 
     /// 提供自动补全
@@ -220,10 +206,7 @@ impl<V: Vfs + Send + Sync + 'static + oak_vfs::WritableVfs> LanguageService for 
         });
         async move {
             let hover_info = hover_result?;
-            Some(LspHover {
-                contents: hover_info.contents,
-                range: hover_info.range.map(|(s, e)| Range { start: s, end: e }),
-            })
+            Some(LspHover { contents: hover_info.contents, range: hover_info.range.map(|(s, e)| Range { start: s, end: e }) })
         }
     }
 }

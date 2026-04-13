@@ -157,6 +157,11 @@ impl PropertyBinding for EcsPropertyBinding {
 /// 替代通过 PropertyStore 间接存储的方式。
 /// 当反射注册表中存在对应类型的注册信息时，
 /// 直接读写组件字段；否则降级到 PropertyStore。
+///
+/// **注意**：当前反射 API 尚不支持字段值的字符串序列化/反序列化，
+/// 因此暂时仍使用 PropertyStore 作为实际存储路径。
+/// 待 `PartialReflect` 扩展字符串读写能力后，
+/// 将切换为通过反射 API 直接操作组件字段。
 pub struct ReflectionPropertyBinding {
     /// 组件类型名称
     component_type: String,
@@ -173,6 +178,11 @@ impl ReflectionPropertyBinding {
 
 impl PropertyBinding for ReflectionPropertyBinding {
     fn read(&self, world: &mut World, entity: u64) -> Option<String> {
+        // TODO: 当反射 API 支持 PartialReflect 字段值字符串序列化后，
+        // 通过 world.get_resource::<ReflectionRegistry>() 获取注册表，
+        // 使用 get_by_short_name(&self.component_type) 查找类型，
+        // 再通过 get_component_reflect + get + field 读取字段值并转为字符串。
+        // 目前仍使用 PropertyStore 间接存储。
         if let Some(store) = world.get_resource::<PropertyStore>() {
             if let Some(value) = store.get(entity, &self.component_type, &self.property_name) {
                 return Some(value.to_string());
@@ -182,6 +192,11 @@ impl PropertyBinding for ReflectionPropertyBinding {
     }
 
     fn write(&self, world: &mut World, entity: u64, value: &str) -> GResult<()> {
+        // TODO: 当反射 API 支持 PartialReflect 字段值字符串反序列化后，
+        // 通过 world.get_resource::<ReflectionRegistry>() 获取注册表，
+        // 使用 get_by_short_name(&self.component_type) 查找类型，
+        // 再通过 get_component_reflect + get_mut + field_mut 写入字段值。
+        // 目前仍使用 PropertyStore 间接存储。
         if world.get_resource::<PropertyStore>().is_none() {
             world.insert_resource(PropertyStore::new());
         }

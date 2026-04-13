@@ -8,6 +8,7 @@ license = { workspace = true }
 [dependencies]
 serde = { workspace = true }
 oak-von = { workspace = true, features = ["serde"] }
+oak-voc = { workspace = true }
 oak-core = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }

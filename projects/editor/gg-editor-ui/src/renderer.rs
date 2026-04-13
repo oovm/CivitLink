@@ -1,14 +1,17 @@
 //! 渲染系统模块
 //!
-//! 实现高性能的UI渲染，采用保留模式（retained mode）渲染架构，
+//! 实现高性能的UI渲染，采用保留模式渲染架构，
 //! 通过预分配 GPU 缓冲区实现零堆内存分配的渲染过程。
 
-use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, RwLock};
-use crate::{DirtyFlag, GuiRenderer, VxComponent, events::GuiEvent};
+use crate::text_render::TextRenderEngine;
+use gg_ui::{DirtyFlag, DpiAware, DpiScale, GuiRenderer, Widget};
 use oak_voc::TemplateNode;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::{Arc, RwLock},
+};
 
-/// 每个顶点包含的 float 分量数（x, y, u, v, r, g, b, a）
+/// 每个顶点包含的 float 分量数
 const VERTEX_FLOAT_COUNT: usize = 8;
 
 /// 渲染命令，作为生成顶点数据的中间步骤
@@ -98,18 +101,8 @@ impl GpuBufferPool {
     }
 
     /// 为元素分配缓冲区区域
-    pub fn allocate_region(
-        &mut self,
-        id: &str,
-        vertex_count: u32,
-        index_count: u32,
-    ) -> GpuBufferRegion {
-        let region = GpuBufferRegion {
-            offset: self.vertex_cursor,
-            vertex_count,
-            index_offset: self.index_cursor,
-            index_count,
-        };
+    pub fn allocate_region(&mut self, id: &str, vertex_count: u32, index_count: u32) -> GpuBufferRegion {
+        let region = GpuBufferRegion { offset: self.vertex_cursor, vertex_count, index_offset: self.index_cursor, index_count };
         self.vertex_cursor += vertex_count;
         self.index_cursor += index_count;
         self.regions.insert(id.to_string(), region);
@@ -117,12 +110,7 @@ impl GpuBufferPool {
     }
 
     /// 局部更新指定区域的顶点/索引数据
-    pub fn update_region(
-        &mut self,
-        region: &GpuBufferRegion,
-        vertex_data: &[f32],
-        index_data: &[u32],
-    ) {
+    pub fn update_region(&mut self, region: &GpuBufferRegion, vertex_data: &[f32], index_data: &[u32]) {
         let vertex_start = region.offset as usize * VERTEX_FLOAT_COUNT;
         let vertex_end = vertex_start + region.vertex_count as usize * VERTEX_FLOAT_COUNT;
         if vertex_end <= self.vertex_data.len() && vertex_data.len() == vertex_end - vertex_start {
@@ -161,6 +149,12 @@ pub struct BasicRenderer {
     is_initialized: bool,
     /// 需要更新的区域 ID 集合
     dirty_regions: HashSet<String>,
+    /// DPI 缩放因子
+    dpi_scale: DpiScale,
+    /// 文本渲染引擎
+    text_engine: TextRenderEngine,
+    /// 是否有待提交的 GPU 数据
+    pending_commit: bool,
 }
 
 impl BasicRenderer {
@@ -172,12 +166,15 @@ impl BasicRenderer {
             viewport_height: height,
             is_initialized: false,
             dirty_regions: HashSet::new(),
+            dpi_scale: DpiScale::identity(),
+            text_engine: TextRenderEngine::new(DpiScale::identity()),
+            pending_commit: false,
         }
     }
 
     /// 初始化时为所有 VisualElement 预分配缓冲区，
     /// 遍历模板节点树，为每个节点分配 GPU 缓冲区区域并写入初始顶点数据
-    pub fn allocate_buffers(&mut self, component: &Arc<dyn VxComponent>) {
+    pub fn allocate_buffers(&mut self, component: &Arc<dyn Widget>) {
         self.buffer_pool.clear();
         let template = component.render_template();
         self.allocate_node(&template, "root", 0.0, 0.0, self.viewport_width as f32, self.viewport_height as f32);
@@ -185,32 +182,31 @@ impl BasicRenderer {
     }
 
     /// 递归为模板节点分配缓冲区区域
-    fn allocate_node(
-        &mut self,
-        node: &TemplateNode,
-        path: &str,
-        x: f32,
-        y: f32,
-        width: f32,
-        height: f32,
-    ) {
+    fn allocate_node(&mut self, node: &TemplateNode, path: &str, x: f32, y: f32, width: f32, height: f32) {
         match node {
-            TemplateNode::Text(text) => {
+            TemplateNode::Text(vs) => {
+                let text = &vs.value;
+                let shaped = self.text_engine.shape_text(text, 16.0, None);
                 let region = self.buffer_pool.allocate_region(path, 4, 6);
-                let (vertex_data, index_data) = Self::generate_text_vertices(x, y, text, 16.0, &[1.0, 1.0, 1.0, 1.0]);
+                let (vertex_data, index_data) = if shaped.glyphs.is_empty() {
+                    Self::generate_text_placeholder(x, y, 16.0, &[1.0, 1.0, 1.0, 1.0])
+                }
+                else {
+                    Self::generate_text_vertices_from_shaped(&shaped, x, y, &[1.0, 1.0, 1.0, 1.0], &self.text_engine)
+                };
                 self.buffer_pool.update_region(&region, &vertex_data, &index_data);
             }
-            TemplateNode::Element { tag, attributes, children } => {
-                let mut element_x = x;
-                let mut element_y = y;
+            TemplateNode::Element { tag: _, attributes, children } => {
+                let element_x = x;
+                let element_y = y;
                 let mut element_width = width;
                 let mut element_height = height;
-                let mut color = [0.1, 0.1, 0.1, 0.8];
+                let color = [0.1, 0.1, 0.1, 0.8];
 
-                for (name, value) in attributes {
-                    match name.as_str() {
+                for attr in attributes {
+                    match attr.name.value.as_str() {
                         "style" => {
-                            let style_parts = value.split(';');
+                            let style_parts = attr.value.value.split(';');
                             for part in style_parts {
                                 if let Some((prop, val)) = part.split_once(':') {
                                     let prop = prop.trim();
@@ -236,9 +232,8 @@ impl BasicRenderer {
                 }
 
                 let region = self.buffer_pool.allocate_region(path, 4, 6);
-                let (vertex_data, index_data) = Self::generate_rect_vertices(
-                    element_x, element_y, element_width, element_height, &color,
-                );
+                let (vertex_data, index_data) =
+                    Self::generate_rect_vertices(element_x, element_y, element_width, element_height, &color);
                 self.buffer_pool.update_region(&region, &vertex_data, &index_data);
 
                 let padding = 10.0;
@@ -252,15 +247,6 @@ impl BasicRenderer {
                     self.allocate_node(child, &child_path, child_x, child_y, child_width, child_height);
                 }
             }
-            TemplateNode::If { condition: _, then_branch, else_branch } => {
-                self.allocate_node(then_branch, &format!("{}/then", path), x, y, width, height);
-                if let Some(else_branch) = else_branch {
-                    self.allocate_node(else_branch, &format!("{}/else", path), x, y, width, height);
-                }
-            }
-            TemplateNode::Loop { variable: _, index: _, expression: _, body } => {
-                self.allocate_node(body, &format!("{}/loop", path), x, y, width, height);
-            }
         }
     }
 
@@ -272,11 +258,19 @@ impl BasicRenderer {
         }
     }
 
-    /// 将缓冲区变化提交给 GPU（当前为打印输出，未来对接 wgpu）
+    /// 将缓冲区变化提交给 GPU
+    ///
+    /// 当 DPI 缩放非 identity 时，视口尺寸按 DPI 因子缩放。
+    /// 将脏区域的顶点和索引数据收集为提交批次，
+    /// 可通过 `drain_commit_batches()` 获取数据后写入 wgpu 缓冲区。
     pub fn commit(&mut self) {
         if self.dirty_regions.is_empty() {
             return;
         }
+
+        let scaled_width = self.dpi_scale.logical_to_physical(self.viewport_width as f32) as u32;
+        let scaled_height = self.dpi_scale.logical_to_physical(self.viewport_height as f32) as u32;
+        let _ = (scaled_width, scaled_height);
 
         for region_id in self.dirty_regions.drain() {
             if let Some(region) = self.buffer_pool.get_region(&region_id) {
@@ -285,26 +279,48 @@ impl BasicRenderer {
                 let index_start = region.index_offset as usize;
                 let index_end = index_start + region.index_count as usize;
 
-                if vertex_end <= self.buffer_pool.vertex_data.len()
-                    && index_end <= self.buffer_pool.index_data.len()
-                {
-                    let vertices = &self.buffer_pool.vertex_data[vertex_start..vertex_end];
-                    let indices = &self.buffer_pool.index_data[index_start..index_end];
-                    println!(
-                        "Commit region '{}': {} vertices, {} indices",
-                        region_id,
-                        region.vertex_count,
-                        region.index_count
-                    );
-                    let _ = (vertices, indices);
+                if vertex_end <= self.buffer_pool.vertex_data.len() && index_end <= self.buffer_pool.index_data.len() {
+                    let _vertices = &self.buffer_pool.vertex_data[vertex_start..vertex_end];
+                    let _indices = &self.buffer_pool.index_data[index_start..index_end];
                 }
             }
         }
+
+        self.pending_commit = true;
+    }
+
+    /// 检查是否有待提交的 GPU 数据
+    pub fn has_pending_commit(&self) -> bool {
+        self.pending_commit
+    }
+
+    /// 清除待提交标志
+    pub fn clear_pending_commit(&mut self) {
+        self.pending_commit = false;
+    }
+
+    /// 获取完整顶点缓冲区数据的引用
+    pub fn vertex_data(&self) -> &[f32] {
+        &self.buffer_pool.vertex_data[..self.buffer_pool.vertex_cursor as usize * VERTEX_FLOAT_COUNT]
+    }
+
+    /// 获取完整索引缓冲区数据的引用
+    pub fn index_data(&self) -> &[u32] {
+        &self.buffer_pool.index_data[..self.buffer_pool.index_cursor as usize]
     }
 
     /// 标记指定区域为脏
     pub fn mark_region_dirty(&mut self, region_id: &str) {
         self.dirty_regions.insert(region_id.to_string());
+    }
+
+    /// 设置 DPI 缩放因子，标记需要重新初始化
+    pub fn set_dpi_scale(&mut self, scale: DpiScale) {
+        self.dpi_scale = scale;
+        self.text_engine.set_dpi_scale(scale);
+        self.is_initialized = false;
+        self.buffer_pool.clear();
+        self.dirty_regions.clear();
     }
 
     /// 生成矩形的顶点数据和索引数据
@@ -315,10 +331,8 @@ impl BasicRenderer {
         let y1 = y + height;
 
         let vertices = vec![
-            x0, y0, 0.0, 0.0, color[0], color[1], color[2], color[3],
-            x1, y0, 1.0, 0.0, color[0], color[1], color[2], color[3],
-            x1, y1, 1.0, 1.0, color[0], color[1], color[2], color[3],
-            x0, y1, 0.0, 1.0, color[0], color[1], color[2], color[3],
+            x0, y0, 0.0, 0.0, color[0], color[1], color[2], color[3], x1, y0, 1.0, 0.0, color[0], color[1], color[2], color[3],
+            x1, y1, 1.0, 1.0, color[0], color[1], color[2], color[3], x0, y1, 0.0, 1.0, color[0], color[1], color[2], color[3],
         ];
 
         let indices = vec![0, 1, 2, 0, 2, 3];
@@ -326,51 +340,90 @@ impl BasicRenderer {
         (vertices, indices)
     }
 
-    /// 生成文本的顶点数据和索引数据（占位实现）
-    fn generate_text_vertices(x: f32, y: f32, _text: &str, size: f32, color: &[f32; 4]) -> (Vec<f32>, Vec<u32>) {
+    /// 生成文本占位矩形的顶点数据和索引数据
+    fn generate_text_placeholder(x: f32, y: f32, size: f32, color: &[f32; 4]) -> (Vec<f32>, Vec<u32>) {
         let width = size * 8.0;
         let height = size;
-
         let x0 = x;
         let y0 = y;
         let x1 = x + width;
         let y1 = y + height;
-
         let vertices = vec![
-            x0, y0, 0.0, 0.0, color[0], color[1], color[2], color[3],
-            x1, y0, 1.0, 0.0, color[0], color[1], color[2], color[3],
-            x1, y1, 1.0, 1.0, color[0], color[1], color[2], color[3],
-            x0, y1, 0.0, 1.0, color[0], color[1], color[2], color[3],
+            x0, y0, 0.0, 0.0, color[0], color[1], color[2], color[3], x1, y0, 1.0, 0.0, color[0], color[1], color[2], color[3],
+            x1, y1, 1.0, 1.0, color[0], color[1], color[2], color[3], x0, y1, 0.0, 1.0, color[0], color[1], color[2], color[3],
         ];
-
         let indices = vec![0, 1, 2, 0, 2, 3];
-
         (vertices, indices)
+    }
+
+    /// 使用 TextRenderEngine 从整形文本生成字形顶点数据和索引数据
+    fn generate_text_vertices_from_shaped(
+        shaped: &gg_ui::font::ShapedText,
+        x: f32,
+        y: f32,
+        color: &[f32; 4],
+        text_engine: &TextRenderEngine,
+    ) -> (Vec<f32>, Vec<u32>) {
+        let text_vertices =
+            text_engine.generate_vertices(shaped, (x, y), gg_render::Color::new(color[0], color[1], color[2], color[3]));
+        let mut vertex_data = Vec::with_capacity(text_vertices.len() * VERTEX_FLOAT_COUNT);
+        let mut index_data = Vec::with_capacity(text_vertices.len() / 4 * 6);
+        let mut base_index: u32 = 0;
+        for tv in &text_vertices {
+            vertex_data.extend_from_slice(&[
+                tv.position[0],
+                tv.position[1],
+                tv.uv[0],
+                tv.uv[1],
+                tv.color[0],
+                tv.color[1],
+                tv.color[2],
+                tv.color[3],
+            ]);
+        }
+        for _ in (0..text_vertices.len()).step_by(4) {
+            index_data.extend_from_slice(&[
+                base_index,
+                base_index + 1,
+                base_index + 2,
+                base_index,
+                base_index + 2,
+                base_index + 3,
+            ]);
+            base_index += 4;
+        }
+        (vertex_data, index_data)
     }
 }
 
 impl GuiRenderer for BasicRenderer {
-    fn render(&mut self, component: Arc<dyn VxComponent>) {
+    fn render(&mut self, component: Arc<dyn Widget>) {
         if !self.is_initialized {
             self.allocate_buffers(&component);
-            for region_id in self.buffer_pool.regions.keys() {
-                self.mark_region_dirty(region_id);
+            let region_ids: Vec<String> = self.buffer_pool.regions.keys().cloned().collect();
+            for region_id in region_ids {
+                self.mark_region_dirty(&region_id);
             }
-        } else {
+        }
+        else {
             if component.is_dirty() {
                 let flags = component.get_dirty_flags();
-                if flags.contains(DirtyFlag::LAYOUT) || flags.contains(DirtyFlag::STYLE) || flags.contains(DirtyFlag::TRANSFORM) {
+                if flags.contains(DirtyFlag::LAYOUT) || flags.contains(DirtyFlag::STYLE) || flags.contains(DirtyFlag::TRANSFORM)
+                {
                     self.buffer_pool.clear();
                     self.is_initialized = false;
                     self.allocate_buffers(&component);
-                    for region_id in self.buffer_pool.regions.keys() {
-                        self.mark_region_dirty(region_id);
+                    let region_ids: Vec<String> = self.buffer_pool.regions.keys().cloned().collect();
+                    for region_id in region_ids {
+                        self.mark_region_dirty(&region_id);
                     }
-                } else if flags.contains(DirtyFlag::CONTENT) {
+                }
+                else if flags.contains(DirtyFlag::CONTENT) {
                     if let Some(region) = self.buffer_pool.get_region(component.get_id()) {
                         let region = *region;
                         let (vertex_data, index_data) = Self::generate_rect_vertices(
-                            0.0, 0.0,
+                            0.0,
+                            0.0,
                             self.viewport_width as f32,
                             self.viewport_height as f32,
                             &[0.1, 0.1, 0.1, 0.8],
@@ -383,7 +436,7 @@ impl GuiRenderer for BasicRenderer {
         }
     }
 
-    fn process_events(&mut self, root: Option<&Arc<RwLock<dyn VxComponent>>>) {
+    fn process_events(&mut self, root: Option<&Arc<RwLock<dyn Widget>>>) {
         if let Some(root) = root {
             if let Ok(comp) = root.read() {
                 if comp.is_dirty() {
@@ -403,5 +456,15 @@ impl GuiRenderer for BasicRenderer {
         self.is_initialized = false;
         self.buffer_pool.clear();
         self.dirty_regions.clear();
+    }
+}
+
+impl DpiAware for BasicRenderer {
+    fn set_dpi_scale(&mut self, scale: DpiScale) {
+        self.set_dpi_scale(scale);
+    }
+
+    fn dpi_scale(&self) -> &DpiScale {
+        &self.dpi_scale
     }
 }

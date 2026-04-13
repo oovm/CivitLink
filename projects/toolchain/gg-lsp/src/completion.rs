@@ -116,11 +116,7 @@ impl CompletionProvider {
     fn collect_builtin_completions(&self, prefix: &str, entries: &mut Vec<CompletionEntry>) {
         for &(name, description) in BUILTINS {
             if name.starts_with(prefix) {
-                let signature = BUILTIN_SIGNATURES
-                    .iter()
-                    .find(|&&(n, _)| n == name)
-                    .map(|&(_, sig)| sig)
-                    .unwrap_or(name);
+                let signature = BUILTIN_SIGNATURES.iter().find(|&&(n, _)| n == name).map(|&(_, sig)| sig).unwrap_or(name);
                 entries.push(CompletionEntry {
                     label: signature.to_string(),
                     kind: CompletionItemKind::Function,
@@ -131,12 +127,7 @@ impl CompletionProvider {
     }
 
     /// 收集作用域变量补全项
-    fn collect_variable_completions(
-        &self,
-        prefix: &str,
-        source: &str,
-        entries: &mut Vec<CompletionEntry>,
-    ) {
+    fn collect_variable_completions(&self, prefix: &str, source: &str, entries: &mut Vec<CompletionEntry>) {
         let variables = Self::extract_variables(source);
         for var in variables {
             if var.starts_with(prefix) {
@@ -158,7 +149,8 @@ impl CompletionProvider {
                 if let Some(ident) = Self::extract_identifier(rest) {
                     vars.push(ident);
                 }
-            } else if let Some(rest) = trimmed.strip_prefix("const ") {
+            }
+            else if let Some(rest) = trimmed.strip_prefix("const ") {
                 if let Some(ident) = Self::extract_identifier(rest) {
                     vars.push(ident);
                 }

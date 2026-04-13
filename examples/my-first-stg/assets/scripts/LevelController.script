@@ -1,0 +1,97 @@
+using gg::ecs;
+using gg::engine;
+
+component LevelState {
+    current_level: i32,
+    total_waves: i32,
+    current_wave: i32,
+    is_active: bool,
+    events on_level_start: micro(level: i32) -> (),
+    events on_level_complete: micro(level: i32) -> (),
+    events on_wave_start: micro(wave: i32) -> (),
+    events on_wave_complete: micro(wave: i32) -> ()
+}
+
+system LevelControllerSystem {
+    micro execute(world: World): Result<()> {
+        let query: Query<LevelState> = world.query("LevelState");
+        loop entity, level_state in query.iter() {
+            if !level_state.is_active {
+                continue
+            }
+
+            let game_state = world.get_resource("GameState");
+            if game_state == null {
+                continue
+            }
+
+            let level_config = world.get_resource("LevelConfig");
+            if level_config == null {
+                continue
+            }
+
+            if level_config.wave_complete {
+                level_state.on_wave_complete(level_state.current_wave);
+                if level_config.current_wave + 1 >= level_config.waves.len() {
+                    level_state.on_level_complete(level_state.current_level);
+                    level_state.is_active = false;
+                }
+            }
+        }
+
+        return Ok()
+    }
+}
+
+class LevelController {
+    micro start_level(world: World, level: i32) {
+        let level_entity = world.spawn();
+        level_entity.add_component("LevelState", {
+            current_level: level,
+            total_waves: 5 + level * 2,
+            current_wave: 0,
+            is_active: true
+        });
+
+        let level_config = world.get_resource_mut("LevelConfig");
+        if level_config != null {
+            level_config.current_level = level as usize;
+            level_config.current_wave = 0;
+            level_config.spawned_count = 0;
+            level_config.spawn_timer = 0;
+            level_config.wave_complete = false;
+        }
+
+        let query: Query<LevelState> = world.query("LevelState");
+        loop entity, level_state in query.iter() {
+            level_state.on_level_start(level);
+        }
+    }
+
+    micro next_wave(world: World) {
+        let level_config = world.get_resource_mut("LevelConfig");
+        if level_config != null {
+            level_config.current_wave += 1;
+            level_config.spawned_count = 0;
+            level_config.spawn_timer = 0;
+            level_config.wave_complete = false;
+        }
+
+        let query: Query<LevelState> = world.query("LevelState");
+        loop entity, level_state in query.iter() {
+            level_state.current_wave += 1;
+            level_state.on_wave_start(level_state.current_wave);
+        }
+    }
+
+    micro on_wave_complete(world: World, wave: i32) {
+        console::log("Wave " + wave + " completed!");
+    }
+
+    micro on_level_complete(world: World, level: i32) {
+        console::log("Level " + level + " completed!");
+        this.start_level(world, level + 1);
+    }
+}
+
+let level_controller = LevelController();

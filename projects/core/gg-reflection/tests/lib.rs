@@ -1,5 +1,4 @@
-use gg_reflection::prelude::*;
-use gg_reflection::PartialReflect;
+use gg_reflection::{PartialReflect, prelude::*};
 
 #[derive(Reflect, Clone)]
 struct TestStruct {

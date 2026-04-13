@@ -15,39 +15,51 @@ GG 引擎的 UI 系统分为两个独立的子系统：**编辑器 UI** 和 **�
 
 ### 2.1 设计理念
 
-编辑器 UI 系统采用**声明式**设计，参考 Unity 的 UI Toolkit，基于 Valkyrie Widget 语言（.vx 文件）开发。它的核心设计理念是：
+编辑器 UI 系统采用**声明式**设计，参考 Unity 的 UI Toolkit，基于 Valkyrie Widget 语言（.widget 文件）开发。它的核心设计理念是：
 
 - **基于文档对象模型 (DOM)**：将 UI 视为一个独立的文档树
-- **结构与样式分离**：使用 .vx 文件定义结构，使用样式系统定义样式
+- **结构与样式分离**：使用 .widget 文件定义结构，使用样式系统定义样式
 - **高性能渲染**：采用预分配-动态更新的渲染模式，减少 CPU 开销
 - **组件化**：支持自定义组件和复合组件
 
 ### 2.2 核心组件
 
-#### 2.2.1 VxComponent 特质
+#### 2.2.1 Widget 特质
 
-`VxComponent` 是编辑器 UI 组件的基础特质，定义了组件的基本行为：
+`Widget` 是编辑器 UI 组件的基础特质，定义了组件的基本行为：
 
 ```rust
-pub trait VxComponent: Send + Sync + 'static {
-    fn create(world: &mut World, entity: Entity) -> Self;
-    fn update(&mut self, world: &mut World, entity: Entity);
-    fn render(&self, world: &World, entity: Entity, renderer: &mut dyn Renderer);
-    fn handle_event(&mut self, world: &mut World, entity: Entity, event: &Event);
-    fn destroy(&mut self, world: &mut World, entity: Entity);
+pub trait Widget: Any + Send + Sync {
+    fn render_template(&self) -> oak_voc::TemplateNode;
+    fn script_setup(&mut self);
+    fn get_style(&self) -> Option<&str>;
+    fn get_id(&self) -> &str;
+    fn handle_event(&mut self, event: &GuiEvent, ctx: &mut EventContext);
+    fn children(&self) -> Vec<Arc<RwLock<dyn Widget>>>;
+    fn on_mount(&mut self);
+    fn on_update(&mut self);
+    fn on_cleanup(&mut self);
+    fn is_dirty(&self) -> bool;
+    fn clear_dirty(&mut self);
+    fn get_dirty_flags(&self) -> DirtyFlag;
+    fn mark_dirty(&mut self, flag: DirtyFlag);
+    fn usage_hints(&self) -> UsageHints;
+    fn build(&mut self, tree: &mut UiTree) -> GResult<UiNodeId>;
+    fn update(&self, tree: &mut UiTree);
+    fn node_id(&self) -> Option<UiNodeId>;
 }
 ```
 
 #### 2.2.2 内置组件
 
 - **Layout**：布局组件，支持 Flexbox 布局系统
+- **Stack**：栈式布局组件，支持水平和垂直方向
 - **Button**：按钮组件，支持点击事件和状态管理
 - **Text**：文本组件，支持富文本和字体样式
 - **Image**：图片组件，支持纹理和颜色
 - **Input**：输入组件，支持文本输入和验证
-- **Slider**：滑动条组件，支持数值调节
-- **Toggle**：开关组件，支持布尔值状态
-- **Dropdown**：下拉菜单组件，支持选项选择
+- **Panel**：面板组件，容器组件
+- **ScrollView**：滚动视图组件，支持滚动内容
 
 #### 2.2.3 事件系统
 
@@ -99,24 +111,84 @@ pub trait VxComponent: Send + Sync + 'static {
 | 布局引擎 | Yoga/Flexbox（脏标记触发） | Canvas 坐标系（每帧计算） |
 | GPU 驱动变换 | UsageHints（位移/颜色/缩放/透明度） | 不支持（CPU 侧重建） |
 
-### 2.6 .vx 文件格式
+### 2.6 .widget 文件格式
 
-.vx 文件是编辑器 UI 的声明式定义文件，使用 Valkyrie Widget 语言编写：
+.widget 文件是编辑器 UI 的声明式定义文件，使用 Valkyrie Widget 语言编写：
 
-```vx
-<Layout id="main" class="container">
-  <Button id="submit" class="primary">Submit</Button>
-  <Text id="message" class="info">Hello, World!</Text>
-</Layout>
+```widget
+<template>
+  <Layout id="main" class="container">
+    <Button id="submit" class="primary">Submit</Button>
+    <Text id="message" class="info">Hello, World!</Text>
+  </Layout>
+</template>
+
+<script>
+  using gg_editor::ui::widgets::{Layout, Button, Text};
+</script>
+
+<style>
+  .container {
+    padding: 16px;
+  }
+</style>
 ```
 
 ### 2.7 工具支持
 
 编辑器 UI 提供以下工具支持：
 
-- **可视化编辑器**：用于编辑 .vx 文件和预览 UI
+- **可视化编辑器**：用于编辑 .widget 文件和预览 UI
 - **样式编辑器**：用于编辑和管理样式
 - **性能分析器**：用于分析 UI 性能
+
+### 2.8 编译器集成
+
+编辑器 UI 的 `.widget` 文件由 `gg-compiler-widget` 编译器模块负责编译。编译器遵循 GG 引擎的统一编译管线，将 Widget 文件编译为可运行时加载的产物。
+
+#### 编译流程
+
+```
+.widget 文件 → VxParser → TemplateAst + ScriptAst + StyleAst → IR 生成 → WidgetArtifact
+```
+
+**编译阶段**：
+
+1. **解析阶段**：使用 `VxParser` 将 Widget 文件解析为 Template、Script、Style 三部分
+2. **语义分析阶段**：组件类型检查、属性验证、事件绑定验证
+3. **IR 生成阶段**：生成 TemplateIr、ScriptIr、StyleIr
+4. **代码生成阶段**：生成 TemplateBundle、BytecodeModule、StyleBundle
+5. **产物打包阶段**：打包为 WidgetArtifact
+
+**组件注册系统**：
+
+编译器通过 `ComponentRegistry` 进行组件类型检查，所有内置组件和编辑器专用组件都在编译器中注册，实现编译期类型安全。
+
+```rust
+pub struct ComponentRegistry {
+    components: HashMap<String, ComponentSchema>,
+    builtins: HashSet<String>,
+}
+```
+
+**运行时加载**：
+
+`GuiRuntime` 负责加载编译后的 Widget 产物，构建 UI 节点树并执行脚本。
+
+```rust
+impl GuiRuntime {
+    pub fn load_widget(&mut self, artifact: &WidgetArtifact) -> GResult<Entity> {
+        let ui_tree = self.build_ui_tree(&artifact.template)?;
+        let entity = self.create_entity_from_tree(&ui_tree)?;
+        // 加载脚本和样式
+        Ok(entity)
+    }
+}
+```
+
+**详细设计文档**：
+
+Widget 编译器的详细架构设计，请参见 [Widget 编译器扩展计划](../roadmaps/compiler-extra.md)。
 
 ## 3. 游戏 UI 系统
 
@@ -243,7 +315,7 @@ Game UI 的动静分离策略是提升渲染性能的关键手段，通过将频
 
 ### 4.2 资源类型
 
-- **编辑器 UI 资源**：.vx 文件、样式文件、编辑器专用纹理和字体
+- **编辑器 UI 资源**：.widget 文件、样式文件、编辑器专用纹理和字体
 - **游戏 UI 资源**：UI 预制体、纹理、字体、材质、动画
 
 ### 4.3 资源加载
@@ -293,7 +365,7 @@ Game UI 的动静分离策略是提升渲染性能的关键手段，通过将频
 
 ### 6.1 编辑器 UI 工具
 
-- **可视化编辑器**：用于编辑 .vx 文件和预览 UI
+- **可视化编辑器**：用于编辑 .widget 文件和预览 UI
 - **样式编辑器**：用于编辑和管理样式
 - **组件浏览器**：用于浏览和管理组件
 - **性能分析器**：用于分析 UI 性能
@@ -315,7 +387,7 @@ Game UI 的动静分离策略是提升渲染性能的关键手段，通过将频
 
 ### 7.2 最佳实践
 
-- **编辑器 UI**：使用 .vx 文件定义界面，采用声明式编程
+- **编辑器 UI**：使用 .widget 文件定义界面，采用声明式编程
 - **游戏 UI**：使用 GameObject 和 Component，支持 3D 空间和动画
 - **资源管理**：使用统一的资源加载接口，避免资源混用
 - **性能优化**：根据不同场景选择合适的优化策略

@@ -1,0 +1,130 @@
+% 第一章 - 学生会线
+
+\label(start)
+
+\music[peaceful_theme.mp3, volume=0.5]
+
+\bg[student_council_room.png]
+
+\role[sakura][smile, center]
+
+\s 欢迎来到学生会！
+
+\role[yuki][gentle, left]
+
+\y 啊，新同学也来了。欢迎欢迎。
+
+\p[curious] 白雪同学也在啊。
+
+\y[smile] 我是学生会的书记。樱井是副会长。
+
+\s[proud] 没错！我们学生会可是学校的重要组织！
+
+\p[thinking] （学生会...应该能了解到一些学校的事情。）
+
+\y[serious] 对了，新同学，有件事想请你帮忙。
+
+\choice
+\case[ask_for_help][+y, +t2] 什么事？
+\case[refuse_help][-y, -s] 我很忙...
+\end-choice
+
+% ============================================
+% 分支：帮忙
+% ============================================
+
+\label(ask_for_help)
+
+\y[serious] 最近学校里发生了一些奇怪的事情。
+
+\s[worried] 嗯...有学生说在旧校舍附近看到了奇怪的光。
+
+\p[surprised] 奇怪的光？
+
+\y[thinking] 我们想调查一下，但是旧校舍一直锁着...
+
+\s[determined] 如果你能帮忙调查的话，我们会很感激的！
+
+\choice
+\case[agree_to_help][+t2] 我愿意帮忙
+\case[worry_about_danger] 这听起来很危险...
+\end-choice
+
+% ============================================
+% 分支：拒绝帮忙
+% ============================================
+
+\label(refuse_help)
+
+\s[disappointed] 这样啊...
+
+\y[disappointed] 没关系，我们理解。
+
+\p[thinking] （他们的表情...好像很需要帮助。）
+
+\choice
+\case[ask_for_help] 等等，我改变主意了
+\case[leave_student_council] 告辞了
+\end-choice
+
+% ============================================
+% 同意帮忙
+% ============================================
+
+\label(agree_to_help)
+
+\s[happy] 太好了！谢谢你！
+
+\y[relieved] 有你帮忙就放心多了。
+
+\s 黑崎同学好像知道怎么进入旧校舍...
+
+\p[thinking] （黑崎？他确实说过知道怎么进去...）
+
+\goto(investigation_start)
+
+% ============================================
+% 担心危险
+% ============================================
+
+\label(worry_about_danger)
+
+\s[reassuring] 别担心！我们只是想看看是什么情况。
+
+\y[gentle] 如果你害怕的话，可以和我们一起行动。
+
+\+s
+
+\goto(investigation_start)
+
+% ============================================
+% 调查开始
+% ============================================
+
+\label(investigation_start)
+
+\bg[school_hallway.png]
+
+\p[determined] 好，我来帮忙调查。
+
+\role[sakura][happy, center]
+
+\s 太好了！那我们明天放学后在学校门口集合！
+
+\fadeout
+
+\load(chapter2_investigation)
+
+% ============================================
+% 离开学生会
+% ============================================
+
+\label(leave_student_council)
+
+\bg[school_corridor.png]
+
+\p[thinking] （也许我不该卷入这件事...）
+
+\fadeout
+
+\load(chapter1_home)

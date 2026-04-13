@@ -2,12 +2,9 @@
 //! 提供 VmDebugger 结构体，实现 DebugProtocol trait，
 //! 支持断点管理、单步执行、调用栈检查等调试功能
 
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::rc::Rc;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use gg_bytecode::debug_protocol::*;
-use gg_bytecode::BytecodeValue;
+use gg_bytecode::{BytecodeValue, debug_protocol::*};
 
 use crate::Vm;
 
@@ -20,7 +17,23 @@ fn bytecode_value_to_debug_value(value: &BytecodeValue) -> DebugValue {
         BytecodeValue::String(s) => DebugValue::Str(s.clone()),
         BytecodeValue::Null => DebugValue::Null,
         BytecodeValue::Entity(id) => DebugValue::Str(format!("Entity({})", id)),
+        BytecodeValue::List(items) => DebugValue::Str(format!("List({})", items.len())),
+        BytecodeValue::Object(fields) => DebugValue::Str(format!("Object({})", fields.len())),
+        BytecodeValue::Map(entries) => DebugValue::Str(format!("Map({})", entries.len())),
     }
+}
+
+/// 变量监视标识符
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct WatchId(pub u64);
+
+/// 变量监视
+#[derive(Debug, Clone)]
+pub struct Watch {
+    /// 监视标识符
+    pub id: WatchId,
+    /// 监视表达式
+    pub expression: String,
 }
 
 /// VM 调试器
@@ -45,6 +58,10 @@ pub struct VmDebugger {
     vm: Option<Rc<RefCell<Vm>>>,
     /// 调试控制器引用（与解释器共享）
     controller: Option<Rc<RefCell<BasicDebugController>>>,
+    /// 变量监视集合
+    watches: HashMap<WatchId, Watch>,
+    /// 下一个监视标识符计数器
+    next_watch_id: u64,
 }
 
 impl VmDebugger {
@@ -59,6 +76,8 @@ impl VmDebugger {
             is_paused: false,
             vm: None,
             controller: None,
+            watches: HashMap::new(),
+            next_watch_id: 0,
         }
     }
 
@@ -67,20 +86,10 @@ impl VmDebugger {
     /// 在指定文件和行号创建断点，可选地设置条件表达式。
     /// 如果已附加到虚拟机，断点会同步到调试控制器中。
     /// 返回新创建的断点标识符。
-    pub fn add_breakpoint(
-        &mut self,
-        file: &str,
-        line: usize,
-        condition: Option<String>,
-    ) -> BreakpointId {
+    pub fn add_breakpoint(&mut self, file: &str, line: usize, condition: Option<String>) -> BreakpointId {
         let id = BreakpointId(self.next_breakpoint_id.0);
         self.next_breakpoint_id.0 += 1;
-        let breakpoint = Breakpoint {
-            id,
-            file: file.to_string(),
-            line,
-            condition,
-        };
+        let breakpoint = Breakpoint { id, file: file.to_string(), line, condition };
 
         if let Some(ref controller) = self.controller {
             controller.borrow_mut().add_file_breakpoint(file, line);
@@ -100,7 +109,8 @@ impl VmDebugger {
                 controller.borrow_mut().remove_file_breakpoint(&bp.file, bp.line);
             }
             true
-        } else {
+        }
+        else {
             false
         }
     }
@@ -182,17 +192,59 @@ impl VmDebugger {
     /// 返回缓存的指定栈帧局部变量列表。
     /// 如果帧索引越界，返回空列表。
     pub fn local_variables(&self, frame_index: usize) -> Vec<(String, DebugValue)> {
-        self.local_vars_cache
-            .get(frame_index)
-            .cloned()
-            .unwrap_or_default()
+        self.local_vars_cache.get(frame_index).cloned().unwrap_or_default()
     }
 
     /// 在当前上下文中求值表达式
     ///
-    /// 当前为存根实现，始终返回错误。
-    pub fn evaluate(&self, _expression: &str) -> Result<DebugValue, String> {
-        Err("表达式求值尚未支持".to_string())
+    /// 支持简单的变量查找、整数/浮点数/布尔值字面量解析。
+    pub fn evaluate(&self, expression: &str) -> Result<DebugValue, String> {
+        if expression.trim().is_empty() {
+            return Err("空表达式".to_string());
+        }
+
+        for vars in &self.local_vars_cache {
+            for (name, value) in vars {
+                if name == expression.trim() {
+                    return Ok(value.clone());
+                }
+            }
+        }
+
+        if let Ok(i) = expression.trim().parse::<i64>() {
+            return Ok(DebugValue::Int(i));
+        }
+
+        if let Ok(f) = expression.trim().parse::<f64>() {
+            return Ok(DebugValue::Float(f));
+        }
+
+        if expression.trim() == "true" {
+            return Ok(DebugValue::Bool(true));
+        }
+        if expression.trim() == "false" {
+            return Ok(DebugValue::Bool(false));
+        }
+
+        Err(format!("无法求值表达式: {}", expression))
+    }
+
+    /// 添加变量监视
+    pub fn add_watch(&mut self, expression: String) -> WatchId {
+        let id = WatchId(self.next_watch_id);
+        self.next_watch_id += 1;
+        self.watches.insert(id, Watch { id, expression });
+        id
+    }
+
+    /// 移除变量监视
+    pub fn remove_watch(&mut self, id: WatchId) -> bool {
+        self.watches.remove(&id).is_some()
+    }
+
+    /// 求值所有变量监视
+    pub fn evaluate_watches(&self) -> Vec<(WatchId, Result<DebugValue, String>)> {
+        self.watches.values().map(|w| (w.id, self.evaluate(&w.expression))).collect()
     }
 
     /// 附加到虚拟机
@@ -206,8 +258,7 @@ impl VmDebugger {
             controller.borrow_mut().add_file_breakpoint(&bp.file, bp.line);
         }
 
-        vm.borrow_mut()
-            .set_debug_controller(Some(controller.clone()));
+        vm.borrow_mut().set_debug_controller(Some(controller.clone()));
 
         self.vm = Some(vm);
         self.controller = Some(controller);
@@ -258,9 +309,7 @@ impl VmDebugger {
                             .locals
                             .iter()
                             .enumerate()
-                            .map(|(i, v)| {
-                                (format!("local_{}", i), bytecode_value_to_debug_value(v))
-                            })
+                            .map(|(i, v)| (format!("local_{}", i), bytecode_value_to_debug_value(v)))
                             .collect(),
                     })
                     .collect();
@@ -268,12 +317,11 @@ impl VmDebugger {
                 self.local_vars_cache = (0..frames.len())
                     .map(|i| {
                         let vars = vm_ref.debug_local_variables(i);
-                        vars.into_iter()
-                            .map(|(name, v)| (name, bytecode_value_to_debug_value(&v)))
-                            .collect()
+                        vars.into_iter().map(|(name, v)| (name, bytecode_value_to_debug_value(&v))).collect()
                     })
                     .collect();
-            } else {
+            }
+            else {
                 self.is_paused = false;
             }
         }
@@ -294,12 +342,7 @@ impl Default for VmDebugger {
 }
 
 impl DebugProtocol for VmDebugger {
-    fn set_breakpoint(
-        &mut self,
-        file: &str,
-        line: usize,
-        condition: Option<String>,
-    ) -> BreakpointId {
+    fn set_breakpoint(&mut self, file: &str, line: usize, condition: Option<String>) -> BreakpointId {
         self.add_breakpoint(file, line, condition)
     }
 
@@ -343,5 +386,3 @@ impl DebugProtocol for VmDebugger {
         self.evaluate(expression)
     }
 }
-
-

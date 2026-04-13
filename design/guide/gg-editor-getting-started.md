@@ -1,22 +1,21 @@
 # GG Editor 快速入门
 
-GG Editor 是一个跨平台 GUI 开发框架，支持使用类似 Vue 的 *.widget 格式开发原生 GUI 界面。本指南将帮助你快速上手 GG Editor。
+GG Editor 是一个跨平台 GUI 开发框架，支持使用类似 Vue 的 *.widget 格式开发原生 GUI 界面。本指南面向**游戏开发人员**，帮助你快速上手 GG Editor。
+
+> **适用角色**：游戏开发人员
+> **技术要求**：Valkyrie 脚本基础
+> **无需**：Rust 开发环境
 
 ## 安装
 
-1. 确保你已经安装了 Rust 开发环境
-2. 克隆 GG 游戏引擎仓库
-3. 进入仓库目录并构建项目：
-
-```bash
-cargo build
-```
+1. 下载并安装 GG Editor
+2. 启动 GG Editor
 
 ## 创建第一个 GUI 项目
 
 ### 步骤 1：创建 *.widget 文件
 
-创建一个名为 `hello.vx` 的文件，内容如下：
+创建一个名为 `hello.widget` 的文件，内容如下：
 
 ```vue
 <template>
@@ -52,15 +51,10 @@ body {
 </style>
 ```
 
-### 步骤 2：使用 GG Editor 打开文件
+### 步骤 2：在 GG Editor 中打开文件
 
-1. 运行 GG Editor：
-
-```bash
-cargo run --bin gg-editor
-```
-
-2. 在编辑器中打开 `hello.vx` 文件
+1. 启动 GG Editor
+2. 在编辑器中打开 `hello.widget` 文件
 
 ### 步骤 3：预览效果
 
@@ -76,15 +70,15 @@ cargo run --bin gg-editor
 
 *.widget 文件包含三个主要部分：
 
-- **<template>**：使用 TSX 语法定义界面结构
+- **<template>**：使用 ValkyrieX 语法定义界面结构
 - **<script>**：使用 Valkyrie 脚本定义逻辑
-- **<style>**：使用 SCSS 语法定义样式
+- **<style>**：使用 SCSS + Tailwind CSS 子集语法定义样式
 
 ### 2. 响应式状态
 
 使用 `createSignal` 创建响应式状态：
 
-```javascript
+```valkyrie
 const [count, setCount] = createSignal(0);
 ```
 
@@ -92,7 +86,7 @@ const [count, setCount] = createSignal(0);
 
 定义事件处理函数并绑定到组件：
 
-```javascript
+```valkyrie
 const handleClick = () => {
   setCount(count() + 1);
 };
@@ -120,7 +114,7 @@ GG Editor 提供了以下基础组件：
 
 你可以嵌套组件来创建复杂的界面：
 
-```tsx
+```valkyrie
 <Layout>
   <Stack orientation="vertical">
     <Text>标题</Text>
@@ -136,7 +130,7 @@ GG Editor 提供了以下基础组件：
 
 使用条件表达式进行条件渲染：
 
-```tsx
+```valkyrie
 {count() > 5 ? (
   <Text>Count is greater than 5</Text>
 ) : (
@@ -148,7 +142,7 @@ GG Editor 提供了以下基础组件：
 
 使用 `map` 函数渲染列表：
 
-```tsx
+```valkyrie
 {items().map((item, index) => (
   <Panel key={index}>
     <Text>{item}</Text>
@@ -158,7 +152,7 @@ GG Editor 提供了以下基础组件：
 
 ### 样式
 
-使用 SCSS 语法定义样式：
+使用 SCSS + Tailwind CSS 子集语法定义样式：
 
 ```scss
 .button {
@@ -178,8 +172,8 @@ GG Editor 提供了以下基础组件：
 
 A: 创建一个新的 *.widget 文件，定义组件，然后在其他文件中导入使用：
 
-```javascript
-import CustomComponent from './CustomComponent.vx';
+```valkyrie
+import CustomComponent from './CustomComponent.widget';
 
 // 在模板中使用
 <CustomComponent message="Hello" />
@@ -193,8 +187,13 @@ A: GG Editor 生成的 GUI 可以通过 ECS 架构与游戏引擎集成，访问
 
 A: GG Editor 支持 Windows、macOS、iOS、Android、H5、微信小游戏等平台。
 
+### Q: 需要 Rust 开发环境吗？
+
+A: **不需要**。游戏开发人员只需使用 GG Editor 和 Valkyrie 脚本即可完成开发。Rust 是引擎开发人员使用的语言。
+
 ## 更多资源
 
-- [*.widget 文件格式规范](../modules/vx-format.md)
+- [*.widget 文件格式规范](../formats/widget.md)
 - [GG Editor 架构设计](../architecture/overview.md)
+- [Valkyrie 脚本指南](./valkyrie-guide.md)
 - [示例项目](../../examples/gui-basic/)

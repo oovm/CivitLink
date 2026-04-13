@@ -7,9 +7,11 @@
 pub mod cmds;
 pub mod commands;
 pub mod platform;
+pub mod ui;
 
 pub use cmds::*;
 pub use commands::*;
 pub use gg_core::{GError, GErrorKind, GResult};
-pub use gg_runtime_core::{EngineHost, ScriptEngine};
+pub use gg_runtime::{EngineHost, ScriptEngine};
 pub use gg_vm::{Vm, VmResult};
+pub use ui::*;

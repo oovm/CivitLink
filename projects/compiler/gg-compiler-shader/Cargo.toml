@@ -1,0 +1,14 @@
+[package]
+name = "gg-compiler-shader"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+naga = { workspace = true }
+indexmap = { workspace = true }
+rustc-hash = { workspace = true, features = ["std"] }
+gg-core = { workspace = true }
+oak-core = { workspace = true }
+oak-valkyrie = { workspace = true }

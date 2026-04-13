@@ -1,0 +1,69 @@
+using gg::ecs;
+using gg::engine;
+
+component PhysicsMaterial {
+    restitution: f32,
+    friction: f32
+}
+
+component SpringForce {
+    force: f32,
+    compressed: Bool
+}
+
+system PhysicsMaterialSystem {
+    micro execute(world: World): Result<()> {
+        let query: Query<(PhysicsBody, PhysicsMaterial)> = world.query("PhysicsBody", "PhysicsMaterial");
+        loop entity, (body, material) in query.iter() {
+            if body.on_ground {
+                let velocity = world.get_component("Velocity", entity);
+                if velocity != null {
+                    let friction_factor = (1.0 - material.friction);
+                    velocity.dx = velocity.dx * friction_factor;
+                }
+            }
+        }
+        return Ok()
+    }
+}
+
+system SpringForceSystem {
+    micro execute(world: World): Result<()> {
+        let query: Query<(SpringForce, Collider)> = world.query("SpringForce", "Collider");
+        loop entity, (spring, collider) in query.iter() {
+            if spring.compressed {
+                let overlapping = world.check_overlap(collider, "Player");
+                loop player_entity in overlapping {
+                    let velocity = world.get_component("Velocity", player_entity);
+                    if velocity != null {
+                        velocity.dy = -spring.force;
+                    }
+                    let player = world.get_component("Player", player_entity);
+                    if player != null {
+                        player.jump_count = 0;
+                        player.can_jump = true;
+                    }
+                }
+            }
+        }
+        return Ok()
+    }
+}
+
+class PhysicsMaterialFactory {
+    micro create_default(): PhysicsMaterial {
+        return PhysicsMaterial { restitution: 0.0, friction: 0.8 };
+    }
+
+    micro create_ice(): PhysicsMaterial {
+        return PhysicsMaterial { restitution: 0.0, friction: 0.05 };
+    }
+
+    micro create_rubber(): PhysicsMaterial {
+        return PhysicsMaterial { restitution: 0.9, friction: 0.6 };
+    }
+
+    micro create_spring(force: f32): SpringForce {
+        return SpringForce { force: force, compressed: false };
+    }
+}

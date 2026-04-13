@@ -2,21 +2,27 @@
 
 use std::{cell::RefCell, rc::Rc};
 
-use gg_core::GResult;
+use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::Entity;
-use gg_editor_shell::{EditorContext, EditorEvent, EditorPanel, PanelLayoutHint, PanelPosition};
+use gg_editor_shell::{Command, DragData, EditorContext, EditorEvent, EditorPanel, Key, PanelLayoutHint, PanelPosition};
 use gg_render::{Color, DrawCommand, Rect, RenderContext};
-use gg_ui::{Style, UiNodeData, UiTree};
+use gg_ui::{FlexDirection, FontStyle, LayoutStyle, Style, UiNodeData, UiTree};
 use gg_world::GameWorld;
 
-use crate::{components::Transform2D, view::SceneView, viewport::ViewportState};
-use crate::components::{RectRenderer, SpriteRenderer};
+use crate::{
+    components::{RectRenderer, SpriteRenderer, Transform2D},
+    view::SceneView,
+    viewport::ViewportState,
+};
 
 /// 缩放步进因子
 const ZOOM_STEP: f32 = 1.1;
 
 /// 基础网格间距（世界坐标单位）
 const BASE_GRID_SPACING: f32 = 50.0;
+
+/// 复制粘贴偏移量（世界坐标单位）
+const CLIPBOARD_OFFSET: f32 = 20.0;
 
 /// 将 ECS Entity 转换为 u64 标识符
 ///
@@ -33,6 +39,264 @@ fn u64_to_entity(id: u64) -> Entity {
     let index = (id & 0xFFFFFFFF) as u32;
     let generation = (id >> 32) as u32;
     Entity::new(index, generation)
+}
+
+/// 变换类型
+///
+/// 标识变换操作的具体类型，用于 `TransformCommand` 中区分移动、旋转和缩放。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransformKind {
+    /// 移动变换
+    Translate,
+    /// 旋转变换
+    Rotate,
+    /// 缩放变换
+    Scale,
+}
+
+/// 变换值
+///
+/// 存储变换操作的具体数值，与 `TransformKind` 一一对应：
+/// - `Translate` 对应 `Position((f32, f32))`
+/// - `Rotate` 对应 `Rotation(f32)`
+/// - `Scale` 对应 `Scale((f32, f32))`
+#[derive(Debug, Clone, Copy)]
+pub enum TransformValue {
+    /// 位置值（x, y）
+    Position((f32, f32)),
+    /// 旋转值（弧度）
+    Rotation(f32),
+    /// 缩放值（scale_x, scale_y）
+    Scale((f32, f32)),
+}
+
+/// 变换命令
+///
+/// 可撤销/重做的变换操作命令，记录实体的变换类型、旧值和新值。
+/// 执行时将新值应用到实体的 `Transform2D` 组件，撤销时恢复旧值。
+pub struct TransformCommand {
+    /// 被变换的实体 ID
+    pub entity_id: u64,
+    /// 变换类型
+    pub transform_kind: TransformKind,
+    /// 变换前的值
+    pub old_value: TransformValue,
+    /// 变换后的值
+    pub new_value: TransformValue,
+    /// 命令描述
+    pub description: String,
+}
+
+impl Command for TransformCommand {
+    fn execute(&mut self, context: &mut EditorContext) -> GResult<()> {
+        let entity = u64_to_entity(self.entity_id);
+        let world = context.world_mut();
+        if let Some(transform) = world.get_component_mut::<Transform2D>(entity) {
+            match self.new_value {
+                TransformValue::Position((x, y)) => {
+                    transform.x = x;
+                    transform.y = y;
+                }
+                TransformValue::Rotation(r) => {
+                    transform.rotation = r;
+                }
+                TransformValue::Scale((sx, sy)) => {
+                    transform.scale_x = sx;
+                    transform.scale_y = sy;
+                }
+            }
+            Ok(())
+        }
+        else {
+            Err(GError {
+                kind: GErrorKind::Ecs, message: format!("实体 {} 不存在或缺少 Transform2D 组件", self.entity_id)
+            })
+        }
+    }
+
+    fn undo(&mut self, context: &mut EditorContext) -> GResult<()> {
+        let entity = u64_to_entity(self.entity_id);
+        let world = context.world_mut();
+        if let Some(transform) = world.get_component_mut::<Transform2D>(entity) {
+            match self.old_value {
+                TransformValue::Position((x, y)) => {
+                    transform.x = x;
+                    transform.y = y;
+                }
+                TransformValue::Rotation(r) => {
+                    transform.rotation = r;
+                }
+                TransformValue::Scale((sx, sy)) => {
+                    transform.scale_x = sx;
+                    transform.scale_y = sy;
+                }
+            }
+            Ok(())
+        }
+        else {
+            Err(GError {
+                kind: GErrorKind::Ecs, message: format!("实体 {} 不存在或缺少 Transform2D 组件", self.entity_id)
+            })
+        }
+    }
+
+    fn description(&self) -> &str {
+        &self.description
+    }
+}
+
+/// 实体快照
+///
+/// 存储实体的组件数据，用于删除实体后恢复。
+/// 包含 `Transform2D` 和可选的渲染器组件数据。
+#[derive(Debug, Clone)]
+pub struct EntitySnapshot {
+    /// 变换组件数据
+    pub transform: Transform2D,
+    /// 矩形渲染器组件数据（如果存在）
+    pub rect_renderer: Option<RectRenderer>,
+    /// 精灵渲染器组件数据（如果存在）
+    pub sprite_renderer: Option<SpriteRenderer>,
+}
+
+/// 删除实体命令
+///
+/// 可撤销/重做的删除实体操作命令。
+/// 执行时从世界中移除实体，撤销时重新生成实体并恢复所有组件。
+pub struct DeleteEntityCommand {
+    /// 被删除的实体 ID
+    pub entity_id: u64,
+    /// 实体组件快照，用于撤销时恢复
+    pub snapshot: EntitySnapshot,
+    /// 命令描述
+    pub description: String,
+}
+
+impl Command for DeleteEntityCommand {
+    fn execute(&mut self, context: &mut EditorContext) -> GResult<()> {
+        let entity = u64_to_entity(self.entity_id);
+        context.world_mut().despawn(entity)
+    }
+
+    fn undo(&mut self, context: &mut EditorContext) -> GResult<()> {
+        let entity = u64_to_entity(self.entity_id);
+        let world = context.world_mut();
+        world.spawn_with_entity(entity);
+        world.add_component(entity, self.snapshot.transform.clone())?;
+        if let Some(ref rect) = self.snapshot.rect_renderer {
+            world.add_component(entity, rect.clone())?;
+        }
+        if let Some(ref sprite) = self.snapshot.sprite_renderer {
+            world.add_component(entity, sprite.clone())?;
+        }
+        Ok(())
+    }
+
+    fn description(&self) -> &str {
+        &self.description
+    }
+}
+
+/// 创建实体命令
+///
+/// 可撤销/重做的创建实体操作命令。
+/// 执行时在世界中生成新实体并添加 `Transform2D` 和对应渲染器组件，
+/// 撤销时从世界中移除该实体。
+pub struct CreateEntityCommand {
+    /// 创建的实体 ID，执行后设置
+    pub entity_id: Option<u64>,
+    /// 实体的世界坐标位置
+    pub position: (f32, f32),
+    /// 实体类型
+    pub entity_kind: SceneEntityKind,
+    /// 命令描述
+    pub description: String,
+}
+
+impl Command for CreateEntityCommand {
+    fn execute(&mut self, context: &mut EditorContext) -> GResult<()> {
+        let world = context.world_mut();
+        let entity =
+            world.spawn().insert(Transform2D { x: self.position.0, y: self.position.1, ..Transform2D::default() }).id();
+        match self.entity_kind {
+            SceneEntityKind::Rect => {
+                world.add_component(entity, RectRenderer::default())?;
+            }
+            SceneEntityKind::Sprite => {
+                world.add_component(entity, SpriteRenderer::default())?;
+            }
+        }
+        self.entity_id = Some(entity_to_u64(entity));
+        Ok(())
+    }
+
+    fn undo(&mut self, context: &mut EditorContext) -> GResult<()> {
+        if let Some(id) = self.entity_id {
+            let entity = u64_to_entity(id);
+            context.world_mut().despawn(entity)
+        }
+        else {
+            Err(GError { kind: GErrorKind::Other, message: "实体尚未创建，无法撤销".to_string() })
+        }
+    }
+
+    fn description(&self) -> &str {
+        &self.description
+    }
+}
+
+/// 剪贴板实体数据
+///
+/// 存储复制到剪贴板的实体组件信息，用于粘贴时创建新实体。
+#[derive(Debug, Clone)]
+pub struct ClipboardEntity {
+    /// 实体的变换组件数据
+    pub transform: Transform2D,
+    /// 矩形渲染器组件数据（如果存在）
+    pub rect_renderer: Option<RectRenderer>,
+    /// 精灵渲染器组件数据（如果存在）
+    pub sprite_renderer: Option<SpriteRenderer>,
+    /// 实体类型
+    pub kind: SceneEntityKind,
+}
+
+/// 场景右键菜单
+///
+/// 管理场景视图右键上下文菜单的显示状态和位置信息。
+pub struct SceneContextMenu {
+    /// 菜单是否可见
+    pub visible: bool,
+    /// 菜单屏幕坐标位置
+    pub position: (f32, f32),
+    /// 菜单对应的世界坐标位置，用于在该位置创建实体
+    pub world_position: (f32, f32),
+}
+
+impl SceneContextMenu {
+    /// 创建默认的隐藏右键菜单
+    pub fn new() -> Self {
+        Self { visible: false, position: (0.0, 0.0), world_position: (0.0, 0.0) }
+    }
+
+    /// 在指定位置显示右键菜单
+    ///
+    /// `position` 为屏幕坐标，`world_position` 为对应的世界坐标。
+    pub fn show(&mut self, position: (f32, f32), world_position: (f32, f32)) {
+        self.visible = true;
+        self.position = position;
+        self.world_position = world_position;
+    }
+
+    /// 隐藏右键菜单
+    pub fn hide(&mut self) {
+        self.visible = false;
+    }
+}
+
+impl Default for SceneContextMenu {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 /// 场景实体类型
@@ -52,7 +316,7 @@ pub enum SceneEntityKind {
 
 /// 场景实体渲染数据
 ///
-/// 存储场景中单个实体的渲染信息，包括位置、尺寸、颜色和类型。
+/// 存储场景中单个实体的渲染信息，包括位置、尺寸、旋转、缩放、颜色和类型。
 /// 世界坐标通过 `ViewportState::world_to_screen()` 转换为屏幕坐标后渲染。
 #[derive(Debug, Clone)]
 pub struct SceneEntity {
@@ -66,15 +330,106 @@ pub struct SceneEntity {
     pub width: f32,
     /// 高度（世界坐标单位）
     pub height: f32,
+    /// 旋转角度（弧度）
+    pub rotation: f32,
+    /// X 缩放因子
+    pub scale_x: f32,
+    /// Y 缩放因子
+    pub scale_y: f32,
     /// 填充颜色
     pub color: Color,
     /// 实体渲染类型
     pub kind: SceneEntityKind,
 }
 
+/// 变换工具模式
+///
+/// 定义场景编辑器中变换工具的三种操作模式。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TransformGizmo {
+    /// 移动模式
+    Translate,
+    /// 旋转模式
+    Rotate,
+    /// 缩放模式
+    Scale,
+}
+
+impl Default for TransformGizmo {
+    fn default() -> Self {
+        TransformGizmo::Translate
+    }
+}
+
+/// 变换工具状态
+///
+/// 管理变换工具的当前交互状态，包括活跃轴和拖拽偏移。
+#[derive(Debug, Clone)]
+pub struct GizmoState {
+    /// 当前变换模式
+    pub mode: TransformGizmo,
+    /// 活跃轴（"x"、"y" 或 "xy"）
+    pub active_axis: Option<String>,
+    /// 拖拽起始世界坐标
+    pub drag_start_world: Option<(f32, f32)>,
+    /// 拖拽起始时实体的世界坐标
+    pub drag_entity_start_pos: Option<(f32, f32)>,
+    /// 拖拽起始时实体的旋转角度
+    pub drag_entity_start_rotation: Option<f32>,
+    /// 拖拽起始时实体的缩放
+    pub drag_entity_start_scale: Option<(f32, f32)>,
+}
+
+impl GizmoState {
+    /// 创建默认变换工具状态
+    pub fn new() -> Self {
+        Self {
+            mode: TransformGizmo::Translate,
+            active_axis: None,
+            drag_start_world: None,
+            drag_entity_start_pos: None,
+            drag_entity_start_rotation: None,
+            drag_entity_start_scale: None,
+        }
+    }
+}
+
+impl Default for GizmoState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// 框选状态
+///
+/// 管理场景编辑器中框选操作的状态信息。
+#[derive(Debug, Clone)]
+pub struct SelectionBox {
+    /// 框选起始屏幕坐标
+    pub start_pos: (f32, f32),
+    /// 框选当前屏幕坐标
+    pub current_pos: (f32, f32),
+    /// 框选是否激活
+    pub is_active: bool,
+}
+
+impl SelectionBox {
+    /// 创建默认框选状态
+    pub fn new() -> Self {
+        Self { start_pos: (0.0, 0.0), current_pos: (0.0, 0.0), is_active: false }
+    }
+}
+
+impl Default for SelectionBox {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// 基础场景视图
 ///
-/// 提供场景视图的默认实现，包括视口管理、实体选中和网格显示功能。
+/// 提供场景视图的默认实现，包括视口管理、实体选中、网格显示、
+/// 变换撤销/重做、实体删除/创建、复制粘贴和右键上下文菜单功能。
 /// 可作为具体场景视图的基类使用。
 pub struct BaseSceneView {
     /// 是否可见
@@ -113,6 +468,26 @@ pub struct BaseSceneView {
     render_target_name: String,
     /// 待提交的场景绘制命令
     render_commands: Vec<DrawCommand>,
+    /// 变换工具模式
+    transform_gizmo: TransformGizmo,
+    /// 变换工具状态
+    gizmo_state: GizmoState,
+    /// 框选状态
+    selection_box: SelectionBox,
+    /// 是否正在使用变换工具拖拽
+    is_gizmo_dragging: bool,
+    /// Ctrl 键是否按下
+    ctrl_pressed: bool,
+    /// Shift 键是否按下
+    shift_pressed: bool,
+    /// Alt 键是否按下
+    alt_pressed: bool,
+    /// 剪贴板中的实体数据列表
+    clipboard: Vec<ClipboardEntity>,
+    /// 右键上下文菜单
+    context_menu: SceneContextMenu,
+    /// Gizmo 拖拽开始时实体的变换旧值
+    gizmo_drag_old_value: Option<TransformValue>,
 }
 
 impl BaseSceneView {
@@ -137,6 +512,16 @@ impl BaseSceneView {
             dragged_entity: None,
             render_target_name: "scene_view".to_string(),
             render_commands: Vec::new(),
+            transform_gizmo: TransformGizmo::Translate,
+            gizmo_state: GizmoState::new(),
+            selection_box: SelectionBox::new(),
+            is_gizmo_dragging: false,
+            ctrl_pressed: false,
+            shift_pressed: false,
+            alt_pressed: false,
+            clipboard: Vec::new(),
+            context_menu: SceneContextMenu::new(),
+            gizmo_drag_old_value: None,
         }
     }
 
@@ -296,7 +681,8 @@ impl BaseSceneView {
         if let Some((entity, _, _)) = hit {
             self.select_entity(entity);
             context.events_mut().publish(EditorEvent::EntitySelected { entity: entity_to_u64(entity) });
-        } else {
+        }
+        else {
             self.deselect_all();
             context.events_mut().publish(EditorEvent::EntityDeselected);
         }
@@ -321,6 +707,71 @@ impl BaseSceneView {
         None
     }
 
+    /// 框选命中测试
+    ///
+    /// 查找屏幕坐标框选区域内的所有实体。
+    /// 将框选矩形的两个角点转换为世界坐标，然后遍历所有拥有 Transform2D 的实体，
+    /// 检查实体包围盒是否与框选区域相交。
+    fn hit_test_box(
+        world: &GameWorld,
+        screen_start: (f32, f32),
+        screen_end: (f32, f32),
+        viewport: &ViewportState,
+    ) -> Vec<Entity> {
+        let world_start = viewport.screen_to_world(screen_start);
+        let world_end = viewport.screen_to_world(screen_end);
+
+        let min_x = world_start.0.min(world_end.0);
+        let min_y = world_start.1.min(world_end.1);
+        let max_x = world_start.0.max(world_end.0);
+        let max_y = world_start.1.max(world_end.1);
+
+        let mut result = Vec::new();
+        let query = world.query::<Transform2D>();
+        for (entity, transform) in query {
+            let (width, height) = Self::get_entity_size(world, entity);
+            let entity_min_x = transform.x;
+            let entity_min_y = transform.y;
+            let entity_max_x = transform.x + width;
+            let entity_max_y = transform.y + height;
+
+            if entity_min_x <= max_x && entity_max_x >= min_x && entity_min_y <= max_y && entity_max_y >= min_y {
+                result.push(entity);
+            }
+        }
+        result
+    }
+
+    /// 计算旋转缩放后的矩形四个角点
+    ///
+    /// 以矩形中心为旋转中心，应用缩放和旋转变换，
+    /// 返回变换后的四个角点坐标（屏幕坐标）。
+    fn compute_transformed_corners(
+        screen_x: f32,
+        screen_y: f32,
+        screen_w: f32,
+        screen_h: f32,
+        rotation: f32,
+        scale_x: f32,
+        scale_y: f32,
+    ) -> [(f32, f32); 4] {
+        let cx = screen_x + screen_w / 2.0;
+        let cy = screen_y + screen_h / 2.0;
+        let half_w = screen_w * scale_x / 2.0;
+        let half_h = screen_h * scale_y / 2.0;
+
+        let corners = [(-half_w, -half_h), (half_w, -half_h), (half_w, half_h), (-half_w, half_h)];
+
+        let cos_r = rotation.cos();
+        let sin_r = rotation.sin();
+
+        corners.map(|(x, y)| {
+            let rx = x * cos_r - y * sin_r;
+            let ry = x * sin_r + y * cos_r;
+            (cx + rx, cy + ry)
+        })
+    }
+
     /// 获取实体在场景中的渲染尺寸
     ///
     /// 优先从 `SpriteRenderer` 获取尺寸，其次从 `RectRenderer` 获取，
@@ -328,11 +779,295 @@ impl BaseSceneView {
     fn get_entity_size(world: &GameWorld, entity: Entity) -> (f32, f32) {
         if let Some(sprite) = world.get_component::<SpriteRenderer>(entity) {
             (sprite.width, sprite.height)
-        } else if let Some(rect) = world.get_component::<RectRenderer>(entity) {
+        }
+        else if let Some(rect) = world.get_component::<RectRenderer>(entity) {
             (rect.width, rect.height)
-        } else {
+        }
+        else {
             (50.0, 50.0)
         }
+    }
+
+    /// 设置变换工具模式
+    pub fn set_transform_mode(&mut self, mode: TransformGizmo) {
+        self.transform_gizmo = mode;
+        self.gizmo_state.mode = mode;
+    }
+
+    /// 获取当前变换工具模式
+    pub fn transform_mode(&self) -> TransformGizmo {
+        self.transform_gizmo
+    }
+
+    /// 追加选中实体
+    ///
+    /// 将实体添加到选中列表，不取消其他已选中实体。
+    pub fn select_entity_multi(&mut self, entity: Entity) {
+        if !self.selected_entities.contains(&entity) {
+            self.selected_entities.push(entity);
+            self.pending_select_events.push(entity_to_u64(entity));
+        }
+    }
+
+    /// 聚焦选中实体
+    ///
+    /// 计算选中实体的包围盒，调整视口使其居中显示。
+    pub fn frame_selection(&mut self) {
+        if self.selected_entities.is_empty() {
+            return;
+        }
+
+        let mut min_x = f32::MAX;
+        let mut min_y = f32::MAX;
+        let mut max_x = f32::MIN;
+        let mut max_y = f32::MIN;
+
+        for &entity in &self.selected_entities {
+            if let Some(se) = self.scene_entities.iter().find(|e| e.entity == entity) {
+                min_x = min_x.min(se.world_x);
+                min_y = min_y.min(se.world_y);
+                max_x = max_x.max(se.world_x + se.width);
+                max_y = max_y.max(se.world_y + se.height);
+            }
+        }
+
+        if min_x == f32::MAX {
+            return;
+        }
+
+        let center_x = (min_x + max_x) / 2.0;
+        let center_y = (min_y + max_y) / 2.0;
+        let bbox_w = max_x - min_x;
+        let bbox_h = max_y - min_y;
+
+        let zoom = if bbox_w > 0.0 && bbox_h > 0.0 {
+            let zoom_x = self.viewport.size.0 / (bbox_w * 1.5);
+            let zoom_y = self.viewport.size.1 / (bbox_h * 1.5);
+            zoom_x.min(zoom_y).clamp(0.1, 10.0)
+        }
+        else {
+            1.0
+        };
+
+        self.viewport.offset = (center_x - self.viewport.size.0 / (2.0 * zoom), center_y - self.viewport.size.1 / (2.0 * zoom));
+        self.viewport.zoom = zoom;
+    }
+
+    /// 渲染变换工具
+    ///
+    /// 根据当前变换模式在选中实体位置渲染变换工具。
+    /// 移动模式渲染四向箭头，旋转模式渲染圆环，缩放模式渲染方块手柄。
+    pub fn render_gizmo(&self, context: &mut RenderContext) {
+        if self.selected_entities.is_empty() {
+            return;
+        }
+
+        let entity = self.selected_entities[0];
+        if let Some(se) = self.scene_entities.iter().find(|e| e.entity == entity) {
+            let (screen_x, screen_y) = self.viewport.world_to_screen((se.world_x, se.world_y));
+            let screen_w = se.width * self.viewport.zoom;
+            let screen_h = se.height * self.viewport.zoom;
+            let center_x = screen_x + screen_w / 2.0;
+            let center_y = screen_y + screen_h / 2.0;
+
+            let gizmo_size = 60.0;
+
+            match self.transform_gizmo {
+                TransformGizmo::Translate => {
+                    let x_color = Color::new(1.0, 0.3, 0.3, 0.9);
+                    let y_color = Color::new(0.3, 1.0, 0.3, 0.9);
+                    context.draw(DrawCommand::Line {
+                        start: [center_x, center_y],
+                        end: [center_x + gizmo_size, center_y],
+                        color: x_color,
+                        width: 2.0,
+                    });
+                    context.draw(DrawCommand::Line {
+                        start: [center_x, center_y],
+                        end: [center_x, center_y + gizmo_size],
+                        color: y_color,
+                        width: 2.0,
+                    });
+                    context.draw(DrawCommand::Rect {
+                        rect: Rect::new(center_x + gizmo_size - 4.0, center_y - 4.0, 8.0, 8.0),
+                        color: x_color,
+                        corner_radius: 0.0,
+                    });
+                    context.draw(DrawCommand::Rect {
+                        rect: Rect::new(center_x - 4.0, center_y + gizmo_size - 4.0, 8.0, 8.0),
+                        color: y_color,
+                        corner_radius: 0.0,
+                    });
+                }
+                TransformGizmo::Rotate => {
+                    let rotate_color = Color::new(0.3, 0.6, 1.0, 0.9);
+                    let segments = 32;
+                    for i in 0..segments {
+                        let angle1 = 2.0 * std::f32::consts::PI * i as f32 / segments as f32;
+                        let angle2 = 2.0 * std::f32::consts::PI * (i + 1) as f32 / segments as f32;
+                        let x1 = center_x + gizmo_size * angle1.cos();
+                        let y1 = center_y + gizmo_size * angle1.sin();
+                        let x2 = center_x + gizmo_size * angle2.cos();
+                        let y2 = center_y + gizmo_size * angle2.sin();
+                        context.draw(DrawCommand::Line { start: [x1, y1], end: [x2, y2], color: rotate_color, width: 2.0 });
+                    }
+                }
+                TransformGizmo::Scale => {
+                    let x_color = Color::new(1.0, 0.3, 0.3, 0.9);
+                    let y_color = Color::new(0.3, 1.0, 0.3, 0.9);
+                    let handle_size = 8.0;
+                    context.draw(DrawCommand::Line {
+                        start: [center_x, center_y],
+                        end: [center_x + gizmo_size, center_y],
+                        color: x_color,
+                        width: 2.0,
+                    });
+                    context.draw(DrawCommand::Line {
+                        start: [center_x, center_y],
+                        end: [center_x, center_y + gizmo_size],
+                        color: y_color,
+                        width: 2.0,
+                    });
+                    context.draw(DrawCommand::Rect {
+                        rect: Rect::new(
+                            center_x + gizmo_size - handle_size / 2.0,
+                            center_y - handle_size / 2.0,
+                            handle_size,
+                            handle_size,
+                        ),
+                        color: x_color,
+                        corner_radius: 2.0,
+                    });
+                    context.draw(DrawCommand::Rect {
+                        rect: Rect::new(
+                            center_x - handle_size / 2.0,
+                            center_y + gizmo_size - handle_size / 2.0,
+                            handle_size,
+                            handle_size,
+                        ),
+                        color: y_color,
+                        corner_radius: 2.0,
+                    });
+                }
+            }
+
+            let center_color = Color::new(1.0, 1.0, 1.0, 0.9);
+            context.draw(DrawCommand::Rect {
+                rect: Rect::new(center_x - 3.0, center_y - 3.0, 6.0, 6.0),
+                color: center_color,
+                corner_radius: 3.0,
+            });
+        }
+    }
+
+    /// 渲染框选矩形
+    ///
+    /// 当框选操作激活时，渲染半透明蓝色选择框。
+    pub fn render_selection_box(&self, context: &mut RenderContext) {
+        if !self.selection_box.is_active {
+            return;
+        }
+
+        let x = self.selection_box.start_pos.0.min(self.selection_box.current_pos.0);
+        let y = self.selection_box.start_pos.1.min(self.selection_box.current_pos.1);
+        let w = (self.selection_box.current_pos.0 - self.selection_box.start_pos.0).abs();
+        let h = (self.selection_box.current_pos.1 - self.selection_box.start_pos.1).abs();
+
+        let fill_color = Color::new(0.2, 0.5, 1.0, 0.15);
+        let border_color = Color::new(0.2, 0.5, 1.0, 0.6);
+
+        context.draw(DrawCommand::Rect { rect: Rect::new(x, y, w, h), color: fill_color, corner_radius: 0.0 });
+        context.draw(DrawCommand::Line { start: [x, y], end: [x + w, y], color: border_color, width: 1.0 });
+        context.draw(DrawCommand::Line { start: [x + w, y], end: [x + w, y + h], color: border_color, width: 1.0 });
+        context.draw(DrawCommand::Line { start: [x + w, y + h], end: [x, y + h], color: border_color, width: 1.0 });
+        context.draw(DrawCommand::Line { start: [x, y + h], end: [x, y], color: border_color, width: 1.0 });
+    }
+
+    /// 处理变换工具交互
+    ///
+    /// 检测鼠标是否点击在变换工具的轴手柄上，并记录拖拽起始时的变换值。
+    fn handle_gizmo_interaction(&mut self, screen_pos: (f32, f32), context: &mut EditorContext) -> bool {
+        if self.selected_entities.is_empty() {
+            return false;
+        }
+
+        let entity = self.selected_entities[0];
+        let entity_id = entity_to_u64(entity);
+        if let Some(se) = self.scene_entities.iter().find(|e| e.entity == entity) {
+            let (screen_x, screen_y) = self.viewport.world_to_screen((se.world_x, se.world_y));
+            let screen_w = se.width * self.viewport.zoom;
+            let screen_h = se.height * self.viewport.zoom;
+            let center_x = screen_x + screen_w / 2.0;
+            let center_y = screen_y + screen_h / 2.0;
+
+            let gizmo_size = 60.0;
+            let hit_threshold = 10.0;
+
+            match self.transform_gizmo {
+                TransformGizmo::Translate | TransformGizmo::Scale => {
+                    let x_axis_start = center_x;
+                    let x_axis_end = center_x + gizmo_size;
+                    let y_axis_start = center_y;
+                    let y_axis_end = center_y + gizmo_size;
+
+                    let on_x_axis = screen_pos.1 >= center_y - hit_threshold
+                        && screen_pos.1 <= center_y + hit_threshold
+                        && screen_pos.0 >= x_axis_start - hit_threshold
+                        && screen_pos.0 <= x_axis_end + hit_threshold;
+
+                    let on_y_axis = screen_pos.0 >= center_x - hit_threshold
+                        && screen_pos.0 <= center_x + hit_threshold
+                        && screen_pos.1 >= y_axis_start - hit_threshold
+                        && screen_pos.1 <= y_axis_end + hit_threshold;
+
+                    if on_x_axis || on_y_axis {
+                        self.is_gizmo_dragging = true;
+                        self.gizmo_state.active_axis = if on_x_axis && on_y_axis {
+                            Some("xy".to_string())
+                        }
+                        else if on_x_axis {
+                            Some("x".to_string())
+                        }
+                        else {
+                            Some("y".to_string())
+                        };
+                        self.gizmo_state.drag_start_world = Some(self.viewport.screen_to_world(screen_pos));
+                        self.gizmo_state.drag_entity_start_pos = Some((se.world_x, se.world_y));
+                        self.gizmo_state.drag_entity_start_scale = Some((se.scale_x, se.scale_y));
+
+                        let world = context.world();
+                        if let Some(transform) = world.get_component::<Transform2D>(entity) {
+                            self.gizmo_drag_old_value = match self.transform_gizmo {
+                                TransformGizmo::Translate => Some(TransformValue::Position((transform.x, transform.y))),
+                                TransformGizmo::Scale => Some(TransformValue::Scale((transform.scale_x, transform.scale_y))),
+                                TransformGizmo::Rotate => None,
+                            };
+                        }
+
+                        return true;
+                    }
+                }
+                TransformGizmo::Rotate => {
+                    let dx = screen_pos.0 - center_x;
+                    let dy = screen_pos.1 - center_y;
+                    let dist = (dx * dx + dy * dy).sqrt();
+                    if dist >= gizmo_size - hit_threshold && dist <= gizmo_size + hit_threshold {
+                        self.is_gizmo_dragging = true;
+                        self.gizmo_state.active_axis = Some("rotation".to_string());
+                        self.gizmo_state.drag_start_world = Some(self.viewport.screen_to_world(screen_pos));
+                        self.gizmo_state.drag_entity_start_rotation = Some(se.rotation);
+
+                        let world = context.world();
+                        if let Some(transform) = world.get_component::<Transform2D>(entity) {
+                            self.gizmo_drag_old_value = Some(TransformValue::Rotation(transform.rotation));
+                        }
+
+                        return true;
+                    }
+                }
+            }
+        }
+        false
     }
 
     /// 从 GameWorld 查询实体并构建场景实体列表
@@ -350,26 +1085,37 @@ impl BaseSceneView {
                     world_y: transform.y,
                     width: sprite.width,
                     height: sprite.height,
+                    rotation: transform.rotation,
+                    scale_x: transform.scale_x,
+                    scale_y: transform.scale_y,
                     color: sprite.color,
                     kind: SceneEntityKind::Sprite,
                 });
-            } else if let Some(rect) = world.get_component::<RectRenderer>(entity) {
+            }
+            else if let Some(rect) = world.get_component::<RectRenderer>(entity) {
                 entities.push(SceneEntity {
                     entity,
                     world_x: transform.x,
                     world_y: transform.y,
                     width: rect.width,
                     height: rect.height,
+                    rotation: transform.rotation,
+                    scale_x: transform.scale_x,
+                    scale_y: transform.scale_y,
                     color: rect.color,
                     kind: SceneEntityKind::Rect,
                 });
-            } else {
+            }
+            else {
                 entities.push(SceneEntity {
                     entity,
                     world_x: transform.x,
                     world_y: transform.y,
                     width: 50.0,
                     height: 50.0,
+                    rotation: transform.rotation,
+                    scale_x: transform.scale_x,
+                    scale_y: transform.scale_y,
                     color: Color::new(0.5, 0.5, 0.5, 1.0),
                     kind: SceneEntityKind::Rect,
                 });
@@ -387,31 +1133,61 @@ impl BaseSceneView {
         let zoom = self.viewport.zoom;
 
         for entity in &self.scene_entities {
-            let (screen_x, screen_y) =
-                self.viewport.world_to_screen((entity.world_x, entity.world_y));
+            let (screen_x, screen_y) = self.viewport.world_to_screen((entity.world_x, entity.world_y));
             let screen_w = entity.width * zoom;
             let screen_h = entity.height * zoom;
 
-            match entity.kind {
-                SceneEntityKind::Sprite => {
-                    context.draw(DrawCommand::Rect {
-                        rect: Rect::new(screen_x, screen_y, screen_w, screen_h),
-                        color: entity.color,
-                        corner_radius: 0.0,
-                    });
-                }
-                SceneEntityKind::Rect => {
-                    context.draw(DrawCommand::Rect {
-                        rect: Rect::new(screen_x, screen_y, screen_w, screen_h),
-                        color: entity.color,
-                        corner_radius: 0.0,
-                    });
-                }
+            let has_transform = entity.rotation != 0.0 || entity.scale_x != 1.0 || entity.scale_y != 1.0;
+
+            if has_transform {
+                let corners = Self::compute_transformed_corners(
+                    screen_x,
+                    screen_y,
+                    screen_w,
+                    screen_h,
+                    entity.rotation,
+                    entity.scale_x,
+                    entity.scale_y,
+                );
+
+                context.draw(DrawCommand::Line {
+                    start: [corners[0].0, corners[0].1],
+                    end: [corners[1].0, corners[1].1],
+                    color: entity.color,
+                    width: 2.0,
+                });
+                context.draw(DrawCommand::Line {
+                    start: [corners[1].0, corners[1].1],
+                    end: [corners[2].0, corners[2].1],
+                    color: entity.color,
+                    width: 2.0,
+                });
+                context.draw(DrawCommand::Line {
+                    start: [corners[2].0, corners[2].1],
+                    end: [corners[3].0, corners[3].1],
+                    color: entity.color,
+                    width: 2.0,
+                });
+                context.draw(DrawCommand::Line {
+                    start: [corners[3].0, corners[3].1],
+                    end: [corners[0].0, corners[0].1],
+                    color: entity.color,
+                    width: 2.0,
+                });
+            }
+            else {
+                context.draw(DrawCommand::Rect {
+                    rect: Rect::new(screen_x, screen_y, screen_w, screen_h),
+                    color: entity.color,
+                    corner_radius: 0.0,
+                });
             }
         }
 
         self.render_grid(context);
         self.render_selection_overlay(context);
+        self.render_gizmo(context);
+        self.render_selection_box(context);
     }
 
     /// 收集场景绘制命令
@@ -419,8 +1195,7 @@ impl BaseSceneView {
     /// 创建临时 RenderContext，调用 render_scene 渲染场景，
     /// 然后提取绘制命令存储到内部缓冲区，供 EditorShell 在 tick 中使用。
     pub fn collect_render_commands(&mut self, world: &GameWorld) {
-        let mut context =
-            RenderContext::new(self.viewport.size.0 as u32, self.viewport.size.1 as u32);
+        let mut context = RenderContext::new(self.viewport.size.0 as u32, self.viewport.size.1 as u32);
         self.render_scene(&mut context, world);
         self.render_commands = context.commands().to_vec();
     }
@@ -449,9 +1224,11 @@ impl BaseSceneView {
         let screen_spacing = BASE_GRID_SPACING * zoom;
         let world_step = if screen_spacing < 20.0 {
             BASE_GRID_SPACING * 2.0
-        } else if screen_spacing > 200.0 {
+        }
+        else if screen_spacing > 200.0 {
             BASE_GRID_SPACING * 0.5
-        } else {
+        }
+        else {
             BASE_GRID_SPACING
         };
 
@@ -499,21 +1276,55 @@ impl BaseSceneView {
 
         for &entity in &self.selected_entities {
             if let Some(scene_entity) = self.scene_entities.iter().find(|e| e.entity == entity) {
-                let (screen_x, screen_y) =
-                    self.viewport.world_to_screen((scene_entity.world_x, scene_entity.world_y));
+                let (screen_x, screen_y) = self.viewport.world_to_screen((scene_entity.world_x, scene_entity.world_y));
                 let screen_w = scene_entity.width * self.viewport.zoom;
                 let screen_h = scene_entity.height * self.viewport.zoom;
 
-                context.draw(DrawCommand::Rect {
-                    rect: Rect::new(
+                let has_transform = scene_entity.rotation != 0.0 || scene_entity.scale_x != 1.0 || scene_entity.scale_y != 1.0;
+
+                if has_transform {
+                    let corners = Self::compute_transformed_corners(
                         screen_x - 2.0,
                         screen_y - 2.0,
                         screen_w + 4.0,
                         screen_h + 4.0,
-                    ),
-                    color: highlight_color,
-                    corner_radius: 0.0,
-                });
+                        scene_entity.rotation,
+                        scene_entity.scale_x,
+                        scene_entity.scale_y,
+                    );
+
+                    context.draw(DrawCommand::Line {
+                        start: [corners[0].0, corners[0].1],
+                        end: [corners[1].0, corners[1].1],
+                        color: highlight_color,
+                        width: 2.0,
+                    });
+                    context.draw(DrawCommand::Line {
+                        start: [corners[1].0, corners[1].1],
+                        end: [corners[2].0, corners[2].1],
+                        color: highlight_color,
+                        width: 2.0,
+                    });
+                    context.draw(DrawCommand::Line {
+                        start: [corners[2].0, corners[2].1],
+                        end: [corners[3].0, corners[3].1],
+                        color: highlight_color,
+                        width: 2.0,
+                    });
+                    context.draw(DrawCommand::Line {
+                        start: [corners[3].0, corners[3].1],
+                        end: [corners[0].0, corners[0].1],
+                        color: highlight_color,
+                        width: 2.0,
+                    });
+                }
+                else {
+                    context.draw(DrawCommand::Rect {
+                        rect: Rect::new(screen_x - 2.0, screen_y - 2.0, screen_w + 4.0, screen_h + 4.0),
+                        color: highlight_color,
+                        corner_radius: 0.0,
+                    });
+                }
             }
         }
     }
@@ -521,6 +1332,29 @@ impl BaseSceneView {
     /// 构建缩放指示器文本
     fn zoom_indicator_text(&self) -> String {
         format!("{:.0}%", self.viewport.zoom * 100.0)
+    }
+
+    /// 从 GameWorld 中获取实体的快照数据
+    ///
+    /// 读取实体的 `Transform2D`、`RectRenderer` 和 `SpriteRenderer` 组件数据，
+    /// 构建用于撤销恢复的 `EntitySnapshot`。
+    fn take_entity_snapshot(world: &GameWorld, entity: Entity) -> Option<EntitySnapshot> {
+        let transform = world.get_component::<Transform2D>(entity)?.clone();
+        let rect_renderer = world.get_component::<RectRenderer>(entity).cloned();
+        let sprite_renderer = world.get_component::<SpriteRenderer>(entity).cloned();
+        Some(EntitySnapshot { transform, rect_renderer, sprite_renderer })
+    }
+
+    /// 从 GameWorld 中获取实体的剪贴板数据
+    ///
+    /// 读取实体的 `Transform2D`、`RectRenderer` 和 `SpriteRenderer` 组件数据，
+    /// 根据渲染器类型确定 `SceneEntityKind`，构建用于粘贴的 `ClipboardEntity`。
+    fn take_clipboard_entity(world: &GameWorld, entity: Entity) -> Option<ClipboardEntity> {
+        let transform = world.get_component::<Transform2D>(entity)?.clone();
+        let rect_renderer = world.get_component::<RectRenderer>(entity).cloned();
+        let sprite_renderer = world.get_component::<SpriteRenderer>(entity).cloned();
+        let kind = if sprite_renderer.is_some() { SceneEntityKind::Sprite } else { SceneEntityKind::Rect };
+        Some(ClipboardEntity { transform, rect_renderer, sprite_renderer, kind })
     }
 }
 
@@ -561,17 +1395,129 @@ impl EditorPanel for BaseSceneView {
 
     /// 处理编辑器事件
     ///
-    /// 响应鼠标事件实现实体选择和拖拽移动：
+    /// 响应鼠标和键盘事件实现实体选择、拖拽移动、变换撤销/重做、
+    /// 实体删除/创建、复制粘贴和右键上下文菜单等功能：
     /// - 左键按下：命中测试选中实体或取消选中
     /// - 鼠标移动：拖拽选中的实体更新其世界坐标
-    /// - 左键释放：结束拖拽
+    /// - 左键释放：结束拖拽，创建 TransformCommand 记录变更
     /// - 中键按下/释放/移动：视口平移
     /// - 滚轮：视口缩放
+    /// - Ctrl+Z：撤销
+    /// - Ctrl+Y：重做
+    /// - Delete：删除选中实体
+    /// - Ctrl+C：复制选中实体到剪贴板
+    /// - Ctrl+V：粘贴剪贴板中的实体
+    /// - 右键：显示上下文菜单
     fn on_event(&mut self, event: &EditorEvent, context: &mut EditorContext) {
         match event {
-            EditorEvent::MouseDown { button, position } => {
-                match button {
-                    gg_editor_shell::MouseButton::Left => {
+            EditorEvent::KeyDown { key } => match key {
+                Key::W => {
+                    if !self.ctrl_pressed && !self.alt_pressed {
+                        self.set_transform_mode(TransformGizmo::Translate);
+                    }
+                }
+                Key::E => {
+                    if !self.ctrl_pressed && !self.alt_pressed {
+                        self.set_transform_mode(TransformGizmo::Rotate);
+                    }
+                }
+                Key::R => {
+                    if !self.ctrl_pressed && !self.alt_pressed {
+                        self.set_transform_mode(TransformGizmo::Scale);
+                    }
+                }
+                Key::F => self.frame_selection(),
+                Key::Escape => {
+                    if self.is_gizmo_dragging {
+                        self.is_gizmo_dragging = false;
+                        self.gizmo_state.active_axis = None;
+                    }
+                    if self.selection_box.is_active {
+                        self.selection_box.is_active = false;
+                    }
+                    self.context_menu.hide();
+                }
+                Key::Z => {
+                    if self.ctrl_pressed {
+                        let _ = context.undo_command();
+                    }
+                }
+                Key::Y => {
+                    if self.ctrl_pressed {
+                        let _ = context.redo_command();
+                    }
+                }
+                Key::Delete => {
+                    if !self.selected_entities.is_empty() {
+                        let entities_to_delete: Vec<Entity> = self.selected_entities.clone();
+                        for entity in entities_to_delete {
+                            let entity_id = entity_to_u64(entity);
+                            if let Some(snapshot) = Self::take_entity_snapshot(context.world(), entity) {
+                                let command = Box::new(DeleteEntityCommand {
+                                    entity_id,
+                                    snapshot,
+                                    description: format!("删除实体 {}", entity_id),
+                                });
+                                context.execute_command(command);
+                            }
+                        }
+                        self.selected_entities.clear();
+                        context.events_mut().publish(EditorEvent::EntityDeselected);
+                    }
+                }
+                Key::C => {
+                    if self.ctrl_pressed && !self.selected_entities.is_empty() {
+                        self.clipboard.clear();
+                        for &entity in &self.selected_entities {
+                            if let Some(clip) = Self::take_clipboard_entity(context.world(), entity) {
+                                self.clipboard.push(clip);
+                            }
+                        }
+                    }
+                }
+                Key::V => {
+                    if self.ctrl_pressed && !self.clipboard.is_empty() {
+                        for clip in &self.clipboard {
+                            let position = (clip.transform.x + CLIPBOARD_OFFSET, clip.transform.y + CLIPBOARD_OFFSET);
+                            let command = Box::new(CreateEntityCommand {
+                                entity_id: None,
+                                position,
+                                entity_kind: clip.kind,
+                                description: format!("粘贴实体"),
+                            });
+                            context.execute_command(command);
+                        }
+                    }
+                }
+                Key::Control => {
+                    self.ctrl_pressed = true;
+                }
+                Key::Shift => {
+                    self.shift_pressed = true;
+                }
+                Key::Alt => {
+                    self.alt_pressed = true;
+                }
+                _ => {}
+            },
+            EditorEvent::KeyUp { key } => match key {
+                Key::Control => {
+                    self.ctrl_pressed = false;
+                }
+                Key::Shift => {
+                    self.shift_pressed = false;
+                }
+                Key::Alt => {
+                    self.alt_pressed = false;
+                }
+                _ => {}
+            },
+            EditorEvent::MouseDown { button, position } => match button {
+                gg_editor_shell::MouseButton::Left => {
+                    self.context_menu.hide();
+                    if self.handle_gizmo_interaction(*position, context) {
+                    }
+                    else {
                         let world_pos = self.viewport.screen_to_world(*position);
                         let world = context.world();
                         let hit = Self::hit_test_world(world, world_pos);
@@ -582,41 +1528,143 @@ impl EditorPanel for BaseSceneView {
                             self.drag_start_screen = *position;
                             self.drag_entity_start_pos = (wx, wy);
                             self.dragged_entity = Some(entity);
-                            context.events_mut().publish(EditorEvent::EntitySelected {
-                                entity: entity_to_u64(entity),
-                            });
-                        } else {
+                            context.events_mut().publish(EditorEvent::EntitySelected { entity: entity_to_u64(entity) });
+                        }
+                        else {
                             self.deselect_all();
                             self.is_dragging = false;
                             self.dragged_entity = None;
+                            self.selection_box.start_pos = *position;
+                            self.selection_box.current_pos = *position;
+                            self.selection_box.is_active = true;
                             context.events_mut().publish(EditorEvent::EntityDeselected);
                         }
                     }
-                    gg_editor_shell::MouseButton::Middle => {
-                        self.handle_middle_button_down(*position);
-                    }
-                    gg_editor_shell::MouseButton::Right => {}
                 }
-            }
-            EditorEvent::MouseUp { button, .. } => {
-                match button {
-                    gg_editor_shell::MouseButton::Left => {
-                        self.is_dragging = false;
-                        self.dragged_entity = None;
-                    }
-                    gg_editor_shell::MouseButton::Middle => {
-                        self.handle_middle_button_up();
-                    }
-                    gg_editor_shell::MouseButton::Right => {}
+                gg_editor_shell::MouseButton::Middle => {
+                    self.handle_middle_button_down(*position);
                 }
-            }
+                gg_editor_shell::MouseButton::Right => {
+                    let world_pos = self.viewport.screen_to_world(*position);
+                    let world = context.world();
+                    let hit = Self::hit_test_world(world, world_pos);
+                    if hit.is_some() {
+                        self.context_menu.show(*position, world_pos);
+                    }
+                    else {
+                        self.context_menu.show(*position, world_pos);
+                    }
+                }
+            },
+            EditorEvent::MouseUp { button, .. } => match button {
+                gg_editor_shell::MouseButton::Left => {
+                    if self.is_gizmo_dragging {
+                        if let Some(entity) = self.selected_entities.first() {
+                            let entity_id = entity_to_u64(*entity);
+                            if let Some(old_value) = self.gizmo_drag_old_value.take() {
+                                let world = context.world();
+                                if let Some(transform) = world.get_component::<Transform2D>(*entity) {
+                                    let new_value = match self.transform_gizmo {
+                                        TransformGizmo::Translate => TransformValue::Position((transform.x, transform.y)),
+                                        TransformGizmo::Rotate => TransformValue::Rotation(transform.rotation),
+                                        TransformGizmo::Scale => TransformValue::Scale((transform.scale_x, transform.scale_y)),
+                                    };
+                                    let transform_kind = match self.transform_gizmo {
+                                        TransformGizmo::Translate => TransformKind::Translate,
+                                        TransformGizmo::Rotate => TransformKind::Rotate,
+                                        TransformGizmo::Scale => TransformKind::Scale,
+                                    };
+                                    let desc = match transform_kind {
+                                        TransformKind::Translate => "移动实体",
+                                        TransformKind::Rotate => "旋转实体",
+                                        TransformKind::Scale => "缩放实体",
+                                    };
+                                    let command = Box::new(TransformCommand {
+                                        entity_id,
+                                        transform_kind,
+                                        old_value,
+                                        new_value,
+                                        description: format!("{} {}", desc, entity_id),
+                                    });
+                                    context.execute_command(command);
+                                }
+                            }
+                        }
+                    }
+                    self.is_dragging = false;
+                    self.dragged_entity = None;
+                    self.is_gizmo_dragging = false;
+                    self.gizmo_state.active_axis = None;
+                    self.gizmo_drag_old_value = None;
+                    if self.selection_box.is_active {
+                        self.selection_box.is_active = false;
+                    }
+                }
+                gg_editor_shell::MouseButton::Middle => {
+                    self.handle_middle_button_up();
+                }
+                gg_editor_shell::MouseButton::Right => {}
+            },
             EditorEvent::MouseMove { position } => {
-                if self.is_dragging {
+                if self.is_gizmo_dragging {
+                    if let Some(entity) = self.selected_entities.first() {
+                        let current_world = self.viewport.screen_to_world(*position);
+                        if let Some(start_world) = self.gizmo_state.drag_start_world {
+                            if let Some(start_pos) = self.gizmo_state.drag_entity_start_pos {
+                                let dx = current_world.0 - start_world.0;
+                                let dy = current_world.1 - start_world.1;
+
+                                let world = context.world_mut();
+                                if let Some(transform) = world.get_component_mut::<Transform2D>(*entity) {
+                                    match self.transform_gizmo {
+                                        TransformGizmo::Translate => match self.gizmo_state.active_axis.as_deref() {
+                                            Some("x") => transform.x = start_pos.0 + dx,
+                                            Some("y") => transform.y = start_pos.1 + dy,
+                                            Some("xy") => {
+                                                transform.x = start_pos.0 + dx;
+                                                transform.y = start_pos.1 + dy;
+                                            }
+                                            _ => {}
+                                        },
+                                        TransformGizmo::Rotate => {
+                                            if let Some(se) = self.scene_entities.iter().find(|e| e.entity == *entity) {
+                                                let (cx, cy) = self.viewport.world_to_screen((se.world_x, se.world_y));
+                                                let start_angle = (self.gizmo_state.drag_start_world.unwrap().1 - cy)
+                                                    .atan2(self.gizmo_state.drag_start_world.unwrap().0 - cx);
+                                                let current_angle = (position.1 - cy).atan2(position.0 - cx);
+                                                transform.rotation += current_angle - start_angle;
+                                            }
+                                        }
+                                        TransformGizmo::Scale => {
+                                            if let Some(start_scale) = self.gizmo_state.drag_entity_start_scale {
+                                                match self.gizmo_state.active_axis.as_deref() {
+                                                    Some("x") => {
+                                                        let delta = 1.0 + dx * 0.01;
+                                                        transform.scale_x = (start_scale.0 * delta).max(0.01);
+                                                    }
+                                                    Some("y") => {
+                                                        let delta = 1.0 + dy * 0.01;
+                                                        transform.scale_y = (start_scale.1 * delta).max(0.01);
+                                                    }
+                                                    Some("xy") => {
+                                                        let delta = 1.0 + (dx + dy) * 0.005;
+                                                        transform.scale_x = (start_scale.0 * delta).max(0.01);
+                                                        transform.scale_y = (start_scale.1 * delta).max(0.01);
+                                                    }
+                                                    _ => {}
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                else if self.is_dragging {
                     if let Some(entity) = self.dragged_entity {
-                        let (start_wx, start_wy) =
-                            self.viewport.screen_to_world(self.drag_start_screen);
-                        let (current_wx, current_wy) =
-                            self.viewport.screen_to_world(*position);
+                        let (start_wx, start_wy) = self.viewport.screen_to_world(self.drag_start_screen);
+                        let (current_wx, current_wy) = self.viewport.screen_to_world(*position);
                         let dx = current_wx - start_wx;
                         let dy = current_wy - start_wy;
 
@@ -629,7 +1677,11 @@ impl EditorPanel for BaseSceneView {
                             transform.y = new_y;
                         }
                     }
-                } else if self.is_panning {
+                }
+                else if self.selection_box.is_active {
+                    self.selection_box.current_pos = *position;
+                }
+                else if self.is_panning {
                     self.handle_mouse_move(*position);
                 }
                 self.last_mouse_pos = Some(*position);
@@ -637,6 +1689,37 @@ impl EditorPanel for BaseSceneView {
             EditorEvent::MouseWheel { delta, position } => {
                 self.handle_scroll(delta.1, *position);
             }
+            EditorEvent::DragEnd { position, data } => match data {
+                DragData::AssetPath(path) => {
+                    let world_pos = self.viewport.screen_to_world(*position);
+                    let world = context.world_mut();
+                    let entity = world
+                        .spawn()
+                        .insert(Transform2D { x: world_pos.0, y: world_pos.1, ..Transform2D::default() })
+                        .insert(SpriteRenderer { texture_path: path.clone(), ..SpriteRenderer::default() })
+                        .id();
+                    context.events_mut().publish(EditorEvent::EntitySelected { entity: entity_to_u64(entity) });
+                }
+                DragData::MultiAsset(paths) => {
+                    let world_pos = self.viewport.screen_to_world(*position);
+                    for (i, path) in paths.iter().enumerate() {
+                        let offset_x = (i as f32 % 5.0) * 60.0;
+                        let offset_y = (i as f32 / 5.0).floor() * 60.0;
+                        let world = context.world_mut();
+                        let entity = world
+                            .spawn()
+                            .insert(Transform2D {
+                                x: world_pos.0 + offset_x,
+                                y: world_pos.1 + offset_y,
+                                ..Transform2D::default()
+                            })
+                            .insert(SpriteRenderer { texture_path: path.clone(), ..SpriteRenderer::default() })
+                            .id();
+                        context.events_mut().publish(EditorEvent::EntitySelected { entity: entity_to_u64(entity) });
+                    }
+                }
+                DragData::Entity(_) | DragData::Custom { .. } => {}
+            },
             EditorEvent::Custom { name, .. } => match name.as_str() {
                 "reset_view" => self.reset_viewport(),
                 "zoom_in" => self.zoom_in(),
@@ -649,7 +1732,7 @@ impl EditorPanel for BaseSceneView {
     }
 
     /// 构建场景视图面板 UI 节点树
-    fn build_ui(&mut self, context: &mut EditorContext, ui_tree: &mut UiTree) -> GResult<()> {
+    fn build_ui(&mut self, context: &mut EditorContext, ui_tree: &mut UiTree) -> Option<gg_ui::UiNodeId> {
         for entity in self.pending_select_events.drain(..) {
             context.events_mut().publish(EditorEvent::EntitySelected { entity });
         }
@@ -672,7 +1755,8 @@ impl EditorPanel for BaseSceneView {
         drop(incoming);
 
         let viewport_style = Style::new()
-            .with_background_color(Color::new(0.1, 0.1, 0.1, 1.0));
+            .with_background_color(Color::new(0.1, 0.1, 0.1, 1.0))
+            .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column));
         let viewport_id = ui_tree.create_node(
             "scene_viewport",
             viewport_style,
@@ -680,22 +1764,41 @@ impl EditorPanel for BaseSceneView {
         );
 
         let zoom_text = self.zoom_indicator_text();
-        let zoom_indicator_id =
-            ui_tree.create_node("zoom_indicator", Style::new(), UiNodeData::Text { content: zoom_text });
+        let zoom_indicator_id = ui_tree.create_node(
+            "zoom_indicator",
+            Style::new().with_font(FontStyle::new().with_size(12.0).with_color(Color::new(0.9, 0.9, 0.9, 1.0))),
+            UiNodeData::Text { content: zoom_text },
+        );
 
-        let toolbar_id = ui_tree.create_node("scene_toolbar", Style::new(), UiNodeData::Container);
+        let toolbar_id = ui_tree.create_node(
+            "scene_toolbar",
+            Style::new().with_layout(LayoutStyle::new().with_direction(FlexDirection::Row).with_gap(4.0)),
+            UiNodeData::Container,
+        );
 
-        let toggle_grid_id =
-            ui_tree.create_node("btn_toggle_grid", Style::new(), UiNodeData::Custom { kind: "button".to_string() });
+        let toggle_grid_id = ui_tree.create_node(
+            "btn_toggle_grid",
+            Style::new().with_background_color(Color::new(0.2, 0.2, 0.2, 1.0)),
+            UiNodeData::Custom { kind: "button".to_string() },
+        );
 
-        let reset_view_id =
-            ui_tree.create_node("btn_reset_view", Style::new(), UiNodeData::Custom { kind: "button".to_string() });
+        let reset_view_id = ui_tree.create_node(
+            "btn_reset_view",
+            Style::new().with_background_color(Color::new(0.2, 0.2, 0.2, 1.0)),
+            UiNodeData::Custom { kind: "button".to_string() },
+        );
 
-        let zoom_in_id =
-            ui_tree.create_node("btn_zoom_in", Style::new(), UiNodeData::Custom { kind: "button".to_string() });
+        let zoom_in_id = ui_tree.create_node(
+            "btn_zoom_in",
+            Style::new().with_background_color(Color::new(0.2, 0.2, 0.2, 1.0)),
+            UiNodeData::Custom { kind: "button".to_string() },
+        );
 
-        let zoom_out_id =
-            ui_tree.create_node("btn_zoom_out", Style::new(), UiNodeData::Custom { kind: "button".to_string() });
+        let zoom_out_id = ui_tree.create_node(
+            "btn_zoom_out",
+            Style::new().with_background_color(Color::new(0.2, 0.2, 0.2, 1.0)),
+            UiNodeData::Custom { kind: "button".to_string() },
+        );
 
         ui_tree.add_child(toolbar_id, toggle_grid_id);
         ui_tree.add_child(toolbar_id, reset_view_id);
@@ -705,9 +1808,49 @@ impl EditorPanel for BaseSceneView {
         ui_tree.add_child(viewport_id, zoom_indicator_id);
         ui_tree.add_child(viewport_id, toolbar_id);
 
-        ui_tree.set_root(viewport_id);
+        if self.context_menu.visible {
+            let menu_x = self.context_menu.position.0;
+            let menu_y = self.context_menu.position.1;
+            let menu_style = Style::new()
+                .with_background_color(Color::new(0.18, 0.18, 0.18, 0.95))
+                .with_layout(LayoutStyle::new().with_direction(FlexDirection::Column).with_gap(2.0));
+            let context_menu_id =
+                ui_tree.create_node("context_menu", menu_style, UiNodeData::Custom { kind: "context_menu".to_string() });
 
-        Ok(())
+            let create_empty_style = Style::new()
+                .with_background_color(Color::new(0.25, 0.25, 0.25, 1.0))
+                .with_layout(LayoutStyle::new().with_gap(4.0));
+            let create_empty_id = ui_tree.create_node(
+                "menu_create_empty",
+                create_empty_style,
+                UiNodeData::Text { content: "创建空实体".to_string() },
+            );
+
+            let create_rect_style = Style::new()
+                .with_background_color(Color::new(0.25, 0.25, 0.25, 1.0))
+                .with_layout(LayoutStyle::new().with_gap(4.0));
+            let create_rect_id = ui_tree.create_node(
+                "menu_create_rect",
+                create_rect_style,
+                UiNodeData::Text { content: "创建矩形".to_string() },
+            );
+
+            let create_sprite_style = Style::new()
+                .with_background_color(Color::new(0.25, 0.25, 0.25, 1.0))
+                .with_layout(LayoutStyle::new().with_gap(4.0));
+            let create_sprite_id = ui_tree.create_node(
+                "menu_create_sprite",
+                create_sprite_style,
+                UiNodeData::Text { content: "创建精灵".to_string() },
+            );
+
+            ui_tree.add_child(context_menu_id, create_empty_id);
+            ui_tree.add_child(context_menu_id, create_rect_id);
+            ui_tree.add_child(context_menu_id, create_sprite_id);
+            ui_tree.add_child(viewport_id, context_menu_id);
+        }
+
+        Some(viewport_id)
     }
 
     fn layout_hint(&self) -> PanelLayoutHint {

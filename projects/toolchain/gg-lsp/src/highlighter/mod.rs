@@ -1,15 +1,9 @@
 //! Valkyrie 脚本语法高亮模块。
 
-use std::borrow::Cow;
-use std::ops::Range;
+use std::{borrow::Cow, ops::Range};
 
 use oak_highlight::{
-    HighlightResult,
-    HighlightSegment,
-    HighlightSpan,
-    HighlightTheme,
-    highlighter::Highlighter,
-    themes::Theme,
+    HighlightResult, HighlightSegment, HighlightSpan, HighlightTheme, highlighter::Highlighter, themes::Theme,
 };
 
 use crate::kind::SyntaxKind;
@@ -58,9 +52,7 @@ pub struct GgHighlighter {
 
 impl Default for GgHighlighter {
     fn default() -> Self {
-        Self {
-            theme: HighlightTheme::default(),
-        }
+        Self { theme: HighlightTheme::default() }
     }
 }
 
@@ -216,19 +208,13 @@ impl GgHighlighter {
             let style = theme.resolve_style(scope);
             let text = &source[range.clone()];
             segments.push(HighlightSegment {
-                span: HighlightSpan {
-                    start: range.start,
-                    end: range.end,
-                },
+                span: HighlightSpan { start: range.start, end: range.end },
                 style,
                 text: Cow::Borrowed(text),
             });
         }
 
-        HighlightResult {
-            segments,
-            source: Cow::Borrowed(source),
-        }
+        HighlightResult { segments, source: Cow::Borrowed(source) }
     }
 }
 
@@ -247,18 +233,8 @@ impl Highlighter for GgHighlighter {
 
 /// 将字符位置范围转换为字节偏移范围。
 fn byte_range(_source: &str, char_start: usize, char_end: usize, chars: &[char]) -> Range<usize> {
-    let byte_start = if char_start == 0 {
-        0
-    }
-    else {
-        chars[..char_start].iter().map(|c| c.len_utf8()).sum()
-    };
-    let byte_end = if char_end == 0 {
-        0
-    }
-    else {
-        chars[..char_end].iter().map(|c| c.len_utf8()).sum()
-    };
+    let byte_start = if char_start == 0 { 0 } else { chars[..char_start].iter().map(|c| c.len_utf8()).sum() };
+    let byte_end = if char_end == 0 { 0 } else { chars[..char_end].iter().map(|c| c.len_utf8()).sum() };
     byte_start..byte_end
 }
 
@@ -293,14 +269,7 @@ fn scan_punct(chars: &[char], pos: usize) -> Range<usize> {
     if let Some(ref tc) = two_char {
         if matches!(
             tc.as_str(),
-            "==" | "!="
-            | "<=" | ">="
-            | "&&" | "||"
-            | "<<" | ">>"
-            | "+=" | "-="
-            | "*=" | "/="
-            | "::" | "->"
-            | "=>"
+            "==" | "!=" | "<=" | ">=" | "&&" | "||" | "<<" | ">>" | "+=" | "-=" | "*=" | "/=" | "::" | "->" | "=>"
         ) {
             return start..start + 2;
         }
@@ -308,12 +277,28 @@ fn scan_punct(chars: &[char], pos: usize) -> Range<usize> {
 
     if matches!(
         ch,
-        '+' | '-' | '*' | '/' | '%'
-        | '=' | '<' | '>' | '!'
-        | '&' | '|' | '(' | ')'
-        | '{' | '}' | '[' | ']'
-        | ',' | '.' | ':' | ';'
-        | '@' | '#'
+        '+' | '-'
+            | '*'
+            | '/'
+            | '%'
+            | '='
+            | '<'
+            | '>'
+            | '!'
+            | '&'
+            | '|'
+            | '('
+            | ')'
+            | '{'
+            | '}'
+            | '['
+            | ']'
+            | ','
+            | '.'
+            | ':'
+            | ';'
+            | '@'
+            | '#'
     ) {
         return start..start + 1;
     }

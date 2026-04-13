@@ -3,8 +3,8 @@
 //! 实现超级着色器机制，通过统一图集和 uniform mode 开关
 //! 将多种 UI 渲染模式合并为单次 Draw Call，提升渲染性能。
 
-use std::collections::HashMap;
 use gg_error::{GError, GErrorKind, GResult};
+use std::collections::HashMap;
 
 /// 每个顶点包含的 float 分量数（x, y, u, v, r, g, b, a）
 const VERTEX_FLOAT_COUNT: usize = 8;
@@ -78,18 +78,9 @@ impl TextureAtlas {
     }
 
     /// 添加纹理到图集，返回区域描述
-    pub fn add_texture(
-        &mut self,
-        name: &str,
-        width: u32,
-        height: u32,
-        data: &[u8],
-    ) -> GResult<AtlasRegion> {
+    pub fn add_texture(&mut self, name: &str, width: u32, height: u32, data: &[u8]) -> GResult<AtlasRegion> {
         if self.regions.contains_key(name) {
-            return Err(GError {
-                kind: GErrorKind::Asset,
-                message: format!("Texture '{}' already exists in atlas", name),
-            });
+            return Err(GError { kind: GErrorKind::Asset, message: format!("Texture '{}' already exists in atlas", name) });
         }
 
         if width == 0 || height == 0 {
@@ -118,10 +109,7 @@ impl TextureAtlas {
         }
 
         if self.cursor_y + height > self.atlas_size {
-            return Err(GError {
-                kind: GErrorKind::Asset,
-                message: format!("Texture atlas is full, cannot add '{}'", name),
-            });
+            return Err(GError { kind: GErrorKind::Asset, message: format!("Texture atlas is full, cannot add '{}'", name) });
         }
 
         let dst_x = self.cursor_x;
@@ -187,12 +175,7 @@ impl Default for UberShaderUniforms {
     fn default() -> Self {
         Self {
             mode: 0,
-            transform: [
-                1.0, 0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0, 0.0,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0,
-            ],
+            transform: [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0],
             color: [1.0, 1.0, 1.0, 1.0],
             clip_rect: [0.0, 0.0, f32::MAX, f32::MAX],
             atlas_uv_offset: [0.0, 0.0],
@@ -227,21 +210,11 @@ pub struct EditorUiUberShader {
 impl EditorUiUberShader {
     /// 创建 Uber-Shader 管理器，初始化 2048x2048 图集
     pub fn new() -> Self {
-        Self {
-            atlas: TextureAtlas::new(2048),
-            current_batch: None,
-            is_committed: false,
-        }
+        Self { atlas: TextureAtlas::new(2048), current_batch: None, is_committed: false }
     }
 
     /// 添加纹理到图集
-    pub fn add_texture(
-        &mut self,
-        name: &str,
-        width: u32,
-        height: u32,
-        data: &[u8],
-    ) -> GResult<AtlasRegion> {
+    pub fn add_texture(&mut self, name: &str, width: u32, height: u32, data: &[u8]) -> GResult<AtlasRegion> {
         self.atlas.add_texture(name, width, height, data)
     }
 
@@ -275,12 +248,7 @@ impl EditorUiUberShader {
         let base_vertex = (batch.vertices.len() / VERTEX_FLOAT_COUNT) as u32;
 
         let (u0, v0, u1, v1) = match atlas_region {
-            Some(region) => (
-                region.u,
-                region.v,
-                region.u + region.width,
-                region.v + region.height,
-            ),
+            Some(region) => (region.u, region.v, region.u + region.width, region.v + region.height),
             None => (0.0, 0.0, 1.0, 1.0),
         };
 
@@ -292,10 +260,8 @@ impl EditorUiUberShader {
         let y1 = y + h;
 
         batch.vertices.extend_from_slice(&[
-            x0, y0, u0, v0, color[0], color[1], color[2], color[3],
-            x1, y0, u1, v0, color[0], color[1], color[2], color[3],
-            x1, y1, u1, v1, color[0], color[1], color[2], color[3],
-            x0, y1, u0, v1, color[0], color[1], color[2], color[3],
+            x0, y0, u0, v0, color[0], color[1], color[2], color[3], x1, y0, u1, v0, color[0], color[1], color[2], color[3], x1,
+            y1, u1, v1, color[0], color[1], color[2], color[3], x0, y1, u0, v1, color[0], color[1], color[2], color[3],
         ]);
 
         batch.indices.extend_from_slice(&[

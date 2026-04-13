@@ -1,0 +1,798 @@
+# YAML 格式 - 结局
+
+metadata:
+  title: 结局
+  chapter: end
+
+nodes:
+  endings_start:
+    type: branch
+    branches:
+      - condition:
+          variable: ending_type
+          operator: "=="
+          value: public
+        next: public_truth_ending
+      - condition:
+          variable: ending_type
+          operator: "=="
+          value: restore
+        next: restore_memory_ending
+      - condition:
+          variable: ending_type
+          operator: "=="
+          value: investigate
+        next: true_ending
+    default: normal_ending
+
+  public_truth_ending:
+    type: scene
+    background: images/bg/school_assembly.png
+    music:
+      file: audio/bgm/dramatic_theme.mp3
+      volume: 0.7
+    transition:
+      type: fade
+      duration: 1.5
+    next: effect_flash_1
+
+  effect_flash_1:
+    type: effect
+    effect: flash
+    duration: 0.3
+    next: narration_1
+
+  narration_1:
+    type: narration
+    content: 我们决定公开真相。
+    next: dialogue_1
+
+  dialogue_1:
+    type: dialogue
+    character: player
+    content: （这是正确的选择。）
+    next: show_all
+
+  show_all:
+    type: multi_character
+    characters:
+      - action: show
+        character: sakura
+        sprite: determined
+        position: center
+      - action: show
+        character: yuki
+        sprite: serious
+        position: left
+      - action: show
+        character: ren
+        sprite: serious
+        position: right
+    next: dialogue_2
+
+  dialogue_2:
+    type: dialogue
+    character: sakura
+    content: 各位同学，我们有重要的事情要宣布...
+    next: effect_flash_2
+
+  effect_flash_2:
+    type: effect
+    effect: flash
+    duration: 0.5
+    next: text_aftermath
+
+  text_aftermath:
+    type: text_block
+    content: |
+      几天后...
+
+      学校的秘密实验被媒体曝光，
+      校长被撤职，
+      所有参与实验的学生都接受了心理辅导。
+    next: scene_rooftop
+
+  scene_rooftop:
+    type: scene
+    background: images/bg/school_rooftop.png
+    music:
+      file: audio/bgm/bittersweet.mp3
+      volume: 0.5
+    transition:
+      type: fade
+      duration: 1.0
+    next: dialogue_3
+
+  dialogue_3:
+    type: dialogue
+    character: sakura
+    content: 虽然真相大白了...
+    next: dialogue_4
+
+  dialogue_4:
+    type: dialogue
+    character: sakura
+    content: 但是学校现在一片混乱。
+    next: dialogue_5
+
+  dialogue_5:
+    type: dialogue
+    character: player
+    content: 这是必要的代价。
+    next: dialogue_6
+
+  dialogue_6:
+    type: dialogue
+    character: yuki
+    content: 至少，大家现在都知道真相了。
+    next: dialogue_7
+
+  dialogue_7:
+    type: dialogue
+    character: ren
+    content: 哼，总算结束了。
+    next: branch_affection
+
+  branch_affection:
+    type: branch
+    branches:
+      - condition:
+          variable: sakura_affection
+          operator: ">="
+          value: 5
+        next: sakura_good_ending
+      - condition:
+          variable: ren_affection
+          operator: ">="
+          value: 5
+        next: ren_good_ending
+      - condition:
+          variable: yuki_affection
+          operator: ">="
+          value: 5
+        next: yuki_good_ending
+    default: normal_public_ending
+
+  restore_memory_ending:
+    type: scene
+    background: images/bg/old_lab.png
+    music:
+      file: audio/bgm/hopeful_theme.mp3
+      volume: 0.6
+    transition:
+      type: fade
+      duration: 1.0
+    next: narration_2
+
+  narration_2:
+    type: narration
+    content: 我们决定寻找恢复记忆的方法。
+    next: dialogue_8
+
+  dialogue_8:
+    type: dialogue
+    character: player
+    content: （一定要找到实验数据。）
+    next: show_sakura_hopeful
+
+  show_sakura_hopeful:
+    type: character
+    action: show
+    character: sakura
+    sprite: hopeful
+    position: center
+    next: dialogue_9
+
+  dialogue_9:
+    type: dialogue
+    character: sakura
+    content: 我找到了！这里有备份数据！
+    next: effect_flash_3
+
+  effect_flash_3:
+    type: effect
+    effect: flash
+    duration: 0.5
+    next: text_restore
+
+  text_restore:
+    type: text_block
+    content: |
+      经过几天的努力，
+      我们成功恢复了所有被改写的记忆。
+
+      那些曾经失去记忆的学生，
+      终于找回了属于自己的过去。
+    next: scene_cherry_blossom
+
+  scene_cherry_blossom:
+    type: scene
+    background: images/bg/cherry_blossom.png
+    music:
+      file: audio/bgm/happy_ending.mp3
+      volume: 0.6
+    transition:
+      type: fade
+      duration: 1.5
+    next: dialogue_10
+
+  dialogue_10:
+    type: dialogue
+    character: sakura
+    content: 谢谢你...帮我找回了记忆。
+    next: dialogue_11
+
+  dialogue_11:
+    type: dialogue
+    character: sakura
+    content: 我现在...终于完整了。
+    next: dialogue_12
+
+  dialogue_12:
+    type: dialogue
+    character: player
+    content: 不用谢，这是我应该做的。
+    next: branch_sakura_love
+
+  branch_sakura_love:
+    type: branch
+    branches:
+      - condition:
+          variable: sakura_affection
+          operator: ">="
+          value: 6
+        next: true_love_ending
+    default: good_ending
+
+  true_ending:
+    type: scene
+    background: images/bg/old_lab.png
+    music:
+      file: audio/bgm/mystery_deep.mp3
+      volume: 0.7
+    transition:
+      type: fade
+      duration: 1.0
+    next: narration_3
+
+  narration_3:
+    type: narration
+    content: 我们决定继续调查。
+    next: dialogue_13
+
+  dialogue_13:
+    type: dialogue
+    character: player
+    content: （还有太多谜团没有解开。）
+    next: show_ren_serious
+
+  show_ren_serious:
+    type: character
+    action: show
+    character: ren
+    sprite: serious
+    position: right
+    next: dialogue_14
+
+  dialogue_14:
+    type: dialogue
+    character: ren
+    content: 等等，看这个。
+    next: effect_flash_4
+
+  effect_flash_4:
+    type: effect
+    effect: flash
+    duration: 0.5
+    next: dialogue_15
+
+  dialogue_15:
+    type: dialogue
+    character: ren
+    content: 这里有一个隐藏的文件...
+    next: text_secret
+
+  text_secret:
+    type: text_block
+    content: |
+      文件内容：
+      "实验并未结束。
+      负责人已转移至新校区。
+      实验代号：星之子计划"
+    next: dialogue_16
+
+  dialogue_16:
+    type: dialogue
+    character: player
+    content: 实验还在继续？！
+    next: dialogue_17
+
+  dialogue_17:
+    type: dialogue
+    character: sakura
+    content: 新校区...那是刚建成的...
+    next: dialogue_18
+
+  dialogue_18:
+    type: dialogue
+    character: yuki
+    content: 我们必须阻止他们。
+    next: effect_pause
+
+  effect_pause:
+    type: effect
+    effect: pause
+    duration: 1.0
+    next: scene_sunset
+
+  scene_sunset:
+    type: scene
+    background: images/bg/sunset.png
+    music:
+      file: audio/bgm/epic_theme.mp3
+      volume: 0.7
+    transition:
+      type: fade
+      duration: 1.5
+    next: text_true_ending
+
+  text_true_ending:
+    type: text_block
+    content: |
+      我们发现了更深层的阴谋。
+      实验并未结束，
+      只是转移到了新的地点。
+
+      我们的战斗，才刚刚开始...
+    next: fade_out_1
+
+  fade_out_1:
+    type: effect
+    effect: fade_out
+    duration: 2.0
+    next: text_true_ending_title
+
+  text_true_ending_title:
+    type: ending
+    title: 真结局：星之子
+    content: |
+      你发现了隐藏在幕后的真相。
+      故事将在续作中继续...
+    next: ending_summary
+
+  normal_ending:
+    type: scene
+    background: images/bg/school_gate.png
+    music:
+      file: audio/bgm/peaceful_ending.mp3
+      volume: 0.5
+    transition:
+      type: fade
+      duration: 1.0
+    next: narration_4
+
+  narration_4:
+    type: narration
+    content: 一切结束后，学校恢复了平静。
+    next: dialogue_19
+
+  dialogue_19:
+    type: dialogue
+    character: player
+    content: （虽然还有很多谜团...）
+    next: dialogue_20
+
+  dialogue_20:
+    type: dialogue
+    character: player
+    content: （但至少现在，大家都安全了。）
+    next: show_sakura_smile
+
+  show_sakura_smile:
+    type: character
+    action: show
+    character: sakura
+    sprite: smile
+    position: left
+    animation: slide_left
+    next: dialogue_21
+
+  dialogue_21:
+    type: dialogue
+    character: sakura
+    content: 谢谢你，新同学。
+    next: dialogue_22
+
+  dialogue_22:
+    type: dialogue
+    character: sakura
+    content: 如果没有你，我们可能永远不会知道真相。
+    next: dialogue_23
+
+  dialogue_23:
+    type: dialogue
+    character: player
+    content: 这是我应该做的。
+    next: fade_out_2
+
+  fade_out_2:
+    type: effect
+    effect: fade_out
+    duration: 1.5
+    next: text_normal_ending
+
+  text_normal_ending:
+    type: ending
+    title: 普通结局：平静的日常
+    content: |
+      你帮助学校揭开了秘密，
+      但真相似乎不止于此...
+    next: ending_summary
+
+  sakura_good_ending:
+    type: scene
+    background: images/bg/cherry_blossom.png
+    music:
+      file: audio/bgm/romantic_theme.mp3
+      volume: 0.6
+    transition:
+      type: fade
+      duration: 1.5
+    next: show_sakura_blush
+
+  show_sakura_blush:
+    type: character
+    action: show
+    character: sakura
+    sprite: blush
+    position: center
+    next: dialogue_24
+
+  dialogue_24:
+    type: dialogue
+    character: sakura
+    content: 那个...我有话想对你说。
+    next: dialogue_25
+
+  dialogue_25:
+    type: dialogue
+    character: player
+    content: 什么事？
+    next: dialogue_26
+
+  dialogue_26:
+    type: dialogue
+    character: sakura
+    content: 这段时间...谢谢你一直陪在我身边。
+    next: dialogue_27
+
+  dialogue_27:
+    type: dialogue
+    character: sakura
+    content: 我...我好像...
+    next: dialogue_28
+
+  dialogue_28:
+    type: dialogue
+    character: player
+    content: ？
+    next: dialogue_29
+
+  dialogue_29:
+    type: dialogue
+    character: sakura
+    content: 我喜欢你！
+    next: effect_heart
+
+  effect_heart:
+    type: effect
+    effect: heart_float
+    duration: 1.0
+    next: dialogue_30
+
+  dialogue_30:
+    type: dialogue
+    character: player
+    content: 樱井同学...
+    next: dialogue_31
+
+  dialogue_31:
+    type: dialogue
+    character: sakura
+    content: 以后...请多多指教了！
+    next: fade_out_3
+
+  fade_out_3:
+    type: effect
+    effect: fade_out
+    duration: 2.0
+    next: text_sakura_ending
+
+  text_sakura_ending:
+    type: ending
+    title: 樱井美咲结局：樱花之约
+    content: |
+      你与樱井美咲成为了恋人。
+      在樱花树下，你们许下了永远的约定。
+    next: ending_summary
+
+  ren_good_ending:
+    type: scene
+    background: images/bg/night_city.png
+    music:
+      file: audio/bgm/cool_theme.mp3
+      volume: 0.5
+    transition:
+      type: fade
+      duration: 1.5
+    next: show_ren_smile
+
+  show_ren_smile:
+    type: character
+    action: show
+    character: ren
+    sprite: smile
+    position: center
+    next: dialogue_32
+
+  dialogue_32:
+    type: dialogue
+    character: ren
+    content: 喂。
+    next: dialogue_33
+
+  dialogue_33:
+    type: dialogue
+    character: player
+    content: 黑崎同学？
+    next: dialogue_34
+
+  dialogue_34:
+    type: dialogue
+    character: ren
+    content: 没想到你还挺有本事的。
+    next: dialogue_35
+
+  dialogue_35:
+    type: dialogue
+    character: ren
+    content: 我对你刮目相看了。
+    next: dialogue_36
+
+  dialogue_36:
+    type: dialogue
+    character: player
+    content: 谢谢...？
+    next: dialogue_37
+
+  dialogue_37:
+    type: dialogue
+    character: ren
+    content: 以后...有什么事可以找我。
+    next: dialogue_38
+
+  dialogue_38:
+    type: dialogue
+    character: ren
+    content: 我会帮你的。
+    next: dialogue_39
+
+  dialogue_39:
+    type: dialogue
+    character: player
+    content: 真的？
+    next: dialogue_40
+
+  dialogue_40:
+    type: dialogue
+    character: ren
+    content: 别让我说第二遍。
+    next: fade_out_4
+
+  fade_out_4:
+    type: effect
+    effect: fade_out
+    duration: 2.0
+    next: text_ren_ending
+
+  text_ren_ending:
+    type: ending
+    title: 黑崎莲结局：暗夜的盟约
+    content: |
+      你获得了黑崎莲的认可。
+      虽然他表面冷淡，但你知道，
+      他会是你最可靠的伙伴。
+    next: ending_summary
+
+  yuki_good_ending:
+    type: scene
+    background: images/bg/library.png
+    music:
+      file: audio/bgm/gentle_theme.mp3
+      volume: 0.5
+    transition:
+      type: fade
+      duration: 1.5
+    next: show_yuki_smile
+
+  show_yuki_smile:
+    type: character
+    action: show
+    character: yuki
+    sprite: smile
+    position: center
+    next: dialogue_41
+
+  dialogue_41:
+    type: dialogue
+    character: yuki
+    content: 那个...谢谢你。
+    next: dialogue_42
+
+  dialogue_42:
+    type: dialogue
+    character: player
+    content: 怎么了，白雪同学？
+    next: dialogue_43
+
+  dialogue_43:
+    type: dialogue
+    character: yuki
+    content: 谢谢你让我变得勇敢。
+    next: dialogue_44
+
+  dialogue_44:
+    type: dialogue
+    character: yuki
+    content: 以前的我...总是害怕面对真相。
+    next: dialogue_45
+
+  dialogue_45:
+    type: dialogue
+    character: yuki
+    content: 但是现在...我想和你一起面对未来。
+    next: dialogue_46
+
+  dialogue_46:
+    type: dialogue
+    character: player
+    content: 我也是。
+    next: dialogue_47
+
+  dialogue_47:
+    type: dialogue
+    character: yuki
+    content: 那...我们约定好了？
+    next: effect_sparkle
+
+  effect_sparkle:
+    type: effect
+    effect: sparkle
+    duration: 1.0
+    next: fade_out_5
+
+  fade_out_5:
+    type: effect
+    effect: fade_out
+    duration: 2.0
+    next: text_yuki_ending
+
+  text_yuki_ending:
+    type: ending
+    title: 白雪悠希结局：温柔的约定
+    content: |
+      你与白雪悠希建立了深厚的羁绊。
+      在图书馆的角落，你们约定一起面对未来。
+    next: ending_summary
+
+  true_love_ending:
+    type: scene
+    background: images/bg/cherry_blossom_sunset.png
+    music:
+      file: audio/bgm/love_theme.mp3
+      volume: 0.7
+    transition:
+      type: fade
+      duration: 1.5
+    next: effect_flash_5
+
+  effect_flash_5:
+    type: effect
+    effect: flash
+    duration: 1.0
+    next: show_sakura_happy
+
+  show_sakura_happy:
+    type: character
+    action: show
+    character: sakura
+    sprite: happy
+    position: center
+    next: dialogue_48
+
+  dialogue_48:
+    type: dialogue
+    character: sakura
+    content: 从今以后...我们一起走吧。
+    next: dialogue_49
+
+  dialogue_49:
+    type: dialogue
+    character: player
+    content: 嗯，一起走。
+    next: effect_heart_2
+
+  effect_heart_2:
+    type: effect
+    effect: heart_float
+    duration: 1.0
+    next: text_true_love
+
+  text_true_love:
+    type: ending
+    title: 真结局：永恒的星光
+    content: |
+      你不仅揭开了学校的秘密，
+      还找到了真正的爱情。
+
+      樱井美咲的笑容，
+      将是你心中永远的光芒。
+    next: ending_summary
+
+  good_ending:
+    type: ending
+    title: 好结局：新的开始
+    content: |
+      你帮助恢复了所有人的记忆。
+      虽然还有未解的谜团，
+      但你知道，未来会更好。
+    next: ending_summary
+
+  normal_public_ending:
+    type: ending
+    title: 结局：真相大白
+    content: |
+      学校的秘密被公之于众。
+      虽然付出了代价，
+      但正义得到了伸张。
+    next: ending_summary
+
+  ending_summary:
+    type: effect
+    effect: fade_out
+    duration: 2.0
+    next: scene_black
+
+  scene_black:
+    type: scene
+    background: images/bg/black.png
+    transition:
+      type: fade
+      duration: 1.0
+    next: stats
+
+  stats:
+    type: stats
+    title: 游戏统计
+    variables:
+      - name: 樱井美咲好感度
+        variable: sakura_affection
+      - name: 黑崎莲好感度
+        variable: ren_affection
+      - name: 白雪悠希好感度
+        variable: yuki_affection
+      - name: 信任点数
+        variable: trust_points
+      - name: 发现线索
+        variable: clues_found
+    footer: |
+      ---
+
+      感谢游玩《星光学院的秘密》！
+
+      如果想要体验其他结局，
+      请尝试不同的选择路径。
+    next: end
+
+  end:
+    type: return

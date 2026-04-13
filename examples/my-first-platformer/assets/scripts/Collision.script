@@ -1,0 +1,63 @@
+using gg::ecs;
+using gg::engine;
+
+component SpatialGrid {
+    cell_size: f32,
+    cells: Map<(i32, i32), Array<Entity>>
+}
+
+system CollisionOptimizationSystem {
+    micro execute(world: World): Result<()> {
+        let grid = world.get_resource("SpatialGrid");
+        if grid == null {
+            grid = SpatialGrid { cell_size: 64.0, cells: {} };
+            world.insert_resource("SpatialGrid", grid);
+        }
+
+        grid.cells = {};
+
+        let colliders: Query<(Collider, Transform)> = world.query("Collider", "Transform");
+        loop entity, (collider, transform) in colliders.iter() {
+            let cell_x = (transform.x / grid.cell_size) as i32;
+            let cell_y = (transform.y / grid.cell_size) as i32;
+            let key = (cell_x, cell_y);
+            if grid.cells[key] == null {
+                grid.cells[key] = [];
+            }
+            grid.cells[key].push(entity);
+        }
+
+        return Ok()
+    }
+
+    micro can_collide(collider1: Collider, collider2: Collider): Bool {
+        if (collider1.layer & collider2.mask) == 0 {
+            return false;
+        }
+        if (collider2.layer & collider1.mask) == 0 {
+            return false;
+        }
+        return true;
+    }
+
+    micro get_nearby_entities(grid: SpatialGrid, x: f32, y: f32, radius: f32): Array<Entity> {
+        let result = [];
+        let min_cx = ((x - radius) / grid.cell_size) as i32;
+        let max_cx = ((x + radius) / grid.cell_size) as i32;
+        let min_cy = ((y - radius) / grid.cell_size) as i32;
+        let max_cy = ((y + radius) / grid.cell_size) as i32;
+
+        loop cx in min_cx..max_cx {
+            loop cy in min_cy..max_cy {
+                let key = (cx, cy);
+                if grid.cells[key] != null {
+                    loop entity in grid.cells[key] {
+                        result.push(entity);
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+}

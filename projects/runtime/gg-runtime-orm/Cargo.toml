@@ -1,0 +1,11 @@
+[package]
+name = "gg-runtime-orm"
+version = { workspace = true }
+edition = { workspace = true }
+authors = { workspace = true }
+license = { workspace = true }
+
+[dependencies]
+gg-core = { workspace = true }
+gg-runtime-database = { workspace = true }
+gg-runtime-cache = { workspace = true }

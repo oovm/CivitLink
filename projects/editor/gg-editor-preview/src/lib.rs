@@ -6,3 +6,5 @@
 pub mod debug;
 pub mod hmr;
 pub mod panel;
+pub mod session;
+pub mod viewport;

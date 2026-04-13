@@ -1,4 +1,5 @@
 use crate::{
+    gui_event::{EventContext, GuiEvent},
     node::{UiNodeData, UiNodeId, UiTree},
     style::Style,
     widget::Widget,
@@ -45,10 +46,7 @@ impl Widget for Image {
         let id = tree.create_node(
             "Image",
             Style::new(),
-            UiNodeData::Image {
-                texture_id: Some(self.texture_id),
-                size: Some((self.size[0], self.size[1])),
-            },
+            UiNodeData::Image { texture_id: Some(self.texture_id), size: Some((self.size[0], self.size[1])) },
         );
 
         self.node_id = Some(id);
@@ -58,10 +56,7 @@ impl Widget for Image {
     fn update(&self, tree: &mut UiTree) {
         if let Some(id) = self.node_id {
             if let Some(node) = tree.get_mut(id) {
-                node.data = UiNodeData::Image {
-                    texture_id: Some(self.texture_id),
-                    size: Some((self.size[0], self.size[1])),
-                };
+                node.data = UiNodeData::Image { texture_id: Some(self.texture_id), size: Some((self.size[0], self.size[1])) };
             }
         }
     }
@@ -69,4 +64,16 @@ impl Widget for Image {
     fn node_id(&self) -> Option<UiNodeId> {
         self.node_id
     }
+
+    fn render_template(&self) -> oak_voc::TemplateNode {
+        oak_voc::TemplateNode::text(String::new())
+    }
+
+    fn script_setup(&mut self) {}
+
+    fn get_id(&self) -> &str {
+        ""
+    }
+
+    fn handle_event(&mut self, _event: &GuiEvent, _ctx: &mut EventContext) {}
 }

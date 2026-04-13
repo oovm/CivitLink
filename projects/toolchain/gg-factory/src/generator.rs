@@ -75,18 +75,21 @@ impl EngineFactory {
         deps.push_str("gg-core = { path = \"../../projects/core/gg-core\" }\n");
         deps.push_str("gg-ecs = { path = \"../../projects/core/gg-ecs\" }\n");
         deps.push_str("gg-asset = { path = \"../../projects/core/gg-asset\" }\n");
-        deps.push_str("gg-runtime-core = { path = \"../../projects/runtime/gg-runtime-core\" }\n");
+        deps.push_str("gg-runtime = { path = \"../../projects/runtime/gg-runtime\" }\n");
         deps.push_str("gg-schedule = { path = \"../../projects/core/gg-schedule\" }\n");
 
         if has_desktop {
-            deps.push_str("gg-platform-desktop = { path = \"../../projects/platforms/gg-platform-desktop\", optional = true }\n");
+            deps.push_str(
+                "gg-platform-desktop = { path = \"../../projects/platforms/gg-platform-desktop\", optional = true }\n",
+            );
         }
         if has_web {
             deps.push_str("gg-platform-web = { path = \"../../projects/platforms/gg-platform-web\", optional = true }\n");
             deps.push_str("wasm-bindgen = { version = \"0.2\", optional = true }\n");
         }
         if has_mobile {
-            deps.push_str("gg-platform-mobile = { path = \"../../projects/platforms/gg-platform-mobile\", optional = true }\n");
+            deps.push_str("gg-platform-ios = { path = '../../projects/compiler/gg-platform-ios', optional = true }\n");
+            deps.push_str("gg-platform-android = { path = '../../projects/compiler/gg-platform-android', optional = true }\n");
         }
 
         deps.push_str("serde = { version = \"1\", features = [\"derive\"] }\n");
@@ -101,7 +104,9 @@ impl EngineFactory {
                     deps.push_str("gg-plugin-portrait = { path = \"../../projects/plugins/gg-plugin-portrait\" }\n");
                 }
                 "scene-transition" => {
-                    deps.push_str("gg-plugin-scene-transition = { path = \"../../projects/plugins/gg-plugin-scene-transition\" }\n");
+                    deps.push_str(
+                        "gg-plugin-scene-transition = { path = \"../../projects/plugins/gg-plugin-scene-transition\" }\n",
+                    );
                 }
                 "save" => {
                     deps.push_str("gg-plugin-save = { path = \"../../projects/plugins/gg-plugin-save\" }\n");
@@ -140,7 +145,9 @@ impl EngineFactory {
                         deps.push_str("gg-editor-inspector = { path = \"../../projects/editor/gg-editor-inspector\" }\n");
                     }
                     "asset-browser" => {
-                        deps.push_str("gg-editor-asset-browser = { path = \"../../projects/editor/gg-editor-asset-browser\" }\n");
+                        deps.push_str(
+                            "gg-editor-asset-browser = { path = \"../../projects/editor/gg-editor-asset-browser\" }\n",
+                        );
                     }
                     "preview" => {
                         deps.push_str("gg-editor-preview = { path = \"../../projects/editor/gg-editor-preview\" }\n");
@@ -183,7 +190,8 @@ impl EngineFactory {
                 features_section.push_str("web = [\"gg-platform-web\", \"wasm-bindgen\"]\n");
             }
             if has_mobile {
-                features_section.push_str("mobile = [\"gg-platform-mobile\"]\n");
+                features_section.push_str("ios = [\"gg-platform-ios\"]\n");
+                features_section.push_str("android = [\"gg-platform-android\"]\n");
             }
         }
 
@@ -450,7 +458,10 @@ pub fn generate_system_registration(gom: &str) -> String {
         "VisualNovel" => {
             lines.push("    app.add_system(SystemSet::Update, gg_plugin_dialogue::systems::dialogue_system);".to_string());
             lines.push("    app.add_system(SystemSet::Update, gg_plugin_portrait::systems::portrait_system);".to_string());
-            lines.push("    app.add_system(SystemSet::Update, gg_plugin_scene_transition::systems::scene_transition_system);".to_string());
+            lines.push(
+                "    app.add_system(SystemSet::Update, gg_plugin_scene_transition::systems::scene_transition_system);"
+                    .to_string(),
+            );
         }
         "Platformer" => {
             lines.push("    app.add_system(SystemSet::Update, gg_ecs::systems::movement_system);".to_string());
@@ -478,7 +489,9 @@ pub fn generate_component_registration(gom: &str) -> String {
         "VisualNovel" => {
             lines.push("    app.register_component::<gg_plugin_dialogue::components::DialogueComponent>();".to_string());
             lines.push("    app.register_component::<gg_plugin_portrait::components::PortraitComponent>();".to_string());
-            lines.push("    app.register_component::<gg_plugin_scene_transition::components::SceneTransitionComponent>();".to_string());
+            lines.push(
+                "    app.register_component::<gg_plugin_scene_transition::components::SceneTransitionComponent>();".to_string(),
+            );
         }
         "Platformer" => {
             lines.push("    app.register_component::<gg_ecs::components::TransformComponent>();".to_string());
@@ -521,19 +534,26 @@ fn generate_editor_panel_code_app(manifest: &EngineManifest) -> String {
                 register_lines.push("    app.add_editor_panel(Box::new(gg_editor_scene::BaseSceneView::new()));".to_string());
             }
             "inspector" => {
-                register_lines.push("    app.add_editor_panel(Box::new(gg_editor_inspector::InspectorPanel::new()));".to_string());
+                register_lines
+                    .push("    app.add_editor_panel(Box::new(gg_editor_inspector::InspectorPanel::new()));".to_string());
             }
             "asset-browser" => {
-                register_lines.push("    app.add_editor_panel(Box::new(gg_editor_asset_browser::panel::AssetBrowserPanel::new()));".to_string());
+                register_lines.push(
+                    "    app.add_editor_panel(Box::new(gg_editor_asset_browser::panel::AssetBrowserPanel::new()));".to_string(),
+                );
             }
             "preview" => {
-                register_lines.push("    app.add_editor_panel(Box::new(gg_editor_preview::panel::PreviewPanel::new()));".to_string());
+                register_lines
+                    .push("    app.add_editor_panel(Box::new(gg_editor_preview::panel::PreviewPanel::new()));".to_string());
             }
             "character" => {
-                register_lines.push("    app.add_editor_panel(Box::new(gg_editor_character::panel::CharacterManagerPanel::new()));".to_string());
+                register_lines.push(
+                    "    app.add_editor_panel(Box::new(gg_editor_character::panel::CharacterManagerPanel::new()));".to_string(),
+                );
             }
             "script" => {
-                register_lines.push("    app.add_editor_panel(Box::new(gg_editor_script::ScriptEditorPanel::new()));".to_string());
+                register_lines
+                    .push("    app.add_editor_panel(Box::new(gg_editor_script::ScriptEditorPanel::new()));".to_string());
             }
             _ => {}
         }

@@ -1,7 +1,6 @@
-use gg_reflection::{EnumReflect, ListReflect, MapReflect, PartialReflect, ReflectionRegistry}; 
 use gg_ecs::World;
-use std::any::TypeId;
-use std::collections::HashMap;
+use gg_reflection::{EnumReflect, ListReflect, MapReflect, PartialReflect, ReflectionRegistry};
+use std::{any::TypeId, collections::HashMap};
 
 mod tests {
     use super::*;
@@ -30,7 +29,8 @@ mod tests {
             if let Some(val) = source.as_any().downcast_ref::<Self>() {
                 *self = val.clone();
                 Ok(())
-            } else {
+            }
+            else {
                 Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
             }
         }
@@ -60,7 +60,8 @@ mod tests {
             if let Some(val) = source.as_any().downcast_ref::<Self>() {
                 *self = val.clone();
                 Ok(())
-            } else {
+            }
+            else {
                 Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
             }
         }
@@ -243,7 +244,8 @@ mod tests {
                 if let Some(val) = source.as_any().downcast_ref::<Self>() {
                     *self = val.clone();
                     Ok(())
-                } else {
+                }
+                else {
                     Err(format!("type mismatch: expected {}, got {}", self.type_name(), source.type_name()))
                 }
             }

@@ -65,14 +65,8 @@ fn test_set_property_command_undo_redo() {
     let mut ecs_world = World::new();
     ecs_world.insert_resource(PropertyStore::new());
 
-    let binding =
-        Box::new(ReflectionPropertyBinding::new("Transform2D".to_string(), "x".to_string()));
-    let mut cmd = SetPropertyCommand::new(
-        binding,
-        1,
-        "99.0".to_string(),
-        "修改 Transform2D.x".to_string(),
-    );
+    let binding = Box::new(ReflectionPropertyBinding::new("Transform2D".to_string(), "x".to_string()));
+    let mut cmd = SetPropertyCommand::new(binding, 1, "99.0".to_string(), "修改 Transform2D.x".to_string());
 
     let mut services = gg_editor_shell::ServiceRegistry::new();
     let mut commands = gg_editor_shell::CommandManager::new();
@@ -80,8 +74,7 @@ fn test_set_property_command_undo_redo() {
     let mut world = gg_world::GameWorld::new("test_world".to_string());
 
     {
-        let mut context =
-            gg_editor_shell::EditorContext::new(&mut services, &mut commands, &mut events, &mut world);
+        let mut context = gg_editor_shell::EditorContext::new(&mut services, &mut commands, &mut events, &mut world);
         use gg_editor_shell::Command;
         cmd.execute(&mut context).unwrap();
     }
@@ -92,8 +85,7 @@ fn test_set_property_command_undo_redo() {
     let _ = store;
 
     {
-        let mut context =
-            gg_editor_shell::EditorContext::new(&mut services, &mut commands, &mut events, &mut world);
+        let mut context = gg_editor_shell::EditorContext::new(&mut services, &mut commands, &mut events, &mut world);
         use gg_editor_shell::Command;
         cmd.undo(&mut context).unwrap();
     }

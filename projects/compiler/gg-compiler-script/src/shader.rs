@@ -3,14 +3,14 @@
 //! 并将 GPU 着色器编译为 naga IR 序列化产物
 
 use gg_bytecode::BytecodeWriter;
-use gg_compiler_core::{
+use gg_compiler::{
     artifact::{Artifact, ArtifactKey, ArtifactSet},
     context::{BuildContext, DiagnosticLevel},
     transformer::Transformer,
 };
+use gg_compiler_shader::compiler::ShaderCompiler;
 use gg_core::{GError, GErrorKind, GResult};
 use gg_script::ScriptCompiler;
-use gg_shader::compiler::ShaderCompiler;
 
 /// Shader 源码产物类型名称
 const SHADER_SOURCE_TYPE: &str = "shader_source";
@@ -538,49 +538,23 @@ impl Transformer for ShaderTransformer {
                 }
             }
 
-            let gpu_compiler = ShaderCompiler::new();
-            let mut gpu_shader_data = Vec::new();
+            let mut gpu_compiler = ShaderCompiler::new();
+            let full_source = source.clone();
 
-            for shader in &shader_file.shaders {
-                let shader_source = format!(
-                    "shader {} by {} {{\n{}\n{}\n{}\n{}\n}}\n",
-                    shader.name,
-                    shader.kind,
-                    shader.uniforms.as_deref().unwrap_or(""),
-                    shader.render_states.as_deref().unwrap_or(""),
-                    shader.functions.iter().map(|f| {
-                        let kw = match &f.kind {
-                            ShaderFunctionKind::Vertex => "vertex",
-                            ShaderFunctionKind::Fragment => "fragment",
-                            ShaderFunctionKind::Compute => "compute",
-                        };
-                        let ret = match &f.return_type {
-                            Some(rt) => format!(" -> {}", rt),
-                            None => String::new(),
-                        };
-                        format!("{}({}){} {{\n{}\n}}", kw, f.params, ret, f.body)
-                    }).collect::<Vec<_>>().join("\n"),
-                    shader.fallback.as_deref().unwrap_or("")
-                );
-
-                match gpu_compiler.compile_to_bytes(&shader_source) {
-                    Ok(naga_bytes) => {
-                        gpu_shader_data.extend_from_slice(&naga_bytes);
-                    }
-                    Err(e) => {
-                        context.add_diagnostic(
-                            DiagnosticLevel::Warning,
-                            self.name(),
-                            &format!("Failed to compile GPU shader '{}' to naga IR: {}. Falling back to text format.", shader.name, e),
-                        );
-                        gpu_shader_data.extend_from_slice(shader_source.as_bytes());
-                    }
+            match gpu_compiler.compile_to_bytes(&full_source) {
+                Ok(naga_bytes) => {
+                    let gpu_key = ArtifactKey::new(GPU_SHADER_TYPE, &key.id);
+                    output.insert(Artifact::new(gpu_key, naga_bytes));
                 }
-            }
-
-            if !gpu_shader_data.is_empty() {
-                let gpu_key = ArtifactKey::new(GPU_SHADER_TYPE, &key.id);
-                output.insert(Artifact::new(gpu_key, gpu_shader_data));
+                Err(e) => {
+                    context.add_diagnostic(
+                        DiagnosticLevel::Warning,
+                        self.name(),
+                        &format!("Failed to compile GPU shaders in '{}': {}. Falling back to text format.", key.id, e),
+                    );
+                    let gpu_key = ArtifactKey::new(GPU_SHADER_TYPE, &key.id);
+                    output.insert(Artifact::new(gpu_key, source.into_bytes()));
+                }
             }
         }
 

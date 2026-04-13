@@ -1,0 +1,415 @@
+# YAML 格式 - 第一章 家庭线
+
+metadata:
+  title: 第一章 - 家庭线
+  chapter: 1
+  route: home
+
+nodes:
+  chapter1_home_start:
+    type: scene
+    background: images/bg/home_living_room.png
+    music:
+      file: audio/bgm/home_theme.mp3
+      volume: 0.4
+    transition:
+      type: fade
+      duration: 1.5
+    next: narration_1
+
+  narration_1:
+    type: narration
+    content: 回到家，我疲惫地躺在沙发上。
+    next: dialogue_1
+
+  dialogue_1:
+    type: dialogue
+    character: player
+    content: 呼...今天也结束了。
+    next: effect_1
+
+  effect_1:
+    type: effect
+    effect: flash
+    duration: 0.5
+    next: character_1
+
+  character_1:
+    type: character
+    action: show
+    character: mom
+    sprite: worried
+    position: left
+    animation: slide_left
+    next: dialogue_2
+
+  dialogue_2:
+    type: dialogue
+    character: mom
+    content: 你回来了。学校怎么样？
+    next: dialogue_3
+
+  dialogue_3:
+    type: dialogue
+    character: player
+    content: 还行...就是有点累。
+    next: dialogue_4
+
+  dialogue_4:
+    type: dialogue
+    character: mom
+    content: 对了，今天有个奇怪的人来找过你。
+    next: dialogue_5
+
+  dialogue_5:
+    type: dialogue
+    character: player
+    content: 奇怪的人？
+    next: dialogue_6
+
+  dialogue_6:
+    type: dialogue
+    character: mom
+    content: 一个戴着帽子的男生，说是你的同学。他留了这个给你。
+    next: effect_2
+
+  effect_2:
+    type: effect
+    effect: shake
+    duration: 0.3
+    intensity: 10
+    sound: audio/se/item_receive.wav
+    effects:
+      - variable: has_mysterious_letter
+        operation: set
+        value: true
+    next: dialogue_7
+
+  dialogue_7:
+    type: dialogue
+    character: player
+    content: 这是...
+    next: character_2
+
+  character_2:
+    type: character
+    action: hide
+    position: left
+    animation: slide_left_out
+    next: dialogue_8
+
+  dialogue_8:
+    type: dialogue
+    character: mom
+    content: 我先去准备晚餐了。
+    next: scene_2
+
+  scene_2:
+    type: scene
+    background: images/bg/home_bedroom.png
+    transition:
+      type: fade
+      duration: 0.8
+    next: narration_2
+
+  narration_2:
+    type: narration
+    content: 回到房间，我打开那封信。
+    next: dialogue_9
+
+  dialogue_9:
+    type: dialogue
+    character: player
+    content: （信上写着...）
+    next: letter_content
+
+  letter_content:
+    type: text_block
+    content: |
+      "新来的转学生：
+
+      如果你对这所学校的秘密感兴趣，
+      今晚12点到旧校舍后面。
+
+      ——一个知道真相的人"
+    next: dialogue_10
+
+  dialogue_10:
+    type: dialogue
+    character: player
+    content: 这是...什么意思？
+    next: choice_letter
+
+  choice_letter:
+    type: choice
+    options:
+      - text: 今晚去看看
+        next: go_tonight
+        effects:
+          - variable: home_route
+            operation: set
+            value: true
+          - variable: clues_found
+            operation: add
+            value: 1
+      - text: 太危险了，不去
+        next: not_go_tonight
+        effects:
+          - variable: home_route
+            operation: set
+            value: true
+          - variable: trust_points
+            operation: add
+            value: -1
+      - text: 先调查一下这个写信人
+        next: investigate_sender
+        effects:
+          - variable: home_route
+            operation: set
+            value: true
+          - variable: clues_found
+            operation: add
+            value: 2
+
+  go_tonight:
+    type: dialogue
+    character: player
+    content: （既然有人邀请我，那就去看看。）
+    next: clock_transition
+
+  clock_transition:
+    type: effect
+    effect: clock_transition
+    duration: 2.0
+    next: scene_night
+
+  scene_night:
+    type: scene
+    background: images/bg/old_building_night.png
+    music:
+      file: audio/bgm/night_mystery.mp3
+      volume: 0.6
+    transition:
+      type: fade
+      duration: 1.5
+    next: effect_lightning
+
+  effect_lightning:
+    type: effect
+    effect: lightning
+    duration: 0.2
+    next: narration_night
+
+  narration_night:
+    type: narration
+    content: 深夜，我悄悄来到了旧校舍后面。
+    next: dialogue_night_1
+
+  dialogue_night_1:
+    type: dialogue
+    character: player
+    content: （这里...真的好黑...）
+    next: character_unknown
+
+  character_unknown:
+    type: character
+    action: show
+    character: unknown
+    sprite: hooded
+    position: center
+    animation: fade_in
+    next: dialogue_night_2
+
+  dialogue_night_2:
+    type: dialogue
+    character: unknown
+    content: 你来了。
+    next: dialogue_night_3
+
+  dialogue_night_3:
+    type: dialogue
+    character: player
+    content: 你是谁？
+    next: dialogue_night_4
+
+  dialogue_night_4:
+    type: dialogue
+    character: unknown
+    content: 这不重要。重要的是，你想知道真相吗？
+    next: choice_truth
+
+  choice_truth:
+    type: choice
+    options:
+      - text: 我想知道
+        next: want_truth
+        effects:
+          - variable: knows_secret
+            operation: set
+            value: true
+          - variable: met_mystery_person
+            operation: set
+            value: true
+      - text: 你到底是谁？
+        next: demand_identity
+
+  want_truth:
+    type: dialogue
+    character: unknown
+    content: 很好。那么，听好了...
+    next: want_truth_2
+
+  want_truth_2:
+    type: dialogue
+    character: unknown
+    content: 这所学校，曾经进行过一项秘密实验。
+    next: want_truth_3
+
+  want_truth_3:
+    type: dialogue
+    character: player
+    content: 秘密实验？
+    next: want_truth_4
+
+  want_truth_4:
+    type: dialogue
+    character: unknown
+    content: 关于"记忆操纵"的实验。而旧校舍，就是实验的地点。
+    next: want_truth_5
+
+  want_truth_5:
+    type: dialogue
+    character: unknown
+    content: 那些奇怪的光...是实验残留的能量。
+    next: want_truth_6
+
+  want_truth_6:
+    type: dialogue
+    character: player
+    content: 记忆操纵...？
+    next: want_truth_7
+
+  want_truth_7:
+    type: dialogue
+    character: unknown
+    content: 如果你想知道更多，明天来学生会找樱井美咲。
+    next: want_truth_8
+
+  want_truth_8:
+    type: dialogue
+    character: unknown
+    content: 她...也是知情者之一。
+    next: character_unknown_hide
+
+  character_unknown_hide:
+    type: character
+    action: hide
+    position: center
+    animation: fade_out
+    next: want_truth_9
+
+  want_truth_9:
+    type: dialogue
+    character: player
+    content: 等等！
+    next: want_truth_10
+
+  want_truth_10:
+    type: dialogue
+    character: player
+    content: （樱井同学...她知道什么？）
+    next: chapter1_home_end
+
+  demand_identity:
+    type: dialogue
+    character: unknown
+    content: 我的身份不重要。重要的是，你有权利知道真相。
+    next: demand_identity_2
+
+  demand_identity_2:
+    type: dialogue
+    character: unknown
+    content: 这所学校隐藏着一个巨大的秘密。
+    next: want_truth
+
+  not_go_tonight:
+    type: dialogue
+    character: player
+    content: （太危险了...还是不要去为好。）
+    next: clock_transition_2
+
+  clock_transition_2:
+    type: effect
+    effect: clock_transition
+    duration: 1.0
+    next: not_go_1
+
+  not_go_1:
+    type: dialogue
+    character: player
+    content: （但是...这封信到底是谁寄的？）
+    next: not_go_2
+
+  not_go_2:
+    type: dialogue
+    character: player
+    content: （也许明天去学校问问看...）
+    next: chapter1_home_end
+
+  investigate_sender:
+    type: dialogue
+    character: player
+    content: （先调查一下这个写信的人。）
+    next: investigate_1
+
+  investigate_1:
+    type: dialogue
+    character: player
+    content: （字迹...很工整。用纸是学校的学生会专用纸...）
+    next: investigate_2
+
+  investigate_2:
+    type: dialogue
+    character: player
+    content: （学生会？难道是...）
+    next: investigate_3
+
+  investigate_3:
+    type: dialogue
+    character: player
+    content: （樱井同学？还是白雪同学？）
+    next: chapter1_home_end
+
+  chapter1_home_end:
+    type: scene
+    background: images/bg/home_bedroom_night.png
+    transition:
+      type: fade
+      duration: 1.0
+    next: end_1
+
+  end_1:
+    type: dialogue
+    character: player
+    content: （今天发生了很多事...）
+    next: end_2
+
+  end_2:
+    type: dialogue
+    character: player
+    content: （明天去学校，一定要弄清楚。）
+    next: fade_out_end
+
+  fade_out_end:
+    type: effect
+    effect: fade_out
+    duration: 1.5
+    next: chapter2_investigation
+
+  chapter2_investigation:
+    type: call
+    file: chapter2_investigation.yaml
+    next: end
+
+  end:
+    type: return

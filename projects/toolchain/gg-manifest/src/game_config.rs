@@ -101,42 +101,25 @@ pub struct GameConfig {
 
 impl Default for GameSection {
     fn default() -> Self {
-        Self {
-            name: default_game_name(),
-            version: default_version(),
-            initial_scene: default_initial_scene(),
-        }
+        Self { name: default_game_name(), version: default_version(), initial_scene: default_initial_scene() }
     }
 }
 
 impl Default for DisplaySection {
     fn default() -> Self {
-        Self {
-            width: default_width(),
-            height: default_height(),
-            fullscreen: false,
-            title: default_title(),
-        }
+        Self { width: default_width(), height: default_height(), fullscreen: false, title: default_title() }
     }
 }
 
 impl Default for AudioSection {
     fn default() -> Self {
-        Self {
-            master_volume: default_master_volume(),
-            bgm_volume: default_bgm_volume(),
-            se_volume: default_se_volume(),
-        }
+        Self { master_volume: default_master_volume(), bgm_volume: default_bgm_volume(), se_volume: default_se_volume() }
     }
 }
 
 impl Default for GameConfig {
     fn default() -> Self {
-        Self {
-            game: GameSection::default(),
-            display: DisplaySection::default(),
-            audio: AudioSection::default(),
-        }
+        Self { game: GameSection::default(), display: DisplaySection::default(), audio: AudioSection::default() }
     }
 }
 

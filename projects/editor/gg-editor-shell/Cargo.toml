@@ -12,7 +12,13 @@ gg-world = { workspace = true }
 gg-render = { workspace = true }
 gg-editor-render = { workspace = true }
 gg-ui = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 winit = { workspace = true }
+libloading = { version = "0.9", optional = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+libloading = { version = "0.9" }
 
 [dev-dependencies]
 gg-world = { workspace = true }

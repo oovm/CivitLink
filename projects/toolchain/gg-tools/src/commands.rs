@@ -16,12 +16,6 @@ pub struct Cli {
 /// GG-Sheet 子命令
 #[derive(Subcommand, Debug)]
 pub enum SheetCommands {
-    /// 初始化配置表工作区
-    Init {
-        /// 工作目录
-        #[arg(long, default_value = ".")]
-        workspace: String,
-    },
     /// 检查配置表
     Check {
         /// 工作目录
@@ -30,15 +24,6 @@ pub enum SheetCommands {
     },
     /// 生成代码
     Generate {
-        /// 工作目录
-        #[arg(long, default_value = ".")]
-        workspace: String,
-        /// 输出格式（valkyrie 或 rust）
-        #[arg(long, default_value = "valkyrie")]
-        format: String,
-    },
-    /// 监听配置表变化
-    Watch {
         /// 工作目录
         #[arg(long, default_value = ".")]
         workspace: String,
@@ -103,7 +88,7 @@ pub enum Commands {
     },
     /// 配置表管理工具
     Sheet {
-        /// 子命令（init/check/generate/watch）
+        /// 子命令（check/generate）
         #[command(subcommand)]
         command: SheetCommands,
     },

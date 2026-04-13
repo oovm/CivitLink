@@ -1,0 +1,98 @@
+<template>
+    <Panel class="batch-progress-panel">
+        <Stack orientation="vertical" style="gap-4 padding-8">
+            <Text class="progress-title">{operationTitle()}</Text>
+            <Stack orientation="horizontal" class="progress-bar-container" style="gap-0">
+                <Panel class="progress-bar-fill" style={progressStyle()} />
+            </Stack>
+            <Stack orientation="horizontal" style="gap-8 justify-content-space-between">
+                <Text class="progress-count">{completedCount()} / {totalCount()}</Text>
+                <Text class="progress-status">{statusText()}</Text>
+            </Stack>
+            <if (hasFailures())>
+                <Text class="progress-failures">失败: {failureCount()} 项</Text>
+            </if>
+        </Stack>
+    </Panel>
+</template>
+
+<script>
+    using gg_editor::ui::widgets::{Panel, Stack, Text};
+    using gg_editor::ui::signal;
+
+    let operationTitle = signal("批量操作");
+    let completedCount = signal(0);
+    let totalCount = signal(0);
+    let failureCount = signal(0);
+    let hasFailures = signal(false);
+    let statusText = signal("进行中");
+
+    let progressStyle = micro() {
+        let total = totalCount();
+        let completed = completedCount();
+        let percent = if total > 0 { (completed * 100) / total } else { 0 };
+        "width: " + percent + "%"
+    };
+
+    let updateProgress = micro(title: String, completed: i32, total: i32, failures: i32) {
+        operationTitle(title);
+        completedCount(completed);
+        totalCount(total);
+        failureCount(failures);
+        hasFailures(failures > 0);
+        if completed >= total {
+            if failures > 0 {
+                statusText("完成（部分失败）");
+            } else {
+                statusText("完成");
+            }
+        } else {
+            statusText("进行中");
+        }
+    };
+</script>
+
+<style>
+    .batch-progress-panel {
+        background-color: $bg-elevated-color;
+        border: 1px solid $border-color;
+        border-radius: $radius-md;
+        padding: $spacing-md;
+        min-width: 240px;
+    }
+
+    .progress-title {
+        font-size: $font-size-sm;
+        font-weight: bold;
+        color: $text-primary-color;
+    }
+
+    .progress-bar-container {
+        height: 8px;
+        background-color: $bg-color;
+        border-radius: $radius-full;
+        overflow: hidden;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background-color: $primary-color;
+        border-radius: $radius-full;
+        transition: width 0.2s ease;
+    }
+
+    .progress-count {
+        font-size: $font-size-xs;
+        color: $text-secondary-color;
+    }
+
+    .progress-status {
+        font-size: $font-size-xs;
+        color: $text-secondary-color;
+    }
+
+    .progress-failures {
+        font-size: $font-size-xs;
+        color: $error-color;
+    }
+</style>

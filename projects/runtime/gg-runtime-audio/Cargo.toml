@@ -24,6 +24,9 @@ web-sys = { version = "0.3", optional = true, features = [
     "AudioNode",
     "BaseAudioContext",
     "AnalyserNode",
+    "BiquadFilterNode",
+    "BiquadFilterType",
+    "ConvolverNode",
     "Response",
     "Window",
 ] }

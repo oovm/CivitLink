@@ -1,0 +1,82 @@
+using gg::ecs;
+using gg::engine;
+using gg::signal;
+using gg::input;
+
+component AccessibleWidget {
+    aria_role: String,
+    aria_label: String,
+    focusable: Bool,
+    focused: Bool,
+    events on_focus: micro() -> (),
+    events on_blur: micro() -> (),
+    events on_activate: micro() -> ()
+}
+
+system AccessibilitySystem {
+    micro execute(world: World): Result<()> {
+        let query: Query<AccessibleWidget> = world.query("AccessibleWidget");
+        loop entity, widget in query.iter() {
+            if widget.focused {
+                if input.is_key_just_pressed(Key::Enter) || input.is_key_just_pressed(Key::Space) {
+                    widget.on_activate();
+                }
+            }
+
+            if widget.focusable && !widget.focused {
+                if input.is_key_just_pressed(Key::Tab) {
+                    widget.focused = true;
+                    widget.on_focus();
+                }
+            }
+        }
+        return Ok()
+    }
+}
+
+class AccessibilityDemo {
+    let focused_index = signal(0);
+    let focusable_count = signal(0);
+    let last_activated = signal("");
+
+    micro register_focusable(count: i32) {
+        this.focusable_count(count);
+    }
+
+    micro navigate_next() {
+        let current = this.focused_index();
+        let count = this.focusable_count();
+        this.focused_index((current + 1) % count);
+    }
+
+    micro navigate_prev() {
+        let current = this.focused_index();
+        let count = this.focusable_count();
+        if current > 0 {
+            this.focused_index(current - 1);
+        } else {
+            this.focused_index(count - 1);
+        }
+    }
+
+    micro activate(index: i32) {
+        this.last_activated("Item " + index);
+        console::log("Activated: Item " + index);
+    }
+}
+
+let a11y_demo = AccessibilityDemo();
+
+a11y_demo.register_focusable(5);
+
+effect(micro() {
+    let idx = a11y_demo.focused_index();
+    console::log("Focus moved to item: " + idx);
+});
+
+effect(micro() {
+    let activated = a11y_demo.last_activated();
+    if activated != "" {
+        console::log("Last activated: " + activated);
+    }
+});

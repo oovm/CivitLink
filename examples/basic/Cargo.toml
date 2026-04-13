@@ -6,7 +6,7 @@ authors = { workspace = true }
 license = { workspace = true }
 
 [dependencies]
-gg-runtime-core = { workspace = true, features = ["desktop"] }
+gg-runtime = { workspace = true, features = ["desktop"] }
 gg-core = { workspace = true }
 gg-ecs = { workspace = true }
 gg-vm = { workspace = true }

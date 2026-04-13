@@ -1,0 +1,918 @@
+# YAML 格式 - 第一章 旧校舍线
+
+metadata:
+  title: 第一章 - 旧校舍线
+  chapter: 1
+  route: old_building
+
+nodes:
+  chapter1_old_building_start:
+    type: scene
+    background: images/bg/old_building_exterior.png
+    music:
+      file: audio/bgm/suspense_theme.mp3
+      volume: 0.6
+    transition:
+      type: fade
+      duration: 1.0
+    next: show_ren
+
+  show_ren:
+    type: character
+    action: show
+    character: ren
+    sprite: smirk
+    position: right
+    next: dialogue_1
+
+  dialogue_1:
+    type: dialogue
+    character: ren
+    content: 到了。这就是旧校舍。
+    next: dialogue_2
+
+  dialogue_2:
+    type: dialogue
+    character: player
+    content: 看起来已经废弃很久了...
+    next: dialogue_3
+
+  dialogue_3:
+    type: dialogue
+    character: ren
+    content: 表面上是这样。
+    next: dialogue_4
+
+  dialogue_4:
+    type: dialogue
+    character: ren
+    content: 但实际上，这里藏着很多秘密。
+    next: dialogue_5
+
+  dialogue_5:
+    type: dialogue
+    character: player
+    content: 秘密？
+    next: dialogue_6
+
+  dialogue_6:
+    type: dialogue
+    character: ren
+    content: 跟我来。
+    next: scene_side
+
+  scene_side:
+    type: scene
+    background: images/bg/old_building_side.png
+    transition:
+      type: fade
+      duration: 0.8
+    sound: audio/se/metal_gate.wav
+    next: effect_shake
+
+  effect_shake:
+    type: effect
+    effect: shake
+    duration: 0.3
+    intensity: 10
+    next: narration_1
+
+  narration_1:
+    type: narration
+    content: 黑崎带我来到旧校舍的侧面，那里有一扇生锈的铁门。
+    next: dialogue_7
+
+  dialogue_7:
+    type: dialogue
+    character: ren
+    content: 这扇门的锁早就坏了。
+    next: scene_corridor
+
+  scene_corridor:
+    type: scene
+    background: images/bg/old_building_corridor.png
+    sound: audio/se/door_open_creak.wav
+    transition:
+      type: fade
+      duration: 1.0
+    next: narration_2
+
+  narration_2:
+    type: narration
+    content: 我们进入了旧校舍内部。
+    next: effect_flash
+
+  effect_flash:
+    type: effect
+    effect: flash
+    duration: 0.5
+    next: dialogue_8
+
+  dialogue_8:
+    type: dialogue
+    character: player
+    content: 好暗...
+    next: dialogue_9
+
+  dialogue_9:
+    type: dialogue
+    character: ren
+    content: 小心脚下。
+    next: choice_explore
+
+  choice_explore:
+    type: choice
+    options:
+      - text: 打开手电筒
+        next: use_flashlight
+        effects:
+          - variable: clues_found
+            operation: add
+            value: 1
+      - text: 跟着黑崎走
+        next: follow_ren
+        effects:
+          - variable: ren_affection
+            operation: add
+            value: 1
+      - text: 询问黑崎为什么知道这里
+        next: ask_ren_knowledge
+        effects:
+          - variable: clues_found
+            operation: add
+            value: 2
+
+  use_flashlight:
+    type: effect
+    effect: flash
+    duration: 0.5
+    sound: audio/se/flashlight_on.wav
+    next: dialogue_10
+
+  dialogue_10:
+    type: dialogue
+    character: player
+    content: （手电筒的光照亮了走廊...）
+    next: dialogue_11
+
+  dialogue_11:
+    type: dialogue
+    character: player
+    content: （墙上好像有什么字...）
+    next: text_wall
+
+  text_wall:
+    type: text_block
+    content: |
+      墙上写着：
+      "不要相信他们"
+      "记忆是假的"
+      "救救我"
+    next: dialogue_12
+
+  dialogue_12:
+    type: dialogue
+    character: player
+    content: 这些字...是什么意思？
+    next: dialogue_13
+
+  dialogue_13:
+    type: dialogue
+    character: ren
+    content: 看来有人在这里待过很久。
+    next: explore_corridor
+
+  follow_ren:
+    type: dialogue
+    character: player
+    content: （相信黑崎同学吧。）
+    next: dialogue_14
+
+  dialogue_14:
+    type: dialogue
+    character: ren
+    content: ...聪明。
+    next: dialogue_15
+
+  dialogue_15:
+    type: dialogue
+    character: player
+    content: （他好像对我有点改观？）
+    next: explore_corridor
+
+  ask_ren_knowledge:
+    type: dialogue
+    character: player
+    content: 黑崎同学，你怎么知道这个地方？
+    next: dialogue_16
+
+  dialogue_16:
+    type: dialogue
+    character: ren
+    content: ...
+    next: dialogue_17
+
+  dialogue_17:
+    type: dialogue
+    character: ren
+    content: 我...曾经在这里待过。
+    next: dialogue_18
+
+  dialogue_18:
+    type: dialogue
+    character: player
+    content: 什么意思？
+    next: dialogue_19
+
+  dialogue_19:
+    type: dialogue
+    character: ren
+    content: 我是...实验的幸存者之一。
+    effects:
+      - variable: knows_secret
+        operation: set
+        value: true
+      - variable: knows_ren_secret
+        operation: set
+        value: true
+    next: dialogue_20
+
+  dialogue_20:
+    type: dialogue
+    character: player
+    content: 实验...？
+    next: dialogue_21
+
+  dialogue_21:
+    type: dialogue
+    character: ren
+    content: 以后再解释。先往前走。
+    next: explore_corridor
+
+  explore_corridor:
+    type: scene
+    background: images/bg/old_building_hallway.png
+    transition:
+      type: fade
+      duration: 0.8
+    next: narration_3
+
+  narration_3:
+    type: narration
+    content: 我们沿着走廊前进，两边是废弃的教室。
+    next: effect_strange
+
+  effect_strange:
+    type: effect
+    effect: flash
+    duration: 0.2
+    sound: audio/se/strange_sound.wav
+    next: narration_4
+
+  narration_4:
+    type: narration
+    content: 突然，一阵奇怪的声音从远处传来！
+    next: dialogue_22
+
+  dialogue_22:
+    type: dialogue
+    character: player
+    content: 什么声音？
+    next: dialogue_23
+
+  dialogue_23:
+    type: dialogue
+    character: ren
+    content: 有人在这里。
+    next: choice_sound
+
+  choice_sound:
+    type: choice
+    options:
+      - text: 躲起来观察
+        next: hide_and_observe
+        effects:
+          - variable: clues_found
+            operation: add
+            value: 2
+          - variable: trust_points
+            operation: add
+            value: 1
+      - text: 直接去查看
+        next: go_check
+        effects:
+          - variable: ren_affection
+            operation: add
+            value: 1
+      - text: 让黑崎去查看
+        next: send_ren
+
+  hide_and_observe:
+    type: scene
+    background: images/bg/old_building_shadow.png
+    transition:
+      type: fade
+      duration: 0.5
+    next: narration_5
+
+  narration_5:
+    type: narration
+    content: 我们躲在一扇破旧的门后。
+    next: show_unknown
+
+  show_unknown:
+    type: character
+    action: show
+    character: unknown
+    sprite: hooded
+    position: center
+    animation: fade_in
+    next: dialogue_24
+
+  dialogue_24:
+    type: dialogue
+    character: unknown
+    content: （低声自语）数据已经转移完毕...
+    next: dialogue_25
+
+  dialogue_25:
+    type: dialogue
+    character: unknown
+    content: 下一个目标...新来的转学生。
+    next: dialogue_26
+
+  dialogue_26:
+    type: dialogue
+    character: player
+    content: （他们...在说我？！）
+    next: dialogue_27
+
+  dialogue_27:
+    type: dialogue
+    character: ren
+    content: （小声）看来你被盯上了。
+    next: hide_unknown
+
+  hide_unknown:
+    type: character
+    action: hide
+    position: center
+    animation: fade_out
+    next: dialogue_28
+
+  dialogue_28:
+    type: dialogue
+    character: player
+    content: （这到底是怎么回事...）
+    next: discover_room
+
+  go_check:
+    type: dialogue
+    character: player
+    content: （去看看是什么。）
+    next: dialogue_29
+
+  dialogue_29:
+    type: dialogue
+    character: ren
+    content: ...有胆量。
+    next: scene_intersection
+
+  scene_intersection:
+    type: scene
+    background: images/bg/old_building_intersection.png
+    transition:
+      type: fade
+      duration: 0.5
+    next: narration_6
+
+  narration_6:
+    type: narration
+    content: 我们走向声音传来的方向，但那里已经没有人了。
+    next: dialogue_30
+
+  dialogue_30:
+    type: dialogue
+    character: player
+    content: 跑了...
+    next: dialogue_31
+
+  dialogue_31:
+    type: dialogue
+    character: ren
+    content: 但是留下了这个。
+    effects:
+      - variable: has_mysterious_document
+        operation: set
+        value: true
+      - variable: clues_found
+        operation: add
+        value: 1
+    next: dialogue_32
+
+  dialogue_32:
+    type: dialogue
+    character: player
+    content: 这是...
+    next: discover_room
+
+  send_ren:
+    type: dialogue
+    character: player
+    content: 黑崎同学，你能去看看吗？
+    next: dialogue_33
+
+  dialogue_33:
+    type: dialogue
+    character: ren
+    content: ...切。
+    next: dialogue_34
+
+  dialogue_34:
+    type: dialogue
+    character: ren
+    content: 在这里等着。
+    next: hide_ren
+
+  hide_ren:
+    type: character
+    action: hide
+    position: right
+    animation: slide_right_out
+    next: wait
+
+  wait:
+    type: effect
+    effect: pause
+    duration: 2.0
+    next: show_ren_2
+
+  show_ren_2:
+    type: character
+    action: show
+    character: ren
+    sprite: serious
+    position: right
+    animation: slide_right
+    next: dialogue_35
+
+  dialogue_35:
+    type: dialogue
+    character: ren
+    content: 没人。但是发现了这个。
+    effects:
+      - variable: has_lab_access
+        operation: set
+        value: true
+    next: dialogue_36
+
+  dialogue_36:
+    type: dialogue
+    character: player
+    content: 一张门禁卡？
+    next: dialogue_37
+
+  dialogue_37:
+    type: dialogue
+    character: ren
+    content: 旧校舍的地下实验室用的。
+    next: discover_room
+
+  discover_room:
+    type: scene
+    background: images/bg/old_building_door.png
+    transition:
+      type: fade
+      duration: 0.8
+    next: narration_7
+
+  narration_7:
+    type: narration
+    content: 我们来到一扇厚重的金属门前。
+    next: dialogue_38
+
+  dialogue_38:
+    type: dialogue
+    character: ren
+    content: 这就是目的地。
+    next: branch_door
+
+  branch_door:
+    type: branch
+    branches:
+      - condition:
+          variable: has_lab_access
+          operator: "=="
+          value: true
+        next: enter_with_card
+    default: locked_door
+
+  locked_door:
+    type: dialogue
+    character: player
+    content: 门锁着...
+    next: dialogue_39
+
+  dialogue_39:
+    type: dialogue
+    character: ren
+    content: 我们需要找到开门的方法。
+    next: choice_door
+
+  choice_door:
+    type: choice
+    options:
+      - text: 寻找其他入口
+        next: find_entrance
+        effects:
+          - variable: clues_found
+            operation: add
+            value: 1
+      - text: 尝试撬锁
+        next: try_lockpick
+      - text: 回去找樱井帮忙
+        next: get_sakura_help
+        effects:
+          - variable: sakura_affection
+            operation: add
+            value: 1
+          - variable: trust_points
+            operation: add
+            value: 1
+
+  enter_with_card:
+    type: effect
+    effect: flash
+    duration: 0.5
+    sound: audio/se/card_beep.wav
+    next: dialogue_40
+
+  dialogue_40:
+    type: dialogue
+    character: player
+    content: 门开了！
+    next: dialogue_41
+
+  dialogue_41:
+    type: dialogue
+    character: ren
+    content: 走吧。
+    next: enter_lab
+
+  find_entrance:
+    type: dialogue
+    character: player
+    content: （一定有其他入口。）
+    next: scene_vent
+
+  scene_vent:
+    type: scene
+    background: images/bg/old_building_vent.png
+    transition:
+      type: fade
+      duration: 0.8
+    next: dialogue_42
+
+  dialogue_42:
+    type: dialogue
+    character: ren
+    content: 通风管道...可以试试。
+    next: dialogue_43
+
+  dialogue_43:
+    type: dialogue
+    character: player
+    content: 这...真的能进去吗？
+    next: dialogue_44
+
+  dialogue_44:
+    type: dialogue
+    character: ren
+    content: 跟着我。
+    next: enter_lab
+
+  try_lockpick:
+    type: dialogue
+    character: player
+    content: 让我试试...
+    sound: audio/se/lockpick_fail.wav
+    next: dialogue_45
+
+  dialogue_45:
+    type: dialogue
+    character: player
+    content: 不行，锁太复杂了。
+    next: dialogue_46
+
+  dialogue_46:
+    type: dialogue
+    character: ren
+    content: 我就说没用。
+    next: find_entrance
+
+  get_sakura_help:
+    type: dialogue
+    character: player
+    content: （樱井同学可能有办法...）
+    next: dialogue_47
+
+  dialogue_47:
+    type: dialogue
+    character: ren
+    content: 还要找那个女人？
+    next: dialogue_48
+
+  dialogue_48:
+    type: dialogue
+    character: player
+    content: 她可能有钥匙。
+    next: effect_flash_2
+
+  effect_flash_2:
+    type: effect
+    effect: flash
+    duration: 0.5
+    next: dialogue_49
+
+  dialogue_49:
+    type: dialogue
+    character: sakura
+    content: 喂？怎么了？
+    next: dialogue_50
+
+  dialogue_50:
+    type: dialogue
+    character: player
+    content: 我们在旧校舍...门锁着。
+    next: dialogue_51
+
+  dialogue_51:
+    type: dialogue
+    character: sakura
+    content: 我马上来！
+    next: clock_transition_2
+
+  clock_transition_2:
+    type: effect
+    effect: clock_transition
+    duration: 1.5
+    next: show_sakura
+
+  show_sakura:
+    type: character
+    action: show
+    character: sakura
+    sprite: worried
+    position: left
+    animation: slide_left
+    next: dialogue_52
+
+  dialogue_52:
+    type: dialogue
+    character: sakura
+    content: 给你们钥匙。
+    sound: audio/se/key_unlock.wav
+    next: dialogue_53
+
+  dialogue_53:
+    type: dialogue
+    character: sakura
+    content: 但是...请小心。
+    next: enter_lab
+
+  enter_lab:
+    type: scene
+    background: images/bg/old_lab.png
+    music:
+      file: audio/bgm/revelation.mp3
+      volume: 0.7
+    transition:
+      type: fade
+      duration: 1.5
+    next: effect_lightning_2
+
+  effect_lightning_2:
+    type: effect
+    effect: lightning
+    duration: 0.2
+    next: narration_8
+
+  narration_8:
+    type: narration
+    content: 我们进入了地下实验室。
+    next: dialogue_54
+
+  dialogue_54:
+    type: dialogue
+    character: player
+    content: 这是...
+    next: dialogue_55
+
+  dialogue_55:
+    type: dialogue
+    character: ren
+    content: 记忆操纵实验室。
+    next: text_lab
+
+  text_lab:
+    type: text_block
+    content: |
+      房间中央是一台巨大的机器，
+      周围散落着各种文件和设备。
+    next: dialogue_56
+
+  dialogue_56:
+    type: dialogue
+    character: player
+    content: 记忆操纵...真的存在？
+    next: dialogue_57
+
+  dialogue_57:
+    type: dialogue
+    character: ren
+    content: 是的。而且...
+    next: dialogue_58
+
+  dialogue_58:
+    type: dialogue
+    character: ren
+    content: 我是实验对象之一。
+    next: dialogue_59
+
+  dialogue_59:
+    type: dialogue
+    character: player
+    content: 黑崎同学...
+    next: dialogue_60
+
+  dialogue_60:
+    type: dialogue
+    character: ren
+    content: 我失去了一部分记忆。
+    next: dialogue_61
+
+  dialogue_61:
+    type: dialogue
+    character: ren
+    content: 但是我知道...这所学校还在继续实验。
+    effects:
+      - variable: knows_secret
+        operation: set
+        value: true
+      - variable: clues_found
+        operation: add
+        value: 3
+    next: choice_lab
+
+  choice_lab:
+    type: choice
+    options:
+      - text: 我们一起阻止他们
+        next: promise_together
+        effects:
+          - variable: ren_affection
+            operation: add
+            value: 3
+          - variable: trust_points
+            operation: add
+            value: 2
+      - text: 告诉我更多细节
+        next: more_details
+
+  promise_together:
+    type: dialogue
+    character: player
+    content: 我们一起阻止他们。
+    next: dialogue_62
+
+  dialogue_62:
+    type: dialogue
+    character: ren
+    content: ...
+    next: dialogue_63
+
+  dialogue_63:
+    type: dialogue
+    character: ren
+    content: ...谢了。
+    next: dialogue_64
+
+  dialogue_64:
+    type: dialogue
+    character: ren
+    content: 第一次有人说要帮我。
+    next: chapter1_old_building_end
+
+  more_details:
+    type: dialogue
+    character: player
+    content: 告诉我更多细节。
+    next: dialogue_65
+
+  dialogue_65:
+    type: dialogue
+    character: ren
+    content: 实验代号"星之子"。
+    next: dialogue_66
+
+  dialogue_66:
+    type: dialogue
+    character: ren
+    content: 目的是创造没有痛苦记忆的人。
+    next: dialogue_67
+
+  dialogue_67:
+    type: dialogue
+    character: ren
+    content: 但是副作用...是人格分裂。
+    next: dialogue_68
+
+  dialogue_68:
+    type: dialogue
+    character: player
+    content: 人格分裂？
+    next: dialogue_69
+
+  dialogue_69:
+    type: dialogue
+    character: ren
+    content: 我有时候会变成另一个人。
+    next: dialogue_70
+
+  dialogue_70:
+    type: dialogue
+    character: ren
+    content: 那个我...更冷酷，更危险。
+    effects:
+      - variable: knows_ren_secret
+        operation: set
+        value: true
+    next: chapter1_old_building_end
+
+  chapter1_old_building_end:
+    type: scene
+    background: images/bg/school_sunset.png
+    music:
+      file: audio/bgm/bittersweet.mp3
+      volume: 0.5
+    transition:
+      type: fade
+      duration: 1.5
+    next: narration_9
+
+  narration_9:
+    type: narration
+    content: 离开旧校舍后，夕阳已经西沉。
+    next: dialogue_71
+
+  dialogue_71:
+    type: dialogue
+    character: player
+    content: （今天发现了太多事情...）
+    next: show_ren_3
+
+  show_ren_3:
+    type: character
+    action: show
+    character: ren
+    sprite: serious
+    position: right
+    next: dialogue_72
+
+  dialogue_72:
+    type: dialogue
+    character: ren
+    content: 明天放学后，我们继续调查。
+    next: dialogue_73
+
+  dialogue_73:
+    type: dialogue
+    character: player
+    content: 好。
+    next: dialogue_74
+
+  dialogue_74:
+    type: dialogue
+    character: ren
+    content: ...你比我想象的可靠。
+    next: dialogue_75
+
+  dialogue_75:
+    type: dialogue
+    character: player
+    content: 谢谢。
+    next: fade_out_end
+
+  fade_out_end:
+    type: effect
+    effect: fade_out
+    duration: 1.5
+    next: chapter2_investigation
+
+  chapter2_investigation:
+    type: call
+    file: chapter2_investigation.yaml
+    next: end
+
+  end:
+    type: return

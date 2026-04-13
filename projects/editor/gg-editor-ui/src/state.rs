@@ -1,5 +1,5 @@
 //! 状态管理模块
-//! 
+//!
 //! 提供响应式状态管理功能，支持信号和订阅机制
 
 /// 响应式信号，支持 get/set/subscribe 操作
@@ -50,11 +50,7 @@ pub struct Computed<T, F: Fn() -> T> {
 impl<T, F: Fn() -> T> Computed<T, F> {
     /// 创建新的计算属性
     pub fn new(compute: F) -> Self {
-        Self {
-            compute,
-            cached_value: None,
-            subscribers: Vec::new(),
-        }
+        Self { compute, cached_value: None, subscribers: Vec::new() }
     }
 
     /// 获取计算值

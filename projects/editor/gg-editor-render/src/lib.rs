@@ -6,13 +6,15 @@
 //! 提供编辑器专用的渲染管线封装。
 //! 支持场景 RTT 渲染和帧率控制。
 
-use std::collections::HashMap;
-use std::time::{Duration, Instant};
+use std::{
+    collections::HashMap,
+    time::{Duration, Instant},
+};
 
 use gg_core::{GResult, WindowEvent};
 use gg_render::{RenderContext, Renderer, SurfaceInfo, TextureId};
 use gg_render_wgpu::{RenderTarget, WgpuRenderer};
-use gg_ui::UiRenderer;
+use gg_ui::{DpiScale, UiRenderer};
 
 /// 渲染目标信息
 ///
@@ -68,6 +70,8 @@ pub struct EditorRenderer {
     target_fps: u32,
     /// 上一帧时间
     last_frame_time: Instant,
+    /// DPI 缩放因子
+    dpi_scale: DpiScale,
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -88,6 +92,7 @@ impl EditorRenderer {
             scene_render_targets: HashMap::new(),
             target_fps: 60,
             last_frame_time: Instant::now(),
+            dpi_scale: DpiScale::identity(),
         })
     }
 }
@@ -111,11 +116,7 @@ impl EditorRenderer {
     pub fn create_scene_render_target(&mut self, name: &str, width: u32, height: u32) -> GResult<TextureId> {
         let render_target = self.renderer.create_render_target(width, height)?;
         let texture_id = render_target.texture_id();
-        let info = RenderTargetInfo {
-            render_target,
-            width,
-            height,
-        };
+        let info = RenderTargetInfo { render_target, width, height };
         self.scene_render_targets.insert(name.to_string(), info);
         Ok(texture_id)
     }
@@ -165,6 +166,24 @@ impl EditorRenderer {
         self.target_fps
     }
 
+    /// 设置 DPI 缩放因子
+    ///
+    /// # 参数
+    ///
+    /// - `scale` - 新的 DPI 缩放因子
+    pub fn set_dpi_scale(&mut self, scale: DpiScale) {
+        self.dpi_scale = scale;
+    }
+
+    /// 获取当前 DPI 缩放因子
+    ///
+    /// # 返回值
+    ///
+    /// 当前 DPI 缩放因子的引用
+    pub fn dpi_scale(&self) -> &DpiScale {
+        &self.dpi_scale
+    }
+
     /// 执行帧率限制
     ///
     /// 根据目标帧率计算帧间隔，如果当前帧提前完成则休眠等待。
@@ -192,7 +211,12 @@ impl EditorRenderer {
         let info = self.renderer.surface_info();
         let mut context = RenderContext::new(info.width, info.height);
 
-        UiRenderer::render(ui_tree, &mut context);
+        if self.dpi_scale == DpiScale::identity() {
+            UiRenderer::render(ui_tree, &mut context);
+        }
+        else {
+            UiRenderer::render_with_dpi(ui_tree, &mut context, self.dpi_scale);
+        }
 
         let draw_result = self.renderer.draw(&context);
         let present_result = self.renderer.present();
@@ -230,17 +254,31 @@ impl EditorRenderer {
         self.renderer.begin_frame()?;
 
         let info = self.renderer.surface_info();
+
         let mut context = RenderContext::new(info.width, info.height);
 
-        UiRenderer::render(ui_tree, &mut context);
+        if self.dpi_scale == DpiScale::identity() {
+            UiRenderer::render(ui_tree, &mut context);
+        }
+        else {
+            UiRenderer::render_with_dpi(ui_tree, &mut context, self.dpi_scale);
+        }
 
-        let draw_result = self.renderer.draw(&context);
-        let present_result = self.renderer.present();
+        match self.renderer.draw(&context) {
+            Ok(_) => {}
+            Err(e) => {
+                return Err(e);
+            }
+        }
+
+        match self.renderer.present() {
+            Ok(_) => {}
+            Err(e) => {
+                return Err(e);
+            }
+        }
 
         self.last_frame_time = Instant::now();
-
-        draw_result?;
-        present_result?;
 
         Ok(())
     }
@@ -248,13 +286,22 @@ impl EditorRenderer {
     /// 调整渲染表面尺寸
     ///
     /// 当窗口大小改变时调用此方法更新渲染器内部尺寸。
+    /// 可选地传入 DPI 缩放因子，若提供则会更新内部缩放并按缩放后的物理像素尺寸调整渲染器。
     ///
     /// # 参数
     ///
-    /// - `width` - 新的宽度（像素）
-    /// - `height` - 新的高度（像素）
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.renderer.resize(width, height);
+    /// - `width` - 新的宽度（逻辑像素）
+    /// - `height` - 新的高度（逻辑像素）
+    /// - `dpi_scale` - 可选的 DPI 缩放因子，若为 Some 则更新缩放并按物理像素调整
+    pub fn resize(&mut self, width: u32, height: u32, dpi_scale: Option<DpiScale>) {
+        if let Some(scale) = dpi_scale {
+            self.dpi_scale = scale;
+            let (phys_w, phys_h) = self.dpi_scale.scale_size(width as f32, height as f32);
+            self.renderer.resize(phys_w as u32, phys_h as u32);
+        }
+        else {
+            self.renderer.resize(width, height);
+        }
     }
 
     /// 轮询窗口事件
@@ -280,7 +327,7 @@ impl EditorRenderer {
     pub fn handle_window_event(&mut self, event: &WindowEvent) {
         match event {
             WindowEvent::Resized { width, height } => {
-                self.resize(*width, *height);
+                self.resize(*width, *height, None);
             }
             WindowEvent::CloseRequested => {}
             WindowEvent::Focused => {}

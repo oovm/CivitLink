@@ -1,0 +1,446 @@
+% TeX 格式 - 第一章 旧校舍线
+
+\begin{document}
+
+\label(chapter1_old_building)
+
+\scene[old_building_exterior.png, suspense_theme.mp3]
+
+\char[ren][smirk, right]
+
+\r 到了。这就是旧校舍。
+
+\p 看起来已经废弃很久了...
+
+\r 表面上是这样。
+
+\r 但实际上，这里藏着很多秘密。
+
+\p 秘密？
+
+\r 跟我来。
+
+\scene[old_building_side.png]
+
+\audio.play_se(metal_gate.wav)
+\shake(0.3)
+
+黑崎带我来到旧校舍的侧面，那里有一扇生锈的铁门。
+
+\r 这扇门的锁早就坏了。
+
+\audio.play_se(door_open_creak.wav)
+
+\scene[old_building_corridor.png]
+
+我们进入了旧校舍内部。
+
+\flash(0.5)
+
+\p 好暗...
+
+\r 小心脚下。
+
+\choice
+\case[use_flashlight][+c] 打开手电筒
+\case[follow_ren][+r] 跟着黑崎走
+\case[ask_ren_knowledge][+c] 询问黑崎为什么知道这里
+\end-choice
+
+% ============================================
+% 分支：使用手电筒
+% ============================================
+
+\label(use_flashlight)
+
+\audio.play_se(flashlight_on.wav)
+\flash(0.5)
+
+\p （手电筒的光照亮了走廊...）
+
+\p （墙上好像有什么字...）
+
+---
+
+墙上写着：
+"不要相信他们"
+"记忆是假的"
+"救救我"
+
+---
+
+\p 这些字...是什么意思？
+
+\r 看来有人在这里待过很久。
+
+\goto(explore_corridor)
+
+% ============================================
+% 分支：跟着黑崎
+% ============================================
+
+\label(follow_ren)
+
+\p （相信黑崎同学吧。）
+
+\r ...聪明。
+
+\p （他好像对我有点改观？）
+
+\goto(explore_corridor)
+
+% ============================================
+% 分支：询问黑崎
+% ============================================
+
+\label(ask_ren_knowledge)
+
+\p 黑崎同学，你怎么知道这个地方？
+
+\r ...
+
+\r 我...曾经在这里待过。
+
+\p 什么意思？
+
+\r 我是...实验的幸存者之一。
+
+\set(knows_secret = true)
+\set(knows_ren_secret = true)
+
+\p 实验...？
+
+\r 以后再解释。先往前走。
+
+\goto(explore_corridor)
+
+% ============================================
+% 探索走廊
+% ============================================
+
+\label(explore_corridor)
+
+\scene[old_building_hallway.png]
+
+我们沿着走廊前进，两边是废弃的教室。
+
+\flash(0.2)
+\audio.play_se(strange_sound.wav)
+
+突然，一阵奇怪的声音从远处传来！
+
+\p 什么声音？
+
+\r 有人在这里。
+
+\choice
+\case[hide_and_observe][+c, +t] 躲起来观察
+\case[go_check][+r] 直接去查看
+\case[send_ren] 让黑崎去查看
+\end-choice
+
+% ============================================
+% 分支：躲起来观察
+% ============================================
+
+\label(hide_and_observe)
+
+\p （先躲起来看看情况。）
+
+\scene[old_building_shadow.png]
+
+我们躲在一扇破旧的门后。
+
+\char[unknown][hooded, center]
+
+??? （低声自语）数据已经转移完毕...
+
+??? 下一个目标...新来的转学生。
+
+\p （他们...在说我？！）
+
+\r （小声）看来你被盯上了。
+
+\char[unknown][hide]
+
+\p （这到底是怎么回事...）
+
+\goto(discover_room)
+
+% ============================================
+% 分支：直接去查看
+% ============================================
+
+\label(go_check)
+
+\p （去看看是什么。）
+
+\r ...有胆量。
+
+\scene[old_building_intersection.png]
+
+我们走向声音传来的方向，但那里已经没有人了。
+
+\p 跑了...
+
+\r 但是留下了这个。
+
+\set(clues_found += 1)
+
+\p 这是...
+
+\goto(discover_room)
+
+% ============================================
+% 分支：让黑崎去
+% ============================================
+
+\label(send_ren)
+
+\p 黑崎同学，你能去看看吗？
+
+\r ...切。
+
+\r 在这里等着。
+
+\char[ren][hide]
+
+\pause(2.0)
+
+\char[ren][serious, right]
+
+\r 没人。但是发现了这个。
+
+\set(has_lab_access = true)
+
+\p 一张门禁卡？
+
+\r 旧校舍的地下实验室用的。
+
+\goto(discover_room)
+
+% ============================================
+% 发现密室
+% ============================================
+
+\label(discover_room)
+
+\scene[old_building_door.png]
+
+我们来到一扇厚重的金属门前。
+
+\r 这就是目的地。
+
+\if(has_lab_access)
+\goto(enter_with_card)
+\else
+\goto(locked_door)
+\endif
+
+% ============================================
+% 锁住的门
+% ============================================
+
+\label(locked_door)
+
+\p 门锁着...
+
+\r 我们需要找到开门的方法。
+
+\choice
+\case[find_entrance][+c] 寻找其他入口
+\case[try_lockpick] 尝试撬锁
+\case[get_sakura_help][+s, +t] 回去找樱井帮忙
+\end-choice
+
+% ============================================
+% 使用门禁卡
+% ============================================
+
+\label(enter_with_card)
+
+\audio.play_se(card_beep.wav)
+\flash(0.5)
+
+\p 门开了！
+
+\r 走吧。
+
+\goto(enter_lab)
+
+% ============================================
+% 寻找入口
+% ============================================
+
+\label(find_entrance)
+
+\p （一定有其他入口。）
+
+\scene[old_building_vent.png]
+
+\r 通风管道...可以试试。
+
+\p 这...真的能进去吗？
+
+\r 跟着我。
+
+\goto(enter_lab)
+
+% ============================================
+% 尝试撬锁
+% ============================================
+
+\label(try_lockpick)
+
+\p 让我试试...
+
+\audio.play_se(lockpick_fail.wav)
+
+\p 不行，锁太复杂了。
+
+\r 我就说没用。
+
+\goto(find_entrance)
+
+% ============================================
+% 找樱井帮忙
+% ============================================
+
+\label(get_sakura_help)
+
+\p （樱井同学可能有办法...）
+
+\r 还要找那个女人？
+
+\p 她可能有钥匙。
+
+\flash(0.5)
+
+\s 喂？怎么了？
+
+\p 我们在旧校舍...门锁着。
+
+\s 我马上来！
+
+\pause(1.5)
+
+\char[sakura][worried, left]
+
+\s 给你们钥匙。
+
+\audio.play_se(key_unlock.wav)
+
+\s 但是...请小心。
+
+\goto(enter_lab)
+
+% ============================================
+% 进入实验室
+% ============================================
+
+\label(enter_lab)
+
+\scene[old_lab.png, revelation.mp3]
+
+\flash(0.2)
+
+我们进入了地下实验室。
+
+\p 这是...
+
+\r 记忆操纵实验室。
+
+---
+
+房间中央是一台巨大的机器，
+周围散落着各种文件和设备。
+
+---
+
+\p 记忆操纵...真的存在？
+
+\r 是的。而且...
+
+\r 我是实验对象之一。
+
+\p 黑崎同学...
+
+\r 我失去了一部分记忆。
+
+\r 但是我知道...这所学校还在继续实验。
+
+\set(knows_secret = true)
+\set(clues_found += 3)
+
+\choice
+\case[promise_together][+r, +t] 我们一起阻止他们
+\case[more_details] 告诉我更多细节
+\end-choice
+
+% ============================================
+% 承诺一起行动
+% ============================================
+
+\label(promise_together)
+
+\p 我们一起阻止他们。
+
+\r ...
+
+\r ...谢了。
+
+\r 第一次有人说要帮我。
+
+\goto(chapter1_old_building_end)
+
+% ============================================
+% 更多细节
+% ============================================
+
+\label(more_details)
+
+\p 告诉我更多细节。
+
+\r 实验代号"星之子"。
+
+\r 目的是创造没有痛苦记忆的人。
+
+\r 但是副作用...是人格分裂。
+
+\p 人格分裂？
+
+\r 我有时候会变成另一个人。
+
+\r 那个我...更冷酷，更危险。
+
+\set(knows_ren_secret = true)
+
+\goto(chapter1_old_building_end)
+
+% ============================================
+% 章节结束
+% ============================================
+
+\label(chapter1_old_building_end)
+
+\scene[school_sunset.png, bittersweet.mp3]
+
+离开旧校舍后，夕阳已经西沉。
+
+\p （今天发现了太多事情...）
+
+\char[ren][serious, right]
+
+\r 明天放学后，我们继续调查。
+
+\p 好。
+
+\r ...你比我想象的可靠。
+
+\p 谢谢。
+
+\fadeout(1.5)
+
+\load(chapter2_investigation)
+
+\end{document}

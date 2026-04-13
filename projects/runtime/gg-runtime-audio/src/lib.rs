@@ -1,13 +1,24 @@
 #![warn(missing_docs)]
 
 //! GG 引擎音频运行时模块
-//! 提供音频硬件抽象层（HAL）定义，包含声音资源描述、音频命令和音频引擎 trait
+//!
+//! 提供音频硬件抽象层（HAL）定义，包含声音资源描述、音频命令、
+//! 音频引擎 trait、播放实例管理、音频分组和音频效果器。
 
 /// 音频命令定义
 pub mod command;
 
+/// 音频效果器定义
+pub mod effect;
+
 /// 音频引擎 trait 和音频上下文
 pub mod engine;
+
+/// 音频分组定义
+pub mod group;
+
+/// 播放实例管理
+pub mod playback;
 
 /// 声音资源标识与描述
 pub mod sound;
@@ -21,7 +32,10 @@ pub mod cpal_backend;
 pub mod web_backend;
 
 pub use command::AudioCommand;
+pub use effect::{AudioEffectChain, AudioEffectKind, EffectType};
 pub use engine::{AudioContext, AudioEngine};
+pub use group::{AudioGroup, AudioGroupManager};
+pub use playback::{PlaybackId, PlaybackInfo, PlaybackState};
 pub use sound::{SoundDescriptor, SoundFormat, SoundId};
 
 #[cfg(feature = "cpal-backend")]

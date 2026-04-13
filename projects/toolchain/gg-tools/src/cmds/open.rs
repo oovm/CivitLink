@@ -12,10 +12,7 @@ pub fn cmd_open(path: Option<&str>) -> GResult<()> {
     let project_dir = PathBuf::from(path.unwrap_or("."));
 
     if !project_dir.exists() {
-        return Err(GError {
-            kind: GErrorKind::Io,
-            message: format!("Directory does not exist: {}", project_dir.display()),
-        });
+        return Err(GError { kind: GErrorKind::Io, message: format!("Directory does not exist: {}", project_dir.display()) });
     }
 
     let has_engine_toml = project_dir.join("Engine.toml").exists();

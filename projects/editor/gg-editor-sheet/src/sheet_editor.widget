@@ -1,0 +1,334 @@
+<template>
+    <Panel class="sheet-editor" style="flex-1">
+        <Stack orientation="vertical" style="gap-0">
+            <Stack orientation="horizontal" class="sheet-toolbar" style="gap-4 padding-4 align-items-center">
+                <Text class="toolbar-title">表格编辑器</Text>
+                <Input class="table-search" value={searchQuery()} onChange={(e) => searchQuery(e.target.value)} placeholder="搜索表格..." style="flex-1" />
+                <Button text="保存" onClick={handleSave} class="btn-save" />
+                <Button text="刷新" onClick={handleRefresh} class="btn-refresh" />
+            </Stack>
+            <SplitView orientation="horizontal" ratio="0.2" style="flex-1">
+                <Panel class="table-list-panel">
+                    <ScrollView scroll_direction="vertical" style="flex-1">
+                        <Stack orientation="vertical" style="gap-0">
+                            <loop (table, index) in tableList()>
+                                <Panel key={index} class={tableItemClass(table.name)} onClick={(e) => handleTableSelect(table.name)}>
+                                    <Icon name="table" style="width-[16px] height-[16px]" />
+                                    <Text class="table-name">{table.name}</Text>
+                                </Panel>
+                            </loop>
+                        </Stack>
+                    </ScrollView>
+                </Panel>
+                <Panel class="data-grid-panel">
+                    <if (currentTable())>
+                        <Stack orientation="vertical" style="gap-0 flex-1">
+                            <Stack orientation="horizontal" class="grid-header" style="gap-0">
+                                <loop (header, index) in tableHeaders()>
+                                    <Panel key={index} class="header-cell">
+                                        <Text class="header-text">{header.name}</Text>
+                                        <Text class="header-type">{header.type_name}</Text>
+                                    </Panel>
+                                </loop>
+                            </Stack>
+                            <ScrollView scroll_direction="vertical" style="flex-1">
+                                <Stack orientation="vertical" style="gap-0">
+                                    <loop (row, rowIndex) in tableRows()>
+                                        <Stack orientation="horizontal" key={rowIndex} class="grid-row" style="gap-0">
+                                            <loop (cell, colIndex) in row.cells>
+                                                <Panel key={colIndex} class="grid-cell" onClick={(e) => handleCellClick(rowIndex, colIndex, cell.value)}>
+                                                    <if (isEditing(rowIndex, colIndex))>
+                                                        <PropertyField label="" type={cell.type_name} value={cell.value} onChange={(v) => handleCellValueChange(rowIndex, colIndex, v)} />
+                                                    <else/>
+                                                        <Text class="cell-text">{cell.value}</Text>
+                                                    </if>
+                                                </Panel>
+                                            </loop>
+                                        </Stack>
+                                    </loop>
+                                </Stack>
+                            </ScrollView>
+                        </Stack>
+                    <else/>
+                        <Panel class="empty-state">
+                            <Text class="empty-text">选择一个表格开始编辑</Text>
+                        </Panel>
+                    </if>
+                </Panel>
+            </SplitView>
+            <Stack orientation="horizontal" class="sheet-statusbar" style="gap-8 padding-4">
+                <Text class="status-text">表格: {currentTableName()}</Text>
+                <Text class="status-text">行数: {rowCount()}</Text>
+                <Text class="status-text">列数: {colCount()}</Text>
+                <if (isDirty())>
+                    <Text class="status-dirty">未保存</Text>
+                </if>
+            </Stack>
+        </Stack>
+    </Panel>
+</template>
+
+<script>
+    using gg_editor::ui::widgets::{Panel, Stack, Text, Input, Button, ScrollView, SplitView, PropertyField, Icon};
+    using gg_editor::ui::signal;
+    using gg_editor::ui::{on_mount, on_cleanup};
+    using gg_sheet::editor::{SheetEditorService, TableInfo, CellInfo};
+
+    let searchQuery = signal("");
+    let currentTable = signal(null);
+    let tableHeaders = signal([]);
+    let tableRows = signal([]);
+    let editingCell = signal(null);
+    let isDirty = signal(false);
+
+    let currentTableName = micro() {
+        if currentTable() != null {
+            return currentTable().name
+        }
+        return "无"
+    };
+
+    let rowCount = micro() {
+        return tableRows().length
+    };
+
+    let colCount = micro() {
+        return tableHeaders().length
+    };
+
+    let tableList = micro() {
+        let query = searchQuery().to_lowercase()
+        let all_tables = SheetEditorService.list_tables()
+        if query == "" {
+            return all_tables
+        }
+        return all_tables.filter(micro(t) {
+            t.name.to_lowercase().contains(query)
+        })
+    };
+
+    let tableItemClass = micro(name) {
+        if currentTable() != null && currentTable().name == name {
+            return "table-item selected"
+        }
+        return "table-item"
+    };
+
+    let isEditing = micro(row, col) {
+        if editingCell() != null {
+            return editingCell().row == row && editingCell().col == col
+        }
+        return false
+    };
+
+    let handleTableSelect = micro(name) {
+        let table_data = SheetEditorService.load_table(name)
+        currentTable(table_data)
+        tableHeaders(table_data.headers)
+        tableRows(table_data.rows)
+        editingCell(null)
+        isDirty(false)
+    };
+
+    let handleCellClick = micro(row, col, value) {
+        editingCell({ row: row, col: col, value: value })
+    };
+
+    let handleCellValueChange = micro(row, col, new_value) {
+        let rows = tableRows()
+        rows[row].cells[col].value = new_value
+        tableRows(rows)
+        isDirty(true)
+    };
+
+    let handleSave = micro() {
+        if currentTable() != null {
+            SheetEditorService.save_table(currentTable().name, tableRows())
+            SheetEditorService.trigger_compile()
+            isDirty(false)
+        }
+    };
+
+    let handleRefresh = micro() {
+        if currentTable() != null {
+            handleTableSelect(currentTable().name)
+        }
+    };
+
+    on_mount(micro() {
+        console::log("Sheet editor panel mounted")
+    });
+
+    on_cleanup(micro() {
+        console::log("Sheet editor panel unmounted")
+    });
+</script>
+
+<style>
+    .sheet-editor {
+        background-color: $bg-color;
+    }
+
+    .sheet-toolbar {
+        background-color: $bg-secondary-color;
+        border-bottom: 1px solid $border-color;
+        padding: $spacing-sm $spacing-md;
+        align-items: center;
+    }
+
+    .toolbar-title {
+        font-size: $font-size-md;
+        font-weight: bold;
+        color: $text-color;
+        min-width: 80px;
+    }
+
+    .table-search {
+        padding: $spacing-xs $spacing-sm;
+        background-color: $bg-color;
+        border: 1px solid $border-color;
+        border-radius: $radius-sm;
+        color: $text-color;
+
+        &:focus {
+            border-color: $accent-color;
+        }
+    }
+
+    .btn-save {
+        padding: $spacing-xs $spacing-sm;
+        background-color: $success-color;
+        color: white;
+        border-radius: $radius-sm;
+        cursor: pointer;
+
+        &:hover {
+            opacity: 0.85;
+        }
+    }
+
+    .btn-refresh {
+        padding: $spacing-xs $spacing-sm;
+        background-color: $secondary-color;
+        color: $text-color;
+        border-radius: $radius-sm;
+        cursor: pointer;
+
+        &:hover {
+            opacity: 0.85;
+        }
+    }
+
+    .table-list-panel {
+        background-color: $bg-secondary-color;
+        border-right: 1px solid $border-color;
+        padding: $spacing-xs;
+    }
+
+    .table-item {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        gap: $spacing-xs;
+        padding: $spacing-xs $spacing-sm;
+        cursor: pointer;
+        border-radius: $radius-sm;
+
+        &:hover {
+            background-color: $secondary-color;
+        }
+
+        &.selected {
+            background-color: $primary-color;
+            color: white;
+        }
+    }
+
+    .table-name {
+        font-size: $font-size-sm;
+        color: $text-color;
+    }
+
+    .data-grid-panel {
+        background-color: $bg-color;
+        padding: 0;
+        flex: 1;
+    }
+
+    .grid-header {
+        background-color: $bg-secondary-color;
+        border-bottom: 1px solid $border-color;
+    }
+
+    .header-cell {
+        display: flex;
+        flex-direction: column;
+        padding: $spacing-xs $spacing-sm;
+        border-right: 1px solid $border-color;
+        min-width: 100px;
+    }
+
+    .header-text {
+        font-size: $font-size-sm;
+        font-weight: bold;
+        color: $text-color;
+    }
+
+    .header-type {
+        font-size: $font-size-xs;
+        color: $text-secondary-color;
+    }
+
+    .grid-row {
+        border-bottom: 1px solid $border-color;
+
+        &:hover {
+            background-color: $bg-secondary-color;
+        }
+    }
+
+    .grid-cell {
+        padding: $spacing-xs $spacing-sm;
+        border-right: 1px solid $border-color;
+        min-width: 100px;
+        cursor: pointer;
+
+        &:hover {
+            background-color: $secondary-color;
+        }
+    }
+
+    .cell-text {
+        font-size: $font-size-sm;
+        color: $text-color;
+    }
+
+    .empty-state {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 1;
+    }
+
+    .empty-text {
+        color: $text-secondary-color;
+        font-size: $font-size-lg;
+    }
+
+    .sheet-statusbar {
+        background-color: $bg-secondary-color;
+        border-top: 1px solid $border-color;
+        padding: $spacing-xs $spacing-md;
+    }
+
+    .status-text {
+        font-size: $font-size-xs;
+        color: $text-secondary-color;
+    }
+
+    .status-dirty {
+        font-size: $font-size-xs;
+        color: $warning-color;
+        font-weight: bold;
+    }
+</style>
