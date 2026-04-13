@@ -129,7 +129,7 @@ impl GslLowerer {
         for micro_decl in &custom_micros {
             let func = self.lower_custom_function(micro_decl, &mut module, uniform_buffer_ty)?;
             let name = micro_decl.name.name.clone();
-            let handle = module.functions.append(func);
+            let handle = module.functions.append(func, NagaSpan::UNDEFINED);
             self.custom_functions.insert(name, handle);
         }
 
@@ -153,7 +153,7 @@ impl GslLowerer {
         let mut entry_points = Vec::new();
         let mut uniform_fields = Vec::new();
         let mut render_states = Vec::new();
-        let mut custom_micros = Vec::new();
+        let mut custom_micros: Vec<MicroDeclaration> = Vec::new();
 
         for item in &shader.items {
             match item {
@@ -167,7 +167,7 @@ impl GslLowerer {
                             entry_points.push(ep);
                         }
                     } else {
-                        custom_micros.push(micro.clone());
+                        custom_micros.push((**micro).clone());
                     }
                 }
                 StatementNode::Structure(structure) => {
@@ -1441,10 +1441,23 @@ impl GslLowerer {
                             let arg_expr = self.lower_expression(arg, module, function, expressions, named_expressions, body)?;
                             lowered_args.push(arg_expr);
                         }
-                        return Ok(expressions.append(
-                            Expression::Call(naga::Call { function: func_handle, arguments: lowered_args }),
-                            NagaSpan::UNDEFINED,
-                        ));
+                        let has_result = module.functions[func_handle].result.is_some();
+                        let result = if has_result {
+                            let result_expr = expressions.append(Expression::CallResult(func_handle), NagaSpan::UNDEFINED);
+                            Some(result_expr)
+                        } else {
+                            None
+                        };
+                        let call = naga::Statement::Call {
+                            function: func_handle,
+                            arguments: lowered_args,
+                            result,
+                        };
+                        body.push(call, NagaSpan::UNDEFINED);
+                        if let Some(result_expr) = result {
+                            return Ok(result_expr);
+                        }
+                        return Self::make_zero_value(module, expressions);
                     }
                     if let Some(&gv_handle) = self.global_vars.get(name) {
                         return Ok(expressions.append(Expression::GlobalVariable(gv_handle), NagaSpan::UNDEFINED));
@@ -1800,6 +1813,10 @@ impl GslLowerer {
             return self.create_buffer_type(&key, module);
         }
 
+        if key.starts_with("array") {
+            return self.create_array_type(type_name, module);
+        }
+
         let inner = match key.as_str() {
             "f32" | "float" => TypeInner::Scalar(F32_SCALAR),
             "i32" | "int" => TypeInner::Scalar(super::types::I32_SCALAR),
@@ -1903,7 +1920,55 @@ impl GslLowerer {
         Ok(struct_ty)
     }
 
-    /// 推断字段在结构体中的索引
+    /// 创建数组类型
+    ///
+    /// 解析 `Array<T, N>` 格式的类型名称，创建 naga 数组类型。
+    /// 例如 `Array<f32, 4>` 创建一个包含 4 个 f32 的固定长度数组。
+    fn create_array_type(&mut self, type_name: &str, module: &mut naga::Module) -> GResult<naga::Handle<naga::Type>> {
+        let key = type_name.to_lowercase();
+        let inner = type_name.trim_start_matches("Array").trim_start_matches("array");
+        let inner = inner.trim_start_matches('<').trim_end_matches('>').trim();
+
+        let (element_type, size_str) = if inner.contains(',') {
+            let mut parts = inner.splitn(2, ',');
+            let elem = parts.next().unwrap().trim();
+            let size = parts.next().unwrap().trim();
+            (elem, size.to_string())
+        } else {
+            (inner, "0".to_string())
+        };
+
+        let element_ty = self.get_or_create_naga_type(element_type, module)?;
+
+        let size = if let Ok(n) = size_str.parse::<u32>() {
+            if n == 0 {
+                naga::ArraySize::Dynamic
+            } else {
+                naga::ArraySize::Constant(naga::NonZeroU32::new(n).unwrap())
+            }
+        } else {
+            naga::ArraySize::Dynamic
+        };
+
+        let stride = {
+            let elem_size = self.type_size_align(element_type);
+            super::types::align_offset(elem_size.size, elem_size.align)
+        };
+
+        let array_ty = module.types.insert(
+            naga::Type {
+                name: Some(format!("Array_{}_{}", element_type, size_str)),
+                inner: TypeInner::Array {
+                    base: element_ty,
+                    size,
+                    stride,
+                },
+            },
+            NagaSpan::UNDEFINED,
+        );
+        self.type_cache.insert(key, array_ty);
+        Ok(array_ty)
+    }
     ///
     /// 优先从 uniform 字段索引映射中查找，
     /// 然后从 naga Module 的类型定义中查找结构体成员，

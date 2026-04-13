@@ -15,5 +15,5 @@ pub mod renderer;
 pub mod texture_cache;
 
 pub use font_manager::FontManager;
-pub use renderer::{HtmlRenderTarget, HtmlRenderer};
+pub use renderer::{HtmlRenderTarget, HtmlRenderer, WidgetArtifact, WidgetScriptBundle, WidgetStyleBundle, WidgetTemplateBundle};
 pub use texture_cache::HtmlTextureCache;

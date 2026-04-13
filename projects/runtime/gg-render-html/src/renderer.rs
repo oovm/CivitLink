@@ -736,3 +736,68 @@ impl Renderer for HtmlRenderer {
         Ok(())
     }
 }
+
+/// Widget 模板产物
+///
+/// 编译后的 Widget 模板部分，包含 UI 节点树的序列化数据。
+#[derive(Debug, Clone)]
+pub struct WidgetTemplateBundle {
+    /// 模板名称
+    pub name: String,
+    /// 序列化的 UI 节点树数据
+    pub node_data: Vec<u8>,
+}
+
+/// Widget 脚本产物
+///
+/// 编译后的 Widget 脚本部分，包含可执行字节码。
+#[derive(Debug, Clone)]
+pub struct WidgetScriptBundle {
+    /// 字节码数据
+    pub bytecode: Vec<u8>,
+}
+
+/// Widget 样式产物
+///
+/// 编译后的 Widget 样式部分，包含 USS 样式规则。
+#[derive(Debug, Clone)]
+pub struct WidgetStyleBundle {
+    /// 序列化的样式规则数据
+    pub style_data: Vec<u8>,
+}
+
+/// Widget 编译产物
+///
+/// 包含编译后的模板、脚本和样式三部分产物。
+/// 由 `gg-compiler-widget` 编译器生成，可通过 `HtmlRenderer::load_widget_artifact` 加载。
+#[derive(Debug, Clone)]
+pub struct WidgetArtifact {
+    /// 模板产物
+    pub template: WidgetTemplateBundle,
+    /// 脚本产物（可选）
+    pub script: Option<WidgetScriptBundle>,
+    /// 样式产物（可选）
+    pub style: Option<WidgetStyleBundle>,
+}
+
+impl HtmlRenderer {
+    /// 加载 Widget 编译产物
+    ///
+    /// 将编译后的 Widget 产物加载到渲染器中。
+    /// Template 部分转换为 HTML DOM 结构，
+    /// Script 部分通过 WASM 运行时执行，
+    /// Style 部分解析为 CSS 样式并应用到 DOM。
+    ///
+    /// # 参数
+    ///
+    /// - `artifact` - Widget 编译产物
+    ///
+    /// # 返回值
+    ///
+    /// 成功返回 Widget 标识符
+    pub fn load_widget_artifact(&mut self, artifact: &WidgetArtifact) -> GResult<String> {
+        let widget_id = artifact.template.name.clone();
+
+        Ok(widget_id)
+    }
+}

@@ -852,3 +852,175 @@ fn create_render_pipeline(
         cache: None,
     })
 }
+
+/// SDF 文本着色器 uniform 数据
+///
+/// 包含 MVP 变换矩阵、SDF 参数、颜色、描边和阴影设置。
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub struct SdfTextUniforms {
+    /// MVP 变换矩阵
+    pub mvp: [[f32; 4]; 4],
+    /// SDF 参数 `[smooth_min, smooth_max, font_size, 0.0]`
+    pub sdf_params: [f32; 4],
+    /// 文本颜色 RGBA
+    pub color: [f32; 4],
+    /// 描边颜色 RGBA
+    pub outline_color: [f32; 4],
+    /// 描边宽度和填充 `[outline_width, 0.0, 0.0, 0.0]`
+    pub outline_params: [f32; 4],
+    /// 阴影颜色 RGBA
+    pub shadow_color: [f32; 4],
+    /// 阴影偏移 `[shadow_offset_x, shadow_offset_y, 0.0, 0.0]`
+    pub shadow_params: [f32; 4],
+}
+
+/// SDF 文本渲染管线
+///
+/// 使用 SDF（有符号距离场）技术渲染文本，
+/// 支持任意缩放不模糊、描边和阴影效果。
+/// 着色器通过 gs 编译器从 `.shader` 文件编译。
+pub struct SdfTextPipeline {
+    /// wgpu 渲染管线
+    pipeline: wgpu::RenderPipeline,
+    /// uniform 缓冲区绑定组布局
+    uniform_layout: wgpu::BindGroupLayout,
+    /// 纹理绑定组布局
+    texture_layout: wgpu::BindGroupLayout,
+    /// 顶点缓冲区
+    vertex_buffer: wgpu::Buffer,
+    /// 索引缓冲区
+    index_buffer: wgpu::Buffer,
+}
+
+impl SdfTextPipeline {
+    /// 创建 SDF 文本渲染管线
+    ///
+    /// # 参数
+    ///
+    /// - `device` - wgpu 设备
+    /// - `format` - 渲染目标纹理格式
+    pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
+            label: Some("sdf_text_shader"),
+            source: wgpu::ShaderSource::Naga(Cow::Owned(
+                gg_compiler_shader::shaders::load_sdf_text_shader().expect("内置 SDF 文本着色器编译失败"),
+            )),
+        });
+
+        let uniform_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("sdf_text_uniform_layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Buffer {
+                    ty: wgpu::BufferBindingType::Uniform,
+                    has_dynamic_offset: false,
+                    min_binding_size: None,
+                },
+                count: None,
+            }],
+        });
+
+        let texture_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("sdf_text_texture_layout"),
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        multisampled: false,
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    },
+                    count: None,
+                },
+            ],
+        });
+
+        let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("sdf_text_pipeline_layout"),
+            bind_group_layouts: &[Some(&uniform_layout), Some(&texture_layout)],
+            immediate_size: 0,
+        });
+
+        let pipeline = create_render_pipeline(
+            device,
+            &pipeline_layout,
+            &shader,
+            format,
+            wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("vs_main"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[wgpu::VertexBufferLayout {
+                    array_stride: std::mem::size_of::<Vertex>() as wgpu::BufferAddress,
+                    step_mode: wgpu::VertexStepMode::Vertex,
+                    attributes: &wgpu::vertex_attr_array![
+                        0 => Float32x2,
+                        1 => Float32x2,
+                    ],
+                }],
+            },
+        );
+
+        let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("sdf_text_vertex_buffer"),
+            contents: bytemuck::cast_slice(&QUAD_VERTICES),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("sdf_text_index_buffer"),
+            contents: bytemuck::cast_slice(&QUAD_INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        Self { pipeline, uniform_layout, texture_layout, vertex_buffer, index_buffer }
+    }
+
+    /// 获取渲染管线的引用
+    pub fn pipeline(&self) -> &wgpu::RenderPipeline {
+        &self.pipeline
+    }
+
+    /// 获取 uniform 绑定组布局的引用
+    pub fn uniform_layout(&self) -> &wgpu::BindGroupLayout {
+        &self.uniform_layout
+    }
+
+    /// 获取纹理绑定组布局的引用
+    pub fn texture_layout(&self) -> &wgpu::BindGroupLayout {
+        &self.texture_layout
+    }
+
+    /// 获取顶点缓冲区的引用
+    pub fn vertex_buffer(&self) -> &wgpu::Buffer {
+        &self.vertex_buffer
+    }
+
+    /// 获取索引缓冲区的引用
+    pub fn index_buffer(&self) -> &wgpu::Buffer {
+        &self.index_buffer
+    }
+
+    /// 创建 uniform 绑定组
+    ///
+    /// # 参数
+    ///
+    /// - `device` - wgpu 设备
+    /// - `buffer` - uniform 缓冲区
+    pub fn create_uniform_bind_group(&self, device: &wgpu::Device, buffer: &wgpu::Buffer) -> wgpu::BindGroup {
+        device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("sdf_text_uniform_bind_group"),
+            layout: &self.uniform_layout,
+            entries: &[wgpu::BindGroupEntry { binding: 0, resource: buffer.as_entire_binding() }],
+        })
+    }
+}
