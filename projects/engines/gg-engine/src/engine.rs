@@ -1,6 +1,6 @@
 #![warn(missing_docs)]
 
-//! GG 引擎核心模块
+//! Pleroma 引擎核心模块
 
 use gg_asset::AssetServer;
 use gg_core::{GResult, plugin::PluginManager};

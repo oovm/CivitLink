@@ -1,7 +1,7 @@
 //! GG 对话系统插件核心类型模块
 //! Re-export gg-galgame-schema 的类型，并提供对话插件特有的扩展
 
-pub use gg_engine::{components::*, resources::*};
+pub use pleroma::{components::*, resources::*};
 
 /// GameVariables 扩展 trait
 ///

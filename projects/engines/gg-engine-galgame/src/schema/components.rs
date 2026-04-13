@@ -2,7 +2,7 @@
 //!
 //! 定义 Galgame 引擎所需的所有 ECS 组件类型。
 
-use gg_engine::VariableValue;
+use pleroma::VariableValue;
 use gg_render::TextureId;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -283,4 +283,52 @@ pub struct ChoiceState {
     pub selected_index: Option<usize>,
     /// 选项是否激活
     pub is_active: bool,
+}
+
+/// 角色位置枚举
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CharacterPosition {
+    /// 左侧
+    Left,
+    /// 中央
+    Center,
+    /// 右侧
+    Right,
+    /// 自定义坐标
+    Custom {
+        /// X 坐标
+        x: f32,
+        /// Y 坐标
+        y: f32,
+    },
+}
+
+/// 角色状态
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CharacterState {
+    /// 关联角色 ID
+    pub character_id: String,
+    /// 当前表情标签
+    pub current_expression: String,
+    /// 位置 X 坐标
+    pub x: f32,
+    /// 位置 Y 坐标
+    pub y: f32,
+    /// 缩放比例（默认 1.0）
+    pub scale: f32,
+    /// 透明度（默认 1.0）
+    pub opacity: f32,
+    /// 是否正在说话（用于高亮）
+    pub is_speaking: bool,
+    /// Z 轴排序
+    pub z_order: i32,
+    /// 角色纹理标识
+    #[serde(skip)]
+    pub texture_id: TextureId,
+    /// 角色纹理宽度（像素）
+    #[serde(skip)]
+    pub texture_width: f32,
+    /// 角色纹理高度（像素）
+    #[serde(skip)]
+    pub texture_height: f32,
 }

@@ -19,7 +19,7 @@ gg-asset = { workspace = true }
 gg-compiler = { workspace = true }
 gg-ir = { workspace = true }
 gg-bytecode = { workspace = true }
-gg-engine = { workspace = true }
+pleroma = { workspace = true }
 gg-plugin-dialogue = { workspace = true }
 gg-plugin-portrait = { workspace = true }
 gg-plugin-scene-transition = { workspace = true }

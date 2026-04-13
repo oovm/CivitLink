@@ -87,7 +87,7 @@ impl Default for EngineConfig {
     fn default() -> Self {
         Self {
             window: WindowConfig {
-                title: "GG Engine".to_string(),
+                title: "Pleroma".to_string(),
                 width: 1280,
                 height: 720,
                 fullscreen: false,

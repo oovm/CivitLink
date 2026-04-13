@@ -10,7 +10,7 @@ gg-core = { workspace = true }
 gg-ecs = { workspace = true }
 gg-render = { workspace = true }
 gg-ui = { workspace = true }
-gg-engine = { workspace = true }
+pleroma = { workspace = true }
 oak-voc = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

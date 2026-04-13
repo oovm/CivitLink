@@ -1,30 +1,9 @@
 #![warn(missing_docs)]
 
-//! GG 引擎角色资源模块
-//! 提供通用的角色相关资源定义
+//! Pleroma 通用引擎资源模块
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-
-/// 历史条目
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct HistoryEntry {
-    /// 说话者名称
-    pub speaker_name: Option<String>,
-    /// 对话文本
-    pub text: String,
-    /// 时间戳
-    pub timestamp: f64,
-}
-
-/// 对话历史
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DialogueHistory {
-    /// 历史条目列表
-    pub entries: Vec<HistoryEntry>,
-    /// 当前对话节点 ID
-    pub current_node_id: Option<String>,
-}
 
 /// 变量值枚举
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,10 +37,6 @@ impl GameVariables {
     }
 
     /// 评估条件表达式
-    ///
-    /// 支持简单条件格式：`variable_name >= value`、`variable_name <= value`、
-    /// `variable_name > value`、`variable_name < value`、`variable_name == value`、
-    /// `variable_name != value`
     pub fn evaluate_condition(&self, expression: &str) -> bool {
         let trimmed = expression.trim();
 
@@ -127,8 +102,6 @@ impl GameVariables {
 }
 
 /// 帧间隔时间资源
-///
-/// 存储当前帧与上一帧之间的时间间隔，供系统使用真实时间更新。
 #[derive(Debug, Clone, Copy)]
 pub struct DeltaTime {
     /// 帧间隔时间（秒）
@@ -149,8 +122,6 @@ pub struct WaitTimer {
 }
 
 /// 游戏状态资源
-///
-/// 管理全局游戏状态，包括变量、标志、天数、时间和游戏结束标志。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GameState {
     /// 游戏变量映射

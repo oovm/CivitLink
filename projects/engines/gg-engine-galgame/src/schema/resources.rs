@@ -3,7 +3,7 @@
 //! 定义 Galgame 引擎所需的资源类型。
 
 use crate::components::{CharacterDef, DialogueNode, PortraitState};
-use gg_engine::{DeltaTime, GameVariables, VariableValue};
+use pleroma::{DeltaTime, GameVariables, VariableValue};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 

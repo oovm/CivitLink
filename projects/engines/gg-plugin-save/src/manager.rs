@@ -3,7 +3,7 @@
 
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ecs::{Entity, World};
-use gg_engine::{GameVariables, VariableValue};
+use pleroma::{GameVariables, VariableValue};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fs, path::Path};
 

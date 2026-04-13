@@ -174,7 +174,7 @@ gg-plugin-spine = { path = "projects/engines/gg-plugin-spine" }
 gg-engine-stg = { path = "projects/engines/gg-engine-stg" }
 gg-engine-platformer = { path = "projects/engines/gg-engine-platformer" }
 gg-engine-galgame = { path = "projects/engines/gg-engine-galgame" }
-gg-engine = { path = "projects/engines/gg-engine" }
+pleroma = { path = "projects/engines/gg-engine" }
 
 # oak parsers
 oak-core = { path = "../oaks/projects/oak-core" }

@@ -1,5 +1,5 @@
 [package]
-name = "gg-engine"
+name = "pleroma"
 version = { workspace = true }
 edition = { workspace = true }
 authors = { workspace = true }
