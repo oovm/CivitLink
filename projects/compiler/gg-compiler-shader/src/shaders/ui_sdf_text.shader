@@ -1,11 +1,24 @@
 # using gg_shader::f32::{vec2, vec3, vec4, mat44};
 
 #? SDF text rendering shader for UI
+structure Uniforms {
+    gg_ui_matrix: mat44
+    gg_ui_clip_rect: vec4
+    gg_sdf_params: vec3
+    _MainTex: tex2
+    _Color: vec4
+    _OutlineColor: vec4
+    _OutlineWidth: f32
+    _ShadowColor: vec4
+    _ShadowOffset: vec2
+}
+
 shader UiSdfTextShader by UiSdf {
     _MainTex: texture = "white"
     _Color: color = [1, 1, 1, 1]
     _OutlineColor: color = [0, 0, 0, 1]
-    _OutlineWidth: f32 = 0.1 @range(0.0, 0.5)
+    @range(0.0, 0.5)
+    _OutlineWidth: f32 = 0.1
     _ShadowColor: color = [0, 0, 0, 0.5]
     _ShadowOffset: vec2 = [1, -1]
 
@@ -16,29 +29,12 @@ shader UiSdfTextShader by UiSdf {
         depth_write = false
     }
 
-    structure Uniforms {
-        gg_ui_matrix: mat44
-        gg_ui_clip_rect: vec4
-        gg_sdf_params: vec3
-        _MainTex: tex2
-        _Color: vec4
-        _OutlineColor: vec4
-        _OutlineWidth: f32
-        _ShadowColor: vec4
-        _ShadowOffset: vec2
-    }
-
-    @group(0) @binding(0)
-    var<uniform> uniforms: Uniforms
-
-    @group(1) @binding(0)
-    var tex_sampler: sampler
-
-    @group(1) @binding(1)
-    var sdf_tex: texture_2d<f32>
+    uniform uniforms: Uniforms
+    tex_sampler: sampler
+    sdf_tex: texture_2d<f32>
 
     @vertex
-    fn vertex_main(
+    micro vertex_main(
         @location(0) position: vec2,
         @location(1) uv: vec2
     ) -> @builtin(position) vec4 {
@@ -46,7 +42,7 @@ shader UiSdfTextShader by UiSdf {
     }
 
     @fragment
-    fn fragment_main(
+    micro fragment_main(
         @location(0) uv: vec2
     ) -> @location(0) vec4 {
         let dist = textureSample(sdf_tex, tex_sampler, uv).r

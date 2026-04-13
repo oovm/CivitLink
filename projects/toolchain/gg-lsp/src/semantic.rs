@@ -1,9 +1,11 @@
 //! Valkyrie 脚本语义分析模块。
 //!
-//! 提供符号表构建、悬停信息查询和语义诊断等功能，
-//! 基于简单的文本模式匹配实现，无需完整 AST。
+//! 提供符号表构建、悬停信息查询和语义诊断等功能。
+//! 包含基于文本模式匹配的简单分析器和基于 AST 的精确分析器。
 
 use std::collections::HashMap;
+
+use gg_script::type_checker::{TypeChecker, TypeEnvironment, TypeInfo, DiagnosticSeverity as TypeDiagnosticSeverity};
 
 /// 符号类型。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -468,4 +470,224 @@ fn is_inside_string(line: &str, char_pos: usize) -> bool {
         pos += 1;
     }
     in_string
+}
+
+/// 基于 AST 的语义分析器。
+///
+/// 使用 Valkyrie 解析器将源码解析为 AST，然后通过 TypeChecker
+/// 进行精确的符号提取和类型推断，提供比文本模式匹配更准确的语义信息。
+pub struct AstSemanticAnalyzer {
+    /// 上一次分析的符号表
+    symbol_table: SymbolTable,
+    /// 上一次分析的诊断列表
+    diagnostics: Vec<SemanticDiagnostic>,
+    /// 上一次分析的类型环境
+    type_env: TypeEnvironment,
+}
+
+impl Default for AstSemanticAnalyzer {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AstSemanticAnalyzer {
+    /// 创建新的 AST 语义分析器。
+    pub fn new() -> Self {
+        Self { symbol_table: SymbolTable::new(), diagnostics: Vec::new(), type_env: TypeEnvironment::new() }
+    }
+
+    /// 分析源码，基于 AST 构建符号表并收集诊断信息。
+    ///
+    /// 使用 Valkyrie 解析器解析源码，然后通过 TypeChecker 进行类型检查，
+    /// 提取精确的符号定义（函数签名、类字段、组件定义、枚举变体等）
+    /// 和类型推断结果。
+    pub fn analyze(&mut self, source: &str) -> SemanticResult {
+        self.symbol_table = SymbolTable::new();
+        self.diagnostics = Vec::new();
+
+        let compiler = gg_script::ScriptCompiler::new();
+        let (_, type_diagnostics) = compiler.compile_to_ir_with_diagnostics(source, "module");
+
+        for diag in &type_diagnostics {
+            self.diagnostics.push(SemanticDiagnostic {
+                message: if let Some(suggestion) = &diag.suggestion {
+                    format!("{} (suggestion: {})", diag.message, suggestion)
+                } else {
+                    diag.message.clone()
+                },
+                line: 0,
+                severity: match diag.severity {
+                    TypeDiagnosticSeverity::Error => DiagnosticSeverity::Error,
+                    TypeDiagnosticSeverity::Warning => DiagnosticSeverity::Warning,
+                },
+            });
+        }
+
+        let mut checker = TypeChecker::new();
+        let root = match gg_script::parse_source(source) {
+            Ok(r) => r,
+            Err(_) => return SemanticResult { symbol_table: self.symbol_table.clone(), diagnostics: self.diagnostics.clone() },
+        };
+        checker.check_root(&root);
+
+        for (name, sig) in &checker.env.function_signatures {
+            let params: Vec<String> = sig.param_types.iter().map(|t| type_info_to_string(t)).collect();
+            let return_type = type_info_to_string(&sig.return_type);
+            self.symbol_table.insert(Symbol {
+                name: name.clone(),
+                kind: SymbolKind::Function,
+                line: 0,
+                column: 0,
+                type_info: Some(format!("({}) -> {}", params.join(", "), return_type)),
+            });
+        }
+
+        for (name, ty) in &checker.env.types {
+            let kind = match ty {
+                TypeInfo::Object(_) => SymbolKind::Namespace,
+                TypeInfo::Trait(_) => SymbolKind::Namespace,
+                TypeInfo::Component(_) => SymbolKind::Namespace,
+                _ => SymbolKind::Variable,
+            };
+            self.symbol_table.insert(Symbol {
+                name: name.clone(),
+                kind,
+                line: 0,
+                column: 0,
+                type_info: Some(type_info_to_string(ty)),
+            });
+        }
+
+        for (name, ty) in &checker.env.variables {
+            self.symbol_table.insert(Symbol {
+                name: name.clone(),
+                kind: SymbolKind::Variable,
+                line: 0,
+                column: 0,
+                type_info: Some(type_info_to_string(ty)),
+            });
+        }
+
+        for diag in &checker.diagnostics {
+            self.diagnostics.push(SemanticDiagnostic {
+                message: if let Some(suggestion) = &diag.suggestion {
+                    format!("{} (suggestion: {})", diag.message, suggestion)
+                } else {
+                    diag.message.clone()
+                },
+                line: 0,
+                severity: match diag.severity {
+                    TypeDiagnosticSeverity::Error => DiagnosticSeverity::Error,
+                    TypeDiagnosticSeverity::Warning => DiagnosticSeverity::Warning,
+                },
+            });
+        }
+
+        self.type_env = checker.env;
+
+        SemanticResult { symbol_table: self.symbol_table.clone(), diagnostics: self.diagnostics.clone() }
+    }
+
+    /// 获取指定类型的字段和方法列表，用于类型感知补全。
+    pub fn get_type_members(&self, type_name: &str) -> Vec<CompletionMember> {
+        let mut members = Vec::new();
+
+        if let Some(fields) = self.type_env.class_fields.get(type_name) {
+            for (field_name, field_ty) in fields {
+                members.push(CompletionMember {
+                    name: field_name.clone(),
+                    kind: CompletionMemberKind::Field,
+                    type_info: type_info_to_string(field_ty),
+                });
+            }
+        }
+
+        if let Some(sigs) = self.type_env.function_signatures.get(type_name) {
+            let params: Vec<String> = sigs.param_types.iter().map(|t| type_info_to_string(t)).collect();
+            members.push(CompletionMember {
+                name: type_name.to_string(),
+                kind: CompletionMemberKind::Method,
+                type_info: format!("({}) -> {}", params.join(", "), type_info_to_string(&sigs.return_type)),
+            });
+        }
+
+        for (sig_name, sig) in &self.type_env.function_signatures {
+            if sig_name.starts_with(&format!("{}_", type_name)) {
+                let method_name = sig_name.strip_prefix(&format!("{}_", type_name)).unwrap_or(sig_name);
+                let params: Vec<String> = sig.param_types.iter().map(|t| type_info_to_string(t)).collect();
+                members.push(CompletionMember {
+                    name: method_name.to_string(),
+                    kind: CompletionMemberKind::Method,
+                    type_info: format!("({}) -> {}", params.join(", "), type_info_to_string(&sig.return_type)),
+                });
+            }
+        }
+
+        members
+    }
+
+    /// 根据名称查找符号定义。
+    pub fn get_definition(&self, name: &str) -> Option<&Symbol> {
+        self.symbol_table.get(name)
+    }
+
+    /// 获取上一次分析的类型环境。
+    pub fn type_environment(&self) -> &TypeEnvironment {
+        &self.type_env
+    }
+}
+
+/// 补全成员类型
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CompletionMemberKind {
+    /// 字段
+    Field,
+    /// 方法
+    Method,
+}
+
+/// 补全成员
+#[derive(Debug, Clone)]
+pub struct CompletionMember {
+    /// 成员名称
+    pub name: String,
+    /// 成员类型
+    pub kind: CompletionMemberKind,
+    /// 类型信息
+    pub type_info: String,
+}
+
+/// 将 TypeInfo 转换为可读的类型字符串。
+fn type_info_to_string(ty: &TypeInfo) -> String {
+    match ty {
+        TypeInfo::Int => "i32".to_string(),
+        TypeInfo::Float => "f64".to_string(),
+        TypeInfo::Bool => "Bool".to_string(),
+        TypeInfo::String => "String".to_string(),
+        TypeInfo::Null => "null".to_string(),
+        TypeInfo::Unknown => "Unknown".to_string(),
+        TypeInfo::Object(name) => name.clone(),
+        TypeInfo::Trait(name) => name.clone(),
+        TypeInfo::Component(name) => name.clone(),
+        TypeInfo::Function { param_types, return_type } => {
+            let params: Vec<String> = param_types.iter().map(type_info_to_string).collect();
+            format!("({}) -> {}", params.join(", "), type_info_to_string(return_type))
+        }
+        TypeInfo::Array(inner) => format!("Array<{}>", type_info_to_string(inner)),
+        TypeInfo::Map(key, value) => format!("Map<{}, {}>", type_info_to_string(key), type_info_to_string(value)),
+        TypeInfo::Closure { param_types, return_type, .. } => {
+            let params: Vec<String> = param_types.iter().map(type_info_to_string).collect();
+            format!("({}) -> {}", params.join(", "), type_info_to_string(return_type))
+        }
+        TypeInfo::Tuple(types) => {
+            let parts: Vec<String> = types.iter().map(type_info_to_string).collect();
+            format!("({})", parts.join(", "))
+        }
+        TypeInfo::Optional(inner) => format!("Option<{}>", type_info_to_string(inner)),
+        TypeInfo::Generic(name, args) => {
+            let arg_strs: Vec<String> = args.iter().map(type_info_to_string).collect();
+            format!("{}<{}>", name, arg_strs.join(", "))
+        }
+    }
 }

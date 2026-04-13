@@ -8,6 +8,7 @@ license = { workspace = true }
 [dependencies]
 gg-core = { workspace = true }
 gg-manifest = { workspace = true }
+gg-script = { workspace = true }
 oak-core = { workspace = true }
 oak-highlight = { workspace = true, optional = true }
 oak-pretty-print = { workspace = true, optional = true }

@@ -1,7 +1,7 @@
 //! Valkyrie 脚本转换器模块
 //! 将 .valkyrie 脚本编译为字节码模块
 
-use std::cell::RefCell;
+use std::sync::Mutex;
 
 use gg_bytecode::BytecodeWriter;
 use gg_compiler::{
@@ -28,39 +28,39 @@ pub struct ValkyrieScriptTransformer {
     /// 目标平台
     pub target_platform: Option<TargetPlatform>,
     /// 脚本编译缓存，用于增量编译
-    cache: RefCell<ScriptCache>,
+    cache: Mutex<ScriptCache>,
 }
 
 impl ValkyrieScriptTransformer {
     /// 创建新的 Valkyrie 脚本转换器（默认启用优化）
     pub fn new() -> Self {
-        Self { optimize: true, target_platform: None, cache: RefCell::new(ScriptCache::new()) }
+        Self { optimize: true, target_platform: None, cache: Mutex::new(ScriptCache::new()) }
     }
 
     /// 创建不启用优化的 Valkyrie 脚本转换器
     pub fn no_optimize() -> Self {
-        Self { optimize: false, target_platform: None, cache: RefCell::new(ScriptCache::new()) }
+        Self { optimize: false, target_platform: None, cache: Mutex::new(ScriptCache::new()) }
     }
 
     /// 创建带有目标平台的 Valkyrie 脚本转换器
     pub fn with_target(target: TargetPlatform) -> Self {
-        Self { optimize: true, target_platform: Some(target), cache: RefCell::new(ScriptCache::new()) }
+        Self { optimize: true, target_platform: Some(target), cache: Mutex::new(ScriptCache::new()) }
     }
 
     /// 获取编译缓存的可变引用
-    pub fn cache_mut(&mut self) -> &mut ScriptCache {
-        self.cache.get_mut()
+    pub fn cache_mut(&mut self) -> std::sync::MutexGuard<'_, ScriptCache> {
+        self.cache.get_mut().unwrap()
     }
 
     /// 从磁盘加载编译缓存
     pub fn load_cache(&mut self, path: &std::path::Path) -> GResult<()> {
-        *self.cache.get_mut() = ScriptCache::load_from_disk(path)?;
+        *self.cache.get_mut().unwrap() = ScriptCache::load_from_disk(path)?;
         Ok(())
     }
 
     /// 将编译缓存持久化到磁盘
     pub fn persist_cache(&self, path: &std::path::Path) -> GResult<()> {
-        self.cache.borrow().persist_to_disk(path)
+        self.cache.lock().map_err(|e| gg_core::GError { kind: gg_core::GErrorKind::Other, message: format!("Failed to lock cache: {}", e) })?.persist_to_disk(path)
     }
 }
 
@@ -126,7 +126,7 @@ impl Transformer for ValkyrieScriptTransformer {
             };
 
             let module_name = &key.id;
-            let mut cache = self.cache.borrow_mut();
+            let mut cache = self.cache.lock().map_err(|e| gg_core::GError { kind: gg_core::GErrorKind::Other, message: format!("Failed to lock cache: {}", e) })?;
             match compiler.compile_incremental(&source, module_name, &mut cache) {
                 Ok(bytecode_module) => {
                     let bytecode_data = BytecodeWriter::write_module(&bytecode_module);

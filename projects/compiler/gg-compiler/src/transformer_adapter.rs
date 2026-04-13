@@ -1,7 +1,7 @@
 //! IR 优化转换器适配器模块
 //! 将 IrOptimizer 适配为 Transformer trait，使其可嵌入编译流水线
 
-use std::cell::RefCell;
+use std::sync::Mutex;
 
 use gg_core::{GError, GErrorKind, GResult};
 use gg_ir::{IrModule, pass::IrOptimizer};
@@ -17,13 +17,13 @@ pub struct IrOptimizeTransformer {
     /// 转换器名称
     transformer_name: String,
     /// IR 优化器
-    optimizer: RefCell<IrOptimizer>,
+    optimizer: Mutex<IrOptimizer>,
 }
 
 impl IrOptimizeTransformer {
     /// 创建新的 IR 优化转换器
     pub fn new(name: &str, optimizer: IrOptimizer) -> Self {
-        Self { transformer_name: name.to_string(), optimizer: RefCell::new(optimizer) }
+        Self { transformer_name: name.to_string(), optimizer: Mutex::new(optimizer) }
     }
 }
 
@@ -59,7 +59,7 @@ impl Transformer for IrOptimizeTransformer {
             let (mut module, _) = bincode::serde::decode_from_slice(&artifact.data, bincode::config::standard())
                 .map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to deserialize IrModule: {}", e) })?;
 
-            self.optimizer.borrow_mut().optimize(&mut module)?;
+            self.optimizer.lock().map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to lock optimizer: {}", e) })?.optimize(&mut module)?;
 
             let data = bincode::serde::encode_to_vec(&module, bincode::config::standard())
                 .map_err(|e| GError { kind: GErrorKind::Other, message: format!("Failed to serialize IrModule: {}", e) })?;

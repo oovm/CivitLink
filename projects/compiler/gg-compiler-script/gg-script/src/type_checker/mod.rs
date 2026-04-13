@@ -175,12 +175,22 @@ pub struct TypeEnvironment {
     pub function_signatures: HashMap<String, FunctionSignature>,
     /// 自定义类型名到类型信息的映射
     pub types: HashMap<String, TypeInfo>,
+    /// 类/组件/结构体的字段类型映射（类型名 -> 字段名 -> 字段类型）
+    pub class_fields: HashMap<String, HashMap<String, TypeInfo>>,
+    /// trait 要求的方法签名映射（trait名 -> 方法签名列表）
+    pub trait_methods: HashMap<String, Vec<FunctionSignature>>,
 }
 
 impl TypeEnvironment {
     /// 创建空的类型环境
     pub fn new() -> Self {
-        Self { variables: HashMap::new(), function_signatures: HashMap::new(), types: HashMap::new() }
+        Self {
+            variables: HashMap::new(),
+            function_signatures: HashMap::new(),
+            types: HashMap::new(),
+            class_fields: HashMap::new(),
+            trait_methods: HashMap::new(),
+        }
     }
 
     /// 查找变量的类型
@@ -364,40 +374,56 @@ impl TypeChecker {
     /// 检查类声明
     ///
     /// 注册类类型，为字段建立类型环境，然后检查类中的方法。
+    /// 同时收集字段类型到 class_fields，并验证类是否实现了所有父 trait 的方法。
     pub fn check_class(&mut self, class: &ClassDeclaration) {
         if !self.filter_by_target(&class.annotations) {
             return;
         }
         self.env.register_type(class.name.name.clone(), TypeInfo::Object(class.name.name.clone()));
-        let saved_env = self.env.variables.clone();
+        let mut fields = HashMap::new();
         for field in &class.fields {
             let field_ty = self.type_expr_to_type_info(&field.ty);
+            fields.insert(field.name.name.clone(), field_ty.clone());
             self.env.insert_variable(format!("self.{}", field.name.name), field_ty);
         }
+        self.env.class_fields.insert(class.name.name.clone(), fields);
+        let saved_env = self.env.variables.clone();
         for method in &class.methods {
             self.check_method(method, &class.name.name);
+        }
+        for parent in &class.parents {
+            let trait_name = parent.name.parts.last().map(|p| p.name.clone()).unwrap_or_default();
+            self.check_impl_block(&class.name.name, &trait_name, &class.methods);
         }
         self.env.variables = saved_env;
     }
 
     /// 检查结构体声明
     ///
-    /// 注册结构体类型信息。
+    /// 注册结构体类型信息，并收集字段类型到 class_fields。
     pub fn check_structure(&mut self, structure: &StructureDeclaration) {
         if !self.filter_by_target(&structure.annotations) {
             return;
         }
         self.env.register_type(structure.name.name.clone(), TypeInfo::Object(structure.name.name.clone()));
+        let mut fields = HashMap::new();
+        for field in &structure.fields {
+            let field_ty = self.type_expr_to_type_info(&field.ty);
+            fields.insert(field.name.name.clone(), field_ty);
+        }
+        self.env.class_fields.insert(structure.name.name.clone(), fields);
     }
 
     /// 检查特征声明
     ///
     /// 注册特征类型，并为特征中的方法注册函数签名。
+    /// 同时收集方法签名到 trait_methods，用于后续 impl 验证。
     pub fn check_trait(&mut self, trait_decl: &Trait) {
         if !self.filter_by_target(&trait_decl.annotations) {
             return;
         }
         self.env.register_type(trait_decl.name.name.clone(), TypeInfo::Trait(trait_decl.name.name.clone()));
+        let mut trait_method_sigs = Vec::new();
         for method in &trait_decl.methods {
             let mut param_types = Vec::new();
             for param in &method.params {
@@ -408,7 +434,13 @@ impl TypeChecker {
             let sig =
                 FunctionSignature { name: format!("{}_{}", trait_decl.name.name, method.name.name), param_types, return_type };
             self.env.insert_function(sig);
+            trait_method_sigs.push(FunctionSignature {
+                name: method.name.name.clone(),
+                param_types: method.params.iter().map(|p| p.ty.as_ref().map(|t| self.type_expr_to_type_info(t)).unwrap_or(TypeInfo::Unknown)).collect(),
+                return_type: method.return_type.as_ref().map(|t| self.type_expr_to_type_info(t)).unwrap_or(TypeInfo::Unknown),
+            });
         }
+        self.env.trait_methods.insert(trait_decl.name.name.clone(), trait_method_sigs);
     }
 
     /// 检查单例声明
@@ -443,12 +475,18 @@ impl TypeChecker {
 
     /// 检查 ECS 组件声明
     ///
-    /// 注册组件类型信息。
+    /// 注册组件类型信息，并收集字段类型到 class_fields。
     pub fn check_component(&mut self, component: &ComponentDeclaration) {
         if !self.filter_by_target(&component.annotations) {
             return;
         }
         self.env.register_type(component.name.name.clone(), TypeInfo::Component(component.name.name.clone()));
+        let mut fields = HashMap::new();
+        for field in &component.fields {
+            let field_ty = self.type_expr_to_type_info(&field.ty);
+            fields.insert(field.name.name.clone(), field_ty);
+        }
+        self.env.class_fields.insert(component.name.name.clone(), fields);
     }
 
     /// 检查 ECS 系统声明
@@ -487,6 +525,35 @@ impl TypeChecker {
         self.env.insert_function(sig);
         self.current_return_type = None;
         self.env.variables = saved_env;
+    }
+
+    /// 检查类是否实现了 trait 要求的所有方法
+    ///
+    /// 对比 trait_methods 中记录的方法签名与类实际定义的方法，
+    /// 如果缺失方法则生成 Error 级别诊断（含 suggestion 字段）。
+    pub fn check_impl_block(&mut self, class_name: &str, trait_name: &str, class_methods: &[MethodDeclaration]) {
+        let required_methods = match self.env.trait_methods.get(trait_name) {
+            Some(methods) => methods,
+            None => return,
+        };
+        let implemented_names: HashSet<String> = class_methods.iter().map(|m| m.name.name.clone()).collect();
+        for required in required_methods {
+            if !implemented_names.contains(&required.name) {
+                self.diagnostics.push(TypeDiagnostic {
+                    message: format!(
+                        "Type '{}' does not implement all methods of trait '{}': missing '{}'",
+                        class_name, trait_name, required.name
+                    ),
+                    severity: DiagnosticSeverity::Error,
+                    span_start: 0,
+                    span_end: 0,
+                    suggestion: Some(format!(
+                        "Add method '{}' to type '{}' to satisfy trait '{}'",
+                        required.name, class_name, trait_name
+                    )),
+                });
+            }
+        }
     }
 
     /// 根据注解过滤目标平台
@@ -650,10 +717,30 @@ impl TypeChecker {
                 TypeInfo::Null
             }
 
-            TermExpression::DotCall { receiver, field: _, .. } => {
+            TermExpression::DotCall { receiver, field, span, .. } => {
                 let receiver_ty = self.infer_expr(receiver);
-                match receiver_ty {
-                    TypeInfo::Object(_type_name) => TypeInfo::Unknown,
+                match &receiver_ty {
+                    TypeInfo::Object(type_name) | TypeInfo::Component(type_name) => {
+                        if let Some(fields) = self.env.class_fields.get(type_name) {
+                            if let Some(field_ty) = fields.get(&field.name) {
+                                field_ty.clone()
+                            } else {
+                                let candidates: Vec<String> = fields.keys().cloned().collect();
+                                let similar = Self::find_similar_names(&field.name, &candidates, 3);
+                                let suggestion = if similar.is_empty() { None } else { Some(format!("Did you mean {}?", similar.join(", "))) };
+                                self.diagnostics.push(TypeDiagnostic {
+                                    message: format!("Type {} has no field '{}'", type_name, field.name),
+                                    severity: DiagnosticSeverity::Error,
+                                    span_start: span.start,
+                                    span_end: span.end,
+                                    suggestion,
+                                });
+                                TypeInfo::Unknown
+                            }
+                        } else {
+                            TypeInfo::Unknown
+                        }
+                    }
                     _ => TypeInfo::Unknown,
                 }
             }

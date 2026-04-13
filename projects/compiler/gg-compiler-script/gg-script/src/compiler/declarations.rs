@@ -92,13 +92,10 @@ impl ValkyrieCompiler {
             if method.body.is_none() {
                 continue;
             }
-            self.locals.clear();
-            self.next_local = 0;
-            self.loop_stack.clear();
+            self.reset_locals();
             let param_count = method.params.len();
             for param in &method.params {
-                self.locals.insert(param.name.name.clone(), self.next_local);
-                self.next_local += 1;
+                self.declare_local(param.name.name.clone());
             }
             let mut instructions = Vec::new();
             if let Some(body) = &method.body {
@@ -113,7 +110,7 @@ impl ValkyrieCompiler {
                 name: func_name.clone(),
                 param_count,
                 local_count: self.next_local,
-                local_names: vec![],
+                local_names: std::mem::take(&mut self.local_names),
                 instructions,
                 is_entry,
                 target,
@@ -204,13 +201,10 @@ impl ValkyrieCompiler {
             if method.body.is_none() {
                 continue;
             }
-            self.locals.clear();
-            self.next_local = 0;
-            self.loop_stack.clear();
+            self.reset_locals();
             let param_count = method.params.len();
             for param in &method.params {
-                self.locals.insert(param.name.name.clone(), self.next_local);
-                self.next_local += 1;
+                self.declare_local(param.name.name.clone());
             }
             let mut instructions = Vec::new();
             if let Some(body) = &method.body {
@@ -223,7 +217,7 @@ impl ValkyrieCompiler {
                 name: func_name,
                 param_count,
                 local_count: self.next_local,
-                local_names: vec![],
+                local_names: std::mem::take(&mut self.local_names),
                 instructions,
                 is_entry: false,
                 target: None,
@@ -317,13 +311,10 @@ impl ValkyrieCompiler {
             if method.body.is_none() {
                 continue;
             }
-            self.locals.clear();
-            self.next_local = 0;
-            self.loop_stack.clear();
+            self.reset_locals();
             let param_count = method.params.len();
             for param in &method.params {
-                self.locals.insert(param.name.name.clone(), self.next_local);
-                self.next_local += 1;
+                self.declare_local(param.name.name.clone());
             }
             let mut instructions = Vec::new();
             if let Some(body) = &method.body {
@@ -336,7 +327,7 @@ impl ValkyrieCompiler {
                 name: func_name,
                 param_count,
                 local_count: self.next_local,
-                local_names: vec![],
+                local_names: std::mem::take(&mut self.local_names),
                 instructions,
                 is_entry: false,
                 target: None,

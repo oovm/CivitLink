@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// 编译转换器 trait，定义编译流水线中每个阶段的标准接口
-pub trait Transformer {
+pub trait Transformer: Send + Sync {
     /// 获取转换器名称
     fn name(&self) -> &str;
 
